@@ -1,0 +1,189 @@
+'use client'
+
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase/client'
+
+function RegisterForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  const [formData, setFormData] = useState({
+    lineId: '',
+    lineDisplayName: '',
+    linePictureUrl: '',
+    fullName: '',
+    phone: '',
+    birthDate: ''
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    // Get LINE data from URL params
+    const lineId = searchParams.get('lineId')
+    const name = searchParams.get('name')
+    const picture = searchParams.get('picture')
+
+    if (!lineId) {
+      router.push('/login')
+      return
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      lineId: lineId,
+      lineDisplayName: name || '',
+      linePictureUrl: picture || '',
+      fullName: name || '' // Pre-fill with LINE display name
+    }))
+  }, [searchParams, router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      // Validate phone number
+      const phoneRegex = /^0[0-9]{9}$/
+      if (!phoneRegex.test(formData.phone)) {
+        throw new Error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (0xxxxxxxxx)')
+      }
+
+      // Save to Firestore
+      await setDoc(doc(db, 'users', formData.lineId), {
+        lineUserId: formData.lineId,
+        lineDisplayName: formData.lineDisplayName,
+        linePictureUrl: formData.linePictureUrl,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        birthDate: formData.birthDate,
+        role: 'employee', // Default role
+        permissionGroupId: null, // Will be assigned by admin
+        isActive: false, // Require admin approval
+        registeredAt: new Date(),
+        createdAt: new Date()
+      })
+
+      // Redirect to success page
+      router.push('/register/success')
+    } catch (err: any) {
+      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Profile Picture */}
+      {formData.linePictureUrl && (
+        <div className="text-center">
+          <img
+            src={formData.linePictureUrl}
+            alt="Profile"
+            className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-red-100"
+          />
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Full Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ชื่อ-นามสกุลเต็ม <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={formData.fullName}
+          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          placeholder="กรอกชื่อ-นามสกุลจริง"
+          required
+        />
+      </div>
+
+      {/* Phone */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          เบอร์โทรศัพท์ <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="tel"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          placeholder="0812345678"
+          pattern="[0-9]{10}"
+          maxLength={10}
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">กรอกเบอร์โทร 10 หลัก</p>
+      </div>
+
+      {/* Birth Date */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          วันเกิด <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="date"
+          value={formData.birthDate}
+          onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          max={new Date().toISOString().split('T')[0]}
+          required
+        />
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-4 rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
+      </button>
+
+      <p className="text-xs text-gray-500 text-center">
+        * ข้อมูลของคุณจะถูกส่งให้ HR ตรวจสอบก่อนเข้าใช้งาน
+      </p>
+    </form>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-pink-50 px-4 py-8">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-3xl shadow-2xl p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl mb-4">
+              <span className="text-2xl font-bold text-white">A</span>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">ลงทะเบียนพนักงานใหม่</h1>
+            <p className="text-gray-500 mt-2 text-sm">กรอกข้อมูลเพื่อเข้าใช้งานระบบ</p>
+          </div>
+
+          {/* Form with Suspense */}
+          <Suspense fallback={
+            <div className="text-center py-8">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
+            </div>
+          }>
+            <RegisterForm />
+          </Suspense>
+        </div>
+      </div>
+    </div>
+  )
+}

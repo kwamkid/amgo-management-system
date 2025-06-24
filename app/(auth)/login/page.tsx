@@ -2,9 +2,12 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useLoading } from '@/lib/contexts/LoadingContext'
+
 
 // แยก Component ที่ใช้ useSearchParams
 function LoginForm() {
+  const { showLoading } = useLoading()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const searchParams = useSearchParams()
@@ -27,6 +30,7 @@ function LoginForm() {
   }, [searchParams])
 
   const handleLineLogin = () => {
+    showLoading() // แสดง loading ก่อน redirect
     setIsLoading(true)
     
     // Generate random state for security

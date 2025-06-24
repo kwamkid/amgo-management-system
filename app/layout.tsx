@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Sans_Thai } from 'next/font/google'
+import { LoadingProvider } from '@/lib/contexts/LoadingContext'
 import './globals.css'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
@@ -25,7 +26,9 @@ export default function RootLayout({
   return (
     <html lang="th" className={ibmPlexSansThai.variable}>
       <body className={`${ibmPlexSansThai.className} antialiased`} suppressHydrationWarning>
-        {children}
+        <LoadingProvider>
+          {children}
+        </LoadingProvider>
       </body>
     </html>
   )

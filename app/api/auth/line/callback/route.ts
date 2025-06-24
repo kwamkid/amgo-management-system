@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { FieldValue } from 'firebase-admin/firestore'  // ✅ เพิ่ม import นี้
 import axios from 'axios'
 
 export async function GET(request: NextRequest) {
@@ -45,36 +46,86 @@ export async function GET(request: NextRequest) {
 
     const { userId, displayName, pictureUrl } = profileResponse.data
 
+    // Check if this is the first user in the system
+    const usersSnapshot = await adminDb.collection('users').limit(1).get()
+    const isFirstUser = usersSnapshot.empty
+
     // Check if user exists in Firestore
     const userDoc = await adminDb.collection('users').doc(userId).get()
 
     if (!userDoc.exists) {
-      // New user - redirect to registration with LINE data
-      const params = new URLSearchParams({
-        lineId: userId,
-        name: displayName,
-        ...(pictureUrl && { picture: pictureUrl })
-      })
-      
+      // New user registration
+      if (isFirstUser) {
+        // First user becomes Super Admin automatically
+        console.log('🎉 Creating first user as Super Admin:', displayName)
+        
+        await adminDb.collection('users').doc(userId).set({
+          lineUserId: userId,
+          lineDisplayName: displayName,
+          linePictureUrl: pictureUrl || '',
+          fullName: displayName, // Can be updated later
+          phone: '', // Will be required to fill later
+          birthDate: null, // Will be required to fill later
+          role: 'admin', // ⭐ First user = Admin
+          permissionGroupId: 'super_admin',
+          isActive: true,
+          registeredAt: FieldValue.serverTimestamp(),  // ✅ แก้ไขตรงนี้
+          createdAt: FieldValue.serverTimestamp()      // ✅ แก้ไขตรงนี้
+        })
+
+        // Create Firebase custom token for admin
+        const customToken = await adminAuth.createCustomToken(userId, {
+          lineUserId: userId,
+          role: 'admin',
+        })
+
+        // Redirect to auth verify page
+        return NextResponse.redirect(
+          new URL(`/auth/verify?token=${customToken}&firstLogin=true`, request.url)
+        )
+      } else {
+        // Regular new user - redirect to registration
+        const params = new URLSearchParams({
+          lineId: userId,
+          name: displayName,
+          ...(pictureUrl && { picture: pictureUrl })
+        })
+        
+        return NextResponse.redirect(
+          new URL(`/register?${params.toString()}`, request.url)
+        )
+      }
+    }
+
+    // Existing user - check if active
+    const userData = userDoc.data()!
+    
+    if (!userData.isActive) {
       return NextResponse.redirect(
-        new URL(`/register?${params.toString()}`, request.url)
+        new URL('/login?error=account_inactive', request.url)
       )
     }
 
-    // Existing user - create Firebase custom token
-    const userData = userDoc.data()!
+    // Create Firebase custom token
     const customToken = await adminAuth.createCustomToken(userId, {
       lineUserId: userId,
       role: userData.role || 'employee',
     })
 
-    // Redirect to client-side auth handler with token
+    // Redirect to auth verify page
     return NextResponse.redirect(
       new URL(`/auth/verify?token=${customToken}`, request.url)
     )
 
   } catch (error) {
     console.error('LINE callback error:', error)
+    
+    // Log more details for debugging
+    if (axios.isAxiosError(error)) {
+      console.error('Response data:', error.response?.data)
+      console.error('Response status:', error.response?.status)
+    }
+    
     return NextResponse.redirect(new URL('/login?error=auth_failed', request.url))
   }
 }

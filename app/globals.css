@@ -4,6 +4,61 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    font-family: var(--font-ibm-plex-sans-thai), "IBM Plex Sans Thai", system-ui,
+      sans-serif !important;
+  }
+}
+
+@layer utilities {
+  /* Reverse spin animation */
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  .animate-spin-reverse {
+    animation: spin-reverse 1.5s linear infinite;
+  }
+
+  /* Loading bar animation */
+  @keyframes loading-bar {
+    0% {
+      transform: translateX(-100%);
+    }
+    50% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-loading-bar {
+    animation: loading-bar 2s ease-in-out infinite;
+  }
+
+  /* Blink animation */
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .animate-blink {
+    animation: blink 1.5s ease-in-out infinite;
+  }
+}
+
+@layer base {
   html {
     font-family: var(--font-ibm-plex-sans-thai), system-ui, sans-serif;
   }

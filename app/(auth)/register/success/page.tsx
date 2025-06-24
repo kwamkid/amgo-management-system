@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 
 export default function RegisterSuccessPage() {
   const router = useRouter()
@@ -18,10 +20,21 @@ export default function RegisterSuccessPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-pink-50 px-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center">
+        {/* Logo */}
+        <div className="mb-6">
+          <Image 
+            src="/logo.svg" 
+            alt="AMGO Logo" 
+            width={150} 
+            height={60}
+            className="h-10 w-auto mx-auto mb-6"
+          />
+        </div>
+
         {/* Success Icon */}
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full mb-6 shadow-lg">
+          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         </div>
 
@@ -42,12 +55,12 @@ export default function RegisterSuccessPage() {
         </div>
 
         <div className="mt-8">
-          
+          <Link
             href="/login"
             className="inline-block text-red-500 hover:text-red-600 font-medium"
           >
             กลับหน้าเข้าสู่ระบบ
-          </a>
+          </Link>
         </div>
 
         <p className="text-xs text-gray-400 mt-4">

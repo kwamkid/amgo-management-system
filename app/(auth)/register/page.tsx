@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
+import Image from 'next/image'
 
 function RegisterForm() {
   const router = useRouter()
@@ -84,7 +85,7 @@ function RegisterForm() {
           <img
             src={formData.linePictureUrl}
             alt="Profile"
-            className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-red-100"
+            className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-gradient-to-r from-red-400 to-pink-400"
           />
         </div>
       )}
@@ -105,7 +106,7 @@ function RegisterForm() {
           type="text"
           value={formData.fullName}
           onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
           placeholder="กรอกชื่อ-นามสกุลจริง"
           required
         />
@@ -120,7 +121,7 @@ function RegisterForm() {
           type="tel"
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
           placeholder="0812345678"
           pattern="[0-9]{10}"
           maxLength={10}
@@ -138,7 +139,7 @@ function RegisterForm() {
           type="date"
           value={formData.birthDate}
           onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
           max={new Date().toISOString().split('T')[0]}
           required
         />
@@ -148,9 +149,12 @@ function RegisterForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-4 rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full relative group overflow-hidden rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
-        {isSubmitting ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
+        <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-300 group-hover:from-red-600 group-hover:to-pink-600" />
+        <div className="relative px-6 py-4 font-semibold text-white">
+          {isSubmitting ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
+        </div>
       </button>
 
       <p className="text-xs text-gray-500 text-center">
@@ -162,13 +166,22 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-pink-50 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-2xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 py-8">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-gray-100/50 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
+      
+      <div className="relative w-full max-w-md">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl mb-4">
-              <span className="text-2xl font-bold text-white">A</span>
+            <div className="inline-flex items-center justify-center mb-4">
+              <Image 
+                src="/logo.svg" 
+                alt="AMGO Logo" 
+                width={150} 
+                height={60}
+                className="h-12 w-auto"
+              />
             </div>
             <h1 className="text-2xl font-bold text-gray-800">ลงทะเบียนพนักงานใหม่</h1>
             <p className="text-gray-500 mt-2 text-sm">กรอกข้อมูลเพื่อเข้าใช้งานระบบ</p>

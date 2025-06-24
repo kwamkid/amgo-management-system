@@ -1,20 +1,16 @@
-import type { Metadata } from 'next'
+// app/layout.tsx
 import { IBM_Plex_Sans_Thai } from 'next/font/google'
-import { LoadingProvider } from '@/lib/contexts/LoadingContext'
 import './globals.css'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   subsets: ['thai', 'latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-ibm-plex-sans-thai',
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: {
-    default: 'AMGO Management System',
-    template: '%s | AMGO'
-  },
+export const metadata = {
+  title: 'AMGO Management System',
   description: 'ระบบบริหารจัดการพนักงาน AMGO',
 }
 
@@ -25,10 +21,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th" className={ibmPlexSansThai.variable}>
-      <body className={`${ibmPlexSansThai.className} antialiased`} suppressHydrationWarning>
-        <LoadingProvider>
-          {children}
-        </LoadingProvider>
+      <body 
+        className={ibmPlexSansThai.className}
+        suppressHydrationWarning
+      >
+        {children}
       </body>
     </html>
   )

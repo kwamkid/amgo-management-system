@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)

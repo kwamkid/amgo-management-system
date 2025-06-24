@@ -3,13 +3,17 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'firebase/auth'
+import { auth } from '@/lib/firebase/client'
 import { ChevronDown, LogOut, User, Menu } from 'lucide-react'
+import type { UserData } from '@/hooks/useAuth'
 
 interface NavbarProps {
   onMenuClick: () => void
+  userData?: UserData | null
 }
 
-export default function Navbar({ onMenuClick }: NavbarProps) {
+export default function Navbar({ onMenuClick, userData }: NavbarProps) {
   const router = useRouter()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -26,9 +30,24 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleSignOut = () => {
-    // TODO: Add Firebase signout logic later
-    router.push('/login')
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth)
+      router.push('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  // Role display in Thai
+  const getRoleDisplay = (role?: string) => {
+    switch (role) {
+      case 'admin': return 'ผู้ดูแลระบบ'
+      case 'hr': return 'ฝ่ายบุคคล'
+      case 'manager': return 'ผู้จัดการ'
+      case 'employee': return 'พนักงาน'
+      default: return 'พนักงาน'
+    }
   }
 
   return (
@@ -51,13 +70,25 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center space-x-3 text-gray-700 hover:text-gray-900 focus:outline-none"
           >
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-gray-600" />
+            {/* Profile Picture */}
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+              {userData?.linePictureUrl ? (
+                <img 
+                  src={userData.linePictureUrl} 
+                  alt={userData.lineDisplayName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-6 h-6 text-gray-600" />
+              )}
             </div>
+            
+            {/* User Info */}
             <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium">User</p>
-              <p className="text-xs text-gray-500">Admin</p>
+              <p className="text-sm font-medium">{userData?.lineDisplayName || 'Loading...'}</p>
+              <p className="text-xs text-gray-500">{getRoleDisplay(userData?.role)}</p>
             </div>
+            
             <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
@@ -65,8 +96,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">User Name</p>
-                <p className="text-xs text-gray-500">admin@amgo.com</p>
+                <p className="text-sm font-medium text-gray-900">{userData?.fullName}</p>
+                <p className="text-xs text-gray-500">{userData?.phone}</p>
               </div>
               
               <button

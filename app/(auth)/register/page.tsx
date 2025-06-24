@@ -70,8 +70,9 @@ function RegisterForm() {
 
       // Redirect to success page
       router.push('/register/success')
-    } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } catch (err) {
+      const error = err as Error
+      setError(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
       setIsSubmitting(false)
     }
@@ -82,6 +83,7 @@ function RegisterForm() {
       {/* Profile Picture */}
       {formData.linePictureUrl && (
         <div className="text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={formData.linePictureUrl}
             alt="Profile"

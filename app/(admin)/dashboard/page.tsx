@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
 import { Users, Clock, Calendar, FileText, TrendingUp, AlertCircle } from 'lucide-react'
 

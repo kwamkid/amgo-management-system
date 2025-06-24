@@ -73,6 +73,7 @@ export default function Navbar({ onMenuClick, userData }: NavbarProps) {
             {/* Profile Picture */}
             <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
               {userData?.linePictureUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img 
                   src={userData.linePictureUrl} 
                   alt={userData.lineDisplayName}

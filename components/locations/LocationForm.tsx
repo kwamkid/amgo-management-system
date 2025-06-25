@@ -191,7 +191,7 @@ export default function LocationForm({
     const newWorkingHours = {} as typeof formData.workingHours
     
     DAYS.forEach(({ key }) => {
-      if (presetConfig.closedDays && presetConfig.closedDays.includes(key)) {
+    if ('closedDays' in presetConfig && presetConfig.closedDays?.includes(key)) {
         // วันที่ปิดทำการ
         newWorkingHours[key as keyof typeof formData.workingHours] = {
           open: '10:00',

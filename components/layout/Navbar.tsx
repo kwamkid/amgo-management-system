@@ -1,117 +1,104 @@
 // components/layout/Navbar.tsx
+
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
+import { User } from '@/types/user'
 import { useRouter } from 'next/navigation'
+import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
-import { auth } from '@/lib/firebase/client'
-import { ChevronDown, LogOut, User, Menu } from 'lucide-react'
-import type { UserData } from '@/hooks/useAuth'
+import { LogOut, User as UserIcon, Menu, ChevronDown } from 'lucide-react'
+import MobileMenuButton from './MobileMenuButton'
 
 interface NavbarProps {
-  onMenuClick: () => void
-  userData?: UserData | null
+  userData?: User | null
+  onMenuClick?: () => void
+  sidebarOpen?: boolean
 }
 
-export default function Navbar({ onMenuClick, userData }: NavbarProps) {
+export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: NavbarProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const router = useRouter()
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
       await signOut(auth)
       router.push('/login')
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('Logout error:', error)
     }
   }
 
-  // Role display in Thai
   const getRoleDisplay = (role?: string) => {
     switch (role) {
-      case 'admin': return 'ผู้ดูแลระบบ'
-      case 'hr': return 'ฝ่ายบุคคล'
-      case 'manager': return 'ผู้จัดการ'
-      case 'employee': return 'พนักงาน'
-      default: return 'พนักงาน'
+      case 'admin':
+        return 'ผู้ดูแลระบบ'
+      case 'hr':
+        return 'ฝ่ายบุคคล'
+      case 'manager':
+        return 'ผู้จัดการ'
+      default:
+        return 'พนักงาน'
     }
   }
 
   return (
-    <div className="h-16 bg-white shadow-sm border-b border-gray-100">
-      <div className="h-full px-4 lg:px-8 flex items-center justify-between">
-        {/* Mobile Menu Button */}
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-        >
-          <Menu className="w-6 h-6 text-gray-600" />
-        </button>
+    <nav className="h-16 bg-white border-b border-gray-200 px-4 lg:px-8">
+      <div className="h-full flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {/* Mobile Menu Button */}
+          {onMenuClick && (
+            <MobileMenuButton 
+              isOpen={sidebarOpen} 
+              onClick={onMenuClick} 
+            />
+          )}
+        </div>
 
-        {/* Spacer for desktop */}
-        <div className="hidden lg:block"></div>
-
-        {/* User Dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative">
           <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center space-x-3 text-gray-700 hover:text-gray-900 focus:outline-none"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            {/* Profile Picture */}
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-              {userData?.linePictureUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={userData.linePictureUrl} 
-                  alt={userData.lineDisplayName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-6 h-6 text-gray-600" />
-              )}
-            </div>
-            
-            {/* User Info */}
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium">{userData?.lineDisplayName || 'Loading...'}</p>
+            {userData?.linePictureUrl ? (
+              <img
+                src={userData.linePictureUrl}
+                alt={userData.lineDisplayName || userData.fullName}
+                className="w-8 h-8 rounded-full"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 text-gray-600" />
+              </div>
+            )}
+            <div className="text-right">
+              <span className="text-sm font-medium text-gray-700">
+                {userData?.lineDisplayName || userData?.fullName || 'User'}
+              </span>
               <p className="text-xs text-gray-500">{getRoleDisplay(userData?.role)}</p>
             </div>
-            
-            <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className="w-4 h-4 text-gray-400" />
           </button>
 
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{userData?.fullName}</p>
-                <p className="text-xs text-gray-500">{userData?.phone}</p>
+          {dropdownOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setDropdownOpen(false)}
+              />
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  ออกจากระบบ
+                </button>
               </div>
-              
-              <button
-                onClick={handleSignOut}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>ออกจากระบบ</span>
-              </button>
-            </div>
+            </>
           )}
         </div>
       </div>
-    </div>
+    </nav>
   )
 }

@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase/client'
+import { db } from '@/lib/firebase'
 import { Users, Clock, Calendar, FileText, TrendingUp, AlertCircle } from 'lucide-react'
+import TechLoader from '@/components/shared/TechLoader'
 
 interface DashboardStats {
   totalEmployees: number
@@ -93,13 +94,17 @@ export default function DashboardPage() {
     }
   ]
 
+  if (loading) {
+    return <TechLoader />
+  }
+
   return (
     <div>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">แดชบอร์ด</h1>
-        <p className="text-gray-600 mt-1">
-          สวัสดี, {userData?.lineDisplayName}! 👋
+        <p className="text-gray-600 mt-1 text-base">
+          สวัสดี, {userData?.lineDisplayName || userData?.fullName}! 👋
         </p>
       </div>
 
@@ -122,11 +127,11 @@ export default function DashboardPage() {
                   )}
                 </div>
                 
-                <h3 className="text-sm font-medium text-gray-600">{card.title}</h3>
+                <h3 className="text-base font-medium text-gray-600">{card.title}</h3>
                 <p className={`text-3xl font-bold mt-2 bg-gradient-to-r ${card.bgGradient} bg-clip-text text-transparent`}>
-                  {loading ? '-' : card.value}
+                  {card.value}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">{card.subtitle}</p>
+                <p className="text-sm text-gray-500 mt-1">{card.subtitle}</p>
               </div>
             </div>
           )
@@ -139,19 +144,15 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">การเช็คอินล่าสุด</h2>
-            <span className="text-xs text-gray-500">วันนี้</span>
+            <span className="text-sm text-gray-500">วันนี้</span>
           </div>
           
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
-          ) : stats.checkedInToday === 0 ? (
+          {stats.checkedInToday === 0 ? (
             <div className="text-center py-12">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Clock className="w-10 h-10 text-blue-500" />
               </div>
-              <p className="text-gray-500">ยังไม่มีข้อมูลการเช็คอิน</p>
+              <p className="text-gray-500 text-base">ยังไม่มีข้อมูลการเช็คอิน</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -164,19 +165,15 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">คำขอลาล่าสุด</h2>
-            <span className="text-xs text-gray-500">รอดำเนินการ</span>
+            <span className="text-sm text-gray-500">รอดำเนินการ</span>
           </div>
           
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-            </div>
-          ) : stats.pendingRequests === 0 ? (
+          {stats.pendingRequests === 0 ? (
             <div className="text-center py-12">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-10 h-10 text-purple-500" />
               </div>
-              <p className="text-gray-500">ไม่มีคำขอลา</p>
+              <p className="text-gray-500 text-base">ไม่มีคำขอลา</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -194,15 +191,15 @@ export default function DashboardPage() {
               <AlertCircle className="w-6 h-6 text-purple-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-purple-800">คุณคือ Super Admin</h3>
-              <p className="text-purple-700 mt-1 text-sm">
+              <h3 className="font-semibold text-purple-800 text-lg">คุณคือ Super Admin</h3>
+              <p className="text-purple-700 mt-1 text-base">
                 คุณมีสิทธิ์เข้าถึงทุกฟังก์ชันของระบบ สามารถจัดการพนักงาน, ตั้งค่าระบบ, และดูรายงานทั้งหมดได้
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
-                <button className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                <button className="px-4 py-2 bg-purple-600 text-white text-base font-medium rounded-lg hover:bg-purple-700 transition-colors">
                   เริ่มสร้าง Invite Link
                 </button>
-                <button className="px-4 py-2 bg-white text-purple-600 border border-purple-300 text-sm font-medium rounded-lg hover:bg-purple-50 transition-colors">
+                <button className="px-4 py-2 bg-white text-purple-600 border border-purple-300 text-base font-medium rounded-lg hover:bg-purple-50 transition-colors">
                   ตั้งค่าสถานที่ทำงาน
                 </button>
               </div>

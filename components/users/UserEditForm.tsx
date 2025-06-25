@@ -28,15 +28,19 @@ export default function UserEditForm({
   onCancel,
   isLoading = false 
 }: UserEditFormProps) {
-  const [formData, setFormData] = useState<UpdateUserData>({
-    fullName: user.fullName,
-    phone: user.phone || '',
-    birthDate: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : '',
-    role: user.role,
-    allowedLocationIds: user.allowedLocationIds || [],
-    allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
-    isActive: user.isActive
-  })
+const [formData, setFormData] = useState<UpdateUserData>({
+  fullName: user.fullName,
+  phone: user.phone || '',
+  birthDate: user.birthDate ? 
+    (typeof user.birthDate === 'string' 
+      ? user.birthDate 
+      : new Date(user.birthDate).toISOString().split('T')[0]
+    ) : '',
+  role: user.role,
+  allowedLocationIds: user.allowedLocationIds || [],
+  allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
+  isActive: user.isActive
+})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,11 +132,16 @@ export default function UserEditForm({
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="date"
-                value={formData.birthDate}
+                value={formData.birthDate ? 
+                    (typeof formData.birthDate === 'string' 
+                    ? formData.birthDate 
+                    : new Date(formData.birthDate).toISOString().split('T')[0]
+                    ) : ''
+                }
                 onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900 text-base"
                 disabled={isLoading}
-              />
+                />
             </div>
           </div>
         </div>

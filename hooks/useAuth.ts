@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase/client'
 
 export interface UserData {
-  id?: string // เพิ่มบรรทัดนี้
+  id?: string
   lineUserId: string
   lineDisplayName: string
   linePictureUrl: string
@@ -16,9 +16,18 @@ export interface UserData {
   birthDate: string | null
   role: 'admin' | 'hr' | 'manager' | 'employee'
   permissionGroupId: string | null
+  allowedLocationIds?: string[]              // ✅ เพิ่ม
+  allowCheckInOutsideLocation?: boolean      // ✅ เพิ่ม
+  inviteLinkId?: string                     // ✅ เพิ่ม
+  inviteLinkCode?: string                   // ✅ เพิ่ม
   isActive: boolean
+  needsApproval: boolean                    // ✅ เพิ่ม
   registeredAt: Date
   createdAt: Date
+  updatedAt?: Date                          // ✅ เพิ่ม
+  approvedAt?: Date                         // ✅ เพิ่ม
+  approvedBy?: string                       // ✅ เพิ่ม
+  lastLoginAt?: Date                        // ✅ เพิ่ม
 }
 
 interface AuthState {

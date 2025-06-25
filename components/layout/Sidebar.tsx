@@ -22,7 +22,8 @@ import {
   Shield,
   Bell
 } from 'lucide-react'
-import { User } from '@/types/user'
+import { UserData } from '@/hooks/useAuth'
+
 
 interface NavItem {
   label: string
@@ -114,7 +115,7 @@ const navItems: NavItem[] = [
 ]
 
 interface SidebarProps {
-  userData?: User | null
+  userData?: UserData | null  // ใช้ UserData แทน User
 }
 
 export default function Sidebar({ userData }: SidebarProps) {

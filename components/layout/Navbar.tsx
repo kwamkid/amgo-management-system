@@ -1,17 +1,18 @@
+
 // components/layout/Navbar.tsx
 
 'use client'
 
 import { useState } from 'react'
-import { User } from '@/types/user'
+import { UserData } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
-import { LogOut, User as UserIcon, Menu, ChevronDown } from 'lucide-react'
+import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react'
 import MobileMenuButton from './MobileMenuButton'
 
 interface NavbarProps {
-  userData?: User | null
+  userData?: UserData | null
   onMenuClick?: () => void
   sidebarOpen?: boolean
 }

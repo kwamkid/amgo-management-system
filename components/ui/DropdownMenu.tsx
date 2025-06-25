@@ -47,7 +47,7 @@ export default function DropdownMenu({
       
       // Calculate position
       let top = rect.bottom + 4
-      let left = rect.right - 192 // 192px = w-48 in tailwind
+      let left = rect.right - 208 // 208px = w-52 in tailwind
       
       // Adjust if menu would go off screen
       if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
@@ -100,7 +100,7 @@ export default function DropdownMenu({
       {isOpen && createPortal(
         <div
           ref={menuRef}
-          className={`fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 ${menuClassName}`}
+          className={`fixed w-52 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50 ${menuClassName}`}
           style={{
             top: `${position.top}px`,
             left: `${position.left}px`
@@ -108,17 +108,17 @@ export default function DropdownMenu({
         >
           {items.map((item, index) => {
             if ('divider' in item && item.divider) {
-              return <div key={index} className="border-t my-1" />
+              return <div key={index} className="border-t border-gray-100 my-2" />
             }
             
             return (
               <button
                 key={index}
                 onClick={() => handleItemClick(item)}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                className={`w-full text-left px-4 py-2.5 text-base transition-colors ${
                   item.disabled 
                     ? 'text-gray-400 cursor-not-allowed' 
-                    : item.className || 'text-gray-700 hover:bg-gray-100'
+                    : item.className || 'text-gray-700 hover:bg-gray-50'
                 }`}
                 disabled={item.disabled}
               >

@@ -4,7 +4,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   LayoutDashboard, 
   Users, 
@@ -16,6 +16,7 @@ import {
   Building,
   UserCog,
   CheckSquare,
+  UserPlus,
   ChevronDown,
   ChevronRight,
   Shield,
@@ -46,7 +47,24 @@ const navItems: NavItem[] = [
     label: 'พนักงาน',
     href: '/employees',
     icon: <Users className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager']
+    roles: ['hr', 'admin', 'manager'],
+    subItems: [
+      {
+        label: 'รายการพนักงาน',
+        href: '/employees',
+        icon: <Users className="w-4 h-4" />
+      },
+      {
+        label: 'เชิญพนักงานใหม่',
+        href: '/employees/invite-links',
+        icon: <UserPlus className="w-4 h-4" />
+      },
+      {
+        label: 'รออนุมัติ',
+        href: '/employees/pending',
+        icon: <Clock className="w-4 h-4" />
+      }
+    ]
   },
   {
     label: 'การลา',
@@ -101,18 +119,28 @@ interface SidebarProps {
 
 export default function Sidebar({ userData }: SidebarProps) {
   const pathname = usePathname()
-  
-  // เปิด submenu เฉพาะเมื่อมี active item
-  const getInitialExpanded = () => {
-    if (pathname.startsWith('/settings/')) {
-      return ['ตั้งค่า']
-    }
-    return []
-  }
-  
-  const [expandedItems, setExpandedItems] = useState<string[]>(getInitialExpanded())
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
   
   const userRole = userData?.role || 'employee'
+  
+  // Auto-expand parent menu when a submenu is active
+  useEffect(() => {
+    const expanded: string[] = []
+    
+    navItems.forEach(item => {
+      if (item.subItems) {
+        const hasActiveSubItem = item.subItems.some(
+          subItem => pathname === subItem.href || 
+          (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
+        )
+        if (hasActiveSubItem) {
+          expanded.push(item.label)
+        }
+      }
+    })
+    
+    setExpandedItems(expanded)
+  }, [pathname])
   
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true
@@ -127,10 +155,38 @@ export default function Sidebar({ userData }: SidebarProps) {
     )
   }
 
+  const isItemActive = (item: NavItem, isSubItem: boolean = false): boolean => {
+    // Exact match
+    if (pathname === item.href) return true
+    
+    // For parent items with subitems
+    if (!isSubItem && item.subItems) {
+      // Don't highlight parent if any subitem is active
+      const hasActiveSubItem = item.subItems.some(subItem => 
+        pathname === subItem.href || 
+        (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
+      )
+      return false // Parent should not be highlighted when subitem is active
+    }
+    
+    // For pages under the path (but not if it's a parent with subitems)
+    if (!item.subItems && pathname.startsWith(`${item.href}/`)) {
+      return true
+    }
+    
+    return false
+  }
+
   const renderNavItem = (item: NavItem, isSubItem = false) => {
     const hasSubItems = item.subItems && item.subItems.length > 0
     const isExpanded = expandedItems.includes(item.label)
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+    const isActive = isItemActive(item, isSubItem)
+    
+    // Check if any subitem is active
+    const hasActiveSubItem = item.subItems?.some(subItem => 
+      pathname === subItem.href || 
+      (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
+    ) || false
     
     // Filter subitems based on role
     const filteredSubItems = item.subItems?.filter(subItem => {
@@ -145,8 +201,8 @@ export default function Sidebar({ userData }: SidebarProps) {
             <button
               onClick={() => toggleExpanded(item.label)}
               className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg transition-colors ${
-                isActive || pathname.startsWith('/settings/')
-                  ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400 font-medium'
+                hasActiveSubItem
+                  ? 'text-red-600 dark:text-red-400 font-medium'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
@@ -162,20 +218,25 @@ export default function Sidebar({ userData }: SidebarProps) {
             </button>
             {isExpanded && filteredSubItems && (
               <div className="mt-1 ml-4 space-y-1">
-                {filteredSubItems.map(subItem => (
-                  <Link
-                    key={subItem.href}
-                    href={subItem.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      pathname === subItem.href || pathname.startsWith(`${subItem.href}/`)
-                        ? 'bg-red-50 text-red-600 font-medium'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}
-                  >
-                    {subItem.icon}
-                    <span className="text-base">{subItem.label}</span>
-                  </Link>
-                ))}
+                {filteredSubItems.map(subItem => {
+                  const isSubItemActive = pathname === subItem.href || 
+                    (subItem.href !== '/employees' && pathname.startsWith(`${subItem.href}/`))
+                  
+                  return (
+                    <Link
+                      key={subItem.href}
+                      href={subItem.href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        isSubItemActive
+                          ? 'bg-red-50 text-red-600 font-medium'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      {subItem.icon}
+                      <span className="text-sm">{subItem.label}</span>
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </>
@@ -184,9 +245,7 @@ export default function Sidebar({ userData }: SidebarProps) {
             href={item.href}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               isActive
-                ? isSubItem
-                  ? 'bg-red-50 text-red-600 font-medium'
-                  : 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400 font-medium'
+                ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400 font-medium'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
             }`}
           >

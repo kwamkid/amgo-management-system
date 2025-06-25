@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
           role: 'admin', // ⭐ First user = Admin
           permissionGroupId: 'super_admin',
           isActive: true,
-          registeredAt: FieldValue.serverTimestamp(),  // ✅ แก้ไขตรงนี้
-          createdAt: FieldValue.serverTimestamp()      // ✅ แก้ไขตรงนี้
+          registeredAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp()
         })
 
         // Create Firebase custom token for admin

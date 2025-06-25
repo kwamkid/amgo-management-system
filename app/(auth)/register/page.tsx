@@ -2,9 +2,12 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, increment } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
+import { validateInviteLink } from '@/lib/services/inviteService'
+import { InviteLink } from '@/types/invite'
 import Image from 'next/image'
+import { AlertCircle, CheckCircle } from 'lucide-react'
 
 function RegisterForm() {
   const router = useRouter()
@@ -18,27 +21,46 @@ function RegisterForm() {
     phone: '',
     birthDate: ''
   })
+  const [inviteLink, setInviteLink] = useState<InviteLink | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get LINE data from URL params
-    const lineId = searchParams.get('lineId')
-    const name = searchParams.get('name')
-    const picture = searchParams.get('picture')
+    const initializeForm = async () => {
+      // Get LINE data from URL params
+      const lineId = searchParams.get('lineId')
+      const name = searchParams.get('name')
+      const picture = searchParams.get('picture')
+      const inviteCode = searchParams.get('invite')
 
-    if (!lineId) {
-      router.push('/login')
-      return
+      if (!lineId) {
+        router.push('/login')
+        return
+      }
+
+      // Check if invite code is provided and valid
+      if (inviteCode) {
+        const validation = await validateInviteLink(inviteCode)
+        if (!validation.valid) {
+          setError(validation.error || 'ลิงก์ไม่ถูกต้อง')
+          setLoading(false)
+          return
+        }
+        setInviteLink(validation.link!)
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        lineId: lineId,
+        lineDisplayName: name || '',
+        linePictureUrl: picture || '',
+        fullName: name || '' // Pre-fill with LINE display name
+      }))
+      setLoading(false)
     }
 
-    setFormData(prev => ({
-      ...prev,
-      lineId: lineId,
-      lineDisplayName: name || '',
-      linePictureUrl: picture || '',
-      fullName: name || '' // Pre-fill with LINE display name
-    }))
+    initializeForm()
   }, [searchParams, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,20 +75,34 @@ function RegisterForm() {
         throw new Error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (0xxxxxxxxx)')
       }
 
-      // Save to Firestore
-      await setDoc(doc(db, 'users', formData.lineId), {
+      // Prepare user data
+      const userData = {
         lineUserId: formData.lineId,
         lineDisplayName: formData.lineDisplayName,
         linePictureUrl: formData.linePictureUrl,
         fullName: formData.fullName,
         phone: formData.phone,
         birthDate: formData.birthDate,
-        role: 'employee', // Default role
-        permissionGroupId: null, // Will be assigned by admin
-        isActive: false, // Require admin approval
+        role: inviteLink?.defaultRole || 'employee',
+        allowedLocationIds: inviteLink?.defaultLocationIds || [],
+        allowCheckInOutsideLocation: inviteLink?.allowCheckInOutsideLocation || false,
+        isActive: inviteLink ? !inviteLink.requireApproval : false,
+        needsApproval: inviteLink?.requireApproval !== false,
+        inviteLinkId: inviteLink?.id || null,
+        inviteLinkCode: inviteLink?.code || null,
         registeredAt: new Date(),
         createdAt: new Date()
-      })
+      }
+
+      // Save to Firestore
+      await setDoc(doc(db, 'users', formData.lineId), userData)
+
+      // Update invite link usage if used
+      if (inviteLink?.id) {
+        await updateDoc(doc(db, 'inviteLinks', inviteLink.id), {
+          usedCount: increment(1)
+        })
+      }
 
       // Redirect to success page
       router.push('/register/success')
@@ -78,8 +114,58 @@ function RegisterForm() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
+      </div>
+    )
+  }
+
+  // Show error if invite link is invalid
+  if (error && !formData.lineId) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-red-900 mb-2">ลิงก์ไม่ถูกต้อง</h3>
+        <p className="text-red-700 mb-4">{error}</p>
+        <button
+          onClick={() => router.push('/login')}
+          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+        >
+          กลับไปหน้า Login
+        </button>
+      </div>
+    )
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Invite Link Info */}
+      {inviteLink && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <div>
+              <p className="text-green-800 text-sm font-medium">
+                ใช้ลิงก์: <code className="bg-green-100 px-2 py-1 rounded">{inviteLink.code}</code>
+              </p>
+              {inviteLink.note && (
+                <p className="text-green-700 text-sm mt-1">{inviteLink.note}</p>
+              )}
+              <div className="mt-2 text-xs text-green-700">
+                <p>• สิทธิ์: {inviteLink.defaultRole === 'employee' ? 'พนักงาน' : 
+                            inviteLink.defaultRole === 'manager' ? 'ผู้จัดการ' : 'ฝ่ายบุคคล'}</p>
+                {inviteLink.defaultLocationIds && inviteLink.defaultLocationIds.length > 0 && (
+                  <p>• สาขา: {inviteLink.defaultLocationIds.length} แห่ง</p>
+                )}
+                <p>• {inviteLink.requireApproval ? 'ต้องรอ HR อนุมัติ' : 'ใช้งานได้ทันที'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Profile Picture */}
       {formData.linePictureUrl && (
         <div className="text-center">
@@ -159,9 +245,19 @@ function RegisterForm() {
         </div>
       </button>
 
-      <p className="text-xs text-gray-500 text-center">
-        * ข้อมูลของคุณจะถูกส่งให้ HR ตรวจสอบก่อนเข้าใช้งาน
-      </p>
+      {/* Info Text */}
+      <div className="text-center">
+        {inviteLink && !inviteLink.requireApproval ? (
+          <div className="inline-flex items-center gap-2 text-green-600 text-sm">
+            <CheckCircle className="w-4 h-4" />
+            <span>คุณจะสามารถเข้าใช้งานได้ทันทีหลังลงทะเบียน</span>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">
+            * ข้อมูลของคุณจะถูกส่งให้ HR ตรวจสอบก่อนเข้าใช้งาน
+          </p>
+        )}
+      </div>
     </form>
   )
 }

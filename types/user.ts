@@ -22,6 +22,10 @@ export interface User {
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   
+  // Invite Link Info
+  inviteLinkId?: string // ID ของ invite link ที่ใช้
+  inviteLinkCode?: string // Code ของ invite link ที่ใช้
+  
   // Status
   isActive: boolean
   needsApproval: boolean // ยังไม่ได้ approve จากการสมัคร

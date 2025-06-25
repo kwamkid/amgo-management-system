@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase/client'
 
 export interface UserData {
+  id?: string // เพิ่มบรรทัดนี้
   lineUserId: string
   lineDisplayName: string
   linePictureUrl: string
@@ -58,10 +59,13 @@ export function useAuth() {
             } else {
               setAuthState({
                 user,
-                userData: data,
+                userData: {
+                    ...data,
+                    id: user.uid // เพิ่มบรรทัดนี้
+                },
                 loading: false,
                 error: null
-              })
+                })
             }
           } else {
             setAuthState({

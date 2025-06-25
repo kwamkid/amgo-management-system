@@ -265,13 +265,13 @@ export const getInviteLinkStats = async (linkId: string) => {
     const users = usersSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }))
+    })) as any[]
     
     return {
       link,
       totalUses: link.usedCount,
-      activeUsers: users.filter(u => u.isActive).length,
-      pendingUsers: users.filter(u => u.needsApproval).length,
+      activeUsers: users.filter((u: any) => u.isActive).length,
+      pendingUsers: users.filter((u: any) => u.needsApproval).length,
       users
     }
   } catch (error) {

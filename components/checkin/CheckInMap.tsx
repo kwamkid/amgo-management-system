@@ -147,7 +147,6 @@ export default function CheckInMap({
                 strokeColor: isInRange ? '#16A34A' : '#DC2626',
                 strokeOpacity: 0.5,
                 strokeWeight: 2,
-                strokeStyle: 'dashed'
               }}
             />
           </div>

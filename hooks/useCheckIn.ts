@@ -1,6 +1,6 @@
 // hooks/useCheckIn.ts
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { useLocations } from '@/hooks/useLocations'
@@ -40,8 +40,10 @@ export function useCheckIn(): UseCheckInReturn {
   const [error, setError] = useState<string | null>(null)
   const [currentPosition, setCurrentPosition] = useState<GeolocationPosition | null>(null)
   const [locationCheckResult, setLocationCheckResult] = useState<LocationCheckResult | null>(null)
-  const [isGettingLocation, setIsGettingLocation] = useState(false)
-  const [hasTriedLocation, setHasTriedLocation] = useState(false) // เพิ่ม flag นี้
+  
+  // Refs to prevent multiple calls
+  const isGettingLocation = useRef(false)
+  const hasInitialized = useRef(false)
 
   // Fetch current check-in status
   const fetchCurrentStatus = async () => {
@@ -61,19 +63,22 @@ export function useCheckIn(): UseCheckInReturn {
     }
   }
 
-  // Get current location
+  // Get current location - NO TOAST HERE
   const getCurrentLocation = async (): Promise<GeolocationPosition | undefined> => {
-    if (isGettingLocation || hasTriedLocation) return undefined
+    // Prevent multiple simultaneous calls
+    if (isGettingLocation.current) {
+      console.log('[useCheckIn] Already getting location, skipping...')
+      return undefined
+    }
     
     try {
-      setIsGettingLocation(true)
-      setHasTriedLocation(true) // Mark that we've tried
+      isGettingLocation.current = true
       console.log('[useCheckIn] Getting location...')
       
       const position = await locationDetectionService.getCurrentLocation()
       setCurrentPosition(position)
       
-      // Check location against allowed locations
+      // Check location against allowed locations - NO TOAST
       if (userData && locations.length > 0) {
         const checkResult = locationDetectionService.checkUserLocation(
           position.coords.latitude,
@@ -84,23 +89,17 @@ export function useCheckIn(): UseCheckInReturn {
         )
         
         setLocationCheckResult(checkResult)
-        
-        if (!checkResult.canCheckIn) {
-          showToast(checkResult.reason || 'ไม่สามารถเช็คอินได้', 'error')
-        } else if (checkResult.reason) {
-          showToast(checkResult.reason, 'success')
-        } else {
-          showToast('พร้อมเช็คอิน', 'success')
-        }
+        // ❌ REMOVED TOAST HERE - Let UI handle display
       }
       
       return position
     } catch (err) {
       const error = err as Error
-      showToast(error.message || 'ไม่สามารถระบุตำแหน่งได้', 'error')
+      setError(error.message || 'ไม่สามารถระบุตำแหน่งได้')
+      // ❌ REMOVED TOAST HERE - Let UI handle error display
       return undefined
     } finally {
-      setIsGettingLocation(false)
+      isGettingLocation.current = false
     }
   }
 
@@ -151,7 +150,7 @@ export function useCheckIn(): UseCheckInReturn {
         note: locationCheckResult.reason
       })
       
-      // Send Discord notification
+      // Send Discord notification (no toast if fails)
       try {
         await DiscordNotificationService.notifyCheckIn(
           userData.id!,
@@ -196,7 +195,7 @@ export function useCheckIn(): UseCheckInReturn {
       const hoursWorked = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
       const overtime = Math.max(0, hoursWorked - 8)
       
-      // Send Discord notification
+      // Send Discord notification (no toast if fails)
       try {
         await DiscordNotificationService.notifyCheckOut(
           userData.id,
@@ -229,19 +228,35 @@ export function useCheckIn(): UseCheckInReturn {
 
   // Initial load - fetch check-in status
   useEffect(() => {
-    if (userData?.id) {
+    if (userData?.id && !hasInitialized.current) {
+      hasInitialized.current = true
       fetchCurrentStatus()
     }
   }, [userData?.id])
 
-  // Get location when no active check-in
+  // Get location when ready - NO MULTIPLE CALLS
   useEffect(() => {
-    // Only get location if we haven't tried yet
-    if (!loading && !currentCheckIn && userData?.id && !hasTriedLocation) {
-      console.log('[useCheckIn] Getting initial location...')
+    // Only get location if ALL conditions are met
+    if (
+      userData?.id && 
+      !loading && 
+      !currentCheckIn && 
+      !currentPosition && 
+      locations.length > 0 &&
+      !isGettingLocation.current &&
+      hasInitialized.current // Make sure we've initialized
+    ) {
+      console.log('[useCheckIn] All conditions met, getting location once...')
       getCurrentLocation()
     }
-  }, [loading, currentCheckIn, userData?.id])
+  }, [
+    userData?.id, 
+    loading, 
+    currentCheckIn, 
+    currentPosition, 
+    locations.length,
+    // Don't include functions in deps
+  ])
 
   return {
     // State

@@ -41,12 +41,14 @@ export interface CheckInRecord {
   isOvernightShift?: boolean // Work across midnight
   splitFromRecordId?: string // If split from another record
   
-  // Flags
+// Flags
   isLate: boolean
   lateMinutes: number
   isEarlyCheckout?: boolean
   forgotCheckout?: boolean
   manualCheckout?: boolean // HR checked out for employee
+  needsOvertimeApproval?: boolean // Worked past closing time, needs HR approval
+  overtimeApproved?: boolean // OT hours approved by HR
   
   // Notes
   note?: string // Employee note

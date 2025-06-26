@@ -15,6 +15,8 @@ import { getCheckInRecords } from '@/lib/services/checkinService'
 export default function CheckInPage() {
   const { userData } = useAuth()
   const { currentCheckIn } = useCheckIn()
+  
+  // Keep all useState hooks at the top, in the same order always
   const [monthlyStats, setMonthlyStats] = useState({
     totalHours: 0,
     overtimeHours: 0,
@@ -29,6 +31,7 @@ export default function CheckInPage() {
       if (!userData?.id) return
       
       try {
+        setLoadingStats(true)
         const now = new Date()
         const startDate = startOfMonth(now)
         const endDate = endOfMonth(now)

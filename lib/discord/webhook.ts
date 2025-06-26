@@ -70,7 +70,7 @@ export class DiscordWebhook {
     }
   }
 
-  async sendEmbed(embed: DiscordWebhookPayload['embeds'][0]): Promise<boolean> {
+  async sendEmbed(embed: DiscordEmbed): Promise<boolean> {
     return this.send({ embeds: [embed] })
   }
 

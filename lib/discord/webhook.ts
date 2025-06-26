@@ -3,6 +3,7 @@
 import axios from 'axios'
 import { 
   DiscordWebhookPayload, 
+  DiscordEmbed,
   NotificationEvent, 
   WebhookChannel,
   EmbedColors 

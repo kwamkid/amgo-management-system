@@ -43,7 +43,25 @@ const navItems: NavItem[] = [
   {
     label: 'เช็คอิน/เอาท์',
     href: '/checkin',
-    icon: <Clock className="w-5 h-5" />
+    icon: <Clock className="w-5 h-5" />,
+    subItems: [
+      {
+        label: 'เช็คอิน/เอาท์',
+        href: '/checkin',
+        icon: <CheckSquare className="w-4 h-4" />
+      },
+      {
+        label: 'ประวัติการเช็คอิน',
+        href: '/checkin/history',
+        icon: <Calendar className="w-4 h-4" />
+      },
+      {
+        label: 'รอดำเนินการ',
+        href: '/checkin/pending',
+        icon: <Clock className="w-4 h-4" />,
+        roles: ['hr', 'admin']
+      }
+    ]
   },
   {
     label: 'พนักงาน',

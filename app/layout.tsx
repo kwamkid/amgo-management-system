@@ -2,6 +2,7 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import { LoadingProvider } from '@/lib/contexts/LoadingContext'
+import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 import './globals.css'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
@@ -25,14 +26,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="th" className={ibmPlexSansThai.variable}>
+    <html lang="th" className={ibmPlexSansThai.variable} suppressHydrationWarning>
       <body 
         className={ibmPlexSansThai.className}
         suppressHydrationWarning
       >
-        <LoadingProvider>
-          {children}
-        </LoadingProvider>
+        <ThemeProvider>
+          <LoadingProvider>
+            {children}
+          </LoadingProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -9,7 +9,6 @@ import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
 import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react'
 import MobileMenuButton from './MobileMenuButton'
-import ThemeToggle from '@/components/ui/ThemeToggle'
 
 interface NavbarProps {
   userData?: UserData | null
@@ -44,7 +43,7 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
   }
 
   return (
-    <nav className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-8">
+    <nav className="h-16 bg-white border-b border-gray-200 px-4 lg:px-8">
       <div className="h-full flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}
@@ -57,14 +56,11 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Theme Toggle */}
-          <ThemeToggle />
-
           {/* User Dropdown */}
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               {userData?.linePictureUrl ? (
                 <img
@@ -73,17 +69,17 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
                   className="w-8 h-8 rounded-full"
                 />
               ) : (
-                <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-gray-600" />
                 </div>
               )}
               <div className="text-right">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                <span className="text-sm font-medium text-gray-700">
                   {userData?.lineDisplayName || userData?.fullName || 'User'}
                 </span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{getRoleDisplay(userData?.role)}</p>
+                <p className="text-xs text-gray-500">{getRoleDisplay(userData?.role)}</p>
               </div>
-              <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </button>
 
             {dropdownOpen && (
@@ -92,10 +88,10 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
                   className="fixed inset-0 z-10"
                   onClick={() => setDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <LogOut className="w-4 h-4" />
                     ออกจากระบบ

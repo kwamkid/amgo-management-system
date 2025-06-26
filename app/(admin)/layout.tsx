@@ -19,7 +19,7 @@ export default function AdminLayout({
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+      <div className="min-h-screen bg-gray-50 flex">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div

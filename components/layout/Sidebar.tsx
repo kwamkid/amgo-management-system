@@ -139,7 +139,7 @@ const navItems: NavItem[] = [
 ]
 
 interface SidebarProps {
-  userData?: UserData | null  // ใช้ UserData แทน User
+  userData?: UserData | null
 }
 
 export default function Sidebar({ userData }: SidebarProps) {
@@ -227,8 +227,8 @@ export default function Sidebar({ userData }: SidebarProps) {
               onClick={() => toggleExpanded(item.label)}
               className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg transition-colors ${
                 hasActiveSubItem
-                  ? 'text-red-600 dark:text-red-400 font-medium'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  ? 'text-red-600 font-medium'
+                  : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -254,7 +254,7 @@ export default function Sidebar({ userData }: SidebarProps) {
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                         isSubItemActive
                           ? 'bg-red-50 text-red-600 font-medium'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          : 'hover:bg-gray-100 text-gray-600'
                       }`}
                     >
                       {subItem.icon}
@@ -270,8 +270,8 @@ export default function Sidebar({ userData }: SidebarProps) {
             href={item.href}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               isActive
-                ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400 font-medium'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 font-medium'
+                : 'hover:bg-gray-100 text-gray-700'
             }`}
           >
             {item.icon}
@@ -283,9 +283,9 @@ export default function Sidebar({ userData }: SidebarProps) {
   }
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="h-16 flex items-center px-6 border-b border-gray-200">
         <Link href="/dashboard">
           <img 
             src="/logo.svg" 

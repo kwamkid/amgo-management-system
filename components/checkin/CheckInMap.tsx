@@ -18,6 +18,8 @@ const mapContainerStyle = {
   height: '100%'
 }
 
+const libraries: ("places")[] = ['places']
+
 export default function CheckInMap({ 
   userLat, 
   userLng, 
@@ -28,7 +30,7 @@ export default function CheckInMap({
   
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: []
+    libraries
   })
 
   const center = {

@@ -1,4 +1,4 @@
-// app/(admin)/settings/invite-links/[id]/page.tsx
+// app/(admin)/employees/invite-links/[id]/page.tsx
 
 'use client'
 
@@ -88,7 +88,7 @@ export default function InviteLinkDetailPage({
             {error || 'ไม่พบข้อมูล Invite Link'}
           </p>
           <Link
-            href="/settings/invite-links"
+            href="/employees/invite-links"
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -108,7 +108,7 @@ export default function InviteLinkDetailPage({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/settings/invite-links"
+            href="/employees/invite-links"
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />

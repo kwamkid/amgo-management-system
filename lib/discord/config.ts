@@ -3,10 +3,7 @@
 import { DiscordConfig } from '@/types/discord'
 
 export const discordConfig: DiscordConfig = {
-  botToken: process.env.DISCORD_BOT_TOKEN!,
-  clientId: process.env.DISCORD_CLIENT_ID!,
-  clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-  guildId: process.env.DISCORD_GUILD_ID!,
+
   webhookUrls: {
     checkIn: process.env.DISCORD_WEBHOOK_CHECKIN!,
     leave: process.env.DISCORD_WEBHOOK_LEAVE!,

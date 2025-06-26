@@ -50,16 +50,26 @@ const [formData, setFormData] = useState<UpdateUserData>({
       alert('กรุณากรอกชื่อ-นามสกุล')
       return
     }
+
+    if (!formData.phone?.trim()) {
+      alert('กรุณากรอกเบอร์โทรศัพท์')
+      return
+    }
+
+    if (!formData.birthDate) {
+      alert('กรุณาระบุวันเกิด')
+      return
+    }
     
     if (formData.allowedLocationIds?.length === 0 && !formData.allowCheckInOutsideLocation) {
       alert('กรุณาเลือกสาขาที่อนุญาตหรืออนุญาตให้เช็คอินนอกสถานที่')
       return
     }
     
-    // Format birthDate if exists
+    // Format birthDate - always required now
     const dataToSubmit = {
       ...formData,
-      birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString() : undefined
+      birthDate: new Date(formData.birthDate).toISOString()
     }
     
     await onSubmit(dataToSubmit)

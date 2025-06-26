@@ -7,10 +7,28 @@ import { useCheckIn } from '@/hooks/useCheckIn'
 import { 
   MapPin, 
   Loader2,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import dynamic from 'next/dynamic'
+
+// Dynamic import CheckInMap untuk menghindari SSR issues dengan Google Maps
+const CheckInMap = dynamic(
+  () => import('./CheckInMap'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-gray-400 mx-auto" />
+          <p className="text-gray-600 mt-2">กำลังโหลดแผนที่...</p>
+        </div>
+      </div>
+    )
+  }
+)
 
 export default function CheckInButton() {
   const {
@@ -71,90 +89,110 @@ export default function CheckInButton() {
 
   const workingTime = getWorkingTime()
 
-  // Mobile-first design - Already checked in
+  // Mobile-first design - Already checked in (Checkout view)
   if (currentCheckIn) {
     const checkinTime = currentCheckIn.checkinTime instanceof Date 
       ? currentCheckIn.checkinTime 
       : new Date(currentCheckIn.checkinTime)
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col">
-        {/* Status Bar */}
-        <div className="bg-green-600 text-white px-5 py-4 safe-area-top">
-          <p className="text-center font-medium">กำลังทำงาน</p>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col px-5 py-6">
-          {/* Time Display */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-baseline gap-1">
-              <span className="text-6xl font-bold text-gray-900">{workingTime.hours}</span>
-              <span className="text-2xl text-gray-600">ชม.</span>
-              <span className="text-4xl font-bold text-gray-900 ml-2">{workingTime.minutes}</span>
-              <span className="text-2xl text-gray-600">นาที</span>
-            </div>
-            <p className="text-gray-500 mt-2">
-              เช็คอิน {format(checkinTime, 'HH:mm', { locale: th })}
-            </p>
-          </div>
-
-          {/* Location Info */}
-          <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">
-                  {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
-                </p>
-                {currentCheckIn.selectedShiftName && (
-                  <p className="text-sm text-gray-600">
-                    {currentCheckIn.selectedShiftName}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Note Section */}
-          {showNote && (
-            <div className="mb-4 animate-in slide-in-from-bottom">
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">หมายเหตุ</span>
-                  <button
-                    onClick={() => {
-                      setShowNote(false)
-                      setNote('')
-                    }}
-                    className="p-1"
-                  >
-                    <X className="w-4 h-4 text-gray-400" />
-                  </button>
-                </div>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="เช่น ทำ OT, งาน Midnight Sale..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900"
-                  rows={3}
-                  autoFocus
-                />
+      <div className="min-h-screen bg-gray-50">
+        {/* Map Container - Fixed 400px for checkout */}
+        <div className="relative h-[400px]">
+          {/* Real Google Map */}
+          {currentPosition ? (
+            <CheckInMap
+              userLat={currentPosition.coords.latitude}
+              userLng={currentPosition.coords.longitude}
+              locationCheckResult={locationCheckResult}
+            />
+          ) : (
+            /* Map Placeholder */
+            <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-white relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <MapPin className="w-16 h-16 text-gray-300" />
               </div>
             </div>
           )}
+          
+          {/* Working Time Overlay */}
+          <div className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-xl z-10">
+            <div className="text-center">
+              <div className="inline-flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-gray-900">{workingTime.hours}</span>
+                <span className="text-lg text-gray-600">ชม.</span>
+                <span className="text-3xl font-bold text-gray-900 ml-2">{workingTime.minutes}</span>
+                <span className="text-lg text-gray-600">นาที</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                เช็คอิน {format(checkinTime, 'HH:mm', { locale: th })}
+              </p>
+            </div>
+          </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
+          {/* Status Badge */}
+          <div className="absolute top-4 right-4 z-10">
+            <div className="bg-green-500 text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-lg">
+              กำลังทำงาน
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Content Area */}
+        <div className="bg-white shadow-[0_-4px_10px_-2px_rgb(0,0,0,0.1)]">
+          <div className="p-5">
+            {/* Location Info */}
+            <div className="bg-gray-50 rounded-2xl p-4 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
+                  </p>
+                  {currentCheckIn.selectedShiftName && (
+                    <p className="text-sm text-gray-600">
+                      {currentCheckIn.selectedShiftName}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Note Section */}
+            {showNote && (
+              <div className="mb-5">
+                <div className="bg-white rounded-2xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">หมายเหตุ</span>
+                    <button
+                      onClick={() => {
+                        setShowNote(false)
+                        setNote('')
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="เช่น ทำ OT, งาน Midnight Sale..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900"
+                    rows={3}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
             {!showNote && (
               <button
                 onClick={() => setShowNote(true)}
-                className="w-full py-4 text-gray-600 font-medium"
+                className="w-full py-3 text-gray-600 font-medium hover:text-gray-800 transition-colors mb-3"
               >
                 + เพิ่มหมายเหตุ
               </button>
@@ -163,7 +201,7 @@ export default function CheckInButton() {
             <button
               onClick={handleCheckOut}
               disabled={isCheckingOut}
-              className="w-full bg-red-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20"
+              className="w-full bg-red-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20"
             >
               {isCheckingOut ? (
                 <span className="flex items-center justify-center gap-2">
@@ -174,6 +212,13 @@ export default function CheckInButton() {
                 'เช็คเอาท์'
               )}
             </button>
+
+            {/* Help text */}
+            <div className="text-center mt-3">
+              <p className="text-xs text-gray-400">
+                กดปุ่มเพื่อบันทึกเวลาออกงาน
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -182,23 +227,37 @@ export default function CheckInButton() {
 
   // Mobile-first design - Not checked in
   return (
-    <div className="h-screen flex flex-col bg-white">
-      {/* Map Container - 60% of screen */}
-      <div className="relative" style={{ height: '60vh' }}>
-        {/* Simple Map Display */}
-        <div className="w-full h-full bg-gray-100">
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center">
-              <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
-                {currentPosition ? 'พร้อมเช็คอิน' : 'กำลังขอตำแหน่ง...'}
+    <div className="min-h-screen bg-gray-50">
+      {/* Map Container - Fixed 550px */}
+      <div className="relative h-[550px]">
+        {/* Real Google Map */}
+        {currentPosition ? (
+          <CheckInMap
+            userLat={currentPosition.coords.latitude}
+            userLng={currentPosition.coords.longitude}
+            locationCheckResult={locationCheckResult}
+          />
+        ) : (
+          /* Map Placeholder while getting location */
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-white relative overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-200 rounded-full w-64 h-64 opacity-20 animate-ping" />
+                <div className="absolute inset-0 bg-green-300 rounded-full w-48 h-48 opacity-20 animate-ping animation-delay-200" />
+                <MapPin className="w-20 h-20 text-green-500 relative z-10" />
+              </div>
+            </div>
+            
+            <div className="absolute bottom-4 left-0 right-0 text-center">
+              <p className="text-sm text-gray-600">
+                กำลังขอตำแหน่ง...
               </p>
             </div>
           </div>
-        </div>
+        )}
         
         {/* Clock Overlay */}
-        <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur rounded-2xl p-4 shadow-lg">
+        <div className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-xl z-10">
           <p className="text-5xl font-bold text-gray-900 text-center">
             {format(new Date(), 'HH:mm')}
           </p>
@@ -206,55 +265,40 @@ export default function CheckInButton() {
             {format(new Date(), 'EEEE d MMMM', { locale: th })}
           </p>
         </div>
-
-        {/* Location Status - Moved up */}
-        {locationCheckResult && !locationCheckResult.canCheckIn && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl p-4 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-red-500 rounded-full" />
-              <div className="flex-1">
-                <p className="font-semibold text-red-600">{locationCheckResult.reason}</p>
-                {locationCheckResult.nearestLocation && (
-                  <p className="text-sm text-gray-600">
-                    ใกล้ {locationCheckResult.nearestLocation.name}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Bottom Action Area - 40% of screen */}
-      <div className="bg-white shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.1)]" style={{ height: '40vh' }}>
-        <div className="h-full flex flex-col p-5">
-          {/* Location Info Section */}
-          {locationCheckResult && (
-            <div className="mb-4">
-              {locationCheckResult.canCheckIn ? (
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">คุณอยู่ใน</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {locationCheckResult.locationsInRange.length > 0 
-                      ? locationCheckResult.locationsInRange[0].name 
-                      : 'พื้นที่ที่อนุญาต'}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <p className="text-sm text-red-600">{locationCheckResult.reason}</p>
+      {/* Bottom Action Area */}
+      <div className="bg-white shadow-[0_-4px_10px_-2px_rgb(0,0,0,0.1)]">
+        <div className="p-5">
+          {/* Status Section */}
+          {/* Error Status */}
+          {locationCheckResult && !locationCheckResult.canCheckIn && (
+            <div className="bg-red-50 rounded-2xl p-4 mb-5 border border-red-100">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-red-800">{locationCheckResult.reason}</p>
                   {locationCheckResult.nearestLocation && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-sm text-red-600 mt-1">
                       ใกล้ {locationCheckResult.nearestLocation.name}
                     </p>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Success Status */}
+          {locationCheckResult && locationCheckResult.canCheckIn && (
+            <div className="text-center mb-5">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <p className="text-sm font-medium text-green-800">
+                  พื้นที่ที่อนุญาต
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Check-in Button */}
           <button
@@ -264,7 +308,7 @@ export default function CheckInButton() {
               !locationCheckResult || 
               !locationCheckResult.canCheckIn
             }
-            className="w-full bg-green-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/20"
+            className="w-full bg-green-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/20"
           >
             {isCheckingIn ? (
               <span className="flex items-center justify-center gap-2">
@@ -278,28 +322,26 @@ export default function CheckInButton() {
             )}
           </button>
 
-          {/* Permission note */}
-          {!currentPosition && (
-            <div className="text-center mt-3">
-              <p className="text-xs text-gray-500">
-                กรุณาอนุญาตการเข้าถึงตำแหน่ง
-              </p>
-              {error && (
-                <p className="text-xs text-red-500 mt-1">
-                  {error}
+          {/* Help text */}
+          <div className="text-center mt-3">
+            {!currentPosition && (
+              <>
+                <p className="text-xs text-gray-500">
+                  กรุณาอนุญาตการเข้าถึงตำแหน่ง
                 </p>
-              )}
-            </div>
-          )}
-
-          {/* Additional Info */}
-          {currentPosition && locationCheckResult?.canCheckIn && (
-            <div className="mt-4 text-center">
+                {error && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {error}
+                  </p>
+                )}
+              </>
+            )}
+            {currentPosition && locationCheckResult?.canCheckIn && (
               <p className="text-xs text-gray-400">
                 กดปุ่มเพื่อบันทึกเวลาเข้างาน
               </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

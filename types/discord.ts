@@ -13,13 +13,6 @@ export interface DiscordConfig {
   }
 }
 
-export interface DiscordUser {
-  id: string
-  username: string
-  discriminator: string
-  avatar: string | null
-  email?: string
-}
 
 export interface DiscordWebhookPayload {
   content?: string

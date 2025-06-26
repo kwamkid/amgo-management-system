@@ -20,7 +20,8 @@ import {
   ChevronDown,
   ChevronRight,
   Shield,
-  Bell
+  Bell,
+  MessageSquare
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -88,6 +89,11 @@ const navItems: NavItem[] = [
         label: 'สถานที่ทำงาน',
         href: '/settings/locations',
         icon: <MapPin className="w-4 h-4" />
+      },
+      {
+        label: 'Discord',
+        href: '/settings/discord',
+        icon: <MessageSquare className="w-4 h-4" />
       },
       {
         label: 'วันหยุด',

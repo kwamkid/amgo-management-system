@@ -14,7 +14,6 @@ import {
   XCircle,
   AlertCircle,
   Filter,
-  Download,
   TrendingUp,
   User,
   FileText,
@@ -28,6 +27,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -69,14 +79,42 @@ const safeFormatDate = (date: any, formatString: string, options?: any) => {
   }
 }
 
+// Leave type styling
+const leaveTypeStyles = {
+  sick: {
+    bg: 'bg-pink-50',
+    border: 'border-pink-200',
+    shadow: 'shadow-pink-100/50'
+  },
+  personal: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    shadow: 'shadow-blue-100/50'
+  },
+  vacation: {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    shadow: 'shadow-emerald-100/50'
+  }
+};
+
 export default function LeaveManagementPage() {
   const router = useRouter()
   const { userData } = useAuth()
-  const { approveLeave, rejectLeave, loading } = useLeave()
+  const { approveLeave, rejectLeave, cancelApprovedLeave, loading } = useLeave()
   const [leaves, setLeaves] = useState<ExtendedLeaveRequest[]>([])
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
+  const [allLeaves, setAllLeaves] = useState<ExtendedLeaveRequest[]>([]) // เก็บข้อมูลทั้งหมดสำหรับ stats
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending')
   const [searchTerm, setSearchTerm] = useState('')
   const [fetching, setFetching] = useState(true)
+  
+  // Dialog states
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [selectedLeaveId, setSelectedLeaveId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
 
   // Check permission
   const canManage = userData && ['manager', 'hr', 'admin'].includes(userData.role)
@@ -90,18 +128,15 @@ export default function LeaveManagementPage() {
   const fetchLeaveRequests = async () => {
     try {
       setFetching(true)
-      let q = query(
+      
+      // Fetch all data first for stats
+      const allQuery = query(
         collection(db, 'leaves'),
         orderBy('createdAt', 'desc')
       )
-
-      // Filter by status if not 'all'
-      if (filter !== 'all') {
-        q = query(q, where('status', '==', filter))
-      }
-
-      const snapshot = await getDocs(q)
-      const leavesData = snapshot.docs.map(doc => {
+      
+      const allSnapshot = await getDocs(allQuery)
+      const allLeavesData = allSnapshot.docs.map(doc => {
         const data = doc.data()
         return {
           id: doc.id,
@@ -112,11 +147,19 @@ export default function LeaveManagementPage() {
           createdAt: data.createdAt,
           approvedAt: data.approvedAt,
           updatedAt: data.updatedAt,
-          userAvatar: data.userAvatar || null // Include avatar
+          userAvatar: data.userAvatar || null
         } as ExtendedLeaveRequest
       })
-
-      setLeaves(leavesData)
+      
+      setAllLeaves(allLeavesData) // Set all leaves for stats
+      
+      // Then filter based on filter selection
+      if (filter === 'all') {
+        setLeaves(allLeavesData)
+      } else {
+        const filteredData = allLeavesData.filter(leave => leave.status === filter)
+        setLeaves(filteredData)
+      }
     } catch (error) {
       console.error('Error fetching leave requests:', error)
     } finally {
@@ -125,18 +168,49 @@ export default function LeaveManagementPage() {
   }
 
   const handleApprove = async (leaveId: string) => {
-    if (!window.confirm('อนุมัติคำขอลานี้?')) return
+    setSelectedLeaveId(leaveId)
+    setApproveDialogOpen(true)
+  }
+
+  const confirmApprove = async () => {
+    if (!selectedLeaveId) return
     
-    await approveLeave(leaveId)
+    await approveLeave(selectedLeaveId)
     await fetchLeaveRequests()
+    setApproveDialogOpen(false)
+    setSelectedLeaveId(null)
   }
 
   const handleReject = async (leaveId: string) => {
-    const reason = window.prompt('กรุณาระบุเหตุผลที่ไม่อนุมัติ:')
-    if (!reason) return
+    setSelectedLeaveId(leaveId)
+    setRejectReason('')
+    setRejectDialogOpen(true)
+  }
+
+  const confirmReject = async () => {
+    if (!selectedLeaveId || !rejectReason.trim()) return
     
-    await rejectLeave(leaveId, reason)
+    await rejectLeave(selectedLeaveId, rejectReason)
     await fetchLeaveRequests()
+    setRejectDialogOpen(false)
+    setSelectedLeaveId(null)
+    setRejectReason('')
+  }
+
+  const handleCancelApproved = async (leaveId: string) => {
+    setSelectedLeaveId(leaveId)
+    setCancelReason('')
+    setCancelDialogOpen(true)
+  }
+
+  const confirmCancelApproved = async () => {
+    if (!selectedLeaveId || !cancelReason.trim()) return
+    
+    await cancelApprovedLeave(selectedLeaveId, cancelReason)
+    await fetchLeaveRequests()
+    setCancelDialogOpen(false)
+    setSelectedLeaveId(null)
+    setCancelReason('')
   }
 
   // Filter by search term
@@ -144,12 +218,13 @@ export default function LeaveManagementPage() {
     leave.userName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Calculate stats
+  // Calculate stats from all leaves (not filtered)
   const stats = {
-    total: leaves.length,
-    pending: leaves.filter(l => l.status === 'pending').length,
-    approved: leaves.filter(l => l.status === 'approved').length,
-    rejected: leaves.filter(l => l.status === 'rejected').length
+    total: allLeaves.length,
+    pending: allLeaves.filter(l => l.status === 'pending').length,
+    approved: allLeaves.filter(l => l.status === 'approved').length,
+    rejected: allLeaves.filter(l => l.status === 'rejected').length,
+    cancelled: allLeaves.filter(l => l.status === 'cancelled').length
   }
 
   if (!canManage) {
@@ -187,23 +262,10 @@ export default function LeaveManagementPage() {
             อนุมัติและจัดการคำขอลาของพนักงาน
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Link href="/leaves/requests">
-            <Button className={`bg-gradient-to-r ${gradients.primary}`}>
-              <FileText className="w-4 h-4 mr-2" />
-              ดูคำขอทั้งหมด
-            </Button>
-          </Link>
-        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -259,6 +321,20 @@ export default function LeaveManagementPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ยกเลิก</p>
+                <p className="text-2xl font-bold text-gray-600 mt-1">{stats.cancelled}</p>
+              </div>
+              <div className={`p-3 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl`}>
+                <XCircle className="w-6 h-6 text-gray-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Pending Alert */}
@@ -297,6 +373,7 @@ export default function LeaveManagementPage() {
                 <SelectItem value="pending">รออนุมัติ</SelectItem>
                 <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
                 <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
+                <SelectItem value="cancelled">ยกเลิก</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -312,148 +389,258 @@ export default function LeaveManagementPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredLeaves.map((leave) => (
-            <Card key={leave.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    {/* Employee Info */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-3">
-                        {/* Profile Image */}
-                        {leave.userAvatar ? (
-                          <img
-                            src={leave.userAvatar}
-                            alt={leave.userName}
-                            className="w-10 h-10 rounded-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                        ) : null}
-                        <div className={`w-10 h-10 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center ${leave.userAvatar ? 'hidden' : ''}`}>
-                          <User className="w-5 h-5 text-gray-600" />
-                        </div>
-                        
-                        <div>
-                          <span className="font-medium text-lg">{leave.userName}</span>
-                          {leave.userEmail && (
-                            <p className="text-sm text-gray-500">{leave.userEmail}</p>
+        <div className="space-y-3">
+          {filteredLeaves.map((leave) => {
+            const style = leaveTypeStyles[leave.type];
+            return (
+              <Card key={leave.id} className={`border ${style.border} ${style.bg} hover:shadow-md transition-shadow`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      {/* Row 1: Employee Info + Type + Status */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          {/* Profile Image */}
+                          {leave.userAvatar ? (
+                            <img
+                              src={leave.userAvatar}
+                              alt={leave.userName}
+                              className="w-8 h-8 rounded-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`w-8 h-8 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center ${leave.userAvatar ? 'hidden' : ''}`}>
+                            <User className="w-4 h-4 text-gray-600" />
+                          </div>
+                          
+                          <div>
+                            <span className="font-medium">{leave.userName}</span>
+                          </div>
+                          
+                          <Badge variant="outline" className="text-xs">
+                            {LEAVE_TYPE_LABELS[leave.type]}
+                          </Badge>
+                          
+                          {leave.urgentMultiplier > 1 && (
+                            <Badge variant="error" className="text-xs">
+                              ลาด่วน x{leave.urgentMultiplier}
+                            </Badge>
+                          )}
+                          
+                          {leave.attachments && leave.attachments.length > 0 && (
+                            <div className="flex items-center gap-1 text-blue-600">
+                              <FileText className="w-3.5 h-3.5" />
+                              <span className="text-xs">{leave.attachments.length}</span>
+                            </div>
                           )}
                         </div>
+                        
+                        {/* Status Badge */}
+                        <Badge
+                          variant={
+                            leave.status === 'approved' ? 'success' :
+                            leave.status === 'rejected' ? 'error' :
+                            leave.status === 'cancelled' ? 'secondary' :
+                            'warning'
+                          }
+                          className="text-xs"
+                        >
+                          {leave.status === 'approved' && 'อนุมัติแล้ว'}
+                          {leave.status === 'rejected' && 'ไม่อนุมัติ'}
+                          {leave.status === 'pending' && 'รออนุมัติ'}
+                          {leave.status === 'cancelled' && 'ยกเลิก'}
+                        </Badge>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {LEAVE_TYPE_LABELS[leave.type]}
-                        </Badge>
-                        {leave.urgentMultiplier > 1 && (
-                          <Badge variant="error">
-                            ลาด่วน x{leave.urgentMultiplier}
-                          </Badge>
-                        )}
+                      {/* Row 2: Date + Reason */}
+                      <div className="flex items-start gap-4 text-sm">
+                        <div className="flex items-center gap-1 text-gray-500 min-w-fit">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>
+                            {safeFormatDate(leave.startDate, 'dd/MM/yy')} - 
+                            {safeFormatDate(leave.endDate, 'dd/MM/yy')}
+                            <span className="font-medium ml-1">({leave.totalDays}วัน)</span>
+                          </span>
+                        </div>
+                        <span className="text-gray-600 truncate flex-1">{leave.reason}</span>
                       </div>
+                      
+                      {/* Row 3: Additional Info (if any) */}
+                      {(leave.status === 'rejected' || leave.status === 'cancelled') && (
+                        <div className="mt-1">
+                          {leave.status === 'rejected' && leave.rejectedReason && (
+                            <p className="text-xs text-red-600">
+                              ไม่อนุมัติ: {leave.rejectedReason}
+                            </p>
+                          )}
+                          {leave.status === 'cancelled' && leave.cancelReason && (
+                            <p className="text-xs text-gray-600">
+                              ยกเลิก: {leave.cancelReason}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
-                    {/* Leave Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">ระยะเวลา</p>
-                        <p className="font-medium">
-                          {safeFormatDate(leave.startDate, 'dd MMM yyyy', { locale: th })} - 
-                          {safeFormatDate(leave.endDate, 'dd MMM yyyy', { locale: th })}
-                          <span className="text-gray-600 ml-2">({leave.totalDays} วัน)</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">ส่งคำขอเมื่อ</p>
-                        <p className="font-medium">
-                          {safeFormatDate(leave.createdAt, 'dd MMM yyyy HH:mm', { locale: th })}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Reason */}
-                    <div>
-                      <p className="text-sm text-gray-600">เหตุผล</p>
-                      <p className="text-base">{leave.reason}</p>
-                    </div>
-                    
-                    {/* Attachments */}
-                    {leave.attachments && leave.attachments.length > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-blue-600">
-                        <FileText className="w-4 h-4" />
-                        <span>มีเอกสารแนบ {leave.attachments.length} ไฟล์</span>
-                      </div>
-                    )}
-                    
-                    {/* Rejected Reason */}
-                    {leave.status === 'rejected' && leave.rejectedReason && (
-                      <Alert variant="error" className="mt-3">
-                        <AlertDescription>
-                          <strong>เหตุผลที่ไม่อนุมัติ:</strong> {leave.rejectedReason}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                  
-                  {/* Actions */}
-                  <div className="flex flex-col items-end gap-3">
-                    {/* Status */}
-                    <Badge
-                      variant={
-                        leave.status === 'approved' ? 'success' :
-                        leave.status === 'rejected' ? 'error' :
-                        'warning'
-                      }
-                      className="text-sm px-3 py-1"
-                    >
-                      {leave.status === 'approved' && 'อนุมัติแล้ว'}
-                      {leave.status === 'rejected' && 'ไม่อนุมัติ'}
-                      {leave.status === 'pending' && 'รออนุมัติ'}
-                    </Badge>
-                    
-                    {/* Action Buttons */}
-                    {leave.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleApprove(leave.id!)}
-                          disabled={loading}
-                          className={`bg-gradient-to-r ${gradients.success}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          อนุมัติ
-                        </Button>
+                    {/* Actions - Compact */}
+                    <div className="flex items-center gap-2">
+                      {/* Action Buttons */}
+                      {leave.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(leave.id!)}
+                            disabled={loading}
+                            className={`h-8 px-3 bg-gradient-to-r ${gradients.success}`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                            อนุมัติ
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReject(leave.id!)}
+                            disabled={loading}
+                            className="h-8 px-3 border-red-500 text-red-600 hover:bg-red-50"
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-1" />
+                            ไม่อนุมัติ
+                          </Button>
+                        </>
+                      )}
+                      
+                      {/* Cancel button for approved leaves (HR/Admin only) */}
+                      {leave.status === 'approved' && ['hr', 'admin'].includes(userData?.role || '') && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleReject(leave.id!)}
+                          onClick={() => handleCancelApproved(leave.id!)}
                           disabled={loading}
-                          className="border-red-500 text-red-600 hover:bg-red-50"
+                          className="h-8 px-3 border-orange-500 text-orange-600 hover:bg-orange-50"
                         >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          ไม่อนุมัติ
+                          <XCircle className="w-3.5 h-3.5 mr-1" />
+                          ยกเลิก
                         </Button>
-                      </div>
-                    )}
-                    
-                    {/* View Details */}
-                    <Link href={`/leaves/history/${leave.id}`}>
-                      <Button variant="ghost" size="sm">
-                        ดูรายละเอียด
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </Link>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+      
+      {/* Approve Dialog */}
+      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              ยืนยันการอนุมัติ
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการอนุมัติคำขอลานี้หรือไม่?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedLeaveId(null)}>
+              ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmApprove}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              อนุมัติ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Reject Dialog */}
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-600" />
+              ไม่อนุมัติคำขอลา
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              กรุณาระบุเหตุผลที่ไม่อนุมัติคำขอลานี้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="ระบุเหตุผล..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setSelectedLeaveId(null)
+              setRejectReason('')
+            }}>
+              ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmReject}
+              disabled={!rejectReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              ไม่อนุมัติ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Cancel Approved Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-orange-600" />
+              ยกเลิกคำขอที่อนุมัติแล้ว
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              การยกเลิกจะคืนโควต้าให้กับพนักงาน กรุณาระบุเหตุผล
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 space-y-3">
+            <Textarea
+              placeholder="ระบุเหตุผลที่ยกเลิก..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>หมายเหตุ:</strong> โควต้าจะถูกคืนให้พนักงานโดยอัตโนมัติ
+              </AlertDescription>
+            </Alert>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setSelectedLeaveId(null)
+              setCancelReason('')
+            }}>
+              ไม่ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmCancelApproved}
+              disabled={!cancelReason.trim()}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              ยืนยันยกเลิก
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

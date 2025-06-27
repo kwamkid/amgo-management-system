@@ -30,22 +30,22 @@ export const getQuotaForYear = async (userId: string, year: number): Promise<Lea
   const quotaRef = doc(db, 'quotas', userId, 'years', year.toString());
   const quotaSnap = await getDoc(quotaRef);
   
-    if (!quotaSnap.exists()) {
+  if (!quotaSnap.exists()) {
     // Create zero quota if not exists - HR must assign quota first
     const defaultQuota: LeaveQuotaYear = {
-        userId,
-        year,
-        sick: { total: 0, used: 0, remaining: 0 },
-        personal: { total: 0, used: 0, remaining: 0 },
-        vacation: { total: 0, used: 0, remaining: 0 },
-        updatedBy: 'system',
-        updatedAt: new Date(),
-        history: []
+      userId,
+      year,
+      sick: { total: 0, used: 0, remaining: 0 },
+      personal: { total: 0, used: 0, remaining: 0 },
+      vacation: { total: 0, used: 0, remaining: 0 },
+      updatedBy: 'system',
+      updatedAt: new Date(),
+      history: []
     };
     
     await setDoc(quotaRef, defaultQuota);
     return defaultQuota;
-    }
+  }
   
   return quotaSnap.data() as LeaveQuotaYear;
 };
@@ -157,6 +157,11 @@ export const approveLeaveRequest = async (
   
   const leave = leaveSnap.data() as LeaveRequest;
   
+  // Check if already processed
+  if (leave.status !== 'pending') {
+    throw new Error('คำขอลานี้ได้รับการดำเนินการแล้ว');
+  }
+  
   // Update leave status
   batch.update(leaveRef, {
     status: 'approved',
@@ -165,22 +170,65 @@ export const approveLeaveRequest = async (
     updatedAt: serverTimestamp()
   });
   
-  // Update quota
-  const year = new Date(leave.startDate).getFullYear();
+  // Convert startDate to proper Date object for year extraction
+  let year: number;
+  const startDate = leave.startDate;
+  
+  if (startDate instanceof Date) {
+    year = startDate.getFullYear();
+  } else if ((startDate as any)?.toDate) {
+    // Firestore Timestamp
+    year = (startDate as any).toDate().getFullYear();
+  } else if ((startDate as any)?.seconds) {
+    // Firestore Timestamp object
+    year = new Date((startDate as any).seconds * 1000).getFullYear();
+  } else {
+    // String or number
+    year = new Date(startDate as any).getFullYear();
+  }
+  
+  // Get current quota
   const quotaRef = doc(db, 'quotas', leave.userId, 'years', year.toString());
   const quota = await getQuotaForYear(leave.userId, year);
   
-  if (quota) {
-    const actualDays = leave.totalDays * leave.urgentMultiplier;
-    const newUsed = quota[leave.type].used + actualDays;
-    const newRemaining = quota[leave.type].total - newUsed;
-    
-    batch.update(quotaRef, {
-      [`${leave.type}.used`]: newUsed,
-      [`${leave.type}.remaining`]: newRemaining,
-      updatedAt: serverTimestamp()
-    });
+  if (!quota) {
+    throw new Error('ไม่พบข้อมูลโควต้า');
   }
+  
+  // Calculate actual days to deduct
+  const actualDays = leave.totalDays * leave.urgentMultiplier;
+  
+  // Check if has enough quota
+  if (quota[leave.type].remaining < actualDays) {
+    throw new Error(`โควต้าไม่เพียงพอ (เหลือ ${quota[leave.type].remaining} วัน แต่ต้องใช้ ${actualDays} วัน)`);
+  }
+  
+  // Update quota
+  const newUsed = quota[leave.type].used + actualDays;
+  const newRemaining = quota[leave.type].total - newUsed;
+  
+  batch.update(quotaRef, {
+    [`${leave.type}.used`]: newUsed,
+    [`${leave.type}.remaining`]: newRemaining,
+    updatedAt: serverTimestamp()
+  });
+  
+  // Add history entry
+  const historyEntry: QuotaHistory = {
+    changedBy: approvedBy,
+    changedAt: new Date(),
+    changes: {
+      [leave.type]: { 
+        from: quota[leave.type].used, 
+        to: newUsed 
+      }
+    },
+    reason: `อนุมัติการลา #${leaveId} (${actualDays} วัน)`
+  };
+  
+  batch.update(quotaRef, {
+    history: [...(quota.history || []), historyEntry]
+  });
   
   await batch.commit();
 };
@@ -201,7 +249,7 @@ export const rejectLeaveRequest = async (
   });
 };
 
-// Cancel Leave Request (NEW)
+// Cancel Leave Request (for pending status)
 export const cancelLeaveRequest = async (
   leaveId: string,
   cancelledBy: string,
@@ -221,9 +269,6 @@ export const cancelLeaveRequest = async (
     throw new Error('ไม่สามารถยกเลิกคำขอที่อนุมัติแล้วหรือถูกปฏิเสธแล้ว');
   }
   
-  // Check if user can cancel (only the requester or HR/Admin)
-  // This check should be done in the UI/hook level
-  
   await updateDoc(leaveRef, {
     status: 'cancelled',
     cancelledBy,
@@ -231,6 +276,95 @@ export const cancelLeaveRequest = async (
     cancelReason: cancelReason || 'ยกเลิกโดยผู้ใช้',
     updatedAt: serverTimestamp()
   });
+};
+
+// Cancel Approved Leave Request (HR/Admin only) with quota refund
+export const cancelApprovedLeaveRequest = async (
+  leaveId: string,
+  cancelledBy: string,
+  cancelReason: string
+): Promise<void> => {
+  const batch = writeBatch(db);
+  
+  // Get leave request
+  const leaveRef = doc(db, 'leaves', leaveId);
+  const leaveSnap = await getDoc(leaveRef);
+  
+  if (!leaveSnap.exists()) {
+    throw new Error('ไม่พบคำขอลา');
+  }
+  
+  const leave = leaveSnap.data() as LeaveRequest;
+  
+  // Check if approved
+  if (leave.status !== 'approved') {
+    throw new Error('สามารถยกเลิกได้เฉพาะคำขอที่อนุมัติแล้วเท่านั้น');
+  }
+  
+  // Update leave status
+  batch.update(leaveRef, {
+    status: 'cancelled',
+    cancelledBy,
+    cancelledAt: serverTimestamp(),
+    cancelReason,
+    previousStatus: 'approved', // เก็บสถานะเดิมไว้
+    updatedAt: serverTimestamp()
+  });
+  
+  // Refund quota
+  // Convert startDate to proper Date object for year extraction
+  let year: number;
+  const startDate = leave.startDate;
+  
+  if (startDate instanceof Date) {
+    year = startDate.getFullYear();
+  } else if ((startDate as any)?.toDate) {
+    year = (startDate as any).toDate().getFullYear();
+  } else if ((startDate as any)?.seconds) {
+    year = new Date((startDate as any).seconds * 1000).getFullYear();
+  } else {
+    year = new Date(startDate as any).getFullYear();
+  }
+  
+  // Get current quota
+  const quotaRef = doc(db, 'quotas', leave.userId, 'years', year.toString());
+  const quota = await getQuotaForYear(leave.userId, year);
+  
+  if (!quota) {
+    throw new Error('ไม่พบข้อมูลโควต้า');
+  }
+  
+  // Calculate days to refund
+  const refundDays = leave.totalDays * leave.urgentMultiplier;
+  
+  // Update quota - คืนโควต้า
+  const newUsed = Math.max(0, quota[leave.type].used - refundDays);
+  const newRemaining = quota[leave.type].total - newUsed;
+  
+  batch.update(quotaRef, {
+    [`${leave.type}.used`]: newUsed,
+    [`${leave.type}.remaining`]: newRemaining,
+    updatedAt: serverTimestamp()
+  });
+  
+  // Add history entry
+  const historyEntry: QuotaHistory = {
+    changedBy: cancelledBy,
+    changedAt: new Date(),
+    changes: {
+      [leave.type]: { 
+        from: quota[leave.type].used, 
+        to: newUsed 
+      }
+    },
+    reason: `ยกเลิกการลาที่อนุมัติแล้ว #${leaveId} - คืนโควต้า ${refundDays} วัน`
+  };
+  
+  batch.update(quotaRef, {
+    history: [...(quota.history || []), historyEntry]
+  });
+  
+  await batch.commit();
 };
 
 // File Management
@@ -302,20 +436,22 @@ const compressImage = async (file: File): Promise<File> => {
   });
 };
 
-// Calculate working days between two dates (excluding weekends)
+// Calculate total days between two dates (including weekends)
+// เปลี่ยนเป็นนับทุกวันตามที่พนักงานเลือก เพราะบางคนทำงานเสาร์-อาทิตย์
 export const calculateLeaveDays = (startDate: Date, endDate: Date): number => {
-  let count = 0;
-  const current = new Date(startDate);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   
-  while (current <= endDate) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
+  // Reset time to start of day for accurate calculation
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
   
-  return count;
+  // Calculate difference in days
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // +1 เพราะนับวันเริ่มต้นด้วย (เช่น ลา 1-3 = 3 วัน)
+  return diffDays + 1;
 };
 
 // Validate leave request based on rules
@@ -327,19 +463,24 @@ export const validateLeaveRequest = (
   const rules = LEAVE_RULES[type];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  startDate.setHours(0, 0, 0, 0);
+  
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
   
   // Check backdate
-  if (!rules.allowBackdate && startDate < today) {
+  if (!rules.allowBackdate && start < today) {
     return { 
       valid: false, 
       message: 'ไม่สามารถลาย้อนหลังได้สำหรับประเภทนี้' 
     };
   }
   
-  // Check advance notice - แค่เตือน ไม่ block
-  if (!isUrgent && startDate > today && rules.advanceNotice > 0) {
-    const daysDiff = Math.floor((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  // Check advance notice - ตรวจสอบว่าแจ้งล่วงหน้าพอหรือไม่
+  if (!isUrgent && rules.advanceNotice > 0) {
+    // คำนวณจำนวนวันระหว่างวันนี้กับวันที่ต้องการลา
+    const daysDiff = Math.floor((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // ถ้าแจ้งล่วงหน้าน้อยกว่าที่กำหนด = ลาด่วน
     if (daysDiff < rules.advanceNotice) {
       // Return warning instead of error
       return { 

@@ -209,6 +209,32 @@ export const useLeave = () => {
     }
   };
 
+  // Cancel approved leave request (HR/Admin only)
+  const cancelApprovedLeave = async (leaveId: string, reason: string) => {
+    if (!userData?.id) return;
+    
+    // Check permission
+    if (userData.role !== 'hr' && userData.role !== 'admin') {
+      showToast('ไม่มีสิทธิ์ยกเลิกคำขอที่อนุมัติแล้ว', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await leaveService.cancelApprovedLeaveRequest(leaveId, userData.id, reason);
+      
+      showToast('ยกเลิกคำขอลาและคืนโควต้าเรียบร้อยแล้ว', 'success');
+      
+      // Refresh data
+      await Promise.all([fetchMyLeaves(), fetchTeamLeaves(), fetchQuota()]);
+      
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'ไม่สามารถยกเลิกคำขอลาได้', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (userData) {
       fetchQuota();
@@ -225,7 +251,8 @@ export const useLeave = () => {
     createLeaveRequest,
     approveLeave,
     rejectLeave,
-    cancelLeave, // เพิ่ม cancelLeave
+    cancelLeave,
+    cancelApprovedLeave, // เพิ่ม cancelApprovedLeave
     updateQuota,
     refreshData: async () => {
       await Promise.all([

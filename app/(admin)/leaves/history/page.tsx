@@ -9,13 +9,15 @@ import {
   ArrowLeft, 
   Calendar, 
   Filter,
-  Download,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
   Trash2,
-  Plus
+  Plus,
+  Heart,
+  Briefcase,
+  Activity
 } from 'lucide-react';
 import { useLeave } from '@/hooks/useLeave';
 import { format } from 'date-fns';
@@ -65,10 +67,32 @@ const safeFormatDate = (date: any, formatString: string, options?: any) => {
   }
 }
 
+// Leave type styling
+const leaveTypeStyles = {
+  sick: {
+    bg: 'bg-pink-50',
+    icon: <Heart className="w-4 h-4 text-pink-600" />,
+    iconColor: 'text-pink-600',
+    borderColor: 'border-pink-200'
+  },
+  personal: {
+    bg: 'bg-blue-50',
+    icon: <Briefcase className="w-4 h-4 text-blue-600" />,
+    iconColor: 'text-blue-600',
+    borderColor: 'border-blue-200'
+  },
+  vacation: {
+    bg: 'bg-emerald-50',
+    icon: <Activity className="w-4 h-4 text-emerald-600" />,
+    iconColor: 'text-emerald-600',
+    borderColor: 'border-emerald-200'
+  }
+};
+
 export default function LeaveHistoryPage() {
   const router = useRouter();
   const { myLeaves, quota, loading, cancelLeave } = useLeave();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedLeaveId, setSelectedLeaveId] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -120,6 +144,8 @@ export default function LeaveHistoryPage() {
         return <XCircle className="w-4 h-4 text-red-600" />;
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-600" />;
+      case 'cancelled':
+        return <XCircle className="w-4 h-4 text-gray-600" />;
       default:
         return <AlertCircle className="w-4 h-4 text-gray-600" />;
     }
@@ -130,7 +156,7 @@ export default function LeaveHistoryPage() {
       approved: { className: 'bg-green-100 text-green-700', text: 'อนุมัติแล้ว' },
       rejected: { className: 'bg-red-100 text-red-700', text: 'ไม่อนุมัติ' },
       pending: { className: 'bg-yellow-100 text-yellow-700', text: 'รออนุมัติ' },
-      cancelled: { className: 'bg-gray-100 text-gray-700', text: 'ยกเลิก' }
+      cancelled: { className: 'bg-gray-900 text-white', text: 'ยกเลิก' }
     };
     
     const variant = variants[status] || variants.cancelled;
@@ -180,20 +206,6 @@ export default function LeaveHistoryPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-50 to-green-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium text-emerald-900">
-              ลาทั้งหมด
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-800">
-              {myLeaves.length}
-            </div>
-            <p className="text-sm text-emerald-700">ครั้ง</p>
-          </CardContent>
-        </Card>
-
         <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-green-900">
@@ -235,6 +247,20 @@ export default function LeaveHistoryPage() {
             <p className="text-sm text-red-700">ครั้ง</p>
           </CardContent>
         </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-slate-100">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium text-gray-900">
+              ยกเลิก
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-800">
+              {myLeaves.filter(l => l.status === 'cancelled').length}
+            </div>
+            <p className="text-sm text-gray-700">ครั้ง</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -245,19 +271,11 @@ export default function LeaveHistoryPage() {
               <Filter className="w-5 h-5" />
               กรองข้อมูล
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {/* Export function */}}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
-            {['all', 'pending', 'approved', 'rejected'].map((status) => (
+            {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((status) => (
               <Button
                 key={status}
                 variant={filter === status ? 'default' : 'outline'}
@@ -268,6 +286,7 @@ export default function LeaveHistoryPage() {
                 {status === 'pending' && 'รออนุมัติ'}
                 {status === 'approved' && 'อนุมัติแล้ว'}
                 {status === 'rejected' && 'ไม่อนุมัติ'}
+                {status === 'cancelled' && 'ยกเลิก'}
               </Button>
             ))}
           </div>
@@ -308,71 +327,73 @@ export default function LeaveHistoryPage() {
                       return 0;
                     }
                   })
-                  .map((leave) => (
-                    <div
-                      key={leave.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                    >
-                      <div 
-                        className="flex items-start gap-4 flex-1 cursor-pointer"
-                        onClick={() => router.push(`/leaves/history/${leave.id}`)}
+                  .map((leave) => {
+                    const style = leaveTypeStyles[leave.type];
+                    return (
+                      <div
+                        key={leave.id}
+                        className={`flex items-center justify-between p-4 rounded-lg border ${style.bg} ${style.borderColor} transition-colors`}
                       >
-                        {getStatusIcon(leave.status)}
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-base">
-                              {LEAVE_TYPE_LABELS[leave.type]}
-                            </p>
-                            {getStatusBadge(leave.status)}
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="mt-1">
+                            {style.icon}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            {safeFormatDate(leave.startDate, 'dd MMM yyyy', { locale: th })} - 
-                            {safeFormatDate(leave.endDate, 'dd MMM yyyy', { locale: th })}
-                            <span className="ml-2">({leave.totalDays} วัน)</span>
-                          </p>
-                          <p className="text-sm text-gray-500">{leave.reason}</p>
-                          {leave.status === 'rejected' && leave.rejectedReason && (
-                            <p className="text-sm text-red-600">
-                              เหตุผล: {leave.rejectedReason}
-                            </p>
-                          )}
-                          {leave.status === 'cancelled' && leave.cancelReason && (
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium text-base ${style.iconColor}`}>
+                                {LEAVE_TYPE_LABELS[leave.type]}
+                              </p>
+                              {getStatusBadge(leave.status)}
+                            </div>
                             <p className="text-sm text-gray-600">
-                              ยกเลิกเมื่อ: {safeFormatDate(leave.cancelledAt, 'dd/MM/yyyy HH:mm')}
+                              {safeFormatDate(leave.startDate, 'dd MMM yyyy', { locale: th })} - 
+                              {safeFormatDate(leave.endDate, 'dd MMM yyyy', { locale: th })}
+                              <span className="ml-2">({leave.totalDays} วัน)</span>
                             </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">
-                            {safeFormatDate(leave.createdAt, 'dd/MM/yyyy HH:mm')}
-                          </p>
-                          {leave.urgentMultiplier > 1 && (
-                            <Badge variant="outline" className="mt-1">
-                              ลาด่วน x{leave.urgentMultiplier}
-                            </Badge>
-                          )}
+                            <p className="text-sm text-gray-500">{leave.reason}</p>
+                            {leave.status === 'rejected' && leave.rejectedReason && (
+                              <p className="text-sm text-red-600">
+                                เหตุผล: {leave.rejectedReason}
+                              </p>
+                            )}
+                            {leave.status === 'cancelled' && leave.cancelReason && (
+                              <p className="text-sm text-gray-600">
+                                ยกเลิกเมื่อ: {safeFormatDate(leave.cancelledAt, 'dd/MM/yyyy HH:mm')}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         
-                        {/* Cancel button for pending leaves */}
-                        {leave.status === 'pending' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openCancelDialog(leave.id!);
-                            }}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">
+                              {safeFormatDate(leave.createdAt, 'dd/MM/yyyy HH:mm')}
+                            </p>
+                            {leave.urgentMultiplier > 1 && (
+                              <Badge variant="outline" className="mt-1">
+                                ลาด่วน x{leave.urgentMultiplier}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Cancel button for pending leaves */}
+                          {leave.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCancelDialog(leave.id!);
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </CardContent>
             </Card>
           ))

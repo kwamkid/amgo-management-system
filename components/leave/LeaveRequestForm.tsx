@@ -98,6 +98,21 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const watchEndDate = form.watch('endDate');
   const watchIsUrgent = form.watch('isUrgent');
 
+  // Helper function to check if urgent
+  const checkIfUrgent = (type: LeaveType, startDate: Date): boolean => {
+    const rules = LEAVE_RULES[type];
+    if (rules.advanceNotice === 0) return false; // ลาป่วยไม่มีข้อกำหนด
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const daysDiff = Math.floor((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff < rules.advanceNotice;
+  };
+
   // Calculate total days when dates change
   useEffect(() => {
     if (watchStartDate && watchEndDate) {
@@ -113,26 +128,39 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }
   }, [watchStartDate, watchEndDate, watchType]);
 
-  // Calculate urgent charge and check auto urgent
+  // Update auto urgent check when date or type changes
   useEffect(() => {
     if (watchType && watchStartDate) {
-      // Check if should be auto urgent (not enough advance notice)
-      const validation = validateLeaveRequest(watchType, watchStartDate, false);
-      if (validation.warning) {
-        setAutoUrgent(true);
-        form.setValue('isUrgent', true);
-      } else {
-        setAutoUrgent(false);
+      const shouldBeUrgent = checkIfUrgent(watchType, watchStartDate);
+      
+      if (shouldBeUrgent !== autoUrgent) {
+        setAutoUrgent(shouldBeUrgent);
+        form.setValue('isUrgent', shouldBeUrgent);
       }
     }
-    
-    if ((watchIsUrgent || autoUrgent) && watchType) {
-      const multiplier = LEAVE_RULES[watchType].urgentMultiplier;
+  }, [watchType, watchStartDate]); // ไม่ใส่ autoUrgent เพื่อหลีกเลี่ยง infinite loop
+
+  // Calculate urgent charge
+  useEffect(() => {
+    if (watchType && totalDays > 0) {
+      const isUrgent = watchIsUrgent || autoUrgent;
+      const multiplier = isUrgent ? LEAVE_RULES[watchType].urgentMultiplier : 1;
       setUrgentCharge(totalDays * multiplier);
     } else {
-      setUrgentCharge(totalDays);
+      setUrgentCharge(0);
     }
-  }, [watchIsUrgent, watchType, totalDays, watchStartDate, autoUrgent]);
+  }, [watchIsUrgent, watchType, totalDays, autoUrgent]);
+
+  // Reset form when type changes
+  useEffect(() => {
+    // Reset dates when changing leave type
+    form.setValue('startDate', undefined as any);
+    form.setValue('endDate', undefined as any);
+    form.setValue('isUrgent', false);
+    setAutoUrgent(false);
+    setTotalDays(0);
+    setUrgentCharge(0);
+  }, [watchType]);
 
   // Check if has quota
   const hasQuota = quota && (
@@ -369,7 +397,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              จำนวนวันลา: {totalDays} วัน (ไม่รวมเสาร์-อาทิตย์)
+              จำนวนวันลา: {totalDays} วัน (รวมเสาร์-อาทิตย์)
               {urgentCharge > totalDays && (
                 <span className="text-orange-600 font-medium">
                   {' '}| ลาด่วนคิด {urgentCharge} วัน
@@ -394,33 +422,6 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                 />
               </FormControl>
               <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="isUrgent"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox
-                  checked={field.value || autoUrgent}
-                  onCheckedChange={field.onChange}
-                  disabled={autoUrgent}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>
-                  ลาด่วน (ไม่ทันแจ้งล่วงหน้า)
-                  {autoUrgent && <span className="text-orange-600 ml-2">(บังคับเลือก)</span>}
-                </FormLabel>
-                <FormDescription>
-                  {watchType === 'personal' && `หากลาด่วนจะคิดโควต้า ${LEAVE_RULES.personal.urgentMultiplier} เท่า`}
-                  {watchType === 'vacation' && `หากลาด่วนจะคิดโควต้า ${LEAVE_RULES.vacation.urgentMultiplier} เท่า`}
-                  {watchType === 'sick' && 'ลาป่วยไม่คิดค่าปรับ'}
-                </FormDescription>
-              </div>
             </FormItem>
           )}
         />

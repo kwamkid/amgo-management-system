@@ -89,3 +89,16 @@ export interface UserStatistics {
     employee: number
   }
 }
+
+// Extended Firebase User with role and additional properties from our User type
+import { User as FirebaseUser } from 'firebase/auth';
+
+export interface AuthUser extends FirebaseUser {
+  // Essential fields from User type
+  role: 'admin' | 'hr' | 'manager' | 'employee'
+  fullName?: string
+  lineDisplayName?: string
+  allowedLocationIds?: string[]
+  isActive?: boolean
+  needsApproval?: boolean
+}

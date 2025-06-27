@@ -25,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="th" className={ibmPlexSansThai.variable}>
-      <body className={ibmPlexSansThai.className}>
+    <html lang="th" className={ibmPlexSansThai.variable} suppressHydrationWarning>
+      <body className={ibmPlexSansThai.className} suppressHydrationWarning>
         <LoadingProvider>
           {children}
         </LoadingProvider>

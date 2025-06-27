@@ -4,6 +4,9 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useLoading } from '@/lib/contexts/LoadingContext'
 import Image from 'next/image'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 // แยก Component ที่ใช้ useSearchParams
 function LoginForm() {
@@ -13,7 +16,6 @@ function LoginForm() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Check for error messages
     const errorParam = searchParams.get('error')
     if (errorParam) {
       switch (errorParam) {
@@ -30,18 +32,15 @@ function LoginForm() {
   }, [searchParams])
 
   const handleLineLogin = () => {
-    showLoading() // แสดง loading ก่อน redirect
+    showLoading()
     setIsLoading(true)
     
-    // Generate random state for security
     const state = Math.random().toString(36).substring(2, 15)
     
-    // Store state in sessionStorage for validation
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('line_auth_state', state)
     }
     
-    // LINE Login URL
     const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?` +
       `response_type=code&` +
       `client_id=${process.env.NEXT_PUBLIC_LINE_CHANNEL_ID}&` +
@@ -49,7 +48,6 @@ function LoginForm() {
       `state=${state}&` +
       `scope=profile%20openid`
     
-    // Redirect to LINE Login
     window.location.href = lineAuthUrl
   }
 
@@ -57,37 +55,24 @@ function LoginForm() {
     <>
       {/* Error Message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-          <p className="text-red-600 text-sm text-center">{error}</p>
-        </div>
+        <Alert variant="error" className="mb-6">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Login Button - Modern Gradient Style */}
-      <button
+      {/* Login Button */}
+      <Button
         onClick={handleLineLogin}
         disabled={isLoading}
-        className="w-full relative group overflow-hidden rounded-2xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 text-lg font-medium"
+        size="lg"
       >
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 transition-all duration-300 group-hover:from-green-500 group-hover:via-emerald-600 group-hover:to-teal-700" />
-        
-        {/* Glass Effect Overlay */}
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
-        
-        {/* Content */}
-        <div className="relative flex items-center justify-center gap-3 px-6 py-4">
-          {/* LINE Icon */}
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.66 8.87 8.41 9.77.61.11.83-.26.83-.58 0-.29-.01-1.04-.01-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.41-1.34-1.78-1.34-1.78-1.11-.76.08-.75.08-.75 1.22.09 1.86 1.25 1.86 1.25 1.08 1.87 2.86 1.33 3.54 1.02.11-.79.42-1.33.77-1.63-2.66-.3-5.46-1.35-5.46-6.01 0-1.33.47-2.41 1.25-3.25-.12-.3-.54-1.54.12-3.21 0 0 1.02-.33 3.35 1.25.97-.27 2.01-.4 3.05-.41 1.03 0 2.07.14 3.05.41 2.32-1.58 3.34-1.25 3.34-1.25.66 1.66.24 2.91.12 3.21.78.84 1.25 1.92 1.25 3.25 0 4.67-2.81 5.7-5.48 6 .43.37.81 1.1.81 2.22v3.29c0 .32.21.69.82.58C20.34 20.87 24 16.84 24 12c0-5.52-4.48-10-10-10z"/>
-          </svg>
-          <span className="text-white font-semibold text-lg">
-            {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
-          </span>
-        </div>
-        
-        {/* Shine Effect */}
-        <div className="absolute inset-0 -top-1/2 bg-gradient-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </button>
+        {/* LINE Icon */}
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" className="mr-3">
+          <path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.66 8.87 8.41 9.77.61.11.83-.26.83-.58 0-.29-.01-1.04-.01-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.41-1.34-1.78-1.34-1.78-1.11-.76.08-.75.08-.75 1.22.09 1.86 1.25 1.86 1.25 1.08 1.87 2.86 1.33 3.54 1.02.11-.79.42-1.33.77-1.63-2.66-.3-5.46-1.35-5.46-6.01 0-1.33.47-2.41 1.25-3.25-.12-.3-.54-1.54.12-3.21 0 0 1.02-.33 3.35 1.25.97-.27 2.01-.4 3.05-.41 1.03 0 2.07.14 3.05.41 2.32-1.58 3.34-1.25 3.34-1.25.66 1.66.24 2.91.12 3.21.78.84 1.25 1.92 1.25 3.25 0 4.67-2.81 5.7-5.48 6 .43.37.81 1.1.81 2.22v3.29c0 .32.21.69.82.58C20.34 20.87 24 16.84 24 12c0-5.52-4.48-10-10-10z"/>
+        </svg>
+        {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
+      </Button>
     </>
   )
 }
@@ -95,64 +80,63 @@ function LoginForm() {
 // Main Component with Suspense
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 py-8">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-gray-100/50 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
-      
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8">
       <div className="relative w-full max-w-md">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 sm:p-10 border border-gray-100">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center mb-4">
-              <Image 
-                src="/logo.svg" 
-                alt="AMGO Logo" 
-                width={150} 
-                height={60}
-                className="h-30 w-auto"
-              />
+        <Card className="backdrop-blur-xl bg-white/90 shadow-2xl">
+          <CardContent className="p-8 sm:p-10">
+            {/* Logo */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center mb-4">
+                <Image 
+                  src="/logo.svg" 
+                  alt="AMGO Logo" 
+                  width={150} 
+                  height={60}
+                  className="h-30 w-auto"
+                />
+              </div>
+              <p className="text-gray-600 mt-2 text-sm sm:text-base">ระบบบริหารจัดการพนักงาน</p>
             </div>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">ระบบบริหารจัดการพนักงาน</p>
-          </div>
 
-          {/* Wrap LoginForm with Suspense */}
-          <Suspense fallback={
-            <div className="w-full py-4 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]">
-                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+            {/* Login Form */}
+            <Suspense fallback={
+              <div className="w-full py-4 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
+              </div>
+            }>
+              <LoginForm />
+            </Suspense>
+
+            {/* Divider */}
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full h-px bg-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-400">หรือ</span>
               </div>
             </div>
-          }>
-            <LoginForm />
-          </Suspense>
 
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+            {/* Info Box */}
+            <Alert variant="info" className="bg-gradient-to-r from-red-50 to-rose-50">
+              <AlertDescription>
+                <h3 className="font-semibold text-red-900 text-sm mb-2">สำหรับพนักงาน AMGO เท่านั้น</h3>
+                <ul className="space-y-1 text-xs text-red-700">
+                  <li>• ใช้บัญชี LINE ส่วนตัวในการเข้าสู่ระบบ</li>
+                  <li>• ติดต่อ HR หากยังไม่ได้รับอนุมัติ</li>
+                  <li>• ข้อมูลของคุณจะถูกเก็บอย่างปลอดภัย</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+
+            {/* Footer */}
+            <div className="mt-8 text-center">
+              <p className="text-xs text-gray-400">
+                ติดต่อ HR: hr@amgo.co.th | 02-XXX-XXXX
+              </p>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-400">หรือ</span>
-            </div>
-          </div>
-
-          {/* Info Box */}
-          <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 rounded-2xl p-4">
-            <h3 className="font-semibold text-red-900 text-sm mb-2">สำหรับพนักงาน AMGO เท่านั้น</h3>
-            <ul className="space-y-1 text-xs text-red-700">
-              <li>• ใช้บัญชี LINE ส่วนตัวในการเข้าสู่ระบบ</li>
-              <li>• ติดต่อ HR หากยังไม่ได้รับอนุมัติ</li>
-              <li>• ข้อมูลของคุณจะถูกเก็บอย่างปลอดภัย</li>
-            </ul>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-8 text-center">
-            <p className="text-xs text-gray-400">
-              ติดต่อ HR: hr@amgo.co.th | 02-XXX-XXXX
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Security Note */}
         <div className="mt-6 text-center">

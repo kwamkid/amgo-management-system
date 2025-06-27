@@ -1,5 +1,3 @@
-// app/(admin)/employees/pending/page.tsx
-
 'use client'
 
 import { usePendingUsers } from '@/hooks/useUsers'
@@ -23,6 +21,10 @@ import {
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function PendingUsersPage() {
   const { pendingUsers, loading, refetch } = usePendingUsers()
@@ -50,18 +52,14 @@ export default function PendingUsersPage() {
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      admin: { label: 'ผู้ดูแลระบบ', color: 'bg-purple-100 text-purple-700' },
-      hr: { label: 'ฝ่ายบุคคล', color: 'bg-blue-100 text-blue-700' },
-      manager: { label: 'ผู้จัดการ', color: 'bg-green-100 text-green-700' },
-      employee: { label: 'พนักงาน', color: 'bg-gray-100 text-gray-700' }
+      admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
+      hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
+      manager: { label: 'ผู้จัดการ', variant: 'success' as const },
+      employee: { label: 'พนักงาน', variant: 'secondary' as const }
     }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return (
-      <span className={`px-2 py-1 text-xs rounded-full ${config.color}`}>
-        {config.label}
-      </span>
-    )
+    return <Badge variant={config.variant}>{config.label}</Badge>
   }
 
   const getLocationNames = (locationIds?: string[]) => {
@@ -96,28 +94,32 @@ export default function PendingUsersPage() {
         </div>
         
         {pendingUsers.length > 0 && (
-          <div className="bg-yellow-50 text-yellow-800 px-4 py-2 rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-medium">{pendingUsers.length} รายการ</span>
-          </div>
+          <Alert variant="warning" className="w-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="font-medium">
+              {pendingUsers.length} รายการ
+            </AlertDescription>
+          </Alert>
         )}
       </div>
 
       {/* Pending Users */}
       {pendingUsers.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
-            <Clock className="w-10 h-10 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีผู้ใช้ที่รออนุมัติ</h3>
-          <p className="text-gray-500 text-base">พนักงานใหม่ที่สมัครจะแสดงที่นี่</p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
+              <Clock className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีผู้ใช้ที่รออนุมัติ</h3>
+            <p className="text-gray-500 text-base">พนักงานใหม่ที่สมัครจะแสดงที่นี่</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {pendingUsers.map((user) => (
-            <div
+            <Card
               key={user.id}
-              className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-all"
+              className="hover:shadow-lg transition-all"
             >
               {/* Card Header - User Info */}
               <div className="p-6 border-b border-gray-100">
@@ -126,7 +128,7 @@ export default function PendingUsersPage() {
                     <img
                       src={user.linePictureUrl}
                       alt={user.fullName}
-                      className="w-16 h-16 rounded-full border-2 border-gray-200"
+                      className="w-16 h-16 rounded-full"
                     />
                   ) : (
                     <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center">
@@ -144,7 +146,7 @@ export default function PendingUsersPage() {
               </div>
 
               {/* Card Body - Details */}
-              <div className="p-6 space-y-3">
+              <CardContent className="p-6 space-y-3">
                 {user.phone && (
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Phone className="w-4 h-4 text-gray-400" />
@@ -182,42 +184,45 @@ export default function PendingUsersPage() {
                 {user.inviteLinkCode && (
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <LinkIcon className="w-4 h-4 text-gray-400" />
-                    <span>ใช้ลิงก์: <code className="bg-gray-100 px-2 py-0.5 rounded">{user.inviteLinkCode}</code></span>
+                    <span>ใช้ลิงก์: <Badge variant="secondary">{user.inviteLinkCode}</Badge></span>
                   </div>
                 )}
 
                 {user.allowCheckInOutsideLocation && (
-                  <div className="flex items-center gap-3 text-sm text-green-600">
+                  <div className="flex items-center gap-3 text-sm text-teal-600">
                     <CheckCircle className="w-4 h-4" />
                     <span>อนุญาตเช็คอินนอกสถานที่</span>
                   </div>
                 )}
-              </div>
+              </CardContent>
 
               {/* Card Footer - Actions */}
               <div className="p-6 pt-0 flex gap-2">
-                <button
+                <Button
                   onClick={() => handleApprove(user)}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
                 >
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 mr-2" />
                   อนุมัติ
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleReject(user)}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                  variant="outline"
+                  className="flex-1 text-red-600 hover:bg-red-50"
                 >
-                  <XCircle className="w-4 h-4" />
+                  <XCircle className="w-4 h-4 mr-2" />
                   ปฏิเสธ
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setSelectedUser(user)}
-                  className="inline-flex items-center justify-center p-2.5 bg-white text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  variant="outline"
+                  size="icon"
+                  className="hover:bg-gray-50"
                 >
                   <Eye className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -228,103 +233,106 @@ export default function PendingUsersPage() {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedUser(null)}
         >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+          <Card
+            className="max-w-md w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-semibold mb-4">รายละเอียดผู้สมัคร</h3>
-            
-            {/* User Info */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                {selectedUser.linePictureUrl ? (
-                  <img
-                    src={selectedUser.linePictureUrl}
-                    alt={selectedUser.fullName}
-                    className="w-20 h-20 rounded-full"
-                  />
-                ) : (
-                  <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-10 h-10 text-gray-500" />
-                  </div>
-                )}
-                <div>
-                  <h4 className="font-semibold text-lg">{selectedUser.fullName}</h4>
-                  <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
-                  <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
-                </div>
-              </div>
-
-              <div className="border-t pt-4 space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
-                  <p className="font-medium">{selectedUser.phone || '-'}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">วันเกิด</p>
-                  <p className="font-medium">
-                    {selectedUser.birthDate 
-                      ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })
-                      : '-'
-                    }
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
-                  <p className="font-medium">{getLocationNames(selectedUser.allowedLocationIds)}</p>
-                </div>
-                
-                {selectedUser.inviteLinkCode && (
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-4">รายละเอียดผู้สมัคร</h3>
+              
+              {/* User Info */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  {selectedUser.linePictureUrl ? (
+                    <img
+                      src={selectedUser.linePictureUrl}
+                      alt={selectedUser.fullName}
+                      className="w-20 h-20 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
+                      <UserIcon className="w-10 h-10 text-gray-500" />
+                    </div>
+                  )}
                   <div>
-                    <p className="text-sm text-gray-500">Invite Link</p>
+                    <h4 className="font-semibold text-lg">{selectedUser.fullName}</h4>
+                    <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
+                    <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
+                    <p className="font-medium">{selectedUser.phone || '-'}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500">วันเกิด</p>
                     <p className="font-medium">
-                      <code className="bg-gray-100 px-2 py-1 rounded">{selectedUser.inviteLinkCode}</code>
+                      {selectedUser.birthDate 
+                        ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : '-'
+                      }
                     </p>
                   </div>
-                )}
-                
-                <div>
-                  <p className="text-sm text-gray-500">วันที่สมัคร</p>
-                  <p className="font-medium">
-                    {selectedUser.createdAt 
-                      ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                      : '-'
-                    }
-                  </p>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
+                    <p className="font-medium">{getLocationNames(selectedUser.allowedLocationIds)}</p>
+                  </div>
+                  
+                  {selectedUser.inviteLinkCode && (
+                    <div>
+                      <p className="text-sm text-gray-500">Invite Link</p>
+                      <p className="font-medium">
+                        <Badge variant="secondary">{selectedUser.inviteLinkCode}</Badge>
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="text-sm text-gray-500">วันที่สมัคร</p>
+                    <p className="font-medium">
+                      {selectedUser.createdAt 
+                        ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : '-'
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex gap-2">
-              <button
-                onClick={() => {
-                  handleApprove(selectedUser)
-                  setSelectedUser(null)
-                }}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                อนุมัติ
-              </button>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
+              <div className="mt-6 flex gap-2">
+                <Button
+                  onClick={() => {
+                    handleApprove(selectedUser)
+                    setSelectedUser(null)
+                  }}
+                  className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
+                >
+                  อนุมัติ
+                </Button>
+                <Button
+                  onClick={() => setSelectedUser(null)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  ปิด
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

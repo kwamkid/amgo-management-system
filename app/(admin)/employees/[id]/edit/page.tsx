@@ -1,5 +1,3 @@
-// app/(admin)/employees/[id]/edit/page.tsx
-
 'use client'
 
 import { use, useState, useEffect } from 'react'
@@ -13,6 +11,9 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
+import { Card, CardContent } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 
 export default function EditUserPage({ 
   params 
@@ -79,18 +80,21 @@ export default function EditUserPage({
   if (error || !user) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 mb-4 text-base">
-            {error || 'ไม่พบข้อมูลพนักงาน'}
-          </p>
-          <Link
-            href="/employees"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            กลับไปหน้ารายการ
-          </Link>
-        </div>
+        <Alert variant="error">
+          <AlertDescription>
+            <p className="mb-4 text-base">
+              {error || 'ไม่พบข้อมูลพนักงาน'}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/employees')}
+              className="bg-red-50 hover:bg-red-100 text-red-700"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              กลับไปหน้ารายการ
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     )
   }

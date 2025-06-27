@@ -8,6 +8,9 @@ import LocationForm from '@/components/locations/LocationForm'
 import { LocationFormData } from '@/types/location'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { gradients } from '@/lib/theme/colors'
 
 export default function CreateLocationPage() {
   const router = useRouter()
@@ -29,13 +32,12 @@ export default function CreateLocationPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link
-          href="/settings/locations"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+        <Link href="/settings/locations">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">
             เพิ่มสถานที่ใหม่
           </h1>
@@ -44,6 +46,8 @@ export default function CreateLocationPage() {
           </p>
         </div>
       </div>
+
+     
 
       {/* Form */}
       <LocationForm

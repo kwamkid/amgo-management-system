@@ -89,7 +89,30 @@ const navItems: NavItem[] = [
   {
     label: 'การลา',
     href: '/leaves',
-    icon: <Calendar className="w-5 h-5" />
+    icon: <Calendar className="w-5 h-5" />,
+    subItems: [
+      {
+        label: 'ข้อมูลการลา',
+        href: '/leaves',
+        icon: <Calendar className="w-4 h-4" />
+      },
+      {
+        label: 'ขอลา',
+        href: '/leaves/request',
+        icon: <UserPlus className="w-4 h-4" />
+      },
+      {
+        label: 'ประวัติการลา',
+        href: '/leaves/history',
+        icon: <Clock className="w-4 h-4" />
+      },
+      {
+        label: 'จัดการคำขอลา',
+        href: '/leaves/management',
+        icon: <UserCog className="w-4 h-4" />,
+        roles: ['hr', 'admin', 'manager']
+      }
+    ]
   },
   {
     label: 'รายงาน',
@@ -181,20 +204,25 @@ export default function Sidebar({ userData }: SidebarProps) {
   }
 
   const isItemActive = (item: NavItem, isSubItem: boolean = false): boolean => {
+    // Special handling for /checkin to prevent false positives
+    if (item.href === '/checkin' && !isSubItem) {
+      // Parent /checkin should not be active if we're on a sub-route
+      if (pathname.startsWith('/checkin/')) {
+        return false
+      }
+      return pathname === '/checkin'
+    }
+    
     // Exact match
     if (pathname === item.href) return true
     
     // For parent items with subitems
     if (!isSubItem && item.subItems) {
-      // Don't highlight parent if any subitem is active
-      const hasActiveSubItem = item.subItems.some(subItem => 
-        pathname === subItem.href || 
-        (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
-      )
-      return false // Parent should not be highlighted when subitem is active
+      // Parent should not be highlighted when subitem is active
+      return false
     }
     
-    // For pages under the path (but not if it's a parent with subitems)
+    // For pages under the path (but not for parent items with subitems)
     if (!item.subItems && pathname.startsWith(`${item.href}/`)) {
       return true
     }
@@ -245,7 +273,7 @@ export default function Sidebar({ userData }: SidebarProps) {
               <div className="mt-1 ml-4 space-y-1">
                 {filteredSubItems.map(subItem => {
                   const isSubItemActive = pathname === subItem.href || 
-                    (subItem.href !== '/employees' && pathname.startsWith(`${subItem.href}/`))
+                    (pathname.startsWith(`${subItem.href}/`) && subItem.href !== '/checkin')
                   
                   return (
                     <Link

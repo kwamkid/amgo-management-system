@@ -13,6 +13,13 @@ import {
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import dynamic from 'next/dynamic'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { colorClasses, gradients } from '@/lib/theme/colors'
+import TechLoader from '@/components/shared/TechLoader'
 
 // Dynamic import CheckInMap untuk menghindari SSR issues dengan Google Maps
 const CheckInMap = dynamic(
@@ -80,11 +87,7 @@ export default function CheckInButton() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-10 h-10 animate-spin text-red-600" />
-      </div>
-    )
+    return <TechLoader />
   }
 
   const workingTime = getWorkingTime()
@@ -108,7 +111,7 @@ export default function CheckInButton() {
             />
           ) : (
             /* Map Placeholder */
-            <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-white relative">
+            <div className={`w-full h-full bg-gradient-to-br ${gradients.grayLight} relative`}>
               <div className="absolute inset-0 flex items-center justify-center">
                 <MapPin className="w-16 h-16 text-gray-300" />
               </div>
@@ -116,25 +119,27 @@ export default function CheckInButton() {
           )}
           
           {/* Working Time Overlay */}
-          <div className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-xl z-10">
-            <div className="text-center">
-              <div className="inline-flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-gray-900">{workingTime.hours}</span>
-                <span className="text-lg text-gray-600">ชม.</span>
-                <span className="text-3xl font-bold text-gray-900 ml-2">{workingTime.minutes}</span>
-                <span className="text-lg text-gray-600">นาที</span>
+          <Card className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm shadow-xl z-10 border-0">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <div className="inline-flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-gray-900">{workingTime.hours}</span>
+                  <span className="text-lg text-gray-600">ชม.</span>
+                  <span className="text-3xl font-bold text-gray-900 ml-2">{workingTime.minutes}</span>
+                  <span className="text-lg text-gray-600">นาที</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  เช็คอิน {format(checkinTime, 'HH:mm', { locale: th })}
+                </p>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                เช็คอิน {format(checkinTime, 'HH:mm', { locale: th })}
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Status Badge */}
           <div className="absolute top-4 right-4 z-10">
-            <div className="bg-green-500 text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-lg">
+            <Badge variant="success" className="shadow-lg">
               กำลังทำงาน
-            </div>
+            </Badge>
           </div>
         </div>
 
@@ -142,66 +147,71 @@ export default function CheckInButton() {
         <div className="bg-white shadow-[0_-4px_10px_-2px_rgb(0,0,0,0.1)]">
           <div className="p-5">
             {/* Location Info */}
-            <div className="bg-gray-50 rounded-2xl p-4 mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
-                  </p>
-                  {currentCheckIn.selectedShiftName && (
-                    <p className="text-sm text-gray-600">
-                      {currentCheckIn.selectedShiftName}
+            <Card className={`bg-gradient-to-r ${gradients.grayLight} border-0 mb-5`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 bg-gradient-to-br ${gradients.successLight} rounded-full flex items-center justify-center`}>
+                    <MapPin className="w-5 h-5 text-teal-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">
+                      {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
                     </p>
-                  )}
+                    {currentCheckIn.selectedShiftName && (
+                      <p className="text-sm text-gray-600">
+                        {currentCheckIn.selectedShiftName}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Note Section */}
             {showNote && (
-              <div className="mb-5">
-                <div className="bg-white rounded-2xl p-4 border border-gray-200">
+              <Card className="mb-5 border-gray-200">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-700">หมายเหตุ</span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => {
                         setShowNote(false)
                         setNote('')
                       }}
-                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="h-8 w-8"
                     >
-                      <X className="w-4 h-4 text-gray-400" />
-                    </button>
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <textarea
+                  <Textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="เช่น ทำ OT, งาน Midnight Sale..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-gray-900"
                     rows={3}
                     autoFocus
                   />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Action Buttons */}
             {!showNote && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setShowNote(true)}
-                className="w-full py-3 text-gray-600 font-medium hover:text-gray-800 transition-colors mb-3"
+                className="w-full mb-3"
               >
                 + เพิ่มหมายเหตุ
-              </button>
+              </Button>
             )}
             
-            <button
+            <Button
               onClick={handleCheckOut}
               disabled={isCheckingOut}
-              className="w-full bg-red-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20"
+              className={`w-full h-16 text-lg font-semibold bg-gradient-to-r ${gradients.primary} shadow-lg shadow-red-600/20`}
+              size="lg"
             >
               {isCheckingOut ? (
                 <span className="flex items-center justify-center gap-2">
@@ -211,7 +221,7 @@ export default function CheckInButton() {
               ) : (
                 'เช็คเอาท์'
               )}
-            </button>
+            </Button>
 
             {/* Help text */}
             <div className="text-center mt-3">
@@ -239,12 +249,12 @@ export default function CheckInButton() {
           />
         ) : (
           /* Map Placeholder while getting location */
-          <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-white relative overflow-hidden">
+          <div className={`w-full h-full bg-gradient-to-br ${gradients.grayLight} relative overflow-hidden`}>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative">
-                <div className="absolute inset-0 bg-green-200 rounded-full w-64 h-64 opacity-20 animate-ping" />
-                <div className="absolute inset-0 bg-green-300 rounded-full w-48 h-48 opacity-20 animate-ping animation-delay-200" />
-                <MapPin className="w-20 h-20 text-green-500 relative z-10" />
+                <div className="absolute inset-0 bg-teal-200 rounded-full w-64 h-64 opacity-20 animate-ping" />
+                <div className="absolute inset-0 bg-teal-300 rounded-full w-48 h-48 opacity-20 animate-ping animation-delay-200" />
+                <MapPin className="w-20 h-20 text-teal-500 relative z-10" />
               </div>
             </div>
             
@@ -257,14 +267,16 @@ export default function CheckInButton() {
         )}
         
         {/* Clock Overlay */}
-        <div className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-xl z-10">
-          <p className="text-5xl font-bold text-gray-900 text-center">
-            {format(new Date(), 'HH:mm')}
-          </p>
-          <p className="text-gray-600 text-center mt-1">
-            {format(new Date(), 'EEEE d MMMM', { locale: th })}
-          </p>
-        </div>
+        <Card className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm shadow-xl z-10 border-0">
+          <CardContent className="p-4">
+            <p className="text-5xl font-bold text-gray-900 text-center">
+              {format(new Date(), 'HH:mm')}
+            </p>
+            <p className="text-gray-600 text-center mt-1">
+              {format(new Date(), 'EEEE d MMMM', { locale: th })}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Bottom Action Area */}
@@ -273,42 +285,39 @@ export default function CheckInButton() {
           {/* Status Section */}
           {/* Error Status */}
           {locationCheckResult && !locationCheckResult.canCheckIn && (
-            <div className="bg-red-50 rounded-2xl p-4 mb-5 border border-red-100">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium text-red-800">{locationCheckResult.reason}</p>
-                  {locationCheckResult.nearestLocation && (
-                    <p className="text-sm text-red-600 mt-1">
-                      ใกล้ {locationCheckResult.nearestLocation.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <Alert variant="error" className="mb-5">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="font-medium">
+                {locationCheckResult.reason}
+                {locationCheckResult.nearestLocation && (
+                  <span className="block text-sm mt-1">
+                    ใกล้ {locationCheckResult.nearestLocation.name}
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Success Status */}
           {locationCheckResult && locationCheckResult.canCheckIn && (
             <div className="text-center mb-5">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <p className="text-sm font-medium text-green-800">
-                  พื้นที่ที่อนุญาต
-                </p>
-              </div>
+              <Badge variant="success" className="px-4 py-2">
+                <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse mr-2" />
+                พื้นที่ที่อนุญาต
+              </Badge>
             </div>
           )}
 
           {/* Check-in Button */}
-          <button
+          <Button
             onClick={handleCheckIn}
             disabled={
               isCheckingIn || 
               !locationCheckResult || 
               !locationCheckResult.canCheckIn
             }
-            className="w-full bg-green-600 text-white font-semibold py-5 rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/20"
+            className={`w-full h-16 text-lg font-semibold bg-gradient-to-r ${gradients.success} shadow-lg shadow-teal-600/20`}
+            size="lg"
           >
             {isCheckingIn ? (
               <span className="flex items-center justify-center gap-2">
@@ -320,7 +329,7 @@ export default function CheckInButton() {
             ) : (
               'เช็คอิน'
             )}
-          </button>
+          </Button>
 
           {/* Help text */}
           <div className="text-center mt-3">

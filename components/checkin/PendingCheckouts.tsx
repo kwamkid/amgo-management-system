@@ -17,6 +17,15 @@ import {
 import { format, differenceInHours } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { gradients } from '@/lib/theme/colors'
 
 interface PendingCheckoutsProps {
   records: CheckInRecord[]
@@ -105,90 +114,94 @@ export default function PendingCheckouts({
           const hoursSince = getHoursSinceCheckin(record)
           
           return (
-            <div
+            <Card
               key={record.id}
-              className={`bg-gray-50 rounded-xl p-4 border-2 ${
+              className={`border-2 ${
                 type === 'forgot' 
                   ? 'border-orange-200' 
                   : 'border-purple-200'
               }`}
             >
-              {/* Employee Info */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  {record.userAvatar ? (
-                    <img
-                      src={record.userAvatar}
-                      alt={record.userName}
-                      className="w-10 h-10 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gray-300 rounded-full" />
-                  )}
-                  <div>
-                    <p className="font-semibold text-gray-900">{record.userName}</p>
-                    <p className="text-sm text-gray-600">
-                      {type === 'forgot' 
-                        ? `ลืมเช็คเอาท์ ${hoursSince} ชั่วโมง`
-                        : 'ทำงานเกินเวลาปิด'
-                      }
-                    </p>
+              <CardContent className="p-4">
+                {/* Employee Info */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    {record.userAvatar ? (
+                      <img
+                        src={record.userAvatar}
+                        alt={record.userName}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-gray-300 rounded-full" />
+                    )}
+                    <div>
+                      <p className="font-semibold text-gray-900">{record.userName}</p>
+                      <p className="text-sm text-gray-600">
+                        {type === 'forgot' 
+                          ? `ลืมเช็คเอาท์ ${hoursSince} ชั่วโมง`
+                          : 'ทำงานเกินเวลาปิด'
+                        }
+                      </p>
+                    </div>
                   </div>
+                  
+                  {/* Quick Actions for Mobile */}
+                  <Button
+                    onClick={() => handleSelectRecord(record)}
+                    disabled={processing === record.id}
+                    variant={type === 'forgot' ? 'outline' : 'secondary'}
+                    className={type === 'forgot' 
+                      ? 'border-orange-500 text-orange-600 hover:bg-orange-50' 
+                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    }
+                  >
+                    {processing === record.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'จัดการ'
+                    )}
+                  </Button>
                 </div>
-                
-                {/* Quick Actions for Mobile */}
-                <button
-                  onClick={() => handleSelectRecord(record)}
-                  disabled={processing === record.id}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    type === 'forgot'
-                      ? 'bg-orange-500 text-white hover:bg-orange-600'
-                      : 'bg-purple-500 text-white hover:bg-purple-600'
-                  } disabled:opacity-50`}
-                >
-                  {processing === record.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    'จัดการ'
-                  )}
-                </button>
-              </div>
 
-              {/* Details */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>{format(checkinTime, 'dd MMM yyyy', { locale: th })}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Clock className="w-4 h-4" />
-                  <span>เข้า {format(checkinTime, 'HH:mm')}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 text-gray-600">
-                  <MapPin className="w-4 h-4" />
-                  <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
-                </div>
-                
-                {record.selectedShiftName && (
+                {/* Details */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>{format(checkinTime, 'dd MMM yyyy', { locale: th })}</span>
+                  </div>
+                  
                   <div className="flex items-center gap-2 text-gray-600">
                     <Clock className="w-4 h-4" />
-                    <span>{record.selectedShiftName}</span>
+                    <span>เข้า {format(checkinTime, 'HH:mm')}</span>
                   </div>
-                )}
-              </div>
-
-              {/* Note if any */}
-              {record.note && (
-                <div className="mt-3 p-3 bg-white rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    <MessageSquare className="w-4 h-4 inline mr-1" />
-                    {record.note}
-                  </p>
+                  
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
+                  </div>
+                  
+                  {record.selectedShiftName && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Clock className="w-4 h-4" />
+                      <span>{record.selectedShiftName}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* Note if any */}
+                {record.note && (
+                  <Card className="mt-3 border-gray-100">
+                    <CardContent className="p-3">
+                      <p className="text-sm text-gray-600">
+                        <MessageSquare className="w-4 h-4 inline mr-1" />
+                        {record.note}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
           )
         })}
       </div>
@@ -196,111 +209,118 @@ export default function PendingCheckouts({
       {/* Approval Modal */}
       {showReasonModal && selectedRecord && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              {type === 'forgot' ? 'กำหนดเวลาเช็คเอาท์' : 'อนุมัติการทำงานล่วงเวลา'}
-            </h3>
-            
-            {/* Employee Info */}
-            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
-              {selectedRecord.userAvatar ? (
-                <img
-                  src={selectedRecord.userAvatar}
-                  alt={selectedRecord.userName}
-                  className="w-10 h-10 rounded-full"
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>
+                {type === 'forgot' ? 'กำหนดเวลาเช็คเอาท์' : 'อนุมัติการทำงานล่วงเวลา'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Employee Info */}
+              <Card className={`bg-gradient-to-r ${gradients.grayLight} border-0`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    {selectedRecord.userAvatar ? (
+                      <img
+                        src={selectedRecord.userAvatar}
+                        alt={selectedRecord.userName}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-gray-300 rounded-full" />
+                    )}
+                    <div>
+                      <p className="font-medium">{selectedRecord.userName}</p>
+                      <p className="text-sm text-gray-600">
+                        เช็คอิน {format(new Date(selectedRecord.checkinTime), 'dd/MM HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Checkout Time */}
+              <div className="space-y-2">
+                <Label>เวลาเช็คเอาท์</Label>
+                <Input
+                  type="datetime-local"
+                  value={checkoutTime}
+                  onChange={(e) => setCheckoutTime(e.target.value)}
                 />
-              ) : (
-                <div className="w-10 h-10 bg-gray-300 rounded-full" />
+              </div>
+
+              {/* OT Approval (for overtime type) */}
+              {type === 'overtime' && (
+                <Card className="border-purple-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="approveOT"
+                        checked={approveOT}
+                        onCheckedChange={(checked) => setApproveOT(checked as boolean)}
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="approveOT" className="font-medium cursor-pointer">
+                          อนุมัติชั่วโมงทำงานล่วงเวลา
+                        </Label>
+                        <p className="text-sm text-gray-500">
+                          {approveOT 
+                            ? 'คิดชั่วโมงทำงานจริง' 
+                            : 'คิดชั่วโมงถึงเวลาปิดเท่านั้น'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-              <div>
-                <p className="font-medium">{selectedRecord.userName}</p>
-                <p className="text-sm text-gray-600">
-                  เช็คอิน {format(new Date(selectedRecord.checkinTime), 'dd/MM HH:mm')}
-                </p>
-              </div>
-            </div>
 
-            {/* Checkout Time */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                เวลาเช็คเอาท์
-              </label>
-              <input
-                type="datetime-local"
-                value={checkoutTime}
-                onChange={(e) => setCheckoutTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-
-            {/* OT Approval (for overtime type) */}
-            {type === 'overtime' && (
-              <div className="mb-4">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={approveOT}
-                    onChange={(e) => setApproveOT(e.target.checked)}
-                    className="w-5 h-5 rounded text-purple-600 focus:ring-purple-500"
-                  />
-                  <span className="font-medium">อนุมัติชั่วโมงทำงานล่วงเวลา</span>
-                </label>
-                <p className="text-sm text-gray-500 ml-8 mt-1">
-                  {approveOT 
-                    ? 'คิดชั่วโมงทำงานจริง' 
-                    : 'คิดชั่วโมงถึงเวลาปิดเท่านั้น'
+              {/* Reason */}
+              <div className="space-y-2">
+                <Label>เหตุผล/หมายเหตุ *</Label>
+                <Textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={
+                    type === 'forgot' 
+                      ? 'เช่น ลืมเช็คเอาท์, ระบบขัดข้อง...'
+                      : 'เช่น Midnight Sale, ปรับปรุงพื้นที่...'
                   }
-                </p>
+                  rows={3}
+                  required
+                />
               </div>
-            )}
 
-            {/* Reason */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                เหตุผล/หมายเหตุ *
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={
-                  type === 'forgot' 
-                    ? 'เช่น ลืมเช็คเอาท์, ระบบขัดข้อง...'
-                    : 'เช่น Midnight Sale, ปรับปรุงพื้นที่...'
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 resize-none"
-                rows={3}
-                required
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowReasonModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!reason.trim() || processing === selectedRecord.id}
-                className={`flex-1 px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 ${
-                  type === 'forgot'
-                    ? 'bg-orange-500 hover:bg-orange-600'
-                    : 'bg-purple-500 hover:bg-purple-600'
-                }`}
-              >
-                {processing === selectedRecord.id ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    กำลังบันทึก...
-                  </span>
-                ) : (
-                  'บันทึก'
-                )}
-              </button>
-            </div>
-          </div>
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReasonModal(false)}
+                  className="flex-1"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!reason.trim() || processing === selectedRecord.id}
+                  className={`flex-1 ${
+                    type === 'forgot'
+                      ? `bg-gradient-to-r ${gradients.warning}`
+                      : `bg-gradient-to-r ${gradients.purple}`
+                  }`}
+                >
+                  {processing === selectedRecord.id ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      กำลังบันทึก...
+                    </span>
+                  ) : (
+                    'บันทึก'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </>

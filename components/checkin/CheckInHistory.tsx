@@ -19,6 +19,11 @@ import {
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { colorClasses, gradients } from '@/lib/theme/colors'
 
 interface CheckInHistoryProps {
   limit?: number
@@ -38,7 +43,7 @@ export default function CheckInHistory({
     if (userData?.id) {
       fetchHistory()
     }
-  }, [userData?.id]) // Remove fetchHistory from deps
+  }, [userData?.id])
 
   const fetchHistory = async () => {
     try {
@@ -80,15 +85,15 @@ export default function CheckInHistory({
 
   const getStatusIcon = (record: CheckInRecord) => {
     if (record.status === 'checked-in') {
-      return <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+      return <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
     }
     if (record.status === 'pending') {
-      return <AlertCircle className="w-4 h-4 text-yellow-500" />
+      return <AlertCircle className="w-4 h-4 text-orange-500" />
     }
     if (record.isLate) {
       return <AlertCircle className="w-4 h-4 text-red-500" />
     }
-    return <CheckCircle className="w-4 h-4 text-green-500" />
+    return <CheckCircle className="w-4 h-4 text-teal-500" />
   }
 
   const getStatusText = (record: CheckInRecord) => {
@@ -104,6 +109,13 @@ export default function CheckInHistory({
     return 'เสร็จสิ้น'
   }
 
+  const getStatusVariant = (record: CheckInRecord): 'success' | 'warning' | 'error' | 'default' => {
+    if (record.status === 'checked-in') return 'success'
+    if (record.status === 'pending') return 'warning'
+    if (record.isLate) return 'error'
+    return 'default'
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -114,9 +126,10 @@ export default function CheckInHistory({
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">{error}</p>
-      </div>
+      <Alert variant="error">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     )
   }
 
@@ -142,94 +155,98 @@ export default function CheckInHistory({
           : null
 
         return (
-          <div
+          <Card 
             key={record.id}
-            className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors"
+            className="border-0 shadow-sm hover:shadow-md transition-shadow"
           >
-            {/* Date Header */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-900">
-                  {format(checkinTime, 'EEEE d MMM', { locale: th })}
-                </span>
+            <CardContent className="p-4">
+              {/* Date Header */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-900">
+                    {format(checkinTime, 'EEEE d MMM', { locale: th })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(record)}
+                  <Badge variant={getStatusVariant(record)} className="text-xs">
+                    {getStatusText(record)}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(record)}
-                <span className={`text-xs ${
-                  record.status === 'checked-in' ? 'text-green-600' :
-                  record.status === 'pending' ? 'text-yellow-600' :
-                  'text-gray-600'
-                }`}>
-                  {getStatusText(record)}
-                </span>
-              </div>
-            </div>
 
-            {/* Time Info */}
-            <div className="grid grid-cols-2 gap-4 mb-2">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
+              {/* Time Info */}
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-600">เข้า-ออก</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {format(checkinTime, 'HH:mm')} - {
+                        checkoutTime ? format(checkoutTime, 'HH:mm') : '--:--'
+                      }
+                    </p>
+                  </div>
+                </div>
+                
                 <div>
-                  <p className="text-sm text-gray-600">เข้า-ออก</p>
+                  <p className="text-sm text-gray-600">รวม</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {format(checkinTime, 'HH:mm')} - {
-                      checkoutTime ? format(checkoutTime, 'HH:mm') : '--:--'
+                    {record.totalHours > 0 
+                      ? formatWorkingHours(record.totalHours)
+                      : '-'
                     }
+                    {record.overtimeHours > 0 && (
+                      <span className="text-xs text-orange-600 ml-1">
+                        (OT {formatWorkingHours(record.overtimeHours)})
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
-              
-              <div>
-                <p className="text-sm text-gray-600">รวม</p>
-                <p className="text-sm font-medium text-gray-900">
-                  {record.totalHours > 0 
-                    ? formatWorkingHours(record.totalHours)
-                    : '-'
-                  }
-                  {record.overtimeHours > 0 && (
-                    <span className="text-xs text-orange-600 ml-1">
-                      (OT {formatWorkingHours(record.overtimeHours)})
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
 
-            {/* Location */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <MapPin className="w-4 h-4 text-gray-400" />
-              <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
-              {record.isLate && (
-                <span className="text-xs text-red-600 ml-auto">
-                  สาย {record.lateMinutes} นาที
-                </span>
+              {/* Location */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
+                {record.isLate && (
+                  <Badge variant="error" className="ml-auto text-xs">
+                    สาย {record.lateMinutes} นาที
+                  </Badge>
+                )}
+              </div>
+
+              {/* Note or Warning */}
+              {record.needsOvertimeApproval && (
+                <Alert variant="warning" className="mt-2 py-2">
+                  <AlertDescription className="text-xs">
+                    ⏰ ทำงานเกินเวลาปิด รอ HR อนุมัติ
+                  </AlertDescription>
+                </Alert>
               )}
-            </div>
-
-            {/* Note or Warning */}
-            {record.needsOvertimeApproval && (
-              <div className="mt-2 text-xs text-yellow-600 bg-yellow-50 rounded-lg px-3 py-1.5">
-                ⏰ ทำงานเกินเวลาปิด รอ HR อนุมัติ
-              </div>
-            )}
-            {record.note && (
-              <div className="mt-2 text-xs text-gray-600 bg-white rounded-lg px-3 py-1.5">
-                💬 {record.note}
-              </div>
-            )}
-          </div>
+              {record.note && (
+                <Card className="mt-2 border-gray-100">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-gray-600">💬 {record.note}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
         )
       })}
 
       {/* View All Link */}
       {showViewAll && records.length >= limit && (
-        <Link
-          href="/checkin/history"
-          className="flex items-center justify-center gap-2 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-        >
-          <span className="font-medium">ดูประวัติทั้งหมด</span>
-          <ChevronRight className="w-4 h-4" />
+        <Link href="/checkin/history">
+          <Button
+            variant="ghost"
+            className="w-full hover:bg-red-50"
+          >
+            <span className="font-medium">ดูประวัติทั้งหมด</span>
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
         </Link>
       )}
     </div>

@@ -4,8 +4,16 @@
 
 import { useState, useEffect } from 'react'
 import { Location, LocationFormData, WorkingHours, Shift } from '@/types/location'
-import { MapPin, Clock, Calendar, Plus, Trash2, Save, X } from 'lucide-react'
+import { MapPin, Clock, Calendar, Plus, Trash2, Save, X, Building } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { gradients } from '@/lib/theme/colors'
 
 // Dynamic import for Google Maps (client-side only)
 const LocationMapPicker = dynamic(
@@ -191,15 +199,13 @@ export default function LocationForm({
     const newWorkingHours = {} as typeof formData.workingHours
     
     DAYS.forEach(({ key }) => {
-    if ('closedDays' in presetConfig && presetConfig.closedDays?.includes(key)) {
-        // วันที่ปิดทำการ
+      if ('closedDays' in presetConfig && presetConfig.closedDays?.includes(key)) {
         newWorkingHours[key as keyof typeof formData.workingHours] = {
           open: '10:00',
           close: '18:00',
           isClosed: true
         }
       } else if (presetConfig.applyDays.includes(key)) {
-        // วันที่เปิดทำการ
         newWorkingHours[key as keyof typeof formData.workingHours] = { ...presetConfig.hours }
       }
     })
@@ -213,286 +219,288 @@ export default function LocationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-          <MapPin className="w-5 h-5 text-red-600" />
-          ข้อมูลพื้นฐาน
-        </h3>
-        
-        <div className="grid md:grid-cols-2 gap-4">
+      <Card className="border-0 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-red-600" />
+            ข้อมูลพื้นฐาน
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label>ชื่อสถานที่ *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="เช่น สาขาสยาม"
+                required
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div>
+              <Label>รัศมี Geofencing (เมตร)</Label>
+              <Input
+                type="number"
+                value={formData.radius}
+                onChange={(e) => setFormData({ ...formData, radius: parseInt(e.target.value) || 100 })}
+                min="50"
+                max="1000"
+                step="50"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+          
           <div>
-            <label className="block text-base font-medium mb-1 text-gray-700">ชื่อสถานที่ *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900 text-base"
-              placeholder="เช่น สาขาสยาม"
+            <Label>ที่อยู่ *</Label>
+            <Input
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="999 ถ.พระราม 1 แขวงปทุมวัน เขตปทุมวัน กรุงเทพฯ 10330"
               required
               disabled={isLoading}
             />
           </div>
           
           <div>
-            <label className="block text-base font-medium mb-1 text-gray-700">รัศมี Geofencing (เมตร)</label>
-            <input
-              type="number"
-              value={formData.radius}
-              onChange={(e) => setFormData({ ...formData, radius: parseInt(e.target.value) || 100 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900 text-base"
-              min="50"
-              max="1000"
-              step="50"
-              disabled={isLoading}
+            <Label>ตำแหน่งบนแผนที่ *</Label>
+            <LocationMapPicker
+              lat={formData.lat}
+              lng={formData.lng}
+              radius={formData.radius}
+              onLocationChange={(lat, lng) => {
+                setFormData({ ...formData, lat, lng })
+              }}
+              onAddressChange={(address) => {
+                setFormData(prev => ({ ...prev, address }))
+              }}
             />
           </div>
-        </div>
-        
-        <div className="mt-4">
-          <label className="block text-base font-medium mb-1 text-gray-700">ที่อยู่ *</label>
-          <input
-            type="text"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900 text-base"
-            placeholder="999 ถ.พระราม 1 แขวงปทุมวัน เขตปทุมวัน กรุงเทพฯ 10330"
-            required
-            disabled={isLoading}
-          />
-        </div>
-        
-        <div className="mt-4">
-          <label className="block text-base font-medium mb-2 text-gray-700">ตำแหน่งบนแผนที่ *</label>
-          <LocationMapPicker
-            lat={formData.lat}
-            lng={formData.lng}
-            radius={formData.radius}
-            onLocationChange={(lat, lng) => {
-              setFormData({ ...formData, lat, lng })
-            }}
-            onAddressChange={(address) => {
-              setFormData(prev => ({ ...prev, address }))
-            }}
-          />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Working Hours */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-            <Calendar className="w-5 h-5 text-red-600" />
-            เวลาทำการ
-          </h3>
-          
-          {/* Preset Buttons */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => applyPreset('office')}
-              className="text-sm px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-              disabled={isLoading}
-            >
-              <span className="font-medium">สำนักงาน</span>
-              <span className="text-xs text-gray-500 ml-1">(จ-ศ)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('departmentStore')}
-              className="text-sm px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-              disabled={isLoading}
-            >
-              <span className="font-medium">ห้าง</span>
-              <span className="text-xs text-gray-500 ml-1">(ทุกวัน)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('standAlone')}
-              className="text-sm px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-              disabled={isLoading}
-            >
-              <span className="font-medium">ร้านค้า</span>
-              <span className="text-xs text-gray-500 ml-1">(ทุกวัน)</span>
-            </button>
+      <Card className="border-0 shadow-md">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-red-600" />
+              เวลาทำการ
+            </CardTitle>
+            
+            {/* Preset Buttons */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyPreset('office')}
+                disabled={isLoading}
+              >
+                สำนักงาน
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyPreset('departmentStore')}
+                disabled={isLoading}
+              >
+                ห้าง
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyPreset('standAlone')}
+                disabled={isLoading}
+              >
+                ร้านค้า
+              </Button>
+            </div>
           </div>
-        </div>
-        {/* Preset info */}
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
-          <p className="font-medium mb-1">Preset เวลาทำการ:</p>
-          <ul className="space-y-1 text-sm">
-            <li>• <span className="font-medium">สำนักงาน:</span> จันทร์-ศุกร์ 09:00-18:00 (ปิด ส-อา)</li>
-            <li>• <span className="font-medium">ห้าง:</span> เปิดทุกวัน 10:00-22:00</li>
-            <li>• <span className="font-medium">ร้านค้า:</span> เปิดทุกวัน 10:00-19:00</li>
-          </ul>
-        </div>
-        
-        <div className="space-y-3">
-          {DAYS.map(({ key, label }) => {
-            const hours = formData.workingHours[key as keyof typeof formData.workingHours]
-            return (
-              <div key={key} className="flex items-center gap-4">
-                <label className="w-20 text-base font-medium text-gray-700">{label}</label>
-                
-                <input
-                  type="checkbox"
-                  checked={!hours.isClosed}
-                  onChange={(e) => handleWorkingHoursChange(key, 'isClosed', !e.target.checked)}
-                  className="rounded text-red-600 focus:ring-red-500"
-                  disabled={isLoading}
-                />
-                
-                {!hours.isClosed && (
-                  <>
-                    <input
-                      type="time"
-                      value={hours.open}
-                      onChange={(e) => handleWorkingHoursChange(key, 'open', e.target.value)}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                      disabled={isLoading}
-                    />
-                    <span className="text-gray-500">ถึง</span>
-                    <input
-                      type="time"
-                      value={hours.close}
-                      onChange={(e) => handleWorkingHoursChange(key, 'close', e.target.value)}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                      disabled={isLoading}
-                    />
-                  </>
-                )}
-                
-                {hours.isClosed && (
-                  <span className="text-sm text-gray-500">ปิดทำการ</span>
-                )}
-              </div>
-            )
-          })}
-        </div>
-        
-        <div className="mt-4 flex items-center gap-4">
-          <label className="text-base font-medium text-gray-700">เวลาพักกลางวัน</label>
-          <input
-            type="number"
-            value={formData.breakHours}
-            onChange={(e) => setFormData({ ...formData, breakHours: parseFloat(e.target.value) || 1 })}
-            className="w-20 px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-            min="0"
-            max="2"
-            step="0.5"
-            disabled={isLoading}
-          />
-          <span className="text-sm text-gray-500">ชั่วโมง</span>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Preset info */}
+          
+          
+          <div className="space-y-3">
+            {DAYS.map(({ key, label }) => {
+              const hours = formData.workingHours[key as keyof typeof formData.workingHours]
+              return (
+                <div key={key} className="flex items-center gap-4">
+                  <Label className="w-20 font-medium">{label}</Label>
+                  
+                  <Checkbox
+                    checked={!hours.isClosed}
+                    onCheckedChange={(checked) => handleWorkingHoursChange(key, 'isClosed', !checked)}
+                    disabled={isLoading}
+                  />
+                  
+                  {!hours.isClosed && (
+                    <>
+                      <Input
+                        type="time"
+                        value={hours.open}
+                        onChange={(e) => handleWorkingHoursChange(key, 'open', e.target.value)}
+                        className="w-32"
+                        disabled={isLoading}
+                      />
+                      <span className="text-gray-500">ถึง</span>
+                      <Input
+                        type="time"
+                        value={hours.close}
+                        onChange={(e) => handleWorkingHoursChange(key, 'close', e.target.value)}
+                        className="w-32"
+                        disabled={isLoading}
+                      />
+                    </>
+                  )}
+                  
+                  {hours.isClosed && (
+                    <Badge variant="error">ปิดทำการ</Badge>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          
+          <div className="flex items-center gap-4 pt-4 border-t">
+            <Label>เวลาพักกลางวัน</Label>
+            <Input
+              type="number"
+              value={formData.breakHours}
+              onChange={(e) => setFormData({ ...formData, breakHours: parseFloat(e.target.value) || 1 })}
+              className="w-20"
+              min="0"
+              max="2"
+              step="0.5"
+              disabled={isLoading}
+            />
+            <span className="text-sm text-gray-500">ชั่วโมง</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Shifts */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-            <Clock className="w-5 h-5 text-red-600" />
-            กะการทำงาน
-          </h3>
-          <button
-            type="button"
-            onClick={handleAddShift}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-            disabled={isLoading}
-          >
-            <Plus className="w-4 h-4" />
-            เพิ่มกะ
-          </button>
-        </div>
-        
-        <div className="space-y-3">
-          {formData.shifts.map((shift, index) => (
-            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <input
-                type="text"
-                value={shift.name}
-                onChange={(e) => handleShiftChange(index, 'name', e.target.value)}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                placeholder="ชื่อกะ"
-                disabled={isLoading}
-              />
-              
-              <input
-                type="time"
-                value={shift.startTime}
-                onChange={(e) => handleShiftChange(index, 'startTime', e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                disabled={isLoading}
-              />
-              
-              <span className="text-gray-500">-</span>
-              
-              <input
-                type="time"
-                value={shift.endTime}
-                onChange={(e) => handleShiftChange(index, 'endTime', e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                disabled={isLoading}
-              />
-              
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-500">±</span>
-                <input
-                  type="number"
-                  value={shift.graceMinutes}
-                  onChange={(e) => handleShiftChange(index, 'graceMinutes', parseInt(e.target.value) || 0)}
-                  className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 text-base"
-                  min="0"
-                  max="60"
-                  disabled={isLoading}
-                />
-                <span className="text-sm text-gray-500">นาที</span>
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => handleRemoveShift(index)}
-                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                disabled={isLoading || formData.shifts.length === 1}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Card className="border-0 shadow-md">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-red-600" />
+              กะการทำงาน
+            </CardTitle>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAddShift}
+              variant="outline"
+              disabled={isLoading}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              เพิ่มกะ
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {formData.shifts.map((shift, index) => (
+              <Card key={index} className="border-gray-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Input
+                      value={shift.name}
+                      onChange={(e) => handleShiftChange(index, 'name', e.target.value)}
+                      className="flex-1"
+                      placeholder="ชื่อกะ"
+                      disabled={isLoading}
+                    />
+                    
+                    <Input
+                      type="time"
+                      value={shift.startTime}
+                      onChange={(e) => handleShiftChange(index, 'startTime', e.target.value)}
+                      className="w-32"
+                      disabled={isLoading}
+                    />
+                    
+                    <span className="text-gray-500">-</span>
+                    
+                    <Input
+                      type="time"
+                      value={shift.endTime}
+                      onChange={(e) => handleShiftChange(index, 'endTime', e.target.value)}
+                      className="w-32"
+                      disabled={isLoading}
+                    />
+                    
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500">±</span>
+                      <Input
+                        type="number"
+                        value={shift.graceMinutes}
+                        onChange={(e) => handleShiftChange(index, 'graceMinutes', parseInt(e.target.value) || 0)}
+                        className="w-16"
+                        min="0"
+                        max="60"
+                        disabled={isLoading}
+                      />
+                      <span className="text-sm text-gray-500">นาที</span>
+                    </div>
+                    
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleRemoveShift(index)}
+                      disabled={isLoading || formData.shifts.length === 1}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Status */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <label className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={formData.isActive}
-            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-            className="w-5 h-5 rounded text-red-600 focus:ring-red-500"
-            disabled={isLoading}
-          />
-          <span className="font-medium text-gray-700">เปิดใช้งานสถานที่นี้</span>
-        </label>
-      </div>
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-6">
+          <label className="flex items-center gap-3">
+            <Checkbox
+              checked={formData.isActive}
+              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked as boolean })}
+              disabled={isLoading}
+            />
+            <span className="font-medium text-gray-700">เปิดใช้งานสถานที่นี้</span>
+          </label>
+        </CardContent>
+      </Card>
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onCancel}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700"
           disabled={isLoading}
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 mr-2" />
           ยกเลิก
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
           disabled={isLoading}
+          className={`bg-gradient-to-r ${gradients.primary}`}
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}
-        </button>
+        </Button>
       </div>
     </form>
   )

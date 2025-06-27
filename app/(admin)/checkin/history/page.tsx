@@ -17,6 +17,12 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
 import CheckInHistory from '@/components/checkin/CheckInHistory'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { gradients } from '@/lib/theme/colors'
+import TechLoader from '@/components/shared/TechLoader'
 
 export default function CheckInHistoryPage() {
   const { userData } = useAuth()
@@ -90,6 +96,10 @@ export default function CheckInHistoryPage() {
     alert('ฟังก์ชัน Export กำลังพัฒนา')
   }
 
+  if (loading && !records.length) {
+    return <TechLoader />
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -109,62 +119,86 @@ export default function CheckInHistoryPage() {
       </div>
 
       {/* Month Selector & Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-400" />
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            max={format(new Date(), 'yyyy-MM')}
-          />
-        </div>
-        
-        <button
-          onClick={handleExport}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Export
-        </button>
-      </div>
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-400" />
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-48"
+                max={format(new Date(), 'yyyy-MM')}
+              />
+            </div>
+            
+            <Button
+              onClick={handleExport}
+              variant="outline"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Monthly Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-600 mb-1">วันทำงาน</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalDays}</p>
-          <p className="text-xs text-gray-500 mt-1">วัน</p>
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl mb-3`}>
+              <Calendar className="w-6 h-6 text-red-600" />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">วันทำงาน</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalDays}</p>
+            <p className="text-xs text-gray-500 mt-1">วัน</p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-600 mb-1">ชั่วโมงรวม</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalHours}</p>
-          <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.infoLight} rounded-xl mb-3`}>
+              <Calendar className="w-6 h-6 text-blue-600" />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">ชั่วโมงรวม</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalHours}</p>
+            <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-600 mb-1">โอที</p>
-          <p className="text-2xl font-bold text-orange-600">{stats.totalOT}</p>
-          <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl mb-3`}>
+              <Calendar className="w-6 h-6 text-orange-600" />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">โอที</p>
+            <p className="text-2xl font-bold text-orange-600">{stats.totalOT}</p>
+            <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-600 mb-1">มาสาย</p>
-          <p className="text-2xl font-bold text-red-600">{stats.lateDays}</p>
-          <p className="text-xs text-gray-500 mt-1">ครั้ง</p>
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl mb-3`}>
+              <Calendar className="w-6 h-6 text-red-600" />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">มาสาย</p>
+            <p className="text-2xl font-bold text-red-600">{stats.lateDays}</p>
+            <p className="text-xs text-gray-500 mt-1">ครั้ง</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* History List */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">
+      <Card className="border-0 shadow-md">
+        <CardHeader>
+          <CardTitle>
             รายละเอียด {format(new Date(selectedMonth + '-01'), 'MMMM yyyy', { locale: th })}
-          </h3>
-        </div>
-        <div className="p-6">
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -180,8 +214,8 @@ export default function CheckInHistoryPage() {
               showViewAll={false} 
             />
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

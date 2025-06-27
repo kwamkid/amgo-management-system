@@ -21,6 +21,11 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { gradients, colorClasses } from '@/lib/theme/colors'
+import TechLoader from '@/components/shared/TechLoader'
 
 export default function PendingCheckoutsPage() {
   const { userData } = useAuth()
@@ -100,21 +105,19 @@ export default function PendingCheckoutsPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p className="text-red-800 font-medium">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-          <p className="text-red-600 text-sm mt-1">เฉพาะ HR และ Admin เท่านั้น</p>
-        </div>
+        <Alert variant="error">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
+          <AlertDescription>
+            เฉพาะ HR และ Admin เท่านั้น
+          </AlertDescription>
+        </Alert>
       </div>
     )
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    )
+    return <TechLoader />
   }
 
   const totalPending = pendingRecords.length + overtimeRecords.length
@@ -131,102 +134,112 @@ export default function PendingCheckoutsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">รอดำเนินการ</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalPending}</p>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">รอดำเนินการ</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalPending}</p>
+              </div>
+              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.warningLight} rounded-full flex items-center justify-center`}>
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">ลืมเช็คเอาท์</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">{pendingRecords.length}</p>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ลืมเช็คเอาท์</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingRecords.length}</p>
+              </div>
+              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.warningLight} rounded-full flex items-center justify-center`}>
+                <AlertTriangle className="w-6 h-6 text-orange-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">รออนุมัติ OT</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">{overtimeRecords.length}</p>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">รออนุมัติ OT</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">{overtimeRecords.length}</p>
+              </div>
+              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.purpleLight} rounded-full flex items-center justify-center`}>
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Forgot Checkouts Section */}
       {pendingRecords.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               พนักงานลืมเช็คเอาท์
-            </h3>
+            </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               พนักงานที่ลืมเช็คเอาท์เกิน 12 ชั่วโมง
             </p>
-          </div>
-          <div className="p-6">
+          </CardHeader>
+          <CardContent>
             <PendingCheckouts
               records={pendingRecords}
               onApprove={handleApproveCheckout}
               processing={processing}
               type="forgot"
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Overtime Approvals Section */}
       {overtimeRecords.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-purple-500" />
               รออนุมัติทำงานล่วงเวลา
-            </h3>
+            </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               พนักงานที่ทำงานเกินเวลาปิดมากกว่า 1 ชั่วโมง
             </p>
-          </div>
-          <div className="p-6">
+          </CardHeader>
+          <CardContent>
             <PendingCheckouts
               records={overtimeRecords}
               onApprove={handleApproveCheckout}
               processing={processing}
               type="overtime"
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Empty State */}
       {totalPending === 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-12">
-          <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              ไม่มีรายการรอดำเนินการ
-            </h3>
-            <p className="text-gray-600">
-              พนักงานทุกคนเช็คเอาท์เรียบร้อยแล้ว
-            </p>
-          </div>
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="py-16">
+            <div className="text-center">
+              <div className={`inline-flex p-4 bg-gradient-to-br ${gradients.successLight} rounded-full mb-4`}>
+                <CheckCircle className="w-16 h-16 text-teal-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                ไม่มีรายการรอดำเนินการ
+              </h3>
+              <p className="text-gray-600">
+                พนักงานทุกคนเช็คเอาท์เรียบร้อยแล้ว
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

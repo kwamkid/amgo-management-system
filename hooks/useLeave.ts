@@ -75,19 +75,21 @@ export const useLeave = () => {
     try {
       // Validate request
       const validation = leaveService.validateLeaveRequest(type, startDate, isUrgent);
-      if (!validation.valid) {
+      if (!validation.valid && validation.message) {
         throw new Error(validation.message);
       }
+      // ถ้ามี warning จะไม่ throw error แต่จะดำเนินการต่อ
       
       // Calculate days and multiplier
       const totalDays = leaveService.calculateLeaveDays(startDate, endDate);
       const urgentMultiplier = isUrgent ? leaveService.LEAVE_RULES[type].urgentMultiplier : 1;
       
-      // Create request
+      // Create request with userAvatar
       const leaveId = await leaveService.createLeaveRequest({
         userId: userData.id,
         userName: userData.lineDisplayName || userData.fullName,
         userEmail: userData.id, // Using ID as we don't have email
+        userAvatar: userData.linePictureUrl, // เพิ่ม userAvatar จาก LINE picture URL
         type,
         startDate,
         endDate,
@@ -187,6 +189,26 @@ export const useLeave = () => {
     }
   };
 
+  // Cancel leave request
+  const cancelLeave = async (leaveId: string, reason?: string) => {
+    if (!userData?.id) return;
+    
+    setLoading(true);
+    try {
+      await leaveService.cancelLeaveRequest(leaveId, userData.id, reason);
+      
+      showToast('ยกเลิกคำขอลาเรียบร้อยแล้ว', 'success');
+      
+      // Refresh data
+      await Promise.all([fetchMyLeaves(), fetchTeamLeaves()]);
+      
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'ไม่สามารถยกเลิกคำขอลาได้', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (userData) {
       fetchQuota();
@@ -203,6 +225,7 @@ export const useLeave = () => {
     createLeaveRequest,
     approveLeave,
     rejectLeave,
+    cancelLeave, // เพิ่ม cancelLeave
     updateQuota,
     refreshData: async () => {
       await Promise.all([

@@ -35,6 +35,7 @@ export interface LeaveRequest {
   userId: string;
   userName: string;
   userEmail?: string;
+  userAvatar?: string; // เพิ่ม field สำหรับรูปโปรไฟล์
   type: LeaveType;
   startDate: Date;
   endDate: Date;
@@ -48,6 +49,9 @@ export interface LeaveRequest {
   approvedBy?: string;
   approvedAt?: Date;
   rejectedReason?: string;
+  cancelledBy?: string; // เพิ่ม field สำหรับคนที่ยกเลิก
+  cancelledAt?: Date; // เพิ่ม field สำหรับเวลาที่ยกเลิก
+  cancelReason?: string; // เพิ่ม field สำหรับเหตุผลที่ยกเลิก
   createdAt: Date;
   updatedAt: Date;
 }

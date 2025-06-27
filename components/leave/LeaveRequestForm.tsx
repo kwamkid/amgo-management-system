@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, differenceInDays, addDays, isWeekend } from 'date-fns';
-import { CalendarIcon, Upload, AlertCircle, Info } from 'lucide-react';
+import { CalendarIcon, Upload, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -36,7 +36,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
-import { calculateLeaveDays } from '@/lib/services/leaveService';
+import { calculateLeaveDays, validateLeaveRequest } from '@/lib/services/leaveService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
@@ -70,6 +80,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const [totalDays, setTotalDays] = useState(0);
   const [urgentCharge, setUrgentCharge] = useState(0);
   const [requireCertificate, setRequireCertificate] = useState(false);
+  const [showUrgentConfirm, setShowUrgentConfirm] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const [autoUrgent, setAutoUrgent] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -100,15 +113,26 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }
   }, [watchStartDate, watchEndDate, watchType]);
 
-  // Calculate urgent charge
+  // Calculate urgent charge and check auto urgent
   useEffect(() => {
-    if (watchIsUrgent && watchType) {
+    if (watchType && watchStartDate) {
+      // Check if should be auto urgent (not enough advance notice)
+      const validation = validateLeaveRequest(watchType, watchStartDate, false);
+      if (validation.warning) {
+        setAutoUrgent(true);
+        form.setValue('isUrgent', true);
+      } else {
+        setAutoUrgent(false);
+      }
+    }
+    
+    if ((watchIsUrgent || autoUrgent) && watchType) {
       const multiplier = LEAVE_RULES[watchType].urgentMultiplier;
       setUrgentCharge(totalDays * multiplier);
     } else {
       setUrgentCharge(totalDays);
     }
-  }, [watchIsUrgent, watchType, totalDays]);
+  }, [watchIsUrgent, watchType, totalDays, watchStartDate, autoUrgent]);
 
   // Check if has quota
   const hasQuota = quota && (
@@ -151,18 +175,50 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   };
 
   const onSubmit = async (values: FormData) => {
+    // Validate first
+    const validation = validateLeaveRequest(values.type, values.startDate, values.isUrgent);
+    
+    // If there's a warning and not marked as urgent yet, show confirm dialog
+    if (validation.warning && !values.isUrgent && !autoUrgent) {
+      setPendingFormData(values);
+      setShowUrgentConfirm(true);
+      return;
+    }
+    
+    // If validation failed completely
+    if (!validation.valid && validation.message) {
+      // This should show as form error
+      form.setError('root', { message: validation.message });
+      return;
+    }
+    
+    // Proceed with submission
+    await submitLeaveRequest(values);
+  };
+  
+  const submitLeaveRequest = async (values: FormData) => {
     await createLeaveRequest(
       values.type,
       values.startDate,
       values.endDate,
       values.reason,
-      values.isUrgent,
+      values.isUrgent || autoUrgent,
       values.attachments
     );
     
     if (onSuccess) {
       onSuccess();
     }
+  };
+  
+  const handleUrgentConfirm = async () => {
+    if (!pendingFormData) return;
+    
+    // Mark as urgent and submit
+    const updatedData = { ...pendingFormData, isUrgent: true };
+    form.setValue('isUrgent', true);
+    setShowUrgentConfirm(false);
+    await submitLeaveRequest(updatedData);
   };
 
   const remainingQuota = quota?.[watchType]?.remaining || 0;
@@ -171,6 +227,16 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {autoUrgent && watchType !== 'sick' && (
+          <Alert variant="warning" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>การลาด่วน:</strong> เนื่องจากไม่ได้แจ้งล่วงหน้าตามกำหนด ({LEAVE_RULES[watchType].advanceNotice} วัน) 
+              จะถูกคิดโควต้า {LEAVE_RULES[watchType].urgentMultiplier} เท่า ({urgentCharge} วัน)
+            </AlertDescription>
+          </Alert>
+        )}
+
         <FormField
           control={form.control}
           name="type"
@@ -339,17 +405,19 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
               <FormControl>
                 <Checkbox
-                  checked={field.value}
+                  checked={field.value || autoUrgent}
                   onCheckedChange={field.onChange}
+                  disabled={autoUrgent}
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
                 <FormLabel>
                   ลาด่วน (ไม่ทันแจ้งล่วงหน้า)
+                  {autoUrgent && <span className="text-orange-600 ml-2">(บังคับเลือก)</span>}
                 </FormLabel>
                 <FormDescription>
-                  {watchType === 'personal' && 'หากลาด่วนจะคิดโควต้า 2 เท่า'}
-                  {watchType === 'vacation' && 'หากลาด่วนจะคิดโควต้า 3 เท่า'}
+                  {watchType === 'personal' && `หากลาด่วนจะคิดโควต้า ${LEAVE_RULES.personal.urgentMultiplier} เท่า`}
+                  {watchType === 'vacation' && `หากลาด่วนจะคิดโควต้า ${LEAVE_RULES.vacation.urgentMultiplier} เท่า`}
                   {watchType === 'sick' && 'ลาป่วยไม่คิดค่าปรับ'}
                 </FormDescription>
               </div>
@@ -421,6 +489,42 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           </Button>
         </div>
       </form>
+      
+      {/* Urgent Confirm Dialog */}
+      <AlertDialog open={showUrgentConfirm} onOpenChange={setShowUrgentConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
+              แจ้งเตือนการลาด่วน
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              การลา{LEAVE_TYPE_LABELS[watchType]}ควรแจ้งล่วงหน้า {LEAVE_RULES[watchType]?.advanceNotice || 0} วัน
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 space-y-3">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="font-medium text-orange-900">หากดำเนินการต่อ:</p>
+              <ul className="mt-2 space-y-1 text-sm text-orange-800">
+                <li>• จะถูกคิดเป็นการลาด่วน</li>
+                <li>• หักโควต้า {LEAVE_RULES[watchType]?.urgentMultiplier || 1} เท่า (รวม {urgentCharge} วัน)</li>
+                <li>• คงเหลือ {remainingQuota - urgentCharge} วัน</li>
+              </ul>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingFormData(null)}>
+              ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleUrgentConfirm}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              ยืนยันลาด่วน
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Form>
   );
 }

@@ -13,17 +13,65 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { useLeave } from '@/hooks/useLeave';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Helper function to safely format date
+const safeFormatDate = (date: any, formatString: string, options?: any) => {
+  try {
+    if (!date) return '-'
+    
+    // Convert to Date object if needed
+    let dateObj: Date
+    if (date instanceof Date) {
+      dateObj = date
+    } else if (typeof date === 'string' || typeof date === 'number') {
+      dateObj = new Date(date)
+    } else if (date?.seconds) {
+      // Firestore Timestamp
+      dateObj = new Date(date.seconds * 1000)
+    } else if (date?.toDate && typeof date.toDate === 'function') {
+      // Firestore Timestamp with toDate method
+      dateObj = date.toDate()
+    } else {
+      return '-'
+    }
+    
+    // Check if valid date
+    if (isNaN(dateObj.getTime())) {
+      return '-'
+    }
+    
+    return format(dateObj, formatString, options)
+  } catch (error) {
+    console.error('Date formatting error:', error, date)
+    return '-'
+  }
+}
 
 export default function LeaveHistoryPage() {
   const router = useRouter();
-  const { myLeaves, quota, loading } = useLeave();
+  const { myLeaves, quota, loading, cancelLeave } = useLeave();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedLeaveId, setSelectedLeaveId] = useState<string | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   // Filter leaves based on status
   const filteredLeaves = myLeaves.filter(leave => {
@@ -31,11 +79,36 @@ export default function LeaveHistoryPage() {
     return leave.status === filter;
   });
 
-  // Group leaves by year
+  // Group leaves by year safely
   const leavesByYear = filteredLeaves.reduce((acc, leave) => {
-    const year = new Date(leave.startDate).getFullYear();
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(leave);
+    try {
+      // Safely get year
+      let year: number;
+      if (leave.startDate instanceof Date) {
+        year = leave.startDate.getFullYear();
+      } else if (typeof leave.startDate === 'string' || typeof leave.startDate === 'number') {
+        year = new Date(leave.startDate).getFullYear();
+      } else if (leave.startDate?.seconds) {
+        year = new Date(leave.startDate.seconds * 1000).getFullYear();
+      } else if (leave.startDate?.toDate) {
+        year = leave.startDate.toDate().getFullYear();
+      } else {
+        year = new Date().getFullYear(); // Default to current year
+      }
+      
+      if (isNaN(year)) {
+        year = new Date().getFullYear();
+      }
+      
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(leave);
+    } catch (error) {
+      console.error('Error grouping leave by year:', error, leave);
+      // Put in current year if error
+      const currentYear = new Date().getFullYear();
+      if (!acc[currentYear]) acc[currentYear] = [];
+      acc[currentYear].push(leave);
+    }
     return acc;
   }, {} as Record<number, typeof myLeaves>);
 
@@ -62,6 +135,20 @@ export default function LeaveHistoryPage() {
     
     const variant = variants[status] || variants.cancelled;
     return <Badge className={variant.className}>{variant.text}</Badge>;
+  };
+
+  const handleCancelLeave = async () => {
+    if (!selectedLeaveId) return;
+    
+    await cancelLeave(selectedLeaveId);
+    setCancelDialogOpen(false);
+    setSelectedLeaveId(null);
+    setShowSuccessDialog(true);
+  };
+
+  const openCancelDialog = (leaveId: string) => {
+    setSelectedLeaveId(leaveId);
+    setCancelDialogOpen(true);
   };
 
   return (
@@ -211,14 +298,25 @@ export default function LeaveHistoryPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {leaves
-                  .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                  .sort((a, b) => {
+                    // Safely sort by date
+                    try {
+                      const dateA = a.startDate instanceof Date ? a.startDate : new Date(a.startDate);
+                      const dateB = b.startDate instanceof Date ? b.startDate : new Date(b.startDate);
+                      return dateB.getTime() - dateA.getTime();
+                    } catch {
+                      return 0;
+                    }
+                  })
                   .map((leave) => (
                     <div
                       key={leave.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/leaves/history/${leave.id}`)}
+                      className="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                     >
-                      <div className="flex items-start gap-4">
+                      <div 
+                        className="flex items-start gap-4 flex-1 cursor-pointer"
+                        onClick={() => router.push(`/leaves/history/${leave.id}`)}
+                      >
                         {getStatusIcon(leave.status)}
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -228,8 +326,8 @@ export default function LeaveHistoryPage() {
                             {getStatusBadge(leave.status)}
                           </div>
                           <p className="text-sm text-gray-600">
-                            {format(new Date(leave.startDate), 'dd MMM yyyy', { locale: th })} - 
-                            {format(new Date(leave.endDate), 'dd MMM yyyy', { locale: th })}
+                            {safeFormatDate(leave.startDate, 'dd MMM yyyy', { locale: th })} - 
+                            {safeFormatDate(leave.endDate, 'dd MMM yyyy', { locale: th })}
                             <span className="ml-2">({leave.totalDays} วัน)</span>
                           </p>
                           <p className="text-sm text-gray-500">{leave.reason}</p>
@@ -238,17 +336,39 @@ export default function LeaveHistoryPage() {
                               เหตุผล: {leave.rejectedReason}
                             </p>
                           )}
+                          {leave.status === 'cancelled' && leave.cancelReason && (
+                            <p className="text-sm text-gray-600">
+                              ยกเลิกเมื่อ: {safeFormatDate(leave.cancelledAt, 'dd/MM/yyyy HH:mm')}
+                            </p>
+                          )}
                         </div>
                       </div>
                       
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">
-                          {format(new Date(leave.createdAt), 'dd/MM/yyyy HH:mm')}
-                        </p>
-                        {leave.urgentMultiplier > 1 && (
-                          <Badge variant="outline" className="mt-1">
-                            ลาด่วน x{leave.urgentMultiplier}
-                          </Badge>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm text-gray-500">
+                            {safeFormatDate(leave.createdAt, 'dd/MM/yyyy HH:mm')}
+                          </p>
+                          {leave.urgentMultiplier > 1 && (
+                            <Badge variant="outline" className="mt-1">
+                              ลาด่วน x{leave.urgentMultiplier}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Cancel button for pending leaves */}
+                        {leave.status === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCancelDialog(leave.id!);
+                            }}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -257,6 +377,58 @@ export default function LeaveHistoryPage() {
             </Card>
           ))
       )}
+      
+      {/* Cancel Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการยกเลิกคำขอลา</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณต้องการยกเลิกคำขอลานี้หรือไม่? การยกเลิกไม่สามารถแก้ไขได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ไม่ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCancelLeave}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              ยืนยันยกเลิก
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Success Dialog */}
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              ยกเลิกคำขอลาสำเร็จ
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              คำขอลาของคุณถูกยกเลิกเรียบร้อยแล้ว
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <p className="font-medium text-center">ต้องการยื่นคำขอลาใหม่หรือไม่?</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ปิด</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                router.push('/leaves/request');
+              }}
+              className="bg-gradient-to-r from-red-500 to-rose-600"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              ยื่นคำขอใหม่
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -201,6 +201,38 @@ export const rejectLeaveRequest = async (
   });
 };
 
+// Cancel Leave Request (NEW)
+export const cancelLeaveRequest = async (
+  leaveId: string,
+  cancelledBy: string,
+  cancelReason?: string
+): Promise<void> => {
+  const leaveRef = doc(db, 'leaves', leaveId);
+  const leaveSnap = await getDoc(leaveRef);
+  
+  if (!leaveSnap.exists()) {
+    throw new Error('ไม่พบคำขอลา');
+  }
+  
+  const leave = leaveSnap.data() as LeaveRequest;
+  
+  // Check if can cancel (only pending status)
+  if (leave.status !== 'pending') {
+    throw new Error('ไม่สามารถยกเลิกคำขอที่อนุมัติแล้วหรือถูกปฏิเสธแล้ว');
+  }
+  
+  // Check if user can cancel (only the requester or HR/Admin)
+  // This check should be done in the UI/hook level
+  
+  await updateDoc(leaveRef, {
+    status: 'cancelled',
+    cancelledBy,
+    cancelledAt: serverTimestamp(),
+    cancelReason: cancelReason || 'ยกเลิกโดยผู้ใช้',
+    updatedAt: serverTimestamp()
+  });
+};
+
 // File Management
 export const uploadLeaveAttachment = async (
   leaveId: string,
@@ -291,7 +323,7 @@ export const validateLeaveRequest = (
   type: LeaveType,
   startDate: Date,
   isUrgent: boolean
-): { valid: boolean; message?: string } => {
+): { valid: boolean; message?: string; warning?: string } => {
   const rules = LEAVE_RULES[type];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -305,13 +337,14 @@ export const validateLeaveRequest = (
     };
   }
   
-  // Check advance notice (only if not urgent and future date)
-  if (!isUrgent && startDate > today) {
+  // Check advance notice - แค่เตือน ไม่ block
+  if (!isUrgent && startDate > today && rules.advanceNotice > 0) {
     const daysDiff = Math.floor((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (daysDiff < rules.advanceNotice) {
+      // Return warning instead of error
       return { 
-        valid: false, 
-        message: `ต้องลาล่วงหน้าอย่างน้อย ${rules.advanceNotice} วัน` 
+        valid: true,
+        warning: `การลา${type === 'personal' ? 'กิจ' : 'พักร้อน'}ควรแจ้งล่วงหน้า ${rules.advanceNotice} วัน หากดำเนินการต่อจะถูกหักโควต้า ${rules.urgentMultiplier} เท่า` 
       };
     }
   }

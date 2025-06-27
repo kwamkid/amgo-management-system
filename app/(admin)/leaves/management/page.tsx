@@ -35,11 +35,45 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
 
+interface ExtendedLeaveRequest extends LeaveRequest {
+  userAvatar?: string;
+}
+
+// Helper function to safely format date
+const safeFormatDate = (date: any, formatString: string, options?: any) => {
+  try {
+    if (!date) return '-'
+    
+    // Convert to Date object if needed
+    let dateObj: Date
+    if (date instanceof Date) {
+      dateObj = date
+    } else if (typeof date === 'string' || typeof date === 'number') {
+      dateObj = new Date(date)
+    } else if (date?.seconds) {
+      // Firestore Timestamp
+      dateObj = new Date(date.seconds * 1000)
+    } else {
+      return '-'
+    }
+    
+    // Check if valid date
+    if (isNaN(dateObj.getTime())) {
+      return '-'
+    }
+    
+    return format(dateObj, formatString, options)
+  } catch (error) {
+    console.error('Date formatting error:', error, date)
+    return '-'
+  }
+}
+
 export default function LeaveManagementPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const { approveLeave, rejectLeave, loading } = useLeave()
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([])
+  const [leaves, setLeaves] = useState<ExtendedLeaveRequest[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending')
   const [searchTerm, setSearchTerm] = useState('')
   const [fetching, setFetching] = useState(true)
@@ -67,10 +101,20 @@ export default function LeaveManagementPage() {
       }
 
       const snapshot = await getDocs(q)
-      const leavesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as LeaveRequest))
+      const leavesData = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          // Ensure dates are properly formatted
+          startDate: data.startDate,
+          endDate: data.endDate,
+          createdAt: data.createdAt,
+          approvedAt: data.approvedAt,
+          updatedAt: data.updatedAt,
+          userAvatar: data.userAvatar || null // Include avatar
+        } as ExtendedLeaveRequest
+      })
 
       setLeaves(leavesData)
     } catch (error) {
@@ -276,18 +320,41 @@ export default function LeaveManagementPage() {
                   <div className="flex-1 space-y-3">
                     {/* Employee Info */}
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-lg">{leave.userName}</span>
+                      <div className="flex items-center gap-3">
+                        {/* Profile Image */}
+                        {leave.userAvatar ? (
+                          <img
+                            src={leave.userAvatar}
+                            alt={leave.userName}
+                            className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-10 h-10 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center ${leave.userAvatar ? 'hidden' : ''}`}>
+                          <User className="w-5 h-5 text-gray-600" />
+                        </div>
+                        
+                        <div>
+                          <span className="font-medium text-lg">{leave.userName}</span>
+                          {leave.userEmail && (
+                            <p className="text-sm text-gray-500">{leave.userEmail}</p>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant="outline">
-                        {LEAVE_TYPE_LABELS[leave.type]}
-                      </Badge>
-                      {leave.urgentMultiplier > 1 && (
-                        <Badge variant="error">
-                          ลาด่วน x{leave.urgentMultiplier}
+                      
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          {LEAVE_TYPE_LABELS[leave.type]}
                         </Badge>
-                      )}
+                        {leave.urgentMultiplier > 1 && (
+                          <Badge variant="error">
+                            ลาด่วน x{leave.urgentMultiplier}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Leave Details */}
@@ -295,15 +362,15 @@ export default function LeaveManagementPage() {
                       <div>
                         <p className="text-sm text-gray-600">ระยะเวลา</p>
                         <p className="font-medium">
-                          {format(new Date(leave.startDate), 'dd MMM yyyy', { locale: th })} - 
-                          {format(new Date(leave.endDate), 'dd MMM yyyy', { locale: th })}
+                          {safeFormatDate(leave.startDate, 'dd MMM yyyy', { locale: th })} - 
+                          {safeFormatDate(leave.endDate, 'dd MMM yyyy', { locale: th })}
                           <span className="text-gray-600 ml-2">({leave.totalDays} วัน)</span>
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">ส่งคำขอเมื่อ</p>
                         <p className="font-medium">
-                          {format(new Date(leave.createdAt), 'dd MMM yyyy HH:mm', { locale: th })}
+                          {safeFormatDate(leave.createdAt, 'dd MMM yyyy HH:mm', { locale: th })}
                         </p>
                       </div>
                     </div>

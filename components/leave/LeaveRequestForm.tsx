@@ -34,7 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@//types/leave';
+import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
 import { calculateLeaveDays } from '@/lib/services/leaveService';
 
@@ -52,12 +52,14 @@ const formSchema = z.object({
   reason: z.string().min(10, {
     message: "กรุณาระบุเหตุผลอย่างน้อย 10 ตัวอักษร",
   }),
-  isUrgent: z.boolean().default(false),
+  isUrgent: z.boolean(),
   attachments: z.array(z.instanceof(File)).optional(),
 }).refine((data) => data.endDate >= data.startDate, {
   message: "วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่ม",
   path: ["endDate"],
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 interface LeaveRequestFormProps {
   onSuccess?: () => void;
@@ -69,7 +71,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const [urgentCharge, setUrgentCharge] = useState(0);
   const [requireCertificate, setRequireCertificate] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: 'sick',
@@ -89,7 +91,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
       const days = calculateLeaveDays(watchStartDate, watchEndDate);
       setTotalDays(days);
       
-      // Check if medical certificate required
+      // Check if medical certificate warning needed (not required)
       if (watchType === 'sick' && days > LEAVE_RULES.sick.requireCertificate) {
         setRequireCertificate(true);
       } else {
@@ -148,7 +150,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     form.setValue('attachments', validFiles);
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormData) => {
     await createLeaveRequest(
       values.type,
       values.startDate,
@@ -217,7 +219,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(field.value, "dd/MM/yyyy")
                         ) : (
                           <span>เลือกวันที่</span>
                         )}
@@ -263,7 +265,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(field.value, "dd/MM/yyyy")
                         ) : (
                           <span>เลือกวันที่</span>
                         )}
@@ -276,7 +278,17 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < (watchStartDate || new Date())}
+                      disabled={(date) => {
+                        // ต้องไม่น้อยกว่าวันที่เริ่มลา
+                        if (watchStartDate && date < watchStartDate) {
+                          return true;
+                        }
+                        // ถ้าวันที่เริ่มไม่สามารถลาย้อนหลัง วันสิ้นสุดก็ต้องไม่น้อยกว่าวันนี้
+                        if (!LEAVE_RULES[watchType].allowBackdate && date < new Date()) {
+                          return true;
+                        }
+                        return false;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -345,7 +357,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           )}
         />
 
-        {(requireCertificate || form.watch('attachments')?.length > 0) && (
+        {(requireCertificate || (form.watch('attachments')?.length ?? 0) > 0) && (
           <FormField
             control={form.control}
             name="attachments"
@@ -354,7 +366,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                 <FormLabel>
                   แนบเอกสาร
                   {requireCertificate && (
-                    <span className="text-red-500 ml-1">*</span>
+                    <span className="text-orange-600 ml-1">(แนะนำ)</span>
                   )}
                 </FormLabel>
                 <FormControl>
@@ -367,10 +379,15 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       className="cursor-pointer"
                     />
                     {requireCertificate && (
-                      <Alert>
+                      <Alert variant="warning">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          ลาป่วยเกิน {LEAVE_RULES.sick.requireCertificate} วัน ต้องแนบใบรับรองแพทย์
+                          ลาป่วยเกิน {LEAVE_RULES.sick.requireCertificate} วัน แนะนำให้แนบใบรับรองแพทย์
+                          {(form.watch('attachments')?.length ?? 0) === 0 && (
+                            <span className="block mt-1 font-medium">
+                              ⚠️ ยังไม่มีใบรับรองแพทย์ - สามารถส่งคำขอได้แต่อาจถูกขอเอกสารเพิ่มเติมภายหลัง
+                            </span>
+                          )}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -386,7 +403,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         )}
 
         {!canSubmit && (
-          <Alert variant="destructive">
+          <Alert variant="error">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               โควต้าไม่เพียงพอ! ต้องการ {urgentCharge} วัน แต่คงเหลือ {remainingQuota} วัน

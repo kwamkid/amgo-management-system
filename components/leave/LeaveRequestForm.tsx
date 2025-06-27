@@ -108,6 +108,25 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     }
   }, [watchIsUrgent, watchType, totalDays]);
 
+  // Check if has quota
+  const hasQuota = quota && (
+    quota.sick.total > 0 || 
+    quota.personal.total > 0 || 
+    quota.vacation.total > 0
+  );
+
+  if (!hasQuota) {
+    return (
+      <Alert variant="warning">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <p className="font-medium mb-2">ยังไม่สามารถขอลาได้</p>
+          <p>คุณยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล</p>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {

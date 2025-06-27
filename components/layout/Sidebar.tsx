@@ -111,6 +111,12 @@ const navItems: NavItem[] = [
         href: '/leaves/management',
         icon: <UserCog className="w-4 h-4" />,
         roles: ['hr', 'admin', 'manager']
+      },
+      {
+        label: 'จัดการโควต้า',
+        href: '/leaves/quota',
+        icon: <Settings className="w-4 h-4" />,
+        roles: ['hr', 'admin']
       }
     ]
   },

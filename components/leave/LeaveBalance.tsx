@@ -11,10 +11,12 @@ import {
   Activity,
   Heart,
   Briefcase,
-  TrendingUp
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react';
 import { LeaveQuotaYear } from '@/types/leave';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface LeaveBalanceProps {
   quota: LeaveQuotaYear | null;
@@ -38,20 +40,25 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
   }
 
   if (!quota) {
-    return (
-      <Card className="border-0 shadow-md">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-red-600" />
-            สิทธิ์การลา
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-500 text-center py-8">ไม่พบข้อมูลสิทธิ์การลา</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  return (
+    <Card className="border-0 shadow-md">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-red-600" />
+          สิทธิ์การลา
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            ยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+}
 
   const leaveTypes = [
     {

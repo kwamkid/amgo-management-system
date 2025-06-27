@@ -30,22 +30,22 @@ export const getQuotaForYear = async (userId: string, year: number): Promise<Lea
   const quotaRef = doc(db, 'quotas', userId, 'years', year.toString());
   const quotaSnap = await getDoc(quotaRef);
   
-  if (!quotaSnap.exists()) {
-    // Create default quota if not exists
+    if (!quotaSnap.exists()) {
+    // Create zero quota if not exists - HR must assign quota first
     const defaultQuota: LeaveQuotaYear = {
-      userId,
-      year,
-      sick: { total: 30, used: 0, remaining: 30 },
-      personal: { total: 3, used: 0, remaining: 3 },
-      vacation: { total: 6, used: 0, remaining: 6 }, // Default for new employee
-      updatedBy: 'system',
-      updatedAt: new Date(),
-      history: []
+        userId,
+        year,
+        sick: { total: 0, used: 0, remaining: 0 },
+        personal: { total: 0, used: 0, remaining: 0 },
+        vacation: { total: 0, used: 0, remaining: 0 },
+        updatedBy: 'system',
+        updatedAt: new Date(),
+        history: []
     };
     
     await setDoc(quotaRef, defaultQuota);
     return defaultQuota;
-  }
+    }
   
   return quotaSnap.data() as LeaveQuotaYear;
 };

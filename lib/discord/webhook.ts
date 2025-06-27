@@ -10,8 +10,7 @@ import {
 } from '@/types/discord'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
+import { safeFormatDate, formatDateRange } from '@/lib/utils/date'
 
 // Helper function to get webhook URL from database settings
 async function getWebhookUrl(channel: WebhookChannel): Promise<string | null> {
@@ -43,6 +42,20 @@ async function isNotificationEnabled(type: string): Promise<boolean> {
   } catch (error) {
     console.error('Error checking notification settings:', error)
     return false
+  }
+}
+
+// Helper function to get leave type emoji and label
+function getLeaveTypeInfo(type: string): { emoji: string; label: string; color: number } {
+  switch (type) {
+    case 'sick':
+      return { emoji: '🏥', label: 'ลาป่วย', color: 0xf472b6 } // pink
+    case 'personal':
+      return { emoji: '🏠', label: 'ลากิจ', color: 0x3b82f6 } // blue
+    case 'vacation':
+      return { emoji: '🏖️', label: 'ลาพักร้อน', color: 0x10b981 } // green
+    default:
+      return { emoji: '📋', label: 'ลา', color: EmbedColors.INFO }
   }
 }
 
@@ -88,7 +101,7 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
   
-  const embed = {
+  const embed: DiscordEmbed = {
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
@@ -98,12 +111,12 @@ export async function sendCheckInNotification(event: NotificationEvent) {
     fields: [
       {
         name: 'เวลา',
-        value: format(event.timestamp, 'HH:mm', { locale: th }),
+        value: safeFormatDate(event.timestamp, 'HH:mm'),
         inline: true
       },
       {
         name: 'วันที่',
-        value: format(event.timestamp, 'dd MMM yyyy', { locale: th }),
+        value: safeFormatDate(event.timestamp, 'dd MMM yyyy'),
         inline: true
       }
     ],
@@ -124,7 +137,7 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
   const { totalHours, overtime } = event.data || {}
   
-  const embed = {
+  const embed: DiscordEmbed = {
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
@@ -149,6 +162,141 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
   return webhook.sendEmbed(embed)
 }
 
+export async function sendLeaveRequestNotification(event: NotificationEvent) {
+  // Check if notification is enabled
+  const enabled = await isNotificationEnabled('leaveRequest')
+  if (!enabled) return false
+
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  const { leaveType, startDate, endDate, totalDays, reason, isUrgent } = event.data || {}
+  
+  const leaveInfo = getLeaveTypeInfo(leaveType)
+  
+  const embed: DiscordEmbed = {
+    title: `${leaveInfo.emoji} คำขอ${leaveInfo.label}ใหม่`,
+    author: {
+      name: event.userName,
+      icon_url: event.userAvatar || undefined
+    },
+    color: leaveInfo.color,
+    fields: [
+      {
+        name: '📅 วันที่ลา',
+        value: formatDateRange(startDate, endDate, 'dd MMM yyyy'),
+        inline: true
+      },
+      {
+        name: '📊 จำนวนวัน',
+        value: `${totalDays} วัน${isUrgent ? ' (ลาด่วน)' : ''}`,
+        inline: true
+      },
+      {
+        name: '📝 เหตุผล',
+        value: reason || 'ไม่ระบุ',
+        inline: false
+      }
+    ],
+    footer: {
+      text: '⏳ รออนุมัติ | AMGO Leave System'
+    },
+    timestamp: new Date().toISOString()
+  }
+
+  // Add urgent badge if needed
+  if (isUrgent) {
+    embed.fields!.push({
+      name: '⚠️ หมายเหตุ',
+      value: 'คำขอลาด่วน - คิดโควต้าเพิ่มเติม',
+      inline: false
+    })
+  }
+
+  return webhook.sendEmbed(embed)
+}
+
+export async function sendLeaveApprovalNotification(event: NotificationEvent) {
+  // Check if notification is enabled
+  const enabled = await isNotificationEnabled('leaveApproval')
+  if (!enabled) return false
+
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  const { leaveType, startDate, endDate, approvedBy } = event.data || {}
+  
+  const leaveInfo = getLeaveTypeInfo(leaveType)
+  
+  const embed: DiscordEmbed = {
+    title: `✅ อนุมัติ${leaveInfo.label}`,
+    author: {
+      name: event.userName,
+      icon_url: event.userAvatar || undefined
+    },
+    description: `คำขอ${leaveInfo.label}ได้รับการอนุมัติแล้ว`,
+    color: EmbedColors.SUCCESS,
+    fields: [
+      {
+        name: '📅 วันที่ลา',
+        value: formatDateRange(startDate, endDate, 'dd MMM yyyy'),
+        inline: true
+      },
+      {
+        name: '👤 อนุมัติโดย',
+        value: approvedBy,
+        inline: true
+      }
+    ],
+    footer: {
+      text: 'AMGO Leave System'
+    },
+    timestamp: new Date().toISOString()
+  }
+
+  return webhook.sendEmbed(embed)
+}
+
+export async function sendLeaveRejectionNotification(event: NotificationEvent) {
+  // Check if notification is enabled
+  const enabled = await isNotificationEnabled('leaveRejection')
+  if (!enabled) return false
+
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  const { leaveType, startDate, endDate, rejectedBy, reason } = event.data || {}
+  
+  const leaveInfo = getLeaveTypeInfo(leaveType)
+  
+  const embed: DiscordEmbed = {
+    title: `❌ ไม่อนุมัติ${leaveInfo.label}`,
+    author: {
+      name: event.userName,
+      icon_url: event.userAvatar || undefined
+    },
+    description: `คำขอ${leaveInfo.label}ไม่ได้รับการอนุมัติ`,
+    color: EmbedColors.DANGER,
+    fields: [
+      {
+        name: '📅 วันที่ขอลา',
+        value: formatDateRange(startDate, endDate, 'dd MMM yyyy'),
+        inline: false
+      },
+      {
+        name: '❌ เหตุผล',
+        value: reason || 'ไม่ระบุ',
+        inline: false
+      },
+      {
+        name: '👤 ไม่อนุมัติโดย',
+        value: rejectedBy,
+        inline: true
+      }
+    ],
+    footer: {
+      text: 'AMGO Leave System'
+    },
+    timestamp: new Date().toISOString()
+  }
+
+  return webhook.sendEmbed(embed)
+}
+
 export async function sendLateNotification(lateUsers: any[]) {
   // Check if notification is enabled
   const enabled = await isNotificationEnabled('late')
@@ -156,7 +304,7 @@ export async function sendLateNotification(lateUsers: any[]) {
 
   const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
   
-  const embed = {
+  const embed: DiscordEmbed = {
     title: '⚠️ พนักงานมาสาย',
     description: `มีพนักงาน ${lateUsers.length} คน มาสายวันนี้`,
     color: EmbedColors.WARNING,
@@ -179,7 +327,7 @@ export async function sendOvertimeAlert(event: NotificationEvent) {
   const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
   const { hours, isOvernight } = event.data || {}
   
-  const embed = {
+  const embed: DiscordEmbed = {
     title: isOvernight ? '🌙 ทำงานข้ามวัน' : '⏰ ทำงานนานเกินไป',
     description: `**${event.userName}** ทำงานมา ${hours} ชั่วโมงแล้ว`,
     color: isOvernight ? EmbedColors.PURPLE : EmbedColors.WARNING,
@@ -191,7 +339,7 @@ export async function sendOvertimeAlert(event: NotificationEvent) {
       },
       {
         name: 'เริ่มงาน',
-        value: format(event.data.checkinTime, 'HH:mm', { locale: th }),
+        value: safeFormatDate(event.data?.checkinTime, 'HH:mm'),
         inline: true
       }
     ],
@@ -218,9 +366,9 @@ export async function sendDailySummary(data: {
 
   const webhook = new DiscordWebhook(WebhookChannel.HR)
   
-  const embed = {
+  const embed: DiscordEmbed = {
     title: '📊 สรุปการมาทำงานประจำวัน',
-    description: format(new Date(), 'EEEE dd MMMM yyyy', { locale: th }),
+    description: safeFormatDate(new Date(), 'EEEE dd MMMM yyyy'),
     color: EmbedColors.INFO,
     fields: [
       {

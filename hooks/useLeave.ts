@@ -5,9 +5,11 @@ import {
   LeaveRequest, 
   LeaveQuotaYear, 
   LeaveType,
-  LeaveStatus 
+  LeaveStatus,
+  LEAVE_TYPE_LABELS 
 } from '@/types/leave';
 import * as leaveService from '@/lib/services/leaveService';
+import { DiscordNotificationService } from '@/lib/discord/notificationService';
 
 export const useLeave = () => {
   const { userData } = useAuth();
@@ -110,6 +112,24 @@ export const useLeave = () => {
         // Note: You'll need to add an updateLeaveRequest function
       }
       
+      // Send Discord notification
+      try {
+        await DiscordNotificationService.notifyLeaveRequest(
+          userData.id,
+          userData.lineDisplayName || userData.fullName,
+          LEAVE_TYPE_LABELS[type],
+          startDate,
+          endDate,
+          totalDays,
+          reason,
+          isUrgent,
+          userData.linePictureUrl
+        );
+      } catch (error) {
+        console.error('Discord notification failed:', error);
+        // Don't fail the whole operation if Discord fails
+      }
+      
       showToast('ส่งคำขอลาเรียบร้อยแล้ว', 'success');
       
       // Refresh data
@@ -128,7 +148,58 @@ export const useLeave = () => {
     
     setLoading(true);
     try {
+      // Get leave details for notification
+      const leave = teamLeaves.find(l => l.id === leaveId);
+      
       await leaveService.approveLeaveRequest(leaveId, userData.id);
+      
+      // Send Discord notification
+      if (leave) {
+        try {
+          // Safely convert dates
+          let startDate: Date;
+          let endDate: Date;
+          
+          try {
+            if (leave.startDate instanceof Date) {
+              startDate = leave.startDate;
+            } else if ((leave.startDate as any)?.toDate) {
+              startDate = (leave.startDate as any).toDate();
+            } else if ((leave.startDate as any)?.seconds) {
+              startDate = new Date((leave.startDate as any).seconds * 1000);
+            } else {
+              startDate = new Date(leave.startDate as any);
+            }
+            
+            if (leave.endDate instanceof Date) {
+              endDate = leave.endDate;
+            } else if ((leave.endDate as any)?.toDate) {
+              endDate = (leave.endDate as any).toDate();
+            } else if ((leave.endDate as any)?.seconds) {
+              endDate = new Date((leave.endDate as any).seconds * 1000);
+            } else {
+              endDate = new Date(leave.endDate as any);
+            }
+          } catch (err) {
+            console.error('Date conversion error:', err);
+            // Use today as fallback
+            startDate = new Date();
+            endDate = new Date();
+          }
+          
+          await DiscordNotificationService.notifyLeaveApproval(
+            leave.userId,
+            leave.userName,
+            LEAVE_TYPE_LABELS[leave.type],
+            startDate,
+            endDate,
+            userData.lineDisplayName || userData.fullName,
+            leave.userAvatar
+          );
+        } catch (error) {
+          console.error('Discord notification failed:', error);
+        }
+      }
       
       showToast('อนุมัติคำขอลาเรียบร้อยแล้ว', 'success');
       
@@ -147,7 +218,59 @@ export const useLeave = () => {
     
     setLoading(true);
     try {
+      // Get leave details for notification
+      const leave = teamLeaves.find(l => l.id === leaveId);
+      
       await leaveService.rejectLeaveRequest(leaveId, userData.id, reason);
+      
+      // Send Discord notification
+      if (leave) {
+        try {
+          // Safely convert dates
+          let startDate: Date;
+          let endDate: Date;
+          
+          try {
+            if (leave.startDate instanceof Date) {
+              startDate = leave.startDate;
+            } else if ((leave.startDate as any)?.toDate) {
+              startDate = (leave.startDate as any).toDate();
+            } else if ((leave.startDate as any)?.seconds) {
+              startDate = new Date((leave.startDate as any).seconds * 1000);
+            } else {
+              startDate = new Date(leave.startDate as any);
+            }
+            
+            if (leave.endDate instanceof Date) {
+              endDate = leave.endDate;
+            } else if ((leave.endDate as any)?.toDate) {
+              endDate = (leave.endDate as any).toDate();
+            } else if ((leave.endDate as any)?.seconds) {
+              endDate = new Date((leave.endDate as any).seconds * 1000);
+            } else {
+              endDate = new Date(leave.endDate as any);
+            }
+          } catch (err) {
+            console.error('Date conversion error:', err);
+            // Use today as fallback
+            startDate = new Date();
+            endDate = new Date();
+          }
+          
+          await DiscordNotificationService.notifyLeaveRejection(
+            leave.userId,
+            leave.userName,
+            LEAVE_TYPE_LABELS[leave.type],
+            startDate,
+            endDate,
+            userData.lineDisplayName || userData.fullName,
+            reason,
+            leave.userAvatar
+          );
+        } catch (error) {
+          console.error('Discord notification failed:', error);
+        }
+      }
       
       showToast('ปฏิเสธคำขอลาเรียบร้อยแล้ว', 'success');
       
@@ -252,7 +375,7 @@ export const useLeave = () => {
     approveLeave,
     rejectLeave,
     cancelLeave,
-    cancelApprovedLeave, // เพิ่ม cancelApprovedLeave
+    cancelApprovedLeave,
     updateQuota,
     refreshData: async () => {
       await Promise.all([

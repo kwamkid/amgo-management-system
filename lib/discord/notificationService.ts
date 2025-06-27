@@ -51,6 +51,105 @@ export class DiscordNotificationService {
     }
   }
   
+  // Send leave request notification
+  static async notifyLeaveRequest(
+    userId: string,
+    userName: string,
+    leaveType: string,
+    startDate: Date,
+    endDate: Date,
+    totalDays: number,
+    reason: string,
+    isUrgent: boolean = false,
+    userAvatar?: string
+  ) {
+    const event: NotificationEvent = {
+      type: 'leave_request',
+      userId,
+      userName,
+      userAvatar,
+      timestamp: new Date(),
+      data: { 
+        leaveType, 
+        startDate, 
+        endDate, 
+        totalDays,
+        reason,
+        isUrgent
+      }
+    }
+    
+    try {
+      await webhookHandlers.sendLeaveRequestNotification(event)
+    } catch (error) {
+      console.error('Failed to send leave request notification:', error)
+    }
+  }
+  
+  // Send leave approval notification
+  static async notifyLeaveApproval(
+    userId: string,
+    userName: string,
+    leaveType: string,
+    startDate: Date,
+    endDate: Date,
+    approvedBy: string,
+    userAvatar?: string
+  ) {
+    const event: NotificationEvent = {
+      type: 'leave_approved',
+      userId,
+      userName,
+      userAvatar,
+      timestamp: new Date(),
+      data: { 
+        leaveType, 
+        startDate, 
+        endDate,
+        approvedBy
+      }
+    }
+    
+    try {
+      await webhookHandlers.sendLeaveApprovalNotification(event)
+    } catch (error) {
+      console.error('Failed to send leave approval notification:', error)
+    }
+  }
+  
+  // Send leave rejection notification
+  static async notifyLeaveRejection(
+    userId: string,
+    userName: string,
+    leaveType: string,
+    startDate: Date,
+    endDate: Date,
+    rejectedBy: string,
+    reason: string,
+    userAvatar?: string
+  ) {
+    const event: NotificationEvent = {
+      type: 'leave_rejected',
+      userId,
+      userName,
+      userAvatar,
+      timestamp: new Date(),
+      data: { 
+        leaveType, 
+        startDate, 
+        endDate,
+        rejectedBy,
+        reason
+      }
+    }
+    
+    try {
+      await webhookHandlers.sendLeaveRejectionNotification(event)
+    } catch (error) {
+      console.error('Failed to send leave rejection notification:', error)
+    }
+  }
+  
   // Send overtime alert
   static async notifyOvertime(
     userId: string,

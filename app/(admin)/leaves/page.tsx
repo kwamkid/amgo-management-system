@@ -17,7 +17,6 @@ import {
   History,
   CalendarCheck,
   Users
-
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,8 +27,8 @@ import { gradients, colorClasses } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import LeaveBalance from '@/components/leave/LeaveBalance'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
+import { safeFormatDate, formatDateRange, toDate } from '@/lib/utils/date'
+import { LEAVE_TYPE_LABELS } from '@/types/leave'
 
 export default function LeavePage() {
   const router = useRouter()
@@ -45,10 +44,19 @@ export default function LeavePage() {
   const approvedCount = myLeaves.filter(l => l.status === 'approved').length
   const rejectedCount = myLeaves.filter(l => l.status === 'rejected').length
   
-  // Get upcoming approved leaves
+  // Get upcoming approved leaves - with safe date handling
   const upcomingLeaves = myLeaves
-    .filter(l => l.status === 'approved' && new Date(l.startDate) > new Date())
-    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .filter(l => {
+      if (l.status !== 'approved') return false
+      const startDate = toDate(l.startDate)
+      return startDate && startDate > new Date()
+    })
+    .sort((a, b) => {
+      const dateA = toDate(a.startDate)
+      const dateB = toDate(b.startDate)
+      if (!dateA || !dateB) return 0
+      return dateA.getTime() - dateB.getTime()
+    })
     .slice(0, 3)
 
   if (loading) {
@@ -167,30 +175,29 @@ export default function LeavePage() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">
-                                {leave.type === 'sick' && 'ลาป่วย'}
-                                {leave.type === 'personal' && 'ลากิจ'}
-                                {leave.type === 'vacation' && 'ลาพักร้อน'}
+                                {LEAVE_TYPE_LABELS[leave.type]}
                               </p>
                               <Badge 
                                 variant={
                                   leave.status === 'approved' ? 'success' :
                                   leave.status === 'rejected' ? 'error' :
+                                  leave.status === 'cancelled' ? 'secondary' :
                                   'warning'
                                 }
                               >
                                 {leave.status === 'approved' && 'อนุมัติแล้ว'}
                                 {leave.status === 'rejected' && 'ไม่อนุมัติ'}
                                 {leave.status === 'pending' && 'รออนุมัติ'}
+                                {leave.status === 'cancelled' && 'ยกเลิก'}
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600">
-                              {format(new Date(leave.startDate), 'dd MMM yyyy', { locale: th })} - 
-                              {format(new Date(leave.endDate), 'dd MMM yyyy', { locale: th })}
+                              {formatDateRange(leave.startDate, leave.endDate, 'dd MMM yyyy')}
                               <span className="ml-2">({leave.totalDays} วัน)</span>
                             </p>
                             <p className="text-sm text-gray-500">{leave.reason}</p>
                           </div>
-                          <Link href={`/leaves/history/${leave.id}`}>
+                          <Link href="/leaves/history">
                             <Button variant="ghost" size="sm">
                               ดูรายละเอียด
                             </Button>
@@ -249,13 +256,10 @@ export default function LeavePage() {
                 {upcomingLeaves.map((leave) => (
                   <div key={leave.id} className="p-3 bg-gray-50 rounded-lg">
                     <p className="font-medium text-sm">
-                      {leave.type === 'sick' && 'ลาป่วย'}
-                      {leave.type === 'personal' && 'ลากิจ'}
-                      {leave.type === 'vacation' && 'ลาพักร้อน'}
+                      {LEAVE_TYPE_LABELS[leave.type]}
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
-                      {format(new Date(leave.startDate), 'dd MMM', { locale: th })} - 
-                      {format(new Date(leave.endDate), 'dd MMM yyyy', { locale: th })}
+                      {formatDateRange(leave.startDate, leave.endDate, 'dd MMM yyyy')}
                     </p>
                   </div>
                 ))}

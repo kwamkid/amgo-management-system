@@ -183,9 +183,9 @@ export default function Sidebar({ userData }: SidebarProps) {
     
     navItems.forEach(item => {
       if (item.subItems) {
+        // Check if current pathname exactly matches any subitem
         const hasActiveSubItem = item.subItems.some(
-          subItem => pathname === subItem.href || 
-          (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
+          subItem => pathname === subItem.href
         )
         if (hasActiveSubItem) {
           expanded.push(item.label)
@@ -209,42 +209,16 @@ export default function Sidebar({ userData }: SidebarProps) {
     )
   }
 
-  const isItemActive = (item: NavItem, isSubItem: boolean = false): boolean => {
-    // Special handling for /checkin to prevent false positives
-    if (item.href === '/checkin' && !isSubItem) {
-      // Parent /checkin should not be active if we're on a sub-route
-      if (pathname.startsWith('/checkin/')) {
-        return false
-      }
-      return pathname === '/checkin'
-    }
-    
-    // Exact match
-    if (pathname === item.href) return true
-    
-    // For parent items with subitems
-    if (!isSubItem && item.subItems) {
-      // Parent should not be highlighted when subitem is active
-      return false
-    }
-    
-    // For pages under the path (but not for parent items with subitems)
-    if (!item.subItems && pathname.startsWith(`${item.href}/`)) {
-      return true
-    }
-    
-    return false
-  }
-
   const renderNavItem = (item: NavItem, isSubItem = false) => {
     const hasSubItems = item.subItems && item.subItems.length > 0
     const isExpanded = expandedItems.includes(item.label)
-    const isActive = isItemActive(item, isSubItem)
     
-    // Check if any subitem is active
+    // Check if this exact item is active
+    const isActive = pathname === item.href
+    
+    // Check if any subitem is active (for parent styling)
     const hasActiveSubItem = item.subItems?.some(subItem => 
-      pathname === subItem.href || 
-      (subItem.href !== item.href && pathname.startsWith(`${subItem.href}/`))
+      pathname === subItem.href
     ) || false
     
     // Filter subitems based on role
@@ -278,8 +252,8 @@ export default function Sidebar({ userData }: SidebarProps) {
             {isExpanded && filteredSubItems && (
               <div className="mt-1 ml-4 space-y-1">
                 {filteredSubItems.map(subItem => {
-                  const isSubItemActive = pathname === subItem.href || 
-                    (pathname.startsWith(`${subItem.href}/`) && subItem.href !== '/checkin')
+                  // Only exact match for subitems
+                  const isSubItemActive = pathname === subItem.href
                   
                   return (
                     <Link

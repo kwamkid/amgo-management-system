@@ -6,7 +6,7 @@ import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import ManagerSection from '@/components/dashboard/ManagerSection';
 import HRSection from '@/components/dashboard/HRSection';
 import AdminSection from '@/components/dashboard/AdminSection';
-import { Skeleton } from '@/components/ui/skeleton';
+import TechLoader from '@/components/shared/TechLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -14,21 +14,13 @@ export default function DashboardPage() {
   const { userData, loading, error } = useAuth();
 
   if (loading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
-      </div>
-    );
+    return <TechLoader />;
   }
 
   if (error) {
     return (
       <div className="p-6">
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -37,15 +29,7 @@ export default function DashboardPage() {
   }
 
   if (!userData) {
-    return (
-      <div className="p-6">
-        <Skeleton className="h-10 w-48 mb-6" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
-      </div>
-    );
+    return <TechLoader />;
   }
 
   return (

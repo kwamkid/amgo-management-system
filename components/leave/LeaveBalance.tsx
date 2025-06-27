@@ -1,19 +1,20 @@
+// components/leave/LeaveBalance.tsx
+
 'use client';
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, 
-  Briefcase, 
-  Heart, 
-  Plus,
-  Clock,
-  AlertCircle
+  Activity,
+  Heart,
+  Briefcase,
+  TrendingUp
 } from 'lucide-react';
-import { LeaveQuotaYear, LEAVE_TYPE_LABELS } from '@/types/leave';
-import { useRouter } from 'next/navigation';
+import { LeaveQuotaYear } from '@/types/leave';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LeaveBalanceProps {
   quota: LeaveQuotaYear | null;
@@ -21,18 +22,16 @@ interface LeaveBalanceProps {
 }
 
 export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
-  const router = useRouter();
-
   if (loading) {
     return (
       <Card className="border-0 shadow-md">
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-2 bg-gray-200 rounded"></div>
-            <div className="h-2 bg-gray-200 rounded"></div>
-            <div className="h-2 bg-gray-200 rounded"></div>
-          </div>
+        <CardHeader>
+          <Skeleton className="h-6 w-32" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
         </CardContent>
       </Card>
     );
@@ -41,11 +40,14 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
   if (!quota) {
     return (
       <Card className="border-0 shadow-md">
-        <CardContent className="p-6">
-          <div className="text-center text-gray-500">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2" />
-            <p className="text-base">ไม่พบข้อมูลโควต้าการลา</p>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-red-600" />
+            สิทธิ์การลา
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-500 text-center py-8">ไม่พบข้อมูลสิทธิ์การลา</p>
         </CardContent>
       </Card>
     );
@@ -53,83 +55,101 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
 
   const leaveTypes = [
     {
-      type: 'sick' as const,
+      type: 'sick',
+      label: 'ลาป่วย',
       icon: Heart,
-      color: 'from-red-400 to-red-600',
-      bgColor: 'bg-red-50',
-      progressColor: 'bg-red-500'
+      color: 'from-pink-500 to-rose-600',
+      bgColor: 'from-pink-50 to-rose-100',
+      iconColor: 'text-pink-600',
+      data: quota.sick
     },
     {
-      type: 'personal' as const,
+      type: 'personal',
+      label: 'ลากิจ',
       icon: Briefcase,
-      color: 'from-blue-400 to-blue-600',
-      bgColor: 'bg-blue-50',
-      progressColor: 'bg-blue-500'
+      color: 'from-blue-500 to-indigo-600',
+      bgColor: 'from-blue-50 to-indigo-100',
+      iconColor: 'text-blue-600',
+      data: quota.personal
     },
     {
-      type: 'vacation' as const,
-      icon: Calendar,
-      color: 'from-green-400 to-green-600',
-      bgColor: 'bg-green-50',
-      progressColor: 'bg-green-500'
+      type: 'vacation',
+      label: 'ลาพักร้อน',
+      icon: Activity,
+      color: 'from-emerald-500 to-teal-600',
+      bgColor: 'from-emerald-50 to-teal-100',
+      iconColor: 'text-emerald-600',
+      data: quota.vacation
     }
   ];
 
   return (
-    <Card className="border-0 shadow-md overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-slate-600 to-gray-700 text-white">
-        <div className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-medium flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            วันลาคงเหลือ
+    <Card className="border-0 shadow-md">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-red-600" />
+            สิทธิ์การลาประจำปี {quota.year}
           </CardTitle>
-          <Button
-            size="sm"
-            onClick={() => router.push('/leave/request')}
-            className="gap-1 bg-white text-slate-700 hover:bg-gray-100"
-          >
-            <Plus className="w-4 h-4" />
-            ขอลา
-          </Button>
+          <Badge variant="outline" className="font-normal">
+            อัพเดท: {quota.updatedAt ? new Date(quota.updatedAt).toLocaleDateString('th-TH') : '-'}
+          </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 p-6">
-        {leaveTypes.map(({ type, icon: Icon, color, bgColor, progressColor }) => {
-          const data = quota[type];
+      <CardContent className="space-y-4">
+        {leaveTypes.map(({ type, label, icon: Icon, color, bgColor, iconColor, data }) => {
           const percentage = data.total > 0 ? (data.used / data.total) * 100 : 0;
           
           return (
-            <div key={type} className="space-y-3">
-              <div className="flex items-center justify-between">
+            <div 
+              key={type}
+              className={`p-4 rounded-lg bg-gradient-to-r ${bgColor} border border-gray-100`}
+            >
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${color} text-white`}>
-                    <Icon className="w-5 h-5" />
+                  <div className={`p-2 bg-white rounded-lg shadow-sm`}>
+                    <Icon className={`w-5 h-5 ${iconColor}`} />
                   </div>
                   <div>
-                    <span className="text-base font-medium">
-                      {LEAVE_TYPE_LABELS[type]}
-                    </span>
-                    <p className="text-sm text-gray-500">
+                    <h4 className="font-medium text-gray-900">{label}</h4>
+                    <p className="text-sm text-gray-600 mt-0.5">
                       ใช้ไป {data.used} จาก {data.total} วัน
                     </p>
                   </div>
                 </div>
-                <span className="text-lg font-bold text-gray-700">
-                  {data.remaining}
-                </span>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900">{data.remaining}</p>
+                  <p className="text-xs text-gray-500">คงเหลือ</p>
+                </div>
               </div>
               
-              <div className="relative">
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${progressColor} transition-all duration-500 ease-out`}
-                    style={{ width: `${percentage}%` }}
-                  />
+              <div className="space-y-1">
+                <Progress 
+                  value={percentage} 
+                  className="h-2"
+                  indicatorClassName={`bg-gradient-to-r ${color}`}
+                />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>{percentage.toFixed(0)}% ใช้ไปแล้ว</span>
+                  <span>{data.remaining} วันคงเหลือ</span>
                 </div>
               </div>
             </div>
           );
         })}
+        
+        {/* Summary */}
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">วันลาคงเหลือทั้งหมด</span>
+            </div>
+            <span className="text-lg font-bold text-gray-900">
+              {quota.sick.remaining + quota.personal.remaining + quota.vacation.remaining} วัน
+            </span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

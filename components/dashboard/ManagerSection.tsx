@@ -7,20 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { useLeave } from '@/hooks/useLeave';
 import { Users, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { User } from 'firebase/auth';
+import { UserData } from '@/hooks/useAuth';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
 import { format } from 'date-fns';
 
 interface ManagerSectionProps {
-  user: User & { role: string };
+  userData: UserData;
 }
 
 export default function ManagerSection({ userData }: ManagerSectionProps) {
   const { teamLeaves, myLeaves } = useLeave();
   const router = useRouter();
-  
-  // ดึงข้อมูลพนักงานในทีมจริง (ต้องเพิ่ม hook หรือ service)
-  // const { teamMembers } = useTeam();
   
   // คำนวณสถิติจริง
   const teamStats = {
@@ -37,22 +34,22 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold flex items-center gap-2">
-        <Users className="w-5 h-5" />
+        <Users className="w-5 h-5 text-red-600" />
         การจัดการทีม
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Pending Leave Requests */}
         <Card className="md:col-span-2 border-0 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-lg">คำขอลารอการอนุมัติ</CardTitle>
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            <Badge variant="warning" className="font-normal">
               {teamLeaves.length} รายการ
             </Badge>
           </CardHeader>
           <CardContent>
             {teamLeaves.length === 0 ? (
-              <p className="text-center text-gray-500 py-4 text-base">
+              <p className="text-center text-gray-500 py-8 text-base">
                 ไม่มีคำขอลารอการอนุมัติ
               </p>
             ) : (
@@ -60,11 +57,11 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
                 {teamLeaves.slice(0, 3).map((leave) => (
                   <div
                     key={leave.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 cursor-pointer transition-all"
                     onClick={() => router.push(`/leave/requests/${leave.id}`)}
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-base">{leave.userName}</p>
+                      <p className="font-medium text-base text-gray-900">{leave.userName}</p>
                       <p className="text-sm text-gray-600">
                         {LEAVE_TYPE_LABELS[leave.type]} • {leave.totalDays} วัน
                       </p>
@@ -77,7 +74,7 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           // approveLeave(leave.id!);
@@ -103,7 +100,7 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
                 {teamLeaves.length > 3 && (
                   <Button
                     variant="ghost"
-                    className="w-full"
+                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                     onClick={() => router.push('/leave/requests')}
                   >
                     ดูทั้งหมด ({teamLeaves.length} รายการ)
@@ -116,22 +113,22 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
 
         {/* Team Stats */}
         <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5" />
+              <Clock className="w-5 h-5 text-slate-600" />
               สถิติทีม
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-white rounded-lg">
               <span className="text-base text-gray-600">พนักงานในทีม</span>
-              <span className="font-semibold text-lg">-</span>
+              <span className="font-semibold text-lg text-gray-900">-</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center p-3 bg-white rounded-lg">
               <span className="text-base text-gray-600">มาทำงานวันนี้</span>
-              <span className="font-semibold text-lg text-green-600">-</span>
+              <span className="font-semibold text-lg text-teal-600">-</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center p-3 bg-white rounded-lg">
               <span className="text-base text-gray-600">ลาวันนี้</span>
               <span className="font-semibold text-lg text-orange-600">
                 {teamStats.onLeaveToday}
@@ -141,7 +138,7 @@ export default function ManagerSection({ userData }: ManagerSectionProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full hover:bg-slate-50"
                 onClick={() => router.push('/reports/team')}
               >
                 ดูรายงานทีม

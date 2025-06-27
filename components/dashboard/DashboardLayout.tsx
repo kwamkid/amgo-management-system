@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { UserData } from '@/hooks/useAuth';
@@ -28,6 +29,16 @@ export default function DashboardLayout({ children, userData }: DashboardLayoutP
     return labels[role] || role;
   };
 
+  const getRoleBadgeVariant = (role: string) => {
+    const variants: Record<string, 'default' | 'secondary' | 'info' | 'success'> = {
+      admin: 'default',
+      hr: 'info',
+      manager: 'success',
+      employee: 'secondary'
+    };
+    return variants[role] || 'secondary';
+  };
+
   // Guard clause - ถ้าไม่มี userData ให้ return null
   if (!userData) {
     return null;
@@ -38,17 +49,17 @@ export default function DashboardLayout({ children, userData }: DashboardLayoutP
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
             สวัสดี, {userData.lineDisplayName || userData.fullName || 'ผู้ใช้'} 👋
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-base mt-1">
             {mounted ? format(new Date(), 'EEEE d MMMM yyyy', { locale: th }) : 'กำลังโหลด...'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+          <Badge variant={getRoleBadgeVariant(userData.role)} className="px-4 py-1.5 text-sm">
             {getRoleLabel(userData.role)}
-          </span>
+          </Badge>
         </div>
       </div>
 

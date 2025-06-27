@@ -84,7 +84,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold flex items-center gap-2">
-        <Shield className="w-5 h-5" />
+        <Shield className="w-5 h-5 text-red-600" />
         การจัดการระบบ
       </h2>
 
@@ -93,7 +93,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
         <Card className="border-0 shadow-md bg-gradient-to-br from-violet-50 to-purple-100">
           <CardHeader>
             <CardTitle className="text-base font-medium flex items-center gap-2">
-              <HardDrive className="w-4 h-4" />
+              <HardDrive className="w-4 h-4 text-violet-600" />
               พื้นที่จัดเก็บ
             </CardTitle>
           </CardHeader>
@@ -103,7 +103,11 @@ export default function AdminSection({ userData }: AdminSectionProps) {
               <span className="font-medium">{systemStats.storageUsed.toFixed(2)} MB / 5 GB</span>
             </div>
             <div className="space-y-1">
-              <Progress value={storagePercentage} className="h-2" />
+              <Progress 
+                value={storagePercentage} 
+                className="h-2"
+                indicatorClassName="bg-gradient-to-r from-violet-500 to-purple-600"
+              />
               <p className="text-sm text-gray-500">
                 {storagePercentage.toFixed(1)}% ของโควต้า
               </p>
@@ -114,7 +118,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
         <Card className="border-0 shadow-md bg-gradient-to-br from-cyan-50 to-teal-100">
           <CardHeader>
             <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Activity className="w-4 h-4" />
+              <Activity className="w-4 h-4 text-cyan-600" />
               Database Activity
             </CardTitle>
           </CardHeader>
@@ -128,7 +132,11 @@ export default function AdminSection({ userData }: AdminSectionProps) {
               <span className="font-medium">{systemStats.todayRequests.toLocaleString()}</span>
             </div>
             <div className="space-y-1">
-              <Progress value={requestPercentage} className="h-2" />
+              <Progress 
+                value={requestPercentage} 
+                className="h-2"
+                indicatorClassName="bg-gradient-to-r from-cyan-500 to-teal-600"
+              />
               <p className="text-sm text-gray-500">
                 {requestPercentage.toFixed(1)}% ของ limit
               </p>
@@ -139,18 +147,18 @@ export default function AdminSection({ userData }: AdminSectionProps) {
         <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-50 to-green-100">
           <CardHeader>
             <CardTitle className="text-base font-medium flex items-center gap-2">
-              <Users className="w-4 h-4" />
+              <Users className="w-4 h-4 text-emerald-600" />
               System Usage
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-base text-gray-600">Active Users</span>
-              <span className="text-lg font-bold text-green-700">{systemStats.activeUsers}</span>
+              <span className="text-lg font-bold text-emerald-700">{systemStats.activeUsers}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-base text-gray-600">Locations</span>
-              <span className="text-lg font-bold text-emerald-700">{systemStats.locations}</span>
+              <span className="text-lg font-bold text-green-700">{systemStats.locations}</span>
             </div>
             <p className="text-sm text-gray-500 pt-2 border-t">
               ใน 7 วันล่าสุด
@@ -171,7 +179,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Button
               variant="outline"
-              className="justify-start h-12 border-red-200 hover:bg-red-50"
+              className="justify-start h-12 border-red-200 hover:bg-red-50 hover:border-red-300"
               onClick={() => router.push('/settings/backup')}
             >
               <Download className="w-4 h-4 mr-2 text-red-600" />
@@ -180,7 +188,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
             
             <Button
               variant="outline"
-              className="justify-start h-12 border-orange-200 hover:bg-orange-50"
+              className="justify-start h-12 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
               onClick={() => router.push('/settings/permissions')}
             >
               <Shield className="w-4 h-4 mr-2 text-orange-600" />
@@ -189,7 +197,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
             
             <Button
               variant="outline"
-              className="justify-start h-12 border-amber-200 hover:bg-amber-50"
+              className="justify-start h-12 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
               onClick={() => router.push('/logs')}
             >
               <Activity className="w-4 h-4 mr-2 text-amber-600" />
@@ -253,7 +261,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
         <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-gray-100">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Database className="w-5 h-5" />
+              <Database className="w-5 h-5 text-slate-600" />
               ข้อมูลระบบ
             </CardTitle>
           </CardHeader>
@@ -266,7 +274,7 @@ export default function AdminSection({ userData }: AdminSectionProps) {
               
               <div className="flex justify-between items-center p-3 bg-white rounded-lg">
                 <span className="text-base font-medium">Environment</span>
-                <Badge className="bg-green-100 text-green-700">Production</Badge>
+                <Badge variant="success">Production</Badge>
               </div>
               
               <div className="flex justify-between items-center p-3 bg-white rounded-lg">

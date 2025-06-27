@@ -82,7 +82,7 @@ export default function HRSection({ userData }: HRSectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold flex items-center gap-2">
-        <Users className="w-5 h-5" />
+        <Users className="w-5 h-5 text-red-600" />
         ภาพรวมบริษัท
       </h2>
 
@@ -160,21 +160,21 @@ export default function HRSection({ userData }: HRSectionProps) {
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100">
-          <CardHeader>
+        <Card className="border-0 shadow-md">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100">
             <CardTitle className="text-lg">การจัดการด่วน</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant={stats.pendingApprovals > 0 ? "default" : "outline"}
-                className="justify-start h-12"
+                className={stats.pendingApprovals > 0 ? "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700" : ""}
                 onClick={() => router.push('/leave/requests')}
               >
                 <Calendar className="w-4 h-4 mr-2" />
                 อนุมัติการลา
                 {stats.pendingApprovals > 0 && (
-                  <Badge className="ml-auto bg-red-500 text-white">
+                  <Badge className="ml-2 bg-white text-red-600">
                     {stats.pendingApprovals}
                   </Badge>
                 )}
@@ -182,13 +182,13 @@ export default function HRSection({ userData }: HRSectionProps) {
               
               <Button
                 variant={stats.pendingCheckouts > 0 ? "default" : "outline"}
-                className="justify-start h-12"
+                className={stats.pendingCheckouts > 0 ? "bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700" : ""}
                 onClick={() => router.push('/checkin/pending')}
               >
                 <UserCheck className="w-4 h-4 mr-2" />
                 ตรวจเวลา
                 {stats.pendingCheckouts > 0 && (
-                  <Badge className="ml-auto bg-orange-500 text-white">
+                  <Badge className="ml-2 bg-white text-orange-600">
                     {stats.pendingCheckouts}
                   </Badge>
                 )}
@@ -196,13 +196,13 @@ export default function HRSection({ userData }: HRSectionProps) {
               
               <Button
                 variant={stats.needsApproval > 0 ? "default" : "outline"}
-                className="justify-start h-12"
+                className={stats.needsApproval > 0 ? "bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700" : ""}
                 onClick={() => router.push('/employees/pending')}
               >
                 <Users className="w-4 h-4 mr-2" />
                 พนักงานใหม่
                 {stats.needsApproval > 0 && (
-                  <Badge className="ml-auto bg-purple-500 text-white">
+                  <Badge className="ml-2 bg-white text-purple-600">
                     {stats.needsApproval}
                   </Badge>
                 )}
@@ -210,7 +210,7 @@ export default function HRSection({ userData }: HRSectionProps) {
               
               <Button
                 variant="outline"
-                className="justify-start h-12"
+                className="hover:bg-gray-50"
                 onClick={() => router.push('/leave/quotas')}
               >
                 <TrendingUp className="w-4 h-4 mr-2" />
@@ -243,7 +243,7 @@ export default function HRSection({ userData }: HRSectionProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-sm"
+                    className="text-sm hover:bg-gray-50"
                     onClick={() => router.push(`/leave/requests/${leave.id}`)}
                   >
                     ดู
@@ -261,7 +261,7 @@ export default function HRSection({ userData }: HRSectionProps) {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="w-full mt-2"
+                  className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => router.push('/leave/requests')}
                 >
                   ดูทั้งหมด ({teamLeaves.length})
@@ -273,49 +273,49 @@ export default function HRSection({ userData }: HRSectionProps) {
       </div>
 
       {/* Reports Section */}
-      <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-gray-100">
-        <CardHeader>
+      <Card className="border-0 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
           <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+            <FileText className="w-5 h-5 text-red-600" />
             รายงาน
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2 bg-white hover:bg-gray-50"
+              className="h-20 flex-col gap-2 hover:bg-gray-50 hover:border-gray-300"
               onClick={() => router.push('/reports/attendance')}
             >
               <Clock className="w-6 h-6 text-slate-600" />
-              <span className="text-base">รายงานการมาทำงาน</span>
+              <span className="text-base">การมาทำงาน</span>
             </Button>
             
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2 bg-white hover:bg-gray-50"
+              className="h-20 flex-col gap-2 hover:bg-gray-50 hover:border-gray-300"
               onClick={() => router.push('/reports/leave')}
             >
               <Calendar className="w-6 h-6 text-emerald-600" />
-              <span className="text-base">รายงานการลา</span>
+              <span className="text-base">การลา</span>
             </Button>
             
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2 bg-white hover:bg-gray-50"
+              className="h-20 flex-col gap-2 hover:bg-gray-50 hover:border-gray-300"
               onClick={() => router.push('/reports/overtime')}
             >
               <TrendingUp className="w-6 h-6 text-purple-600" />
-              <span className="text-base">รายงาน OT</span>
+              <span className="text-base">OT</span>
             </Button>
             
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2 bg-white hover:bg-gray-50"
+              className="h-20 flex-col gap-2 hover:bg-gray-50 hover:border-gray-300"
               onClick={() => router.push('/reports/export')}
             >
               <FileText className="w-6 h-6 text-orange-600" />
-              <span className="text-base">Export ข้อมูล</span>
+              <span className="text-base">Export</span>
             </Button>
           </div>
         </CardContent>

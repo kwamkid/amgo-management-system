@@ -34,25 +34,11 @@ interface NavItem {
   subItems?: NavItem[]
 }
 
-
 const navItems: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
-    icon: <LayoutDashboard className="w-5 h-5" />,
-    subItems: [
-      {
-        label: 'ภาพรวม',
-        href: '/dashboard',
-        icon: <LayoutDashboard className="w-4 h-4" />
-      },
-      {
-        label: 'สถานะพนักงาน',
-        href: '/dashboard/attendance',
-        icon: <Users className="w-4 h-4" />,
-        roles: ['admin', 'hr', 'manager']
-      }
-    ]
+    icon: <LayoutDashboard className="w-5 h-5" />
   },
   {
     label: 'เช็คอิน/เอาท์',

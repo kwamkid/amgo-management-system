@@ -1,299 +1,389 @@
+// components/dashboard/EmployeeSection.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import LeaveBalance from '@/components/leave/LeaveBalance';
-import { useLeave } from '@/hooks/useLeave';
-import { useCheckIn } from '@/hooks/useCheckIn';
 import { 
-  Calendar, 
-  FileText, 
-  TrendingUp, 
+  Calendar,
   Clock,
-  AlertCircle,
+  Cake,
+  Gift,
+  PartyPopper,
+  LogIn,
   User,
-  MapPin,
-  CheckCircle
+  CheckCircle,
+  MapPin
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { UserData } from '@/hooks/useAuth';
-import { safeFormatDate, toDate } from '@/lib/utils/date';
+import { useCheckIn } from '@/hooks/useCheckIn';
+import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
+import { th } from 'date-fns/locale';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 interface EmployeeSectionProps {
   userData: UserData;
 }
 
+interface BirthdayUser {
+  id: string;
+  fullName: string;
+  lineDisplayName: string;
+  linePictureUrl?: string;
+  birthDate: Date;
+  role: string;
+  locationIds?: string[];
+}
+
 export default function EmployeeSection({ userData }: EmployeeSectionProps) {
-  const { quota, myLeaves, loading: leaveLoading } = useLeave();
-  const { currentCheckIn } = useCheckIn();
   const router = useRouter();
-
-  // นับวันลาที่ใช้ไปในเดือนนี้
-  const currentMonthLeaves = myLeaves.filter(leave => {
-    const leaveDate = toDate(leave.startDate);
-    const now = new Date();
-    return leaveDate && 
-           leaveDate.getMonth() === now.getMonth() && 
-           leaveDate.getFullYear() === now.getFullYear() &&
-           leave.status === 'approved';
-  }).reduce((total, leave) => total + leave.totalDays, 0);
-
-  // นับวันลาที่รออนุมัติ
-  const pendingLeaves = myLeaves.filter(leave => leave.status === 'pending').length;
+  const { currentCheckIn } = useCheckIn();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [birthdays, setBirthdays] = useState<BirthdayUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Get birthdays for the current month
+  useEffect(() => {
+    const fetchBirthdays = async () => {
+      try {
+        setLoading(true);
+        const usersSnapshot = await getDocs(
+          query(collection(db, 'users'), where('isActive', '==', true))
+        );
+        
+        const birthdayUsers: BirthdayUser[] = [];
+        
+        usersSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.birthDate) {
+            // Convert birthDate to Date
+            let birthDate: Date;
+            if (data.birthDate.toDate) {
+              birthDate = data.birthDate.toDate();
+            } else if (data.birthDate.seconds) {
+              birthDate = new Date(data.birthDate.seconds * 1000);
+            } else {
+              birthDate = new Date(data.birthDate);
+            }
+            
+            // Check if birthday is in current month
+            const birthMonth = birthDate.getMonth();
+            const currentMonthNum = currentMonth.getMonth();
+            
+            if (birthMonth === currentMonthNum) {
+              birthdayUsers.push({
+                id: doc.id,
+                fullName: data.fullName,
+                lineDisplayName: data.lineDisplayName,
+                linePictureUrl: data.linePictureUrl,
+                birthDate,
+                role: data.role,
+                locationIds: data.allowedLocationIds
+              });
+            }
+          }
+        });
+        
+        // Sort by birth date
+        birthdayUsers.sort((a, b) => a.birthDate.getDate() - b.birthDate.getDate());
+        setBirthdays(birthdayUsers);
+      } catch (error) {
+        console.error('Error fetching birthdays:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBirthdays();
+  }, [currentMonth]);
+  
+  // Get upcoming birthdays (within ±5 days)
+  const getUpcomingBirthdays = () => {
+    const today = new Date();
+    const fiveDaysAgo = addDays(today, -5);
+    const fiveDaysLater = addDays(today, 5);
+    
+    return birthdays.filter(user => {
+      // Create birthday date for this year
+      const birthdayThisYear = new Date(
+        today.getFullYear(),
+        user.birthDate.getMonth(),
+        user.birthDate.getDate()
+      );
+      
+      return isWithinInterval(birthdayThisYear, { start: fiveDaysAgo, end: fiveDaysLater });
+    });
+  };
+  
+  const upcomingBirthdays = getUpcomingBirthdays();
+  
+  // Generate calendar days
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Get birthdays for a specific day
+  const getBirthdaysForDay = (day: Date) => {
+    return birthdays.filter(user => user.birthDate.getDate() === day.getDate());
+  };
 
   return (
     <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {/* เวลาทำงาน */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100 hover:shadow-lg transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-slate-900">
-                เวลาทำงาน
-              </CardTitle>
-              <Clock className="w-5 h-5 text-slate-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {currentCheckIn ? (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <p className="text-sm text-slate-600">เช็คอินแล้ว</p>
-                </div>
-                <p className="text-2xl font-bold text-slate-800">
-                  {safeFormatDate(currentCheckIn.checkinTime, 'HH:mm')}
-                </p>
-                {currentCheckIn.primaryLocationName && (
-                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {currentCheckIn.primaryLocationName}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <Button 
-                className="w-full bg-slate-700 hover:bg-slate-800 text-white"
-                onClick={() => router.push('/checkin')}
-              >
-                ไปหน้าเช็คอิน
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* วันลาคงเหลือ */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-50 to-emerald-100 hover:shadow-lg transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-emerald-900">
-                วันลาคงเหลือ
-              </CardTitle>
-              <Calendar className="w-5 h-5 text-emerald-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-emerald-700">
-              {quota ? quota.vacation.remaining + quota.personal.remaining : '0'}
-            </div>
-            <p className="text-sm text-emerald-600 mt-1">วันพักร้อน + ลากิจ</p>
-            {quota && (
-              <div className="mt-2 text-xs text-emerald-600">
-                <div className="flex justify-between">
-                  <span>ลาป่วย:</span>
-                  <span className="font-medium">{quota.sick.remaining} วัน</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ลาเดือนนี้ */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-amber-100 hover:shadow-lg transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-amber-900">
-                ลาเดือนนี้
-              </CardTitle>
-              <TrendingUp className="w-5 h-5 text-amber-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-700">
-              {currentMonthLeaves}
-            </div>
-            <p className="text-sm text-amber-600 mt-1">วันที่อนุมัติแล้ว</p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-2 flex-1 bg-amber-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-500"
-                  style={{ width: `${Math.min((currentMonthLeaves / 5) * 100, 100)}%` }}
-                />
-              </div>
-              <span className="text-xs text-amber-600">5 วัน</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* รออนุมัติ */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-purple-900">
-                รออนุมัติ
-              </CardTitle>
-              <AlertCircle className="w-5 h-5 text-purple-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-700">
-              {pendingLeaves}
-            </div>
-            <p className="text-sm text-purple-600 mt-1">คำขอลา</p>
-            {pendingLeaves > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="mt-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-0"
-                onClick={() => router.push('/leave/history')}
-              >
-                ดูรายละเอียด →
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Leave Balance Card */}
-        <div className="md:col-span-1">
-          <LeaveBalance quota={quota} loading={leaveLoading} />
-        </div>
-
-        {/* Quick Actions */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left Column - Calendar */}
         <Card className="border-0 shadow-md">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <User className="w-5 h-5 text-red-600" />
-              เมนูด่วน
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+            <CardTitle className="text-xl font-medium flex items-center gap-2">
+              <Cake className="w-6 h-6 text-pink-600" />
+              ปฏิทินวันเกิดพนักงาน
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-6">
-            <Button
-              variant="outline"
-              className="w-full justify-start h-12 text-base border-gray-200 hover:bg-white hover:border-gray-300 group"
-              onClick={() => router.push('/checkin')}
-            >
-              <Clock className="w-5 h-5 mr-3 text-slate-600 group-hover:text-slate-700" />
-              เช็คอิน - เช็คเอาท์
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full justify-start h-12 text-base border-gray-200 hover:bg-white hover:border-gray-300 group"
-              onClick={() => router.push('/leave/request')}
-            >
-              <FileText className="w-5 h-5 mr-3 text-emerald-600 group-hover:text-emerald-700" />
-              ขอลา
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full justify-start h-12 text-base border-gray-200 hover:bg-white hover:border-gray-300 group"
-              onClick={() => router.push('/leave/history')}
-            >
-              <TrendingUp className="w-5 h-5 mr-3 text-purple-600 group-hover:text-purple-700" />
-              ประวัติการลา
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full justify-start h-12 text-base border-gray-200 hover:bg-white hover:border-gray-300 group"
-              onClick={() => router.push('/profile')}
-            >
-              <User className="w-5 h-5 mr-3 text-gray-600 group-hover:text-gray-700" />
-              โปรไฟล์ของฉัน
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Leave History */}
-      {myLeaves.length > 0 && (
-        <Card className="border-0 shadow-md">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-            <CardTitle className="text-lg font-medium">ประวัติการลาล่าสุด</CardTitle>
-          </CardHeader>
           <CardContent className="pt-6">
-            <div className="space-y-3">
-              {myLeaves.slice(0, 3).map((leave) => (
-                <div 
-                  key={leave.id} 
-                  className="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group"
-                  onClick={() => router.push(`/leave/history/${leave.id}`)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      leave.type === 'sick' ? 'bg-red-100' :
-                      leave.type === 'personal' ? 'bg-blue-100' : 'bg-green-100'
-                    }`}>
-                      {leave.type === 'sick' ? (
-                        <FileText className="w-4 h-4 text-red-600" />
-                      ) : leave.type === 'personal' ? (
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-base text-gray-900">
-                        {leave.type === 'sick' ? 'ลาป่วย' : leave.type === 'personal' ? 'ลากิจ' : 'ลาพักร้อน'}
-                        <span className="text-sm text-gray-600 ml-2">({leave.totalDays} วัน)</span>
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {safeFormatDate(leave.startDate, 'dd/MM/yyyy')} - 
-                        {safeFormatDate(leave.endDate, 'dd/MM/yyyy')}
-                      </p>
-                      {leave.reason && (
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-1">
-                          เหตุผล: {leave.reason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        leave.status === 'approved' ? 'success' :
-                        leave.status === 'pending' ? 'warning' : 'error'
-                      }
-                      className="font-normal"
-                    >
-                      {leave.status === 'approved' && <CheckCircle className="w-3 h-3 mr-1" />}
-                      {leave.status === 'approved' ? 'อนุมัติแล้ว' :
-                       leave.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
-                    </Badge>
-                  </div>
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => setCurrentMonth(prev => addDays(startOfMonth(prev), -1))}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <h3 className="text-lg font-semibold">
+                {format(currentMonth, 'MMMM yyyy', { locale: th })}
+              </h3>
+              
+              <button
+                onClick={() => setCurrentMonth(prev => addDays(endOfMonth(prev), 1))}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2">
+              {/* Weekday Headers */}
+              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
+                <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
+                  {day}
                 </div>
               ))}
               
-              {myLeaves.length > 3 && (
-                <Button 
-                  variant="ghost" 
-                  className="w-full text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                  onClick={() => router.push('/leave/history')}
-                >
-                  ดูทั้งหมด ({myLeaves.length} รายการ)
-                </Button>
-              )}
+              {/* Calendar Days */}
+              {calendarDays.map((day, idx) => {
+                const dayBirthdays = getBirthdaysForDay(day);
+                const hasBirthday = dayBirthdays.length > 0;
+                const isCurrentDay = isToday(day);
+                
+                return (
+                  <div
+                    key={idx}
+                    className={`
+                      relative aspect-square p-2 rounded-lg border
+                      ${isCurrentDay ? 'bg-red-50 border-red-300' : 'border-gray-200'}
+                      ${hasBirthday ? 'bg-gradient-to-br from-pink-50 to-purple-50' : ''}
+                      hover:bg-gray-50 transition-colors cursor-pointer
+                    `}
+                  >
+                    <div className="text-sm font-medium text-gray-900">
+                      {getDate(day)}
+                    </div>
+                    
+                    {hasBirthday && (
+                      <div className="absolute bottom-1 left-1 right-1">
+                        <div className="flex -space-x-2">
+                          {dayBirthdays.slice(0, 3).map((user, i) => (
+                            <img
+                              key={user.id}
+                              src={user.linePictureUrl || '/avatar-placeholder.png'}
+                              alt={user.fullName}
+                              className="w-6 h-6 rounded-full border-2 border-white"
+                              title={user.fullName}
+                            />
+                          ))}
+                          {dayBirthdays.length > 3 && (
+                            <div className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs flex items-center justify-center border-2 border-white">
+                              +{dayBirthdays.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {hasBirthday && (
+                      <div className="absolute top-1 right-1">
+                        <Gift className="w-4 h-4 text-pink-500" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Birthday count for month */}
+            {birthdays.length > 0 && (
+              <div className="mt-4 pt-4 border-t text-center">
+                <p className="text-sm text-gray-600">
+                  วันเกิดในเดือนนี้ทั้งหมด {birthdays.length} คน
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {/* Right Column - Quick Actions & Upcoming Birthdays */}
+        <div className="space-y-6">
+          {/* Check-in Status & Quick Action */}
+          <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-slate-600" />
+                สถานะการทำงาน
+              </h3>
+              
+              {currentCheckIn ? (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-base font-medium text-green-700">กำลังทำงาน</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800 mb-2">
+                      เช็คอิน {format(new Date(currentCheckIn.checkinTime), 'HH:mm')}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <MapPin className="w-4 h-4" />
+                      {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push('/checkin')}
+                  >
+                    ไปหน้าเช็คอิน/เช็คเอาท์
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                    <p className="text-base font-medium text-orange-800 mb-1">ยังไม่ได้เช็คอิน</p>
+                    <p className="text-sm text-orange-600">กรุณาเช็คอินเพื่อเริ่มงาน</p>
+                  </div>
+                  
+                  <Button 
+                    className="w-full bg-slate-700 hover:bg-slate-800 text-white"
+                    onClick={() => router.push('/checkin')}
+                    size="lg"
+                  >
+                    <LogIn className="w-5 h-5 mr-2" />
+                    เช็คอินเลย
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Birthdays */}
+          <Card className="border-0 shadow-md bg-gradient-to-br from-pink-50 to-purple-100">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium flex items-center gap-2">
+                <PartyPopper className="w-5 h-5 text-purple-600" />
+                วันเกิดใกล้ถึง (±5 วัน)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {upcomingBirthdays.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingBirthdays.map(user => {
+                    const birthdayThisYear = new Date(
+                      new Date().getFullYear(),
+                      user.birthDate.getMonth(),
+                      user.birthDate.getDate()
+                    );
+                    const isToday = isSameDay(birthdayThisYear, new Date());
+                    const daysUntil = Math.ceil((birthdayThisYear.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    return (
+                      <div key={user.id} className="flex items-center gap-3 p-3 bg-white rounded-lg">
+                        <img
+                          src={user.linePictureUrl || '/avatar-placeholder.png'}
+                          alt={user.fullName}
+                          className="w-12 h-12 rounded-full"
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
+                            {user.fullName}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {format(birthdayThisYear, 'dd MMMM', { locale: th })}
+                            {isToday && <span className="text-pink-600 font-medium ml-2">🎉 วันนี้!</span>}
+                            {daysUntil > 0 && daysUntil <= 5 && (
+                              <span className="text-purple-600 ml-2">อีก {daysUntil} วัน</span>
+                            )}
+                            {daysUntil < 0 && daysUntil >= -5 && (
+                              <span className="text-gray-500 ml-2">{Math.abs(daysUntil)} วันที่แล้ว</span>
+                            )}
+                          </p>
+                        </div>
+                        {isToday && (
+                          <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+                            HBD!
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Gift className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">ไม่มีวันเกิดในช่วงนี้</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* All Birthdays in Month */}
+          {birthdays.length > 0 && (
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium flex items-center gap-2">
+                  <Cake className="w-5 h-5 text-pink-600" />
+                  วันเกิดทั้งหมดในเดือนนี้
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {birthdays.map(user => (
+                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg">
+                      <img
+                        src={user.linePictureUrl || '/avatar-placeholder.png'}
+                        alt={user.fullName}
+                        className="w-8 h-8 rounded-full"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{user.fullName}</p>
+                      </div>
+                      <span className="text-sm text-gray-600">
+                        {format(user.birthDate, 'dd MMM', { locale: th })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

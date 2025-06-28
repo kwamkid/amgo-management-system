@@ -1,11 +1,9 @@
+// app/(admin)/dashboard/page.tsx
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
-import ManagerSection from '@/components/dashboard/ManagerSection';
-import HRSection from '@/components/dashboard/HRSection';
-import AdminSection from '@/components/dashboard/AdminSection';
+import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -32,25 +30,38 @@ export default function DashboardPage() {
     return <TechLoader />;
   }
 
+  // Check user role
+  const isManagement = ['manager', 'hr', 'admin'].includes(userData.role);
+
   return (
-    <DashboardLayout userData={userData}>
-      {/* ทุกคนเห็น Employee Section */}
-      <EmployeeSection userData={userData} />
-      
-      {/* Manager ขึ้นไปเห็น */}
-      {['manager', 'hr', 'admin'].includes(userData.role) && (
-        <ManagerSection userData={userData} />
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+          สวัสดี, {userData.lineDisplayName || userData.fullName || 'ผู้ใช้'} 👋
+        </h1>
+        <p className="text-gray-600 text-base mt-1">
+          {userData.role === 'admin' ? 'ผู้ดูแลระบบ' :
+           userData.role === 'hr' ? 'ฝ่ายบุคคล' :
+           userData.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน'}
+        </p>
+      </div>
+
+      {/* Show both sections for management, only birthday for employees */}
+      {isManagement ? (
+        <>
+          {/* Attendance Section for Management */}
+          <AttendanceSection userData={userData} />
+          
+          {/* Birthday Calendar for Everyone */}
+          <div className="mt-8">
+            <EmployeeSection userData={userData} />
+          </div>
+        </>
+      ) : (
+        // Employee sees only Birthday Calendar
+        <EmployeeSection userData={userData} />
       )}
-      
-      {/* HR ขึ้นไปเห็น */}
-      {['hr', 'admin'].includes(userData.role) && (
-        <HRSection userData={userData} />
-      )}
-      
-      {/* Admin only */}
-      {userData.role === 'admin' && (
-        <AdminSection userData={userData} />
-      )}
-    </DashboardLayout>
+    </div>
   );
 }

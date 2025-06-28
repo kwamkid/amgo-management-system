@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { UserData } from '@/hooks/useAuth';
-import { format } from 'date-fns';
+import { safeFormatDate, toDate } from '@/lib/utils/date';
 
 interface EmployeeSectionProps {
   userData: UserData;
@@ -32,9 +32,10 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
 
   // นับวันลาที่ใช้ไปในเดือนนี้
   const currentMonthLeaves = myLeaves.filter(leave => {
-    const leaveDate = new Date(leave.startDate);
+    const leaveDate = toDate(leave.startDate);
     const now = new Date();
-    return leaveDate.getMonth() === now.getMonth() && 
+    return leaveDate && 
+           leaveDate.getMonth() === now.getMonth() && 
            leaveDate.getFullYear() === now.getFullYear() &&
            leave.status === 'approved';
   }).reduce((total, leave) => total + leave.totalDays, 0);
@@ -64,7 +65,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                   <p className="text-sm text-slate-600">เช็คอินแล้ว</p>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">
-                  {format(new Date(currentCheckIn.checkinTime), 'HH:mm')}
+                  {safeFormatDate(currentCheckIn.checkinTime, 'HH:mm')}
                 </p>
                 {currentCheckIn.primaryLocationName && (
                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -254,8 +255,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                         <span className="text-sm text-gray-600 ml-2">({leave.totalDays} วัน)</span>
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {format(new Date(leave.startDate), 'dd/MM/yyyy')} - 
-                        {format(new Date(leave.endDate), 'dd/MM/yyyy')}
+                        {safeFormatDate(leave.startDate, 'dd/MM/yyyy')} - 
+                        {safeFormatDate(leave.endDate, 'dd/MM/yyyy')}
                       </p>
                       {leave.reason && (
                         <p className="text-sm text-gray-500 mt-1 line-clamp-1">

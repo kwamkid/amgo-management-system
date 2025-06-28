@@ -2,13 +2,15 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCheckIn } from '@/hooks/useCheckIn'
 import { 
   MapPin, 
   Loader2,
   X,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  CheckCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -21,13 +23,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { colorClasses, gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 
-// Dynamic import CheckInMap untuk menghindari SSR issues dengan Google Maps
+// Dynamic import CheckInMap
 const CheckInMap = dynamic(
   () => import('./CheckInMap'),
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+      <div className="w-full h-[400px] bg-gray-100 rounded-lg flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-gray-400 mx-auto" />
           <p className="text-gray-600 mt-2">กำลังโหลดแผนที่...</p>
@@ -53,21 +55,38 @@ export default function CheckInButton() {
   
   const [showNote, setShowNote] = useState(false)
   const [note, setNote] = useState('')
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Auto get location when component mounts
+  useEffect(() => {
+    if (!loading && !currentPosition) {
+      getCurrentLocation()
+    }
+  }, [loading])
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
 
   // Calculate working hours
   const getWorkingTime = () => {
-    if (!currentCheckIn?.checkinTime) return { hours: 0, minutes: 0 }
+    if (!currentCheckIn?.checkinTime) return { hours: 0, minutes: 0, seconds: 0 }
     
     const checkinTime = currentCheckIn.checkinTime instanceof Date 
       ? currentCheckIn.checkinTime 
       : new Date(currentCheckIn.checkinTime)
     
-    const now = new Date()
-    const totalMinutes = Math.floor((now.getTime() - checkinTime.getTime()) / (1000 * 60))
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = totalMinutes % 60
+    const totalSeconds = Math.floor((currentTime.getTime() - checkinTime.getTime()) / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
     
-    return { hours, minutes }
+    return { hours, minutes, seconds }
   }
 
   const handleCheckIn = async () => {
@@ -92,267 +111,198 @@ export default function CheckInButton() {
 
   const workingTime = getWorkingTime()
 
-  // Mobile-first design - Already checked in (Checkout view)
+  // Render Map Component (used in both check-in and checkout)
+  const renderMap = () => {
+    if (!currentPosition) return null
+    
+    return (
+      <div className="mb-4 rounded-lg overflow-hidden h-[400px]">
+        <CheckInMap
+          userLat={currentPosition.coords.latitude}
+          userLng={currentPosition.coords.longitude}
+          locationCheckResult={locationCheckResult}
+          zoom={16}
+        />
+      </div>
+    )
+  }
+
+  // Already checked in - Show checkout UI
   if (currentCheckIn) {
     const checkinTime = currentCheckIn.checkinTime instanceof Date 
       ? currentCheckIn.checkinTime 
       : new Date(currentCheckIn.checkinTime)
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Map Container - Fixed 400px for checkout */}
-        <div className="relative h-[400px]">
-          {/* Real Google Map */}
-          {currentPosition ? (
-            <CheckInMap
-              userLat={currentPosition.coords.latitude}
-              userLng={currentPosition.coords.longitude}
-              locationCheckResult={locationCheckResult}
-            />
-          ) : (
-            /* Map Placeholder */
-            <div className={`w-full h-full bg-gradient-to-br ${gradients.grayLight} relative`}>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <MapPin className="w-16 h-16 text-gray-300" />
-              </div>
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-6">
+          {/* Status */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-teal-500 rounded-full animate-pulse" />
+              <span className="font-medium text-gray-900">กำลังทำงาน</span>
             </div>
-          )}
-          
-          {/* Working Time Overlay */}
-          <Card className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm shadow-xl z-10 border-0">
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="inline-flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-gray-900">{workingTime.hours}</span>
-                  <span className="text-lg text-gray-600">ชม.</span>
-                  <span className="text-3xl font-bold text-gray-900 ml-2">{workingTime.minutes}</span>
-                  <span className="text-lg text-gray-600">นาที</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  เช็คอิน {format(checkinTime, 'HH:mm', { locale: th })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Status Badge */}
-          <div className="absolute top-4 right-4 z-10">
-            <Badge variant="success" className="shadow-lg">
-              กำลังทำงาน
+            <Badge variant="success" className="text-xs">
+              เช็คอิน {format(checkinTime, 'HH:mm')}
             </Badge>
           </div>
-        </div>
 
-        {/* Bottom Content Area */}
-        <div className="bg-white shadow-[0_-4px_10px_-2px_rgb(0,0,0,0.1)]">
-          <div className="p-5">
-            {/* Location Info */}
-            <Card className={`bg-gradient-to-r ${gradients.grayLight} border-0 mb-5`}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 bg-gradient-to-br ${gradients.successLight} rounded-full flex items-center justify-center`}>
-                    <MapPin className="w-5 h-5 text-teal-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">
-                      {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
-                    </p>
-                    {currentCheckIn.selectedShiftName && (
-                      <p className="text-sm text-gray-600">
-                        {currentCheckIn.selectedShiftName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Note Section */}
-            {showNote && (
-              <Card className="mb-5 border-gray-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-700">หมายเหตุ</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setShowNote(false)
-                        setNote('')
-                      }}
-                      className="h-8 w-8"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="เช่น ทำ OT, งาน Midnight Sale..."
-                    rows={3}
-                    autoFocus
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Action Buttons */}
-            {!showNote && (
-              <Button
-                variant="ghost"
-                onClick={() => setShowNote(true)}
-                className="w-full mb-3"
-              >
-                + เพิ่มหมายเหตุ
-              </Button>
-            )}
-            
-            <Button
-              onClick={handleCheckOut}
-              disabled={isCheckingOut}
-              className={`w-full h-16 text-lg font-semibold bg-gradient-to-r ${gradients.primary} shadow-lg shadow-red-600/20`}
-              size="lg"
-            >
-              {isCheckingOut ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  กำลังเช็คเอาท์...
-                </span>
-              ) : (
-                'เช็คเอาท์'
-              )}
-            </Button>
-
-            {/* Help text */}
-            <div className="text-center mt-3">
-              <p className="text-xs text-gray-400">
-                กดปุ่มเพื่อบันทึกเวลาออกงาน
-              </p>
+          {/* Working Time */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-baseline gap-1">
+              <span className="text-3xl font-bold text-gray-900">{workingTime.hours}</span>
+              <span className="text-sm text-gray-600">ชม.</span>
+              <span className="text-2xl font-bold text-gray-900 ml-1">{String(workingTime.minutes).padStart(2, '0')}</span>
+              <span className="text-sm text-gray-600">นาที</span>
+              <span className="text-xl font-bold text-gray-900 ml-1">{String(workingTime.seconds).padStart(2, '0')}</span>
+              <span className="text-sm text-gray-600">วินาที</span>
             </div>
           </div>
-        </div>
-      </div>
+
+          {/* Location Info */}
+          <div className="flex items-center gap-2 mb-6 p-3 bg-gray-50 rounded-lg">
+            <MapPin className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-gray-700">
+              {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
+            </span>
+          </div>
+
+          {/* Map */}
+          {renderMap()}
+
+          {/* Note Section */}
+          {showNote ? (
+            <div className="mb-4 space-y-2">
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="หมายเหตุ เช่น ทำ OT, งาน Midnight Sale..."
+                rows={2}
+                className="text-sm"
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowNote(false)
+                  setNote('')
+                }}
+                className="text-xs"
+              >
+                ยกเลิก
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowNote(true)}
+              className="w-full mb-3 text-sm"
+            >
+              + เพิ่มหมายเหตุ
+            </Button>
+          )}
+          
+          {/* Checkout Button */}
+          <Button
+            onClick={handleCheckOut}
+            disabled={isCheckingOut}
+            className="w-full h-12 text-base font-medium bg-gradient-to-r from-red-500 to-rose-600"
+            size="lg"
+          >
+            {isCheckingOut ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                กำลังเช็คเอาท์...
+              </span>
+            ) : (
+              'เช็คเอาท์'
+            )}
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
-  // Mobile-first design - Not checked in
+  // Not checked in - Show check-in UI
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Map Container - Fixed 550px */}
-      <div className="relative h-[550px]">
-        {/* Real Google Map */}
-        {currentPosition ? (
-          <CheckInMap
-            userLat={currentPosition.coords.latitude}
-            userLng={currentPosition.coords.longitude}
-            locationCheckResult={locationCheckResult}
-          />
-        ) : (
-          /* Map Placeholder while getting location */
-          <div className={`w-full h-full bg-gradient-to-br ${gradients.grayLight} relative overflow-hidden`}>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-teal-200 rounded-full w-64 h-64 opacity-20 animate-ping" />
-                <div className="absolute inset-0 bg-teal-300 rounded-full w-48 h-48 opacity-20 animate-ping animation-delay-200" />
-                <MapPin className="w-20 h-20 text-teal-500 relative z-10" />
-              </div>
-            </div>
-            
-            <div className="absolute bottom-4 left-0 right-0 text-center">
-              <p className="text-sm text-gray-600">
-                กำลังขอตำแหน่ง...
-              </p>
-            </div>
+    <Card className="border-0 shadow-md">
+      <CardContent className="p-6">
+        {/* Clock */}
+        <div className="text-center mb-6">
+          <p className="text-4xl font-bold text-gray-900">
+            {format(currentTime, 'HH:mm:ss')}
+          </p>
+          <p className="text-gray-600 mt-1">
+            {format(currentTime, 'EEEE d MMMM', { locale: th })}
+          </p>
+        </div>
+
+        {/* Map */}
+        {renderMap()}
+
+        {/* Status Messages */}
+        {!currentPosition && !error && (
+          <Alert className="mb-4">
+            <MapPin className="h-4 w-4" />
+            <AlertDescription>
+              กำลังขอตำแหน่ง กรุณาอนุญาตการเข้าถึงตำแหน่ง
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="error" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {locationCheckResult && !locationCheckResult.canCheckIn && (
+          <Alert variant="error" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {locationCheckResult.reason}
+              {locationCheckResult.nearestLocation && (
+                <span className="block text-sm mt-1">
+                  ใกล้ {locationCheckResult.nearestLocation.name} ({locationCheckResult.nearestLocation.distance} เมตร)
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {locationCheckResult && locationCheckResult.canCheckIn && (
+          <div className="flex items-center justify-center gap-2 mb-4 text-teal-600">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-medium">พื้นที่ที่อนุญาต</span>
           </div>
         )}
-        
-        {/* Clock Overlay */}
-        <Card className="absolute top-4 left-4 right-4 bg-white/95 backdrop-blur-sm shadow-xl z-10 border-0">
-          <CardContent className="p-4">
-            <p className="text-5xl font-bold text-gray-900 text-center">
-              {format(new Date(), 'HH:mm')}
-            </p>
-            <p className="text-gray-600 text-center mt-1">
-              {format(new Date(), 'EEEE d MMMM', { locale: th })}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Bottom Action Area */}
-      <div className="bg-white shadow-[0_-4px_10px_-2px_rgb(0,0,0,0.1)]">
-        <div className="p-5">
-          {/* Status Section */}
-          {/* Error Status */}
-          {locationCheckResult && !locationCheckResult.canCheckIn && (
-            <Alert variant="error" className="mb-5">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="font-medium">
-                {locationCheckResult.reason}
-                {locationCheckResult.nearestLocation && (
-                  <span className="block text-sm mt-1">
-                    ใกล้ {locationCheckResult.nearestLocation.name}
-                  </span>
-                )}
-              </AlertDescription>
-            </Alert>
+        {/* Check-in Button */}
+        <Button
+          onClick={handleCheckIn}
+          disabled={
+            isCheckingIn || 
+            !locationCheckResult || 
+            !locationCheckResult.canCheckIn
+          }
+          className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
+          size="lg"
+        >
+          {isCheckingIn ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              กำลังเช็คอิน...
+            </span>
+          ) : !currentPosition ? (
+            'กำลังขอตำแหน่ง...'
+          ) : (
+            'เช็คอิน'
           )}
-
-          {/* Success Status */}
-          {locationCheckResult && locationCheckResult.canCheckIn && (
-            <div className="text-center mb-5">
-              <Badge variant="success" className="px-4 py-2">
-                <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse mr-2" />
-                พื้นที่ที่อนุญาต
-              </Badge>
-            </div>
-          )}
-
-          {/* Check-in Button */}
-          <Button
-            onClick={handleCheckIn}
-            disabled={
-              isCheckingIn || 
-              !locationCheckResult || 
-              !locationCheckResult.canCheckIn
-            }
-            className={`w-full h-16 text-lg font-semibold bg-gradient-to-r ${gradients.success} shadow-lg shadow-teal-600/20`}
-            size="lg"
-          >
-            {isCheckingIn ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                กำลังเช็คอิน...
-              </span>
-            ) : !currentPosition ? (
-              'กำลังขอตำแหน่ง...'
-            ) : (
-              'เช็คอิน'
-            )}
-          </Button>
-
-          {/* Help text */}
-          <div className="text-center mt-3">
-            {!currentPosition && (
-              <>
-                <p className="text-xs text-gray-500">
-                  กรุณาอนุญาตการเข้าถึงตำแหน่ง
-                </p>
-                {error && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {error}
-                  </p>
-                )}
-              </>
-            )}
-            {currentPosition && locationCheckResult?.canCheckIn && (
-              <p className="text-xs text-gray-400">
-                กดปุ่มเพื่อบันทึกเวลาเข้างาน
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

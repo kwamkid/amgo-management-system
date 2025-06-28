@@ -8,21 +8,20 @@ import { CheckInRecord } from '@/types/checkin'
 import { getCheckInRecords } from '@/lib/services/checkinService'
 import { 
   Calendar,
-  Download,
-  Filter,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
-import CheckInHistory from '@/components/checkin/CheckInHistory'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
+import { formatWorkingHours } from '@/lib/services/workingHoursService'
 
 export default function CheckInHistoryPage() {
   const { userData } = useAuth()
@@ -54,11 +53,13 @@ export default function CheckInHistoryPage() {
       const endDate = endOfMonth(new Date(year, month - 1))
       
       const allRecords: CheckInRecord[] = []
-      let totalHours = 0
-      let totalOT = 0
-      let lateDays = 0
       
       // Fetch data for each day of the month
+      const dailyRecords = new Map<string, CheckInRecord[]>()
+      let totalHours = 0
+      let totalOT = 0
+      let lateDays = new Set<string>()
+      
       for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
         const dateStr = format(date, 'yyyy-MM-dd')
         const { records } = await getCheckInRecords({
@@ -66,23 +67,41 @@ export default function CheckInHistoryPage() {
           userId: userData!.id
         })
         
-        records.forEach(record => {
-          allRecords.push(record)
-          totalHours += record.totalHours || 0
-          totalOT += record.overtimeHours || 0
-          if (record.isLate) lateDays++
-        })
+        if (records.length > 0) {
+          dailyRecords.set(dateStr, records)
+          
+          // Calculate totals for the day
+          let dayHours = 0
+          let dayOT = 0
+          let dayIsLate = false
+          
+          records.forEach(record => {
+            dayHours += record.totalHours || 0
+            dayOT += record.overtimeHours || 0
+            if (record.isLate) dayIsLate = true
+          })
+          
+          totalHours += dayHours
+          totalOT += dayOT
+          if (dayIsLate) lateDays.add(dateStr)
+        }
       }
       
-      setRecords(allRecords.sort((a, b) => 
+      // Flatten records for display
+      const flatRecords: CheckInRecord[] = []
+      dailyRecords.forEach(records => {
+        flatRecords.push(...records)
+      })
+      
+      setRecords(flatRecords.sort((a, b) => 
         new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
       ))
       
       setStats({
-        totalDays: allRecords.length,
+        totalDays: dailyRecords.size, // Count unique days, not total records
         totalHours: Math.round(totalHours * 10) / 10,
         totalOT: Math.round(totalOT * 10) / 10,
-        lateDays
+        lateDays: lateDays.size // Count unique late days
       })
     } catch (error) {
       console.error('Error fetching monthly data:', error)
@@ -118,28 +137,18 @@ export default function CheckInHistoryPage() {
         </div>
       </div>
 
-      {/* Month Selector & Actions */}
+      {/* Month Selector */}
       <Card className="border-0 shadow-md">
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-400" />
-              <Input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-48"
-                max={format(new Date(), 'yyyy-MM')}
-              />
-            </div>
-            
-            <Button
-              onClick={handleExport}
-              variant="outline"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-400" />
+            <Input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-48"
+              max={format(new Date(), 'yyyy-MM')}
+            />
           </div>
         </CardContent>
       </Card>
@@ -209,10 +218,145 @@ export default function CheckInHistoryPage() {
               <p className="text-gray-500">ไม่มีข้อมูลในเดือนนี้</p>
             </div>
           ) : (
-            <CheckInHistory 
-              limit={999} 
-              showViewAll={false} 
-            />
+            <div className="space-y-4">
+              {/* Group records by date for display */}
+              {(() => {
+                const groups = new Map<string, CheckInRecord[]>()
+                
+                records.forEach(record => {
+                  const dateStr = format(
+                    record.checkinTime instanceof Date 
+                      ? record.checkinTime 
+                      : new Date(record.checkinTime),
+                    'yyyy-MM-dd'
+                  )
+                  
+                  if (!groups.has(dateStr)) {
+                    groups.set(dateStr, [])
+                  }
+                  groups.get(dateStr)!.push(record)
+                })
+                
+                // Convert to array and sort by date
+                const sortedGroups = Array.from(groups.entries())
+                  .sort(([a], [b]) => b.localeCompare(a))
+                
+                return sortedGroups.map(([dateStr, dayRecords]) => {
+                  const date = new Date(dateStr)
+                  const dayHours = dayRecords.reduce((sum, r) => sum + (r.totalHours || 0), 0)
+                  const dayOT = dayRecords.reduce((sum, r) => sum + (r.overtimeHours || 0), 0)
+                  const hasLate = dayRecords.some(r => r.isLate)
+                  
+                  return (
+                    <Card key={dateStr} className="border-0 shadow-sm">
+                      <CardContent className="p-4">
+                        {/* Day Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">
+                              {format(date, 'EEEE d MMMM', { locale: th })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">
+                              {dayRecords.length} รายการ
+                            </span>
+                            {hasLate && (
+                              <Badge variant="error" className="text-xs">
+                                มาสาย
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Day Summary */}
+                        <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
+                          <span>รวม {formatWorkingHours(dayHours)}</span>
+                          {dayOT > 0 && (
+                            <Badge variant="warning" className="text-xs">
+                              OT {formatWorkingHours(dayOT)}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Records for this day */}
+                        <div className="space-y-2">
+                          {dayRecords.map((record, index) => {
+                            const checkinTime = record.checkinTime instanceof Date 
+                              ? record.checkinTime 
+                              : new Date(record.checkinTime)
+                            const checkoutTime = record.checkoutTime 
+                              ? (record.checkoutTime instanceof Date 
+                                ? record.checkoutTime 
+                                : new Date(record.checkoutTime))
+                              : null
+                            
+                            return (
+                              <div 
+                                key={record.id}
+                                className={`pl-6 py-2 ${
+                                  index !== dayRecords.length - 1 ? 'border-b border-gray-100' : ''
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm font-medium">
+                                      {format(checkinTime, 'HH:mm')} - {
+                                        checkoutTime ? format(checkoutTime, 'HH:mm') : '--:--'
+                                      }
+                                    </span>
+                                    {record.primaryLocationName && (
+                                      <span className="text-sm text-gray-500">
+                                        @ {record.primaryLocationName}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    {record.totalHours > 0 && (
+                                      <span className="text-sm text-gray-600">
+                                        {formatWorkingHours(record.totalHours)}
+                                      </span>
+                                    )}
+                                    {record.status === 'checked-in' && (
+                                      <Badge variant="success" className="text-xs">
+                                        กำลังทำงาน
+                                      </Badge>
+                                    )}
+                                    {record.status === 'pending' && (
+                                      <Badge variant="warning" className="text-xs">
+                                        รออนุมัติ
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {(record.note || record.isLate) && (
+                                  <div className="mt-1 ml-7 text-xs text-gray-500">
+                                    {record.isLate && (
+                                      <span className="text-red-500">
+                                        สาย {record.lateMinutes} นาที
+                                      </span>
+                                    )}
+                                    {record.note && (
+                                      <span className="ml-2">
+                                        💬 {record.note}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              })()}
+            </div>
           )}
         </CardContent>
       </Card>

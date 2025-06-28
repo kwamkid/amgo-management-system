@@ -11,6 +11,7 @@ interface CheckInMapProps {
   userLat: number
   userLng: number
   locationCheckResult: LocationCheckResult | null
+  zoom?: number
 }
 
 const mapContainerStyle = {
@@ -23,7 +24,8 @@ const libraries: ("places")[] = ['places']
 export default function CheckInMap({ 
   userLat, 
   userLng, 
-  locationCheckResult 
+  locationCheckResult,
+  zoom = 17 
 }: CheckInMapProps) {
   const { locations } = useLocations(true)
   const [map, setMap] = useState<google.maps.Map | null>(null)
@@ -40,19 +42,24 @@ export default function CheckInMap({
 
   useEffect(() => {
     if (map && locationCheckResult?.nearestLocation) {
-      // Fit bounds to show user and nearest location
-      const bounds = new google.maps.LatLngBounds()
-      bounds.extend({ lat: userLat, lng: userLng })
-      
-      // Find nearest location details
+      // Only fit bounds if the nearest location is far away
       const nearestLoc = locations.find(l => l.id === locationCheckResult.nearestLocation?.id)
       if (nearestLoc) {
-        bounds.extend({ lat: nearestLoc.lat, lng: nearestLoc.lng })
-        map.fitBounds(bounds)
+        const distance = locationCheckResult.nearestLocation.distance
         
-        // Add some padding
-        const padding = { top: 100, right: 50, bottom: 200, left: 50 }
-        map.fitBounds(bounds, padding)
+        // Only adjust view if location is more than 500 meters away
+        if (distance > 500) {
+          const bounds = new google.maps.LatLngBounds()
+          bounds.extend({ lat: userLat, lng: userLng })
+          bounds.extend({ lat: nearestLoc.lat, lng: nearestLoc.lng })
+          
+          map.fitBounds(bounds)
+          
+          // Add some padding
+          const padding = { top: 100, right: 50, bottom: 200, left: 50 }
+          map.fitBounds(bounds, padding)
+        }
+        // Otherwise keep the original zoom level
       }
     }
   }, [map, locationCheckResult, userLat, userLng, locations])
@@ -77,7 +84,7 @@ export default function CheckInMap({
     <GoogleMap
       mapContainerStyle={mapContainerStyle}
       center={center}
-      zoom={16}
+      zoom={zoom}
       onLoad={(map) => setMap(map)}
       options={{
         streetViewControl: false,

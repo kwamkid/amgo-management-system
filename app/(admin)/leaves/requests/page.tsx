@@ -232,7 +232,7 @@ export default function LeaveRequestsPage() {
                           {LEAVE_TYPE_LABELS[leave.type]}
                         </Badge>
                         {leave.urgentMultiplier > 1 && (
-                          <Badge variant="destructive">
+                          <Badge variant="error">
                             ลาด่วน x{leave.urgentMultiplier}
                           </Badge>
                         )}

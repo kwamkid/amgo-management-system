@@ -56,7 +56,7 @@ export default function UserEditForm({
   const [formData, setFormData] = useState<UpdateUserData>({
     fullName: user.fullName,
     phone: user.phone || '',
-    birthDate: formatDateForInput(user.birthDate),
+    birthDate: formatDateForInput(user.birthDate), // This is already a string
     role: user.role,
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,

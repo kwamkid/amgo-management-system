@@ -182,6 +182,9 @@ export const gradients = {
   
   error: 'from-red-600 to-red-700',
   errorLight: 'from-red-50 to-red-100',
+  
+  info: 'from-blue-500 to-indigo-600',
+  infoLight: 'from-blue-50 to-indigo-100',
 
   // Neutral Gradients
   gray: 'from-gray-500 to-slate-600',

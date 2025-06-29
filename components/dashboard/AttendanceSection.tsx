@@ -115,7 +115,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
   const getShiftBadge = (record: CheckInRecord) => {
     if (!record.selectedShiftName) return null;
     
-    const shiftColors = {
+    const shiftColors: Record<string, string> = {
       'กะเช้า': 'bg-blue-100 text-blue-700',
       'กะบ่าย': 'bg-purple-100 text-purple-700',
       'กะดึก': 'bg-gray-700 text-white'

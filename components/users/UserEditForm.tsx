@@ -96,6 +96,17 @@ export default function UserEditForm({
     await onSubmit(dataToSubmit)
   }
 
+  // Helper function to ensure birthDate is always a string for the input
+  const getBirthDateValue = (): string => {
+    if (typeof formData.birthDate === 'string') {
+      return formData.birthDate
+    }
+    if (formData.birthDate instanceof Date) {
+      return formatDateForInput(formData.birthDate)
+    }
+    return ''
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* User Info Section */}
@@ -170,7 +181,7 @@ export default function UserEditForm({
                 <Input
                   id="birthDate"
                   type="date"
-                  value={formData.birthDate || ''}
+                  value={getBirthDateValue()}
                   onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                   className="pl-10"
                   required

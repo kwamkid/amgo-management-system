@@ -72,11 +72,11 @@ export default function TestInputPage() {
               <CardTitle className="text-base">Success (Green)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[50, 100, 500, 600, 700].map(shade => (
+              {['50', '100', '500', '600', '700'].map(shade => (
                 <div key={shade} className="flex items-center gap-2">
                   <div 
                     className="w-12 h-8 rounded" 
-                    style={{ backgroundColor: colors.success[shade] }}
+                    style={{ backgroundColor: colors.success[shade as keyof typeof colors.success] }}
                   />
                   <span className="text-sm">{shade}</span>
                 </div>
@@ -90,11 +90,11 @@ export default function TestInputPage() {
               <CardTitle className="text-base">Warning (Amber)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[50, 100, 500, 600, 700].map(shade => (
+              {['50', '100', '500', '600', '700'].map(shade => (
                 <div key={shade} className="flex items-center gap-2">
                   <div 
                     className="w-12 h-8 rounded" 
-                    style={{ backgroundColor: colors.warning[shade] }}
+                    style={{ backgroundColor: colors.warning[shade as keyof typeof colors.warning] }}
                   />
                   <span className="text-sm">{shade}</span>
                 </div>
@@ -108,11 +108,11 @@ export default function TestInputPage() {
               <CardTitle className="text-base">Error (Red)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[50, 100, 500, 600, 700].map(shade => (
+              {['50', '100', '500', '600', '700'].map(shade => (
                 <div key={shade} className="flex items-center gap-2">
                   <div 
                     className="w-12 h-8 rounded" 
-                    style={{ backgroundColor: colors.error[shade] }}
+                    style={{ backgroundColor: colors.error[shade as keyof typeof colors.error] }}
                   />
                   <span className="text-sm">{shade}</span>
                 </div>
@@ -126,11 +126,11 @@ export default function TestInputPage() {
               <CardTitle className="text-base">Info (Blue)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[50, 100, 500, 600, 700].map(shade => (
+              {['50', '100', '500', '600', '700'].map(shade => (
                 <div key={shade} className="flex items-center gap-2">
                   <div 
                     className="w-12 h-8 rounded" 
-                    style={{ backgroundColor: colors.info[shade] }}
+                    style={{ backgroundColor: colors.info[shade as keyof typeof colors.info] }}
                   />
                   <span className="text-sm">{shade}</span>
                 </div>

@@ -348,7 +348,7 @@ export default function LeaveQuotaManagementPage() {
     if (filterType === 'no-quota') {
       matchFilter = !quota || (quota.sick.total === 0 && quota.personal.total === 0 && quota.vacation.total === 0)
     } else if (filterType === 'has-quota') {
-      matchFilter = quota && (quota.sick.total > 0 || quota.personal.total > 0 || quota.vacation.total > 0)
+      matchFilter = quota !== null && (quota.sick.total > 0 || quota.personal.total > 0 || quota.vacation.total > 0)
     }
     
     return matchSearch && matchFilter

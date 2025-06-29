@@ -156,14 +156,14 @@ export default function InfluencerForm({
     console.log('Form data before submit:', formData)
     console.log('Tier value:', formData.tier)
     
-    // Clean data before submit - convert empty strings to null for optional fields
+   // Clean data before submit - convert empty strings to undefined for optional fields
     const cleanedData = {
       ...formData,
-      lineId: formData.lineId || null,
-      shippingAddress: formData.shippingAddress || null,
-      province: formData.province || null,
-      birthDate: formData.birthDate || null,
-      notes: formData.notes || null
+      lineId: formData.lineId || undefined,
+      shippingAddress: formData.shippingAddress || undefined,
+      province: formData.province || undefined,
+      birthDate: formData.birthDate || undefined,
+      notes: formData.notes || undefined
     }
     
     console.log('Cleaned data:', cleanedData)

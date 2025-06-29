@@ -239,7 +239,7 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
   // Initial fetch
   useEffect(() => {
     fetchInfluencers()
-  }, [options?.tier, options?.platform]) // Add dependencies properly
+  }, [fetchInfluencers]) // Add proper dependency
 
   return {
     influencers,
@@ -267,6 +267,8 @@ export const useInfluencer = (influencerId: string) => {
   const { showToast } = useToast()
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchInfluencer = async () => {
       if (!influencerId) {
         setLoading(false)
@@ -277,18 +279,30 @@ export const useInfluencer = (influencerId: string) => {
         setLoading(true)
         setError(null)
         const data = await influencerService.getInfluencer(influencerId)
-        setInfluencer(data)
+        
+        if (mounted) {
+          setInfluencer(data)
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch influencer'
-        setError(message)
-        showToast(message, 'error')
+        if (mounted) {
+          setError(message)
+          // Remove toast to prevent re-renders
+          console.error('Error fetching influencer:', message)
+        }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchInfluencer()
-  }, [influencerId, showToast])
+
+    return () => {
+      mounted = false
+    }
+  }, [influencerId]) // Remove showToast from dependencies
 
   return { influencer, loading, error }
 }

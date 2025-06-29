@@ -53,6 +53,7 @@ export default function InfluencerForm({
 }: InfluencerFormProps) {
   const router = useRouter()
   const isEditMode = !!influencer
+  const [isInitialized, setIsInitialized] = useState(false)
   
   // Form state
   const [formData, setFormData] = useState<CreateInfluencerData>({
@@ -64,7 +65,7 @@ export default function InfluencerForm({
     lineId: '',
     shippingAddress: '',
     province: '',
-    tier: 'nano',
+    tier: 'nano' as InfluencerTier,
     notes: '',
     children: [],
     socialChannels: []
@@ -76,21 +77,24 @@ export default function InfluencerForm({
   // Initialize form data for edit mode
   useEffect(() => {
     if (influencer && isEditMode) {
+      console.log('Influencer data:', influencer)
+      console.log('Influencer tier:', influencer.tier)
+      
       setFormData({
-        fullName: influencer.fullName,
-        nickname: influencer.nickname,
+        fullName: influencer.fullName || '',
+        nickname: influencer.nickname || '',
         birthDate: influencer.birthDate 
           ? (typeof influencer.birthDate === 'string'
               ? influencer.birthDate
               : new Date(influencer.birthDate).toISOString().split('T')[0]
             )
           : '',
-        phone: influencer.phone,
-        email: influencer.email,
+        phone: influencer.phone || '',
+        email: influencer.email || '',
         lineId: influencer.lineId || '',
         shippingAddress: influencer.shippingAddress || '',
         province: influencer.province || '',
-        tier: influencer.tier,
+        tier: influencer.tier || 'nano', // Make sure tier is set
         notes: influencer.notes || '',
         children: influencer.children || [],
         socialChannels: influencer.socialChannels || []
@@ -100,6 +104,8 @@ export default function InfluencerForm({
       if (influencer.shippingAddress || influencer.province) {
         setShowAddressSection(true)
       }
+      
+      setIsInitialized(true)
     }
   }, [influencer, isEditMode])
 
@@ -147,6 +153,9 @@ export default function InfluencerForm({
       return
     }
     
+    console.log('Form data before submit:', formData)
+    console.log('Tier value:', formData.tier)
+    
     // Clean data before submit - convert empty strings to null for optional fields
     const cleanedData = {
       ...formData,
@@ -157,15 +166,13 @@ export default function InfluencerForm({
       notes: formData.notes || null
     }
     
+    console.log('Cleaned data:', cleanedData)
+    
     const result = await onSubmit(cleanedData)
     
     if (result) {
-      // If create mode and returns ID, redirect to edit page
-      if (!isEditMode && typeof result === 'string') {
-        router.push(`/influencers/${result}/edit`)
-      } else {
-        router.push('/influencers')
-      }
+      // Always redirect to list page after save
+      router.push('/influencers')
     }
   }
 
@@ -182,19 +189,19 @@ export default function InfluencerForm({
 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {isEditMode ? 'แก้ไขข้อมูล Influencer' : 'เพิ่ม Influencer ใหม่'}
-        </h1>
+      {/* Header - ย้ายปุ่มกลับมาทางซ้าย */}
+      <div className="flex items-center gap-4">
         <Button
           type="button"
           variant="ghost"
+          size="icon"
           onClick={() => router.push('/influencers')}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          กลับ
+          <ArrowLeft className="w-5 h-5" />
         </Button>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEditMode ? 'แก้ไขข้อมูล Influencer' : 'เพิ่ม Influencer ใหม่'}
+        </h1>
       </div>
 
       {/* Personal Info */}
@@ -266,12 +273,16 @@ export default function InfluencerForm({
 
             {/* Tier */}
             <div>
-              <Label htmlFor="tier">ระดับ Influencer</Label>
+              <Label htmlFor="tier">
+                ระดับ Influencer <span className="text-red-500">*</span>
+              </Label>
               <Select
-                value={formData.tier}
-                onValueChange={(value: InfluencerTier) => 
-                  setFormData({ ...formData, tier: value })
-                }
+                key={`tier-${formData.tier}`}
+                value={formData.tier || 'nano'}
+                onValueChange={(value: InfluencerTier) => {
+                  console.log('Tier changing from', formData.tier, 'to', value)
+                  setFormData(prev => ({ ...prev, tier: value }))
+                }}
               >
                 <SelectTrigger id="tier">
                   <SelectValue />
@@ -350,7 +361,7 @@ export default function InfluencerForm({
             </div>
 
             {/* LINE ID */}
-            <div>
+            <div className="md:col-span-2">
               <Label htmlFor="lineId">LINE ID</Label>
               <div className="relative">
                 <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

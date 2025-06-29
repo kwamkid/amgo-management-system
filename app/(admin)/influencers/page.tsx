@@ -267,9 +267,9 @@ export default function InfluencersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {influencers.map((influencer) => {
-                // Calculate actual tier from total followers
-                const actualTier = calculateInfluencerTier(influencer.totalFollowers || 0)
+               {influencers.map((influencer) => {
+                // Use the stored tier directly, don't recalculate
+                const displayTier = influencer.tier || 'nano'
                 
                 return (
                   <tr key={influencer.id} className="hover:bg-gray-50">
@@ -282,7 +282,7 @@ export default function InfluencersPage() {
                           {influencer.nickname}
                         </p>
                         <div className="mt-1">
-                          {getTierBadge(actualTier)}
+                          {getTierBadge(displayTier)}
                         </div>
                       </div>
                     </td>

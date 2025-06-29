@@ -115,14 +115,14 @@ export const createInfluencer = async (
 ): Promise<string> => {
   try {
     // Clean social channels - remove any undefined values
-    const cleanedSocialChannels = (data.socialChannels || []).map(channel => {
+    const cleanedSocialChannels = (data.socialChannels || []).map((channel, index) => {
       const cleanChannel: any = {
+        id: Date.now().toString() + index.toString() + Math.random().toString(36).substr(2, 9),
         platform: channel.platform,
         profileUrl: channel.profileUrl
       }
       
       // Add optional fields only if they exist
-      if (channel.id) cleanChannel.id = channel.id
       if (channel.username) cleanChannel.username = channel.username
       if (typeof channel.followerCount === 'number') {
         cleanChannel.followerCount = channel.followerCount
@@ -138,13 +138,13 @@ export const createInfluencer = async (
     })
     
     // Clean children - remove any undefined values  
-    const cleanedChildren = (data.children || []).map(child => {
+    const cleanedChildren = (data.children || []).map((child, index) => {
       const cleanChild: any = {
+        id: Date.now().toString() + index.toString() + Math.random().toString(36).substr(2, 9),
         nickname: child.nickname,
         gender: child.gender
       }
       
-      if (child.id) cleanChild.id = child.id
       if (child.birthDate) cleanChild.birthDate = child.birthDate
       
       return cleanChild
@@ -211,15 +211,24 @@ export const updateInfluencer = async (
   try {
     const docRef = doc(db, COLLECTION_NAME, influencerId)
     
-    // Clean data - remove undefined values
+    console.log('Updating influencer:', influencerId)
+    console.log('Update data:', data)
+    
+    // Clean data - remove undefined values but keep valid values including tier
     const cleanData: any = {}
     
-    // Add only fields that have values
+    // Add only fields that have values (including false, 0, empty string)
     Object.keys(data).forEach(key => {
-      if (data[key as keyof Influencer] !== undefined) {
-        cleanData[key] = data[key as keyof Influencer]
+      const value = data[key as keyof Influencer]
+      if (value !== undefined && value !== null) {
+        cleanData[key] = value
       }
     })
+    
+    // Always include tier if it's in the data
+    if ('tier' in data && data.tier) {
+      cleanData.tier = data.tier
+    }
     
     // Recalculate total followers if social channels updated
     if (cleanData.socialChannels) {
@@ -227,17 +236,77 @@ export const updateInfluencer = async (
         (sum: number, channel: SocialChannel) => sum + (channel.followerCount || 0), 
         0
       )
-      // Auto-update tier based on followers
-      cleanData.tier = calculateInfluencerTier(cleanData.totalFollowers)
+      // Auto-update tier based on followers only if not manually set
+      if (!('tier' in data)) {
+        cleanData.tier = calculateInfluencerTier(cleanData.totalFollowers)
+      }
     }
     
     // Add metadata
     cleanData.updatedBy = updatedBy
     cleanData.updatedAt = serverTimestamp()
     
+    console.log('Clean data to save:', cleanData)
+    
     await updateDoc(docRef, cleanData)
+    console.log('Update successful')
   } catch (error) {
     console.error('Error updating influencer:', error)
+    throw error
+  }
+}
+
+// Update social channel for influencer
+export const updateSocialChannel = async (
+  influencerId: string,
+  channel: SocialChannel,
+  updatedBy: string
+): Promise<void> => {
+  try {
+    const influencer = await getInfluencer(influencerId)
+    if (!influencer) throw new Error('Influencer not found')
+    
+    const channels = influencer.socialChannels || []
+    const existingIndex = channels.findIndex(c => c.id === channel.id)
+    
+    if (existingIndex >= 0) {
+      channels[existingIndex] = channel
+    } else {
+      // Ensure channel has an ID
+      const newChannel = {
+        ...channel,
+        id: channel.id || Date.now().toString()
+      }
+      channels.push(newChannel)
+    }
+    
+    await updateInfluencer(influencerId, { socialChannels: channels }, updatedBy)
+  } catch (error) {
+    console.error('Error updating social channel:', error)
+    throw error
+  }
+}
+
+// Add child to influencer
+export const addChild = async (
+  influencerId: string,
+  child: Omit<Child, 'id'>,
+  updatedBy: string
+): Promise<void> => {
+  try {
+    const influencer = await getInfluencer(influencerId)
+    if (!influencer) throw new Error('Influencer not found')
+    
+    const children = influencer.children || []
+    const newChild: Child = {
+      ...child,
+      id: Date.now().toString()
+    }
+    children.push(newChild)
+    
+    await updateInfluencer(influencerId, { children }, updatedBy)
+  } catch (error) {
+    console.error('Error adding child:', error)
     throw error
   }
 }
@@ -318,31 +387,7 @@ export const getInfluencersByPlatform = async (platform: string): Promise<Influe
   }
 }
 
-// Update social channel for influencer
-export const updateSocialChannel = async (
-  influencerId: string,
-  channel: SocialChannel,
-  updatedBy: string
-): Promise<void> => {
-  try {
-    const influencer = await getInfluencer(influencerId)
-    if (!influencer) throw new Error('Influencer not found')
-    
-    const channels = influencer.socialChannels || []
-    const existingIndex = channels.findIndex(c => c.id === channel.id)
-    
-    if (existingIndex >= 0) {
-      channels[existingIndex] = channel
-    } else {
-      channels.push({ ...channel, id: Date.now().toString() })
-    }
-    
-    await updateInfluencer(influencerId, { socialChannels: channels }, updatedBy)
-  } catch (error) {
-    console.error('Error updating social channel:', error)
-    throw error
-  }
-}
+
 
 // Remove social channel
 export const removeSocialChannel = async (
@@ -363,25 +408,7 @@ export const removeSocialChannel = async (
   }
 }
 
-// Add child to influencer
-export const addChild = async (
-  influencerId: string,
-  child: Omit<Child, 'id'>,
-  updatedBy: string
-): Promise<void> => {
-  try {
-    const influencer = await getInfluencer(influencerId)
-    if (!influencer) throw new Error('Influencer not found')
-    
-    const children = influencer.children || []
-    children.push({ ...child, id: Date.now().toString() })
-    
-    await updateInfluencer(influencerId, { children }, updatedBy)
-  } catch (error) {
-    console.error('Error adding child:', error)
-    throw error
-  }
-}
+
 
 // Remove child
 export const removeChild = async (

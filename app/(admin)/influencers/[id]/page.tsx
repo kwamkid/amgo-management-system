@@ -100,8 +100,15 @@ export default function InfluencerDetailPage({
     return `${age} ปี`
   }
 
-  if (loading) {
-    return <TechLoader />
+  if (loading && !influencer) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    )
   }
 
   if (error || !influencer) {
@@ -145,9 +152,11 @@ export default function InfluencerDetailPage({
             <h1 className="text-2xl font-bold text-gray-900">
               {influencer.fullName}
             </h1>
-            <p className="text-gray-600 mt-1">
-              {influencer.nickname} • {getTierBadge(influencer.tier)}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-gray-600">{influencer.nickname}</span>
+              <span className="text-gray-400">•</span>
+              {getTierBadge(influencer.tier)}
+            </div>
           </div>
         </div>
         

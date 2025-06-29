@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { User, UpdateUserData } from '@/types/user'
+import { toDate } from '@/lib/utils/date'
 import LocationMultiSelect from './LocationMultiSelect'
 import { 
   User as UserIcon, 
@@ -40,14 +41,22 @@ export default function UserEditForm({
   onCancel,
   isLoading = false 
 }: UserEditFormProps) {
+  // Convert birthDate to proper format for input[type="date"]
+  const formatDateForInput = (date: any): string => {
+    const dateObj = toDate(date)
+    if (!dateObj) return ''
+    
+    // Format as YYYY-MM-DD for HTML date input
+    const year = dateObj.getFullYear()
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const [formData, setFormData] = useState<UpdateUserData>({
     fullName: user.fullName,
     phone: user.phone || '',
-    birthDate: user.birthDate ? 
-      (typeof user.birthDate === 'string' 
-        ? user.birthDate 
-        : new Date(user.birthDate).toISOString().split('T')[0]
-      ) : '',
+    birthDate: formatDateForInput(user.birthDate),
     role: user.role,
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
@@ -78,10 +87,10 @@ export default function UserEditForm({
       return
     }
     
-    // Format birthDate - always required now
+    // Format birthDate as ISO string for Firebase
     const dataToSubmit = {
       ...formData,
-      birthDate: new Date(formData.birthDate).toISOString()
+      birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString() : undefined
     }
     
     await onSubmit(dataToSubmit)
@@ -161,18 +170,20 @@ export default function UserEditForm({
                 <Input
                   id="birthDate"
                   type="date"
-                  value={formData.birthDate ? 
-                      (typeof formData.birthDate === 'string' 
-                      ? formData.birthDate 
-                      : new Date(formData.birthDate).toISOString().split('T')[0]
-                      ) : ''
-                  }
+                  value={formData.birthDate || ''}
                   onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                   className="pl-10"
                   required
                   disabled={isLoading}
                 />
               </div>
+              {/* Debug info - ลบออกเมื่อใช้งานจริง */}
+              {process.env.NODE_ENV === 'development' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Original: {JSON.stringify(user.birthDate)} | 
+                  Formatted: {formatDateForInput(user.birthDate)}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

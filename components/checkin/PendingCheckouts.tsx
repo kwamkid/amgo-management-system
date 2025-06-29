@@ -165,29 +165,32 @@ export default function PendingCheckouts({
                 </div>
 
                 {/* Details */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>{format(checkinTime, 'dd MMM yyyy', { locale: th })}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Clock className="w-4 h-4" />
-                    <span>เข้า {format(checkinTime, 'HH:mm')}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MapPin className="w-4 h-4" />
-                    <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
-                  </div>
-                  
-                  {record.selectedShiftName && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>{format(checkinTime, 'dd MMM yyyy', { locale: th })}</span>
+                    </div>
+                    
                     <div className="flex items-center gap-2 text-gray-600">
                       <Clock className="w-4 h-4" />
-                      <span>{record.selectedShiftName}</span>
+                      <span>เข้า {format(checkinTime, 'HH:mm')}</span>
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MapPin className="w-4 h-4" />
+                      <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
+                    </div>
+                    
+                    {/* แสดงข้อมูลกะ */}
+                    {record.selectedShiftName ? (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Clock className="w-4 h-4" />
+                        <span>{record.selectedShiftName}</span>
+                      </div>
+                    ) : (
+                      <div /> // Empty cell for grid alignment
+                    )}
+                  </div>
 
                 {/* Note if any */}
                 {record.note && (

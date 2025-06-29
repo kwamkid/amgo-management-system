@@ -312,6 +312,11 @@ export default function CheckInHistoryPage() {
                                         @ {record.primaryLocationName}
                                       </span>
                                     )}
+                                    {record.selectedShiftName && (
+                                      <Badge variant="info" className="text-xs ml-2">
+                                        {record.selectedShiftName}
+                                      </Badge>
+                                    )}
                                   </div>
                                   
                                   <div className="flex items-center gap-2">

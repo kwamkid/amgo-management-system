@@ -206,16 +206,26 @@ export default function CheckInHistory({
                 </div>
               </div>
 
-              {/* Location */}
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
-                {record.isLate && (
-                  <Badge variant="error" className="ml-auto text-xs">
-                    สาย {record.lateMinutes} นาที
-                  </Badge>
-                )}
-              </div>
+              {/* Location & Shift */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
+                    {record.isLate && (
+                      <Badge variant="error" className="ml-auto text-xs">
+                        สาย {record.lateMinutes} นาที
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* เพิ่มส่วนแสดงข้อมูลกะ */}
+                  {record.selectedShiftName && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 ml-6">
+                      <Clock className="w-3 h-3" />
+                      <span>{record.selectedShiftName} ({record.shiftStartTime} - {record.shiftEndTime})</span>
+                    </div>
+                  )}
+                </div>
 
               {/* Note or Warning */}
               {record.needsOvertimeApproval && (

@@ -21,7 +21,9 @@ import {
   ChevronRight,
   Shield,
   Bell,
-  MessageSquare
+  MessageSquare,
+  TrendingUp,
+  Baby
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -117,6 +119,24 @@ const navItems: NavItem[] = [
         href: '/leaves/quota',
         icon: <Settings className="w-4 h-4" />,
         roles: ['hr', 'admin']
+      }
+    ]
+  },
+  {
+    label: 'Influ Marketing',
+    href: '/influencers',
+    icon: <TrendingUp className="w-5 h-5" />,
+    roles: ['hr', 'admin', 'manager'],
+    subItems: [
+      {
+        label: 'ข้อมูล Influencers',
+        href: '/influencers',
+        icon: <Baby className="w-4 h-4" />
+      },
+      {
+        label: 'เพิ่ม Influencer',
+        href: '/influencers/create',
+        icon: <UserPlus className="w-4 h-4" />
       }
     ]
   },

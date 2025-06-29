@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { useLocations } from '@/hooks/useLocations'
 import { CheckInRecord, LocationCheckResult } from '@/types/checkin'
+import { Shift } from '@/types/location'
 import * as checkinService from '@/lib/services/checkinService'
 import * as locationDetectionService from '@/lib/services/locationDetectionService'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
@@ -16,12 +17,17 @@ interface UseCheckInReturn {
   isCheckingOut: boolean
   locationCheckResult: LocationCheckResult | null
   currentPosition: GeolocationPosition | null
+  availableShifts: Shift[]
+  selectedLocation: any | null
+  showShiftSelector: boolean
   
   // Actions
-  checkIn: () => Promise<void>
+  checkIn: (selectedShift?: Shift) => Promise<void>
   checkOut: (note?: string) => Promise<void>
   refreshStatus: () => Promise<void>
   getCurrentLocation: () => Promise<GeolocationPosition | undefined>
+  prepareCheckIn: () => void
+  cancelShiftSelection: () => void
   
   // Loading states
   loading: boolean
@@ -40,6 +46,9 @@ export function useCheckIn(): UseCheckInReturn {
   const [error, setError] = useState<string | null>(null)
   const [currentPosition, setCurrentPosition] = useState<GeolocationPosition | null>(null)
   const [locationCheckResult, setLocationCheckResult] = useState<LocationCheckResult | null>(null)
+  const [availableShifts, setAvailableShifts] = useState<Shift[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<any | null>(null)
+  const [showShiftSelector, setShowShiftSelector] = useState(false)
   
   // Refs to prevent multiple calls
   const isGettingLocation = useRef(false)
@@ -89,22 +98,68 @@ export function useCheckIn(): UseCheckInReturn {
         )
         
         setLocationCheckResult(checkResult)
-        // ❌ REMOVED TOAST HERE - Let UI handle display
       }
       
       return position
     } catch (err) {
       const error = err as Error
       setError(error.message || 'ไม่สามารถระบุตำแหน่งได้')
-      // ❌ REMOVED TOAST HERE - Let UI handle error display
       return undefined
     } finally {
       isGettingLocation.current = false
     }
   }
 
+  // Prepare check-in - check shifts and show selector if needed
+  const prepareCheckIn = () => {
+    if (!userData || !currentPosition || !locationCheckResult) {
+      showToast('กรุณารอสักครู่', 'error')
+      return
+    }
+    
+    if (!locationCheckResult.canCheckIn) {
+      showToast(locationCheckResult.reason || 'ไม่สามารถเช็คอินได้', 'error')
+      return
+    }
+    
+    // Get primary location
+    const primaryLocation = locationCheckResult.locationsInRange[0] || locationCheckResult.nearestLocation
+    const checkinType = locationCheckResult.locationsInRange.length > 0 ? 'onsite' : 'offsite'
+    
+    // Check available shifts if checking in at location
+    if (primaryLocation && checkinType === 'onsite') {
+      const location = locations.find(l => l.id === primaryLocation.id)
+      if (location) {
+        const shifts = locationDetectionService.getAvailableShifts(location)
+        
+        setSelectedLocation(location)
+        setAvailableShifts(shifts)
+        
+        if (shifts.length === 0) {
+          showToast('ไม่มีกะที่สามารถเช็คอินได้ในเวลานี้', 'error')
+        } else if (shifts.length === 1) {
+          // Auto select single shift
+          checkIn(shifts[0])
+        } else {
+          // Show shift selector for multiple shifts
+          setShowShiftSelector(true)
+        }
+      }
+    } else {
+      // Offsite check-in, no shift needed
+      checkIn()
+    }
+  }
+
+  // Cancel shift selection
+  const cancelShiftSelection = () => {
+    setShowShiftSelector(false)
+    setAvailableShifts([])
+    setSelectedLocation(null)
+  }
+
   // Check in
-  const checkIn = async () => {
+  const checkIn = async (selectedShift?: Shift) => {
     if (!userData || !currentPosition || !locationCheckResult) {
       showToast('กรุณารอสักครู่', 'error')
       return
@@ -117,23 +172,11 @@ export function useCheckIn(): UseCheckInReturn {
     
     try {
       setIsCheckingIn(true)
+      setShowShiftSelector(false)
       
       // Prepare check-in data
       const primaryLocation = locationCheckResult.locationsInRange[0] || locationCheckResult.nearestLocation
       const checkinType = locationCheckResult.locationsInRange.length > 0 ? 'onsite' : 'offsite'
-      
-      // Get available shifts if checking in at location
-      let selectedShift = null
-      if (primaryLocation && checkinType === 'onsite') {
-        const location = locations.find(l => l.id === primaryLocation.id)
-        if (location) {
-          const availableShifts = locationDetectionService.getAvailableShifts(location)
-          if (availableShifts.length === 1) {
-            selectedShift = availableShifts[0]
-          }
-          // If multiple shifts, should show shift selector (implement later)
-        }
-      }
       
       // Create check-in
       await checkinService.createCheckIn({
@@ -255,7 +298,6 @@ export function useCheckIn(): UseCheckInReturn {
     currentCheckIn, 
     currentPosition, 
     locations.length,
-    // Don't include functions in deps
   ])
 
   return {
@@ -265,12 +307,17 @@ export function useCheckIn(): UseCheckInReturn {
     isCheckingOut,
     locationCheckResult,
     currentPosition,
+    availableShifts,
+    selectedLocation,
+    showShiftSelector,
     
     // Actions
     checkIn,
     checkOut,
     refreshStatus,
     getCurrentLocation,
+    prepareCheckIn,
+    cancelShiftSelection,
     
     // Loading states
     loading,

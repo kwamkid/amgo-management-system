@@ -33,6 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toDate } from '@/lib/utils/date'
+
 
 // Helper function to safely format date
 const safeFormatDate = (date: any, formatString: string, options?: any) => {
@@ -105,34 +107,11 @@ export default function LeaveHistoryPage() {
 
   // Group leaves by year safely
   const leavesByYear = filteredLeaves.reduce((acc, leave) => {
-    try {
-      // Safely get year
-      let year: number;
-      if (leave.startDate instanceof Date) {
-        year = leave.startDate.getFullYear();
-      } else if (typeof leave.startDate === 'string' || typeof leave.startDate === 'number') {
-        year = new Date(leave.startDate).getFullYear();
-      } else if (leave.startDate?.seconds) {
-        year = new Date(leave.startDate.seconds * 1000).getFullYear();
-      } else if (leave.startDate?.toDate) {
-        year = leave.startDate.toDate().getFullYear();
-      } else {
-        year = new Date().getFullYear(); // Default to current year
-      }
-      
-      if (isNaN(year)) {
-        year = new Date().getFullYear();
-      }
-      
-      if (!acc[year]) acc[year] = [];
-      acc[year].push(leave);
-    } catch (error) {
-      console.error('Error grouping leave by year:', error, leave);
-      // Put in current year if error
-      const currentYear = new Date().getFullYear();
-      if (!acc[currentYear]) acc[currentYear] = [];
-      acc[currentYear].push(leave);
-    }
+    const date = toDate(leave.startDate);
+    const year = date ? date.getFullYear() : new Date().getFullYear();
+    
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(leave);
     return acc;
   }, {} as Record<number, typeof myLeaves>);
 

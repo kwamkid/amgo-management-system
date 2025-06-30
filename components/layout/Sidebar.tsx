@@ -134,9 +134,9 @@ const navItems: NavItem[] = [
         icon: <Baby className="w-4 h-4" />
       },
       {
-        label: 'เพิ่ม Influencer',
-        href: '/influencers/create',
-        icon: <UserPlus className="w-4 h-4" />
+        label: 'Campaigns',
+        href: '/campaigns',
+        icon: <TrendingUp className="w-4 h-4" />
       }
     ]
   },

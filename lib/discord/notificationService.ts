@@ -1,7 +1,10 @@
-// lib/discord/notificationService.ts
+// ========== FILE: lib/discord/notificationService.ts ==========
 
-import { NotificationEvent, WebhookChannel } from '@/types/discord'
+import { NotificationEvent, WebhookChannel, EmbedColors } from '@/types/discord'
 import * as webhookHandlers from './webhook'
+import { DiscordWebhook } from './webhook'
+import { format } from 'date-fns'
+import { th } from 'date-fns/locale'
 
 export class DiscordNotificationService {
   // Send check-in notification
@@ -202,6 +205,374 @@ export class DiscordNotificationService {
       await webhookHandlers.sendDailySummary(data)
     } catch (error) {
       console.error('Failed to send daily summary:', error)
+    }
+  }
+  
+  // ===== CAMPAIGN NOTIFICATIONS =====
+  
+  // New campaign created
+  static async notifyCampaignCreated(data: {
+    campaignName: string
+    createdBy: string
+    influencerCount: number
+    brands: string[]
+    deadline: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      await webhook.send({
+        embeds: [{
+          title: '📢 Campaign ใหม่',
+          description: `**${data.campaignName}**`,
+          color: EmbedColors.INFO,
+          fields: [
+            {
+              name: '👤 สร้างโดย',
+              value: data.createdBy,
+              inline: true
+            },
+            {
+              name: '👥 Influencers',
+              value: `${data.influencerCount} คน`,
+              inline: true
+            },
+            {
+              name: '🏷️ Brands',
+              value: data.brands.join(', ') || '-',
+              inline: false
+            },
+            {
+              name: '📅 Deadline',
+              value: format(data.deadline, 'dd MMMM yyyy', { locale: th }),
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'AMGO Influencer System'
+          },
+          timestamp: new Date().toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send campaign created notification:', error)
+    }
+  }
+  
+  // Submission received
+  static async notifySubmission(data: {
+    campaignId: string
+    campaignName: string
+    influencerName: string
+    influencerNickname?: string
+    submissionCount: number
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const displayName = data.influencerNickname 
+        ? `${data.influencerName} (@${data.influencerNickname})`
+        : data.influencerName
+      
+      await webhook.send({
+        embeds: [{
+          title: '📥 มีการ Submit ผลงาน',
+          color: EmbedColors.INFO,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: 'Influencer',
+              value: displayName,
+              inline: true
+            },
+            {
+              name: 'จำนวน Links',
+              value: `${data.submissionCount} links`,
+              inline: true
+            },
+            {
+              name: 'Status',
+              value: '⏳ รอตรวจสอบ',
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'กรุณาตรวจสอบผลงานในระบบ'
+          },
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send submission notification:', error)
+    }
+  }
+  
+  // Submission approved
+  static async notifySubmissionApproved(data: {
+    campaignName: string
+    influencerName: string
+    influencerNickname?: string
+    approvedBy: string
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const displayName = data.influencerNickname 
+        ? `${data.influencerName} (@${data.influencerNickname})`
+        : data.influencerName
+      
+      await webhook.send({
+        embeds: [{
+          title: '✅ ผลงานผ่านการตรวจสอบ',
+          color: EmbedColors.SUCCESS,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: 'Influencer',
+              value: displayName,
+              inline: true
+            },
+            {
+              name: 'อนุมัติโดย',
+              value: data.approvedBy,
+              inline: true
+            }
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send approval notification:', error)
+    }
+  }
+  
+  // Submission rejected (revision required)
+  static async notifySubmissionRejected(data: {
+    campaignName: string
+    influencerName: string
+    influencerNickname?: string
+    rejectedBy: string
+    reason: string
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const displayName = data.influencerNickname 
+        ? `${data.influencerName} (@${data.influencerNickname})`
+        : data.influencerName
+      
+      await webhook.send({
+        embeds: [{
+          title: '🔄 ต้องแก้ไขผลงาน',
+          color: EmbedColors.WARNING,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: 'Influencer',
+              value: displayName,
+              inline: true
+            },
+            {
+              name: 'ตีกลับโดย',
+              value: data.rejectedBy,
+              inline: true
+            },
+            {
+              name: '📝 หมายเหตุ',
+              value: data.reason || 'ไม่ระบุ',
+              inline: false
+            }
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send rejection notification:', error)
+    }
+  }
+  
+  // Re-submission received
+  static async notifyResubmission(data: {
+    campaignName: string
+    influencerName: string
+    influencerNickname?: string
+    submissionCount: number
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const displayName = data.influencerNickname 
+        ? `${data.influencerName} (@${data.influencerNickname})`
+        : data.influencerName
+      
+      await webhook.send({
+        embeds: [{
+          title: '📤 มีการ Submit ผลงานแก้ไข',
+          color: EmbedColors.INFO,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: 'Influencer',
+              value: displayName,
+              inline: true
+            },
+            {
+              name: 'จำนวน Links',
+              value: `${data.submissionCount} links`,
+              inline: true
+            },
+            {
+              name: 'Status',
+              value: '⏳ รอตรวจสอบ (แก้ไขแล้ว)',
+              inline: false
+            }
+          ],
+          footer: {
+            text: 'กรุณาตรวจสอบผลงานที่แก้ไขในระบบ'
+          },
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send resubmission notification:', error)
+    }
+  }
+  
+  // Campaign completed
+  static async notifyCampaignCompleted(data: {
+    campaignName: string
+    totalInfluencers: number
+    approvedCount: number
+    completedBy: string
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const successRate = Math.round((data.approvedCount / data.totalInfluencers) * 100)
+      
+      await webhook.send({
+        embeds: [{
+          title: '🎉 Campaign เสร็จสิ้น',
+          description: `**${data.campaignName}**`,
+          color: EmbedColors.SUCCESS,
+          fields: [
+            {
+              name: '✅ Influencers ที่ผ่าน',
+              value: `${data.approvedCount}/${data.totalInfluencers} คน`,
+              inline: true
+            },
+            {
+              name: '📊 Success Rate',
+              value: `${successRate}%`,
+              inline: true
+            },
+            {
+              name: '⏱️ เสร็จสิ้นโดย',
+              value: data.completedBy,
+              inline: true
+            }
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send completion notification:', error)
+    }
+  }
+  
+  // Campaign cancelled
+  static async notifyCampaignCancelled(data: {
+    campaignName: string
+    cancelledBy: string
+    reason?: string
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      await webhook.send({
+        embeds: [{
+          title: '❌ Campaign ถูกยกเลิก',
+          description: `**${data.campaignName}**`,
+          color: EmbedColors.DANGER,
+          fields: [
+            {
+              name: '🚫 ยกเลิกโดย',
+              value: data.cancelledBy,
+              inline: true
+            },
+            ...(data.reason ? [{
+              name: '📝 เหตุผล',
+              value: data.reason,
+              inline: false
+            }] : [])
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send cancellation notification:', error)
+    }
+  }
+  
+  // Deadline reminder
+  static async notifyDeadlineReminder(data: {
+    campaignName: string
+    daysLeft: number
+    pendingCount: number
+    totalInfluencers: number
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      const urgency = data.daysLeft <= 1 ? '🚨' : data.daysLeft <= 3 ? '⚠️' : '⏰'
+      
+      await webhook.send({
+        embeds: [{
+          title: `${urgency} เตือน Deadline ใกล้ถึง`,
+          description: `**${data.campaignName}**`,
+          color: data.daysLeft <= 1 ? EmbedColors.DANGER : EmbedColors.WARNING,
+          fields: [
+            {
+              name: '📅 เหลือเวลา',
+              value: `${data.daysLeft} วัน`,
+              inline: true
+            },
+            {
+              name: '⏳ รอ Submit',
+              value: `${data.pendingCount}/${data.totalInfluencers} คน`,
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'กรุณาติดตาม Influencer ที่ยังไม่ส่งผลงาน'
+          },
+          timestamp: new Date().toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send deadline reminder:', error)
     }
   }
 }

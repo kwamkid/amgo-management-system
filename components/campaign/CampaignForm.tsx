@@ -176,23 +176,65 @@ export default function CampaignForm({
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (!validateForm()) {
+    // Scroll to first error
+    const firstError = document.querySelector('.border-red-500')
+    firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+  
+  // Create data with influencer info for edit mode
+  const submitData: CreateCampaignData = {
+    ...formData,
+    // For edit mode, include existing influencer data
+    influencerIds: formData.influencerIds,
+  }
+  
+  // For edit mode, we need to pass the influencer data separately
+  if (isEditMode && campaign) {
+    // Map the selected influencer IDs with their names
+    const influencersWithNames = formData.influencerIds.map(influencerId => {
+      // Find from existing campaign data first
+      const existing = campaign.influencers?.find(inf => inf.influencerId === influencerId)
+      if (existing) {
+        return existing
+      }
+      
+      // Otherwise find from influencers list
+      const influencer = influencers.find(inf => inf.id === influencerId)
+      return {
+        influencerId,
+        influencerName: influencer?.fullName || 'Unknown',
+        influencerNickname: influencer?.nickname,
+        assignedAt: new Date(),
+        submissionStatus: 'pending' as const,
+        submissionLink: `${Date.now()}-${influencerId.substring(0, 8)}`
+      }
+    })
     
-    if (!validateForm()) {
-      // Scroll to first error
-      const firstError = document.querySelector('.border-red-500')
-      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return
+    // Pass the influencers array in the update
+    const updateData: any = {
+      ...submitData,
+      influencers: influencersWithNames
     }
     
-    const result = await onSubmit(formData)
+    const result = await onSubmit(updateData)
+    
+    if (result) {
+      router.push('/campaigns')
+    }
+  } else {
+    // For create mode, just pass the data as is
+    const result = await onSubmit(submitData)
     
     if (result) {
       router.push('/campaigns')
     }
   }
+}
 
   // Toggle selections
   const toggleInfluencer = (influencerId: string) => {

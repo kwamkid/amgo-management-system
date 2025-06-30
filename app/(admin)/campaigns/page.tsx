@@ -608,12 +608,12 @@ export default function CampaignsPage() {
               <TableRow>
                 <TableHead className="w-[30px]"></TableHead>
                 <TableHead>Campaign</TableHead>
-                <TableHead className="w-[250px]">Influencers</TableHead>
-                <TableHead className="w-[250px]">Brands & Products</TableHead>
-                <TableHead className="w-[80px]">Timeline</TableHead>
+                <TableHead>Influencers</TableHead>
+                <TableHead>Brands & Products</TableHead>
+                <TableHead className="w-[120px]">Timeline</TableHead>
                 <TableHead className="w-[100px]">Progress</TableHead>
-                <TableHead className="w-[100px]">สร้างโดย</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[120px]">สร้างโดย</TableHead>
+                <TableHead className="text-right w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -636,8 +636,15 @@ export default function CampaignsPage() {
                   return brand?.name || brandId
                 }).join(', ') || '-'
 
-                // Get product count
-                const productCount = campaign.products?.length || 0
+                // Get product names with their brands
+                const productInfo = campaign.products?.slice(0, 2).map(productId => {
+                  const product = products.find(p => p.id === productId)
+                  const brand = product ? brands.find(b => b.id === product.brandId) : null
+                  return product ? {
+                    name: product.name,
+                    brandName: brand?.name || ''
+                  } : null
+                }).filter(Boolean) || []
 
                 return (
                   <TableRow key={campaign.id} className="hover:bg-gray-50">
@@ -669,12 +676,15 @@ export default function CampaignsPage() {
                     {/* Influencers */}
                     <TableCell>
                       <div>
-                        <p className="font-medium">{totalInfluencers} คน</p>
                         {campaign.influencers && campaign.influencers.length > 0 && (
-                          <div className="text-sm text-gray-600 mt-1 space-y-0.5">
+                          <div className="text-sm text-gray-600 space-y-0.5">
                             {campaign.influencers.slice(0, 3).map((inf, idx) => (
                               <p key={inf.influencerId} className="truncate">
-                                {idx + 1}. {inf.influencerName}
+                                {campaign.influencers.length > 1 && `${idx + 1}. `}
+                                {inf.influencerName || 'Unknown'}
+                                {inf.influencerNickname && (
+                                  <span className="text-gray-400"> (@{inf.influencerNickname})</span>
+                                )}
                               </p>
                             ))}
                             {campaign.influencers.length > 3 && (
@@ -688,18 +698,18 @@ export default function CampaignsPage() {
                     {/* Brands & Products */}
                     <TableCell>
                       <div>
-                        <p className="text-sm font-medium">{brandNames}</p>
-                        {campaign.products && campaign.products.length > 0 && (
-                          <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                            {campaign.products.slice(0, 2).map((productId, idx) => {
-                              const product = products.find(p => p.id === productId)
-                              return product ? (
-                                <p key={productId} className="truncate">
-                                  • {product.name}
-                                </p>
-                              ) : null
-                            })}
-                            {campaign.products.length > 2 && (
+                        <p className="text-sm font-medium text-gray-900">{brandNames}</p>
+                        {productInfo.length > 0 && (
+                          <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+                            {productInfo.map((product, idx) => (
+                              <p key={idx} className="truncate">
+                                • {product?.name}
+                                {product?.brandName && (
+                                  <span className="text-gray-400"> ({product.brandName})</span>
+                                )}
+                              </p>
+                            ))}
+                            {campaign.products && campaign.products.length > 2 && (
                               <p className="text-gray-400">+{campaign.products.length - 2} สินค้า</p>
                             )}
                           </div>
@@ -710,8 +720,12 @@ export default function CampaignsPage() {
                     {/* Timeline */}
                     <TableCell>
                       <div className="text-sm">
-                        <p className="text-gray-500">{format(new Date(campaign.startDate), 'dd/MM', { locale: th })}</p>
-                        <p className="font-medium">{format(new Date(campaign.deadline), 'dd/MM/yy', { locale: th })}</p>
+                        <p className="text-gray-500">
+                          {format(new Date(campaign.startDate), 'dd/MM', { locale: th })}
+                        </p>
+                        <p className="font-medium">
+                          {format(new Date(campaign.deadline), 'dd/MM/yy', { locale: th })}
+                        </p>
                       </div>
                     </TableCell>
 
@@ -737,7 +751,7 @@ export default function CampaignsPage() {
 
                     {/* Created By */}
                     <TableCell>
-                      <p className="text-xs text-gray-600 truncate max-w-[100px]">{campaign.createdByName || '-'}</p>
+                      <p className="text-xs text-gray-600 truncate">{campaign.createdByName || '-'}</p>
                     </TableCell>
 
                     {/* Actions */}

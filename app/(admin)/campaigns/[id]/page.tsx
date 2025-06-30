@@ -3,8 +3,9 @@
 
 import { use, useState } from 'react'
 import { useCampaign, useCampaigns } from '@/hooks/useCampaigns'
-import { useInfluencer } from '@/hooks/useInfluencers'
-import { useBrand } from '@/hooks/useBrands'
+import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/hooks/useToast'
+import * as submissionService from '@/lib/services/submissionService'
 import { 
   ArrowLeft,
   Edit,
@@ -22,7 +23,10 @@ import {
   AlertCircle,
   TrendingUp,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Send,
+  MessageSquare,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -32,9 +36,24 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { format } from 'date-fns'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { safeFormatDate } from '@/lib/utils/date'
 import { th } from 'date-fns/locale'
 import { CampaignStatus, SubmissionStatus } from '@/types/influencer'
+import { cn } from '@/lib/utils'
+
+// Platform icons config
+const PLATFORM_ICONS: Record<string, any> = {
+  instagram: '📷',
+  tiktok: '🎵',
+  facebook: '👤',
+  youtube: '📺',
+  twitter: '🐦',
+  lemon8: '🍋',
+  website: '🌐',
+  others: '🔗'
+}
 
 export default function CampaignDetailPage({ 
   params 
@@ -43,10 +62,16 @@ export default function CampaignDetailPage({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const { userData } = useAuth()
+  const { showToast } = useToast()
   const { campaign, loading, error } = useCampaign(id)
   const { updateInfluencerSubmission, cancelCampaign } = useCampaigns()
   
   const [activeTab, setActiveTab] = useState('overview')
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
+  const [processingReview, setProcessingReview] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0) // Add refresh key for force update
 
   // Status config
   const statusConfig: Record<CampaignStatus, { 
@@ -105,8 +130,77 @@ export default function CampaignDetailPage({
   const copySubmissionLink = (code: string) => {
     const url = `${window.location.origin}/submit/${code}`
     navigator.clipboard.writeText(url)
-      .then(() => alert('คัดลอก Link สำเร็จ!'))
-      .catch(() => alert('ไม่สามารถคัดลอก Link ได้'))
+      .then(() => showToast('คัดลอก Link สำเร็จ!', 'success'))
+      .catch(() => showToast('ไม่สามารถคัดลอก Link ได้', 'error'))
+  }
+
+  // Handle review submission
+  const handleReviewSubmission = async (
+    influencerId: string,
+    action: 'approve' | 'reject'
+  ) => {
+    if (!userData) return
+    
+    setProcessingReview(influencerId)
+    
+    try {
+      const notes = action === 'reject' ? reviewNotes[influencerId] : undefined
+      
+      if (action === 'reject' && !notes) {
+        showToast('กรุณาระบุเหตุผลที่ต้องแก้ไข', 'error')
+        setProcessingReview(null)
+        return
+      }
+      
+      await submissionService.reviewSubmission(
+        id,
+        influencerId,
+        action,
+        userData.fullName || userData.lineDisplayName || 'Unknown',
+        notes
+      )
+      
+      showToast(
+        action === 'approve' ? 'อนุมัติผลงานสำเร็จ' : 'ส่งคำขอแก้ไขสำเร็จ',
+        'success'
+      )
+      
+      // Clear review state
+      setReviewingId(null)
+      setReviewNotes({ ...reviewNotes, [influencerId]: '' })
+      
+      // Update local state immediately for better UX
+      if (campaign && campaign.influencers) {
+        const updatedInfluencers = campaign.influencers.map(inf => 
+          inf.influencerId === influencerId 
+            ? {
+                ...inf,
+                submissionStatus: action === 'approve' ? 'approved' : 'revision',
+                reviewedAt: new Date(),
+                reviewedBy: userData.fullName || userData.lineDisplayName || 'Unknown',
+                reviewNotes: notes
+              }
+            : inf
+        )
+        
+        // Force re-render with updated data
+        campaign.influencers = updatedInfluencers
+      }
+      
+      // Force component refresh
+      setRefreshKey(prev => prev + 1)
+      
+      // Reload the page to get fresh data
+      setTimeout(() => {
+        router.refresh()
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Error reviewing submission:', error)
+      showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error')
+    } finally {
+      setProcessingReview(null)
+    }
   }
 
   // Handle cancel
@@ -158,6 +252,9 @@ export default function CampaignDetailPage({
   ).length || 0
   const approvedCount = campaign.influencers?.filter(
     inf => inf.submissionStatus === 'approved'
+  ).length || 0
+  const needsReviewCount = campaign.influencers?.filter(
+    inf => ['submitted', 'resubmitted'].includes(inf.submissionStatus)
   ).length || 0
 
   return (
@@ -230,20 +327,20 @@ export default function CampaignDetailPage({
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className={needsReviewCount > 0 ? 'ring-2 ring-yellow-500' : ''}>
           <CardContent className="p-4">
-            <p className="text-sm text-gray-600">ผ่านแล้ว</p>
-            <p className="text-2xl font-bold text-green-600">
-              {approvedCount}
+            <p className="text-sm text-gray-600">รอตรวจสอบ</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              {needsReviewCount}
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-gray-600">งบประมาณ</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {campaign.budget ? `฿${campaign.budget.toLocaleString()}` : '-'}
+            <p className="text-sm text-gray-600">ผ่านแล้ว</p>
+            <p className="text-2xl font-bold text-green-600">
+              {approvedCount}
             </p>
           </CardContent>
         </Card>
@@ -253,12 +350,22 @@ export default function CampaignDetailPage({
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-          <TabsTrigger value="influencers">
+          <TabsTrigger value="influencers" className="relative">
             Influencers ({totalInfluencers})
+            {needsReviewCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+            )}
           </TabsTrigger>
-          <TabsTrigger value="submissions">
-            ผลงาน ({submittedCount})
-          </TabsTrigger>
+          {(campaign.status === 'reviewing' || campaign.status === 'completed' || submittedCount > 0) && (
+            <TabsTrigger value="review" className="relative">
+              ตรวจสอบผลงาน
+              {needsReviewCount > 0 && (
+                <Badge variant="warning" className="ml-2">
+                  {needsReviewCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -281,7 +388,7 @@ export default function CampaignDetailPage({
                     วันที่เริ่ม
                   </p>
                   <p className="mt-1 font-medium">
-                    {format(new Date(campaign.startDate), 'dd MMMM yyyy', { locale: th })}
+                    {safeFormatDate(campaign.startDate, 'dd MMMM yyyy', { locale: th })}
                   </p>
                 </div>
                 
@@ -291,7 +398,7 @@ export default function CampaignDetailPage({
                     Deadline
                   </p>
                   <p className="mt-1 font-medium">
-                    {format(new Date(campaign.deadline), 'dd MMMM yyyy', { locale: th })}
+                    {safeFormatDate(campaign.deadline, 'dd MMMM yyyy', { locale: th })}
                   </p>
                 </div>
               </div>
@@ -392,10 +499,10 @@ export default function CampaignDetailPage({
                     return (
                       <tr key={inf.influencerId} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
-                          <p className="font-medium">{inf.influencerName}</p>
-                          <p className="text-sm text-gray-600">
-                            {inf.influencerNickname && `@${inf.influencerNickname}`}
-                          </p>
+                          <p className="font-medium">{inf.influencerName || 'Unknown'}</p>
+                          {inf.influencerNickname && (
+                            <p className="text-sm text-gray-600">@{inf.influencerNickname}</p>
+                          )}
                         </td>
                         
                         <td className="px-6 py-4">
@@ -423,7 +530,7 @@ export default function CampaignDetailPage({
                         <td className="px-6 py-4">
                           {inf.submittedAt ? (
                             <span className="text-sm">
-                              {format(new Date(inf.submittedAt), 'dd/MM/yyyy HH:mm')}
+                              {safeFormatDate(inf.submittedAt, 'dd/MM/yyyy HH:mm')}
                             </span>
                           ) : (
                             <span className="text-sm text-gray-400">-</span>
@@ -431,11 +538,17 @@ export default function CampaignDetailPage({
                         </td>
                         
                         <td className="px-6 py-4 text-right">
-                          {inf.submissionStatus === 'submitted' && (
+                          {['submitted', 'resubmitted'].includes(inf.submissionStatus) && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => router.push(`/submissions/${inf.submissionLink}`)}
+                              onClick={() => {
+                                setActiveTab('review')
+                                setTimeout(() => {
+                                  const element = document.getElementById(`review-${inf.influencerId}`)
+                                  element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                }, 100)
+                              }}
                             >
                               <Eye className="w-4 h-4 mr-1" />
                               ตรวจสอบ
@@ -451,16 +564,198 @@ export default function CampaignDetailPage({
           </Card>
         </TabsContent>
 
-        {/* Submissions Tab */}
-        <TabsContent value="submissions">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-gray-500">
-                ระบบ Review ผลงานจะเปิดให้ใช้งานเร็วๆ นี้
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Review Tab */}
+        {(campaign.status === 'reviewing' || campaign.status === 'completed' || submittedCount > 0) && (
+          <TabsContent value="review" className="space-y-4" key={refreshKey}>
+            {campaign.influencers?.filter(inf => 
+              ['submitted', 'resubmitted', 'approved', 'revision'].includes(inf.submissionStatus)
+            ).map((inf) => {
+              const subStatus = submissionStatusConfig[inf.submissionStatus]
+              const isReviewing = reviewingId === inf.influencerId
+              const canReview = ['submitted', 'resubmitted'].includes(inf.submissionStatus)
+              
+              return (
+                <Card 
+                  key={inf.influencerId} 
+                  id={`review-${inf.influencerId}`}
+                  className={cn(
+                    "transition-all",
+                    canReview && "ring-2 ring-yellow-500"
+                  )}
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {inf.influencerName}
+                            {inf.influencerNickname && (
+                              <span className="text-gray-500 font-normal"> (@{inf.influencerNickname})</span>
+                            )}
+                          </h3>
+                          <Badge className={`${subStatus.bgColor} ${subStatus.color} mt-1`}>
+                            {subStatus.label}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {inf.submittedAt && (
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">ส่งเมื่อ</p>
+                          <p className="text-sm font-medium">
+                            {safeFormatDate(inf.submittedAt, 'dd/MM/yyyy HH:mm')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {/* Submitted Links */}
+                    {inf.submittedLinks && inf.submittedLinks.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          ผลงานที่ส่ง ({inf.submittedLinks.length} links)
+                        </p>
+                        
+                        <div className="grid gap-2">
+                          {inf.submittedLinks.map((link, idx) => (
+                            <div 
+                              key={link.id || idx}
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <span className="text-2xl">
+                                {PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.others}
+                              </span>
+                              <a
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline truncate"
+                              >
+                                {link.url}
+                              </a>
+                              <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Review Actions */}
+                        {canReview && (
+                          <div className="mt-4 pt-4 border-t">
+                            {!isReviewing ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => handleReviewSubmission(inf.influencerId, 'approve')}
+                                  disabled={processingReview === inf.influencerId}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  {processingReview === inf.influencerId ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                  )}
+                                  อนุมัติ
+                                </Button>
+                                <Button
+                                  onClick={() => setReviewingId(inf.influencerId)}
+                                  variant="outline"
+                                  className="text-orange-600 hover:bg-orange-50"
+                                >
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                  ขอแก้ไข
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <div>
+                                  <Label>เหตุผลที่ต้องแก้ไข</Label>
+                                  <Textarea
+                                    placeholder="ระบุรายละเอียดที่ต้องการให้แก้ไข..."
+                                    value={reviewNotes[inf.influencerId] || ''}
+                                    onChange={(e) => setReviewNotes({
+                                      ...reviewNotes,
+                                      [inf.influencerId]: e.target.value
+                                    })}
+                                    className="mt-1"
+                                    rows={3}
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleReviewSubmission(inf.influencerId, 'reject')}
+                                    disabled={processingReview === inf.influencerId}
+                                    className="bg-orange-600 hover:bg-orange-700"
+                                  >
+                                    {processingReview === inf.influencerId ? (
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <Send className="w-4 h-4 mr-2" />
+                                    )}
+                                    ส่งคำขอแก้ไข
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      setReviewingId(null)
+                                      setReviewNotes({ ...reviewNotes, [inf.influencerId]: '' })
+                                    }}
+                                    variant="outline"
+                                  >
+                                    ยกเลิก
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Review History */}
+                        {inf.reviewedAt && (
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-sm text-gray-600">
+                              {inf.submissionStatus === 'approved' ? 'อนุมัติโดย' : 'ตรวจสอบโดย'}: {inf.reviewedBy}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {safeFormatDate(inf.reviewedAt, 'dd/MM/yyyy HH:mm')}
+                            </p>
+                            {inf.reviewNotes && (
+                              <div className="mt-2 p-3 bg-orange-50 rounded-lg">
+                                <p className="text-sm text-orange-800">
+                                  <MessageSquare className="w-4 h-4 inline mr-1" />
+                                  {inf.reviewNotes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">
+                        ยังไม่มีการส่งผลงาน
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+            
+            {/* Empty State */}
+            {!campaign.influencers?.some(inf => 
+              ['submitted', 'resubmitted', 'approved', 'revision'].includes(inf.submissionStatus)
+            ) && (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Send className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      ยังไม่มี Influencer ส่งผลงาน
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

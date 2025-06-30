@@ -12,7 +12,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  writeBatch
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { 
@@ -87,14 +87,23 @@ export const createCampaign = async (
   createdByName: string
 ): Promise<string> => {
   try {
-    // Prepare influencer assignments
-    const influencers: CampaignInfluencer[] = data.influencerIds.map(influencerId => ({
-      influencerId,
-      influencerName: '', // Will be filled by the component
-      assignedAt: new Date(),
-      submissionStatus: 'pending' as const,
-      submissionLink: generateSubmissionLink(influencerId)
-    }))
+    // Import influencer service
+    const { getInfluencer } = await import('./influencerService')
+    
+    // Prepare influencer assignments with names
+    const influencers: CampaignInfluencer[] = await Promise.all(
+      data.influencerIds.map(async (influencerId) => {
+        const influencer = await getInfluencer(influencerId)
+        return {
+          influencerId,
+          influencerName: influencer?.fullName || 'Unknown',
+          influencerNickname: influencer?.nickname,
+          assignedAt: new Date(),
+          submissionStatus: 'pending' as const,
+          submissionLink: generateSubmissionLink(influencerId)
+        }
+      })
+    )
     
     const campaignData = {
       name: data.name,

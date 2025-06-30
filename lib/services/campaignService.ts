@@ -130,10 +130,22 @@ export const updateCampaign = async (
 ): Promise<void> => {
   try {
     const docRef = doc(db, COLLECTION_NAME, campaignId)
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
+    
+    // Clean data - remove undefined values
+    const cleanData: any = {}
+    
+    Object.keys(data).forEach(key => {
+      const value = data[key as keyof Campaign]
+      // Only include fields that are not undefined
+      if (value !== undefined) {
+        cleanData[key] = value
+      }
     })
+    
+    // Ensure updatedAt is always included
+    cleanData.updatedAt = serverTimestamp()
+    
+    await updateDoc(docRef, cleanData)
   } catch (error) {
     console.error('Error updating campaign:', error)
     throw error

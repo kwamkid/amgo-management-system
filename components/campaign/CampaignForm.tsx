@@ -1,7 +1,7 @@
 // ========== FILE: components/campaign/CampaignForm.tsx ==========
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Calendar,
@@ -38,7 +38,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import BrandModal from '@/components/brand/BrandModal'
 import ProductModal from '@/components/product/ProductModal'
@@ -59,7 +58,7 @@ export default function CampaignForm({
   
   const { influencers, loading: influencersLoading } = useInfluencers()
   const { brands, createBrand, updateBrand, deleteBrand } = useBrands()
-  const { products, createProduct, updateProduct, deleteProduct } = useProducts()
+  const { products: allProducts, createProduct, updateProduct, deleteProduct } = useProducts()
   
   // Form data
   const [formData, setFormData] = useState<CreateCampaignData>({
@@ -79,20 +78,21 @@ export default function CampaignForm({
   
   // Search states
   const [influencerSearch, setInfluencerSearch] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
   
-  // Modal states
-  const [brandModal, setBrandModal] = useState<{
-    open: boolean
+  // Modal states - แยก open state ออกมาเพื่อป้องกัน re-render
+  const [brandModalOpen, setBrandModalOpen] = useState(false)
+  const [brandModalData, setBrandModalData] = useState<{
     mode: 'create' | 'edit'
     brand?: Brand | null
-  }>({ open: false, mode: 'create' })
+  }>({ mode: 'create' })
   
-  const [productModal, setProductModal] = useState<{
-    open: boolean
+  const [productModalOpen, setProductModalOpen] = useState(false)
+  const [productModalData, setProductModalData] = useState<{
     mode: 'create' | 'edit'
     product?: Product | null
     defaultBrandId?: string
-  }>({ open: false, mode: 'create' })
+  }>({ mode: 'create' })
 
   // Initialize form data for edit mode
   useEffect(() => {
@@ -129,16 +129,25 @@ export default function CampaignForm({
     }
   }, [formData.startDate, isEditMode])
 
-  // Filter influencers by search
-  const filteredInfluencers = influencers.filter(inf =>
-    inf.fullName.toLowerCase().includes(influencerSearch.toLowerCase()) ||
-    inf.nickname.toLowerCase().includes(influencerSearch.toLowerCase())
-  )
+  // Filter influencers by search (including phone number)
+  const filteredInfluencers = useMemo(() => {
+    if (!influencerSearch.trim()) return influencers
+    
+    const searchLower = influencerSearch.toLowerCase()
+    return influencers.filter(inf =>
+      inf.fullName.toLowerCase().includes(searchLower) ||
+      inf.nickname.toLowerCase().includes(searchLower) ||
+      inf.phone.includes(influencerSearch) ||
+      inf.email.toLowerCase().includes(searchLower)
+    )
+  }, [influencers, influencerSearch])
 
-  // Filter products by selected brands
-  const availableProducts = products.filter(product => 
-    formData.brandIds.includes(product.brandId)
-  )
+  // Filter products by selected brands - use memoization to prevent re-renders
+  const availableProducts = useMemo(() => {
+    return allProducts.filter(product => 
+      formData.brandIds.includes(product.brandId)
+    )
+  }, [allProducts, formData.brandIds])
 
   // Validate form
   const validateForm = (): boolean => {
@@ -204,7 +213,7 @@ export default function CampaignForm({
       
       // Remove products from deselected brands
       const newProductIds = prev.productIds.filter(productId => {
-        const product = products.find(p => p.id === productId)
+        const product = allProducts.find(p => p.id === productId)
         return product && newBrandIds.includes(product.brandId)
       })
       
@@ -230,15 +239,16 @@ export default function CampaignForm({
   // Handle brand modal
   const handleBrandSubmit = async (data: any) => {
     let success = false
-    if (brandModal.mode === 'create') {
+    if (brandModalData.mode === 'create') {
       const id = await createBrand(data)
       success = !!id
-    } else if (brandModal.brand?.id) {
-      success = await updateBrand(brandModal.brand.id, data)
+    } else if (brandModalData.brand?.id) {
+      success = await updateBrand(brandModalData.brand.id, data)
     }
     
     if (success) {
-      setBrandModal({ open: false, mode: 'create' })
+      setBrandModalOpen(false)
+      setBrandModalData({ mode: 'create' })
     }
     return success
   }
@@ -246,15 +256,16 @@ export default function CampaignForm({
   // Handle product modal
   const handleProductSubmit = async (data: any) => {
     let success = false
-    if (productModal.mode === 'create') {
+    if (productModalData.mode === 'create') {
       const id = await createProduct(data)
       success = !!id
-    } else if (productModal.product?.id) {
-      success = await updateProduct(productModal.product.id, data)
+    } else if (productModalData.product?.id) {
+      success = await updateProduct(productModalData.product.id, data)
     }
     
     if (success) {
-      setProductModal({ open: false, mode: 'create' })
+      setProductModalOpen(false)
+      setProductModalData({ mode: 'create' })
     }
     return success
   }
@@ -362,7 +373,8 @@ export default function CampaignForm({
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            {/* Budget, Brief, and Tracking URL in one row */}
+            <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="budget">
                   <DollarSign className="inline w-4 h-4 mr-1" />
@@ -376,7 +388,7 @@ export default function CampaignForm({
                     ...formData, 
                     budget: e.target.value ? parseInt(e.target.value) : undefined 
                   })}
-                  placeholder="ไม่ระบุ = ไม่มีงบประมาณ"
+                  placeholder="ไม่ระบุ = ไม่มีงบ"
                 />
               </div>
 
@@ -393,20 +405,20 @@ export default function CampaignForm({
                   placeholder="https://drive.google.com/..."
                 />
               </div>
-            </div>
 
-            <div>
-              <Label htmlFor="trackingUrl">
-                <LinkIcon className="inline w-4 h-4 mr-1" />
-                Link สำหรับบิลส่งของ
-              </Label>
-              <Input
-                id="trackingUrl"
-                type="url"
-                value={formData.trackingUrl}
-                onChange={(e) => setFormData({ ...formData, trackingUrl: e.target.value })}
-                placeholder="https://tracking.example.com/..."
-              />
+              <div>
+                <Label htmlFor="trackingUrl">
+                  <LinkIcon className="inline w-4 h-4 mr-1" />
+                  Link บิลส่งของ
+                </Label>
+                <Input
+                  id="trackingUrl"
+                  type="url"
+                  value={formData.trackingUrl}
+                  onChange={(e) => setFormData({ ...formData, trackingUrl: e.target.value })}
+                  placeholder="https://tracking.example.com/..."
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -425,9 +437,13 @@ export default function CampaignForm({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="ค้นหาชื่อ Influencer..."
+                placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, อีเมล..."
                 value={influencerSearch}
-                onChange={(e) => setInfluencerSearch(e.target.value)}
+                onChange={(e) => {
+                  setInfluencerSearch(e.target.value)
+                  setIsSearching(true)
+                  setTimeout(() => setIsSearching(false), 300)
+                }}
                 className="pl-9"
               />
             </div>
@@ -447,8 +463,8 @@ export default function CampaignForm({
 
             {/* Influencer grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto">
-              {influencersLoading ? (
-                <p className="col-span-full text-center py-8 text-gray-500">กำลังโหลด...</p>
+              {isSearching ? (
+                <p className="col-span-full text-center py-8 text-gray-500">กำลังค้นหา...</p>
               ) : filteredInfluencers.length === 0 ? (
                 <p className="col-span-full text-center py-8 text-gray-500">
                   {influencerSearch ? 'ไม่พบ Influencer ที่ค้นหา' : 'ไม่มีข้อมูล Influencer'}
@@ -466,9 +482,11 @@ export default function CampaignForm({
                     onClick={() => toggleInfluencer(influencer.id!)}
                   >
                     <div className="flex items-start gap-3">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={formData.influencerIds.includes(influencer.id!)}
-                        onCheckedChange={() => toggleInfluencer(influencer.id!)}
+                        onChange={() => toggleInfluencer(influencer.id!)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                         onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex-1">
@@ -507,7 +525,10 @@ export default function CampaignForm({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => setBrandModal({ open: true, mode: 'create' })}
+                  onClick={() => {
+                    setBrandModalData({ mode: 'create' })
+                    setBrandModalOpen(true)
+                  }}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -533,9 +554,11 @@ export default function CampaignForm({
                     onClick={() => toggleBrand(brand.id!)}
                   >
                     <div className="flex items-center gap-3">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={formData.brandIds.includes(brand.id!)}
-                        onCheckedChange={() => toggleBrand(brand.id!)}
+                        onChange={() => toggleBrand(brand.id!)}
+                        className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                         onClick={(e) => e.stopPropagation()}
                       />
                       {brand.logo && (
@@ -554,7 +577,8 @@ export default function CampaignForm({
                           className="h-6 w-6"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setBrandModal({ open: true, mode: 'edit', brand })
+                            setBrandModalData({ mode: 'edit', brand })
+                            setBrandModalOpen(true)
                           }}
                         >
                           <Edit className="w-3 h-3" />
@@ -594,11 +618,13 @@ export default function CampaignForm({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => setProductModal({ 
-                      open: true, 
-                      mode: 'create',
-                      defaultBrandId: formData.brandIds[0]
-                    })}
+                    onClick={() => {
+                      setProductModalData({ 
+                        mode: 'create',
+                        defaultBrandId: formData.brandIds[0]
+                      })
+                      setProductModalOpen(true)
+                    }}
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -637,9 +663,11 @@ export default function CampaignForm({
                         onClick={() => toggleProduct(product.id!)}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox
+                          <input
+                            type="checkbox"
                             checked={formData.productIds.includes(product.id!)}
-                            onCheckedChange={() => toggleProduct(product.id!)}
+                            onChange={() => toggleProduct(product.id!)}
+                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                             onClick={(e) => e.stopPropagation()}
                           />
                           {product.image && (
@@ -661,7 +689,8 @@ export default function CampaignForm({
                               className="h-6 w-6"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setProductModal({ open: true, mode: 'edit', product })
+                                setProductModalData({ mode: 'edit', product })
+                                setProductModalOpen(true)
                               }}
                             >
                               <Edit className="w-3 h-3" />
@@ -722,20 +751,20 @@ export default function CampaignForm({
 
       {/* Brand Modal */}
       <BrandModal
-        open={brandModal.open}
-        onOpenChange={(open) => setBrandModal(prev => ({ ...prev, open }))}
-        mode={brandModal.mode}
-        brand={brandModal.brand}
+        open={brandModalOpen}
+        onOpenChange={setBrandModalOpen}
+        mode={brandModalData.mode}
+        brand={brandModalData.brand}
         onSubmit={handleBrandSubmit}
       />
 
       {/* Product Modal */}
       <ProductModal
-        open={productModal.open}
-        onOpenChange={(open) => setProductModal(prev => ({ ...prev, open }))}
-        mode={productModal.mode}
-        product={productModal.product}
-        defaultBrandId={productModal.defaultBrandId}
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        mode={productModalData.mode}
+        product={productModalData.product}
+        defaultBrandId={productModalData.defaultBrandId}
         brands={brands}
         onSubmit={handleProductSubmit}
       />

@@ -48,8 +48,30 @@ export const useCampaigns = (options?: UseCampaignsOptions) => {
         return null
       }
       
+      // Clean data before sending
+      const cleanedData: any = {
+        name: data.name,
+        description: data.description,
+        startDate: data.startDate,
+        deadline: data.deadline,
+        influencerIds: data.influencerIds,
+        brandIds: data.brandIds,
+        productIds: data.productIds
+      }
+      
+      // Only add optional fields if they have values
+      if (data.budget !== undefined && data.budget !== null) {
+        cleanedData.budget = data.budget
+      }
+      if (data.briefFileUrl) {
+        cleanedData.briefFileUrl = data.briefFileUrl
+      }
+      if (data.trackingUrl) {
+        cleanedData.trackingUrl = data.trackingUrl
+      }
+      
       const id = await campaignService.createCampaign(
-        data,
+        cleanedData,
         userData.id!,
         userData.fullName || userData.lineDisplayName || 'Unknown'
       )

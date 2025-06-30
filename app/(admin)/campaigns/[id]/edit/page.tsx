@@ -23,26 +23,41 @@ export default function EditCampaignPage({
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true)
     try {
-      // For edit mode, we need to preserve existing influencer data
-      const updateData = {
-        ...data,
-        // Map influencerIds back to CampaignInfluencer objects
-        influencers: data.influencerIds.map((influencerId: string) => {
-          // Find existing influencer data or create new
-          const existing = campaign?.influencers?.find(inf => inf.influencerId === influencerId)
-          return existing || {
-            influencerId,
-            influencerName: '', // Will need to be filled from influencer data
-            assignedAt: new Date(),
-            submissionStatus: 'pending' as const,
-            submissionLink: `${Date.now()}-${influencerId}`
-          }
-        })
+      // Clean data - remove undefined values
+      const cleanData: any = {
+        name: data.name,
+        description: data.description,
+        startDate: data.startDate,
+        deadline: data.deadline,
+        brands: data.brandIds || [],
+        products: data.productIds || []
       }
       
-      delete updateData.influencerIds // Remove the temporary field
+      // Only add optional fields if they have values
+      if (data.budget !== undefined && data.budget !== null && data.budget !== '') {
+        cleanData.budget = data.budget
+      }
+      if (data.briefFileUrl) {
+        cleanData.briefFileUrl = data.briefFileUrl
+      }
+      if (data.trackingUrl) {
+        cleanData.trackingUrl = data.trackingUrl
+      }
       
-      const success = await updateCampaign(id, updateData)
+      // For edit mode, we need to preserve existing influencer data
+      cleanData.influencers = data.influencerIds.map((influencerId: string) => {
+        // Find existing influencer data or create new
+        const existing = campaign?.influencers?.find(inf => inf.influencerId === influencerId)
+        return existing || {
+          influencerId,
+          influencerName: '', // Will need to be filled from influencer data
+          assignedAt: new Date(),
+          submissionStatus: 'pending' as const,
+          submissionLink: `${Date.now()}-${influencerId}`
+        }
+      })
+      
+      const success = await updateCampaign(id, cleanData)
       return success
     } catch (error) {
       console.error('Error updating campaign:', error)

@@ -476,7 +476,7 @@ export default function CampaignForm({
                     className={cn(
                       "p-3 border rounded-lg cursor-pointer transition-all",
                       formData.influencerIds.includes(influencer.id!)
-                        ? "bg-red-50 border-red-300"
+                        ? "bg-green-50 border-green-300"
                         : "hover:bg-gray-50 border-gray-200"
                     )}
                     onClick={() => toggleInfluencer(influencer.id!)}
@@ -548,7 +548,7 @@ export default function CampaignForm({
                     className={cn(
                       "p-3 border rounded-lg cursor-pointer transition-all",
                       formData.brandIds.includes(brand.id!)
-                        ? "bg-red-50 border-red-300"
+                        ? "bg-green-50 border-green-300"
                         : "hover:bg-gray-50 border-gray-200"
                     )}
                     onClick={() => toggleBrand(brand.id!)}
@@ -657,7 +657,7 @@ export default function CampaignForm({
                         className={cn(
                           "p-3 border rounded-lg cursor-pointer transition-all",
                           formData.productIds.includes(product.id!)
-                            ? "bg-red-50 border-red-300"
+                            ? "bg-green-50 border-green-300"
                             : "hover:bg-gray-50 border-gray-200"
                         )}
                         onClick={() => toggleProduct(product.id!)}

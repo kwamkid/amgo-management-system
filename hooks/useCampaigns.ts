@@ -114,6 +114,19 @@ export const useCampaigns = (options?: UseCampaignsOptions) => {
     }
   }
 
+  const deleteCampaign = async (campaignId: string): Promise<boolean> => {
+    try {
+      await campaignService.deleteCampaign(campaignId)
+      showToast('ลบ Campaign สำเร็จ', 'success')
+      await fetchCampaigns()
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete campaign'
+      showToast(message, 'error')
+      return false
+    }
+  }
+
   const updateInfluencerSubmission = async (
     campaignId: string,
     influencerId: string,
@@ -146,6 +159,7 @@ export const useCampaigns = (options?: UseCampaignsOptions) => {
     createCampaign,
     updateCampaign,
     cancelCampaign,
+    deleteCampaign,  // <-- เพิ่มบรรทัดนี้
     updateInfluencerSubmission,
     refetch: fetchCampaigns
   }

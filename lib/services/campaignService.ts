@@ -256,6 +256,17 @@ function generateSubmissionLink(influencerId: string): string {
   return `${timestamp}-${random}-${influencerId.substring(0, 8)}`
 }
 
+// Delete campaign (hard delete - admin only)
+export const deleteCampaign = async (campaignId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, campaignId)
+    await deleteDoc(docRef)
+  } catch (error) {
+    console.error('Error deleting campaign:', error)
+    throw error
+  }
+}
+
 // Get campaign statistics
 export const getCampaignStats = async () => {
   try {
@@ -286,4 +297,7 @@ export const getCampaignStats = async () => {
     throw error
   }
 }
+
+
+
 

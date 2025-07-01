@@ -287,6 +287,7 @@ export const getCampaignStats = async () => {
         pending: 0,
         active: 0,
         reviewing: 0,
+        revising: 0,
         completed: 0,
         cancelled: 0
       },

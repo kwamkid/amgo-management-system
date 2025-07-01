@@ -46,18 +46,11 @@ export default function LocationMapPicker({
     lng: lng || defaultCenter.lng 
   })
   
- const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries,
-    id: 'google-map-script'
+    id: 'google-map-script' // ใช้ id เดียวกันกับ CheckInMap
   })
-
-  // Log for debugging
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-      console.error('Google Maps API Key is missing!')
-    }
-  }, [])
 
   // Update marker when props change
   useEffect(() => {

@@ -74,7 +74,9 @@ export default function DeleteAllDataPage() {
 
     const finalConfirm = confirm(
       '⚠️ คำเตือนสุดท้าย!\n\n' +
-      'คุณกำลังจะลบข้อมูลทั้งหมดในระบบ ยกเว้นข้อมูลผู้ใช้\n' +
+      'คุณกำลังจะลบข้อมูลทั้งหมดในระบบ ยกเว้น:\n' +
+      '- ข้อมูลผู้ใช้\n' +
+      '- Discord Webhook URLs\n\n' +
       'การกระทำนี้ไม่สามารถย้อนกลับได้!\n\n' +
       'คุณแน่ใจหรือไม่?'
     )
@@ -148,10 +150,17 @@ export default function DeleteAllDataPage() {
             <li>ข้อมูลสถานที่ทำงานทั้งหมดถูกลบ</li>
             <li>ข้อมูล Influencer และ Campaign ทั้งหมดถูกลบ</li>
             <li>ข้อมูล Invite Links ทั้งหมดถูกลบ</li>
-            <li>การตั้งค่าระบบทั้งหมดถูกลบ</li>
+            <li>การตั้งค่าระบบถูกลบ (ยกเว้น Discord Webhook URLs)</li>
           </ul>
-          <p className="font-semibold text-red-600">
-            ⚠️ ข้อมูลผู้ใช้จะไม่ถูกลบ แต่ผู้ใช้จะต้องสร้างข้อมูลสถานที่ใหม่ก่อนจึงจะสามารถเช็คอินได้
+          <p className="font-semibold text-green-600 mt-2">
+            ✅ ข้อมูลที่จะไม่ถูกลบ:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4 text-green-600">
+            <li>ข้อมูลผู้ใช้ทั้งหมด</li>
+            <li>Discord Webhook URLs ที่ตั้งค่าไว้</li>
+          </ul>
+          <p className="font-semibold text-red-600 mt-2">
+            ⚠️ ผู้ใช้จะต้องสร้างข้อมูลสถานที่ใหม่ก่อนจึงจะสามารถเช็คอินได้
           </p>
         </AlertDescription>
       </Alert>

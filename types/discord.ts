@@ -10,6 +10,7 @@ export interface DiscordConfig {
     leave: string
     hr: string
     alerts: string
+    campaign: string // เพิ่ม campaign webhook
   }
 }
 
@@ -62,7 +63,8 @@ export enum WebhookChannel {
   CHECK_IN = 'checkIn',
   LEAVE = 'leave', 
   HR = 'hr',
-  ALERTS = 'alerts'
+  ALERTS = 'alerts',
+  CAMPAIGN = 'campaign' // เพิ่ม campaign channel
 }
 
 // Embed colors

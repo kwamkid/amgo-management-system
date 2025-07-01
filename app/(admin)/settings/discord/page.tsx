@@ -20,7 +20,8 @@ import {
   Calendar,
   Users,
   AlertTriangle,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -40,6 +41,7 @@ interface DiscordSettings {
     leave: string
     hr: string
     alerts: string
+    campaign: string // เพิ่ม campaign
   }
   notifications: {
     checkIn: boolean
@@ -49,6 +51,7 @@ interface DiscordSettings {
     leaveRequest: boolean
     overtime: boolean
     dailySummary: boolean
+    campaignUpdates: boolean // เพิ่ม campaign notifications
   }
   dailySummaryTime: string
 }
@@ -58,7 +61,8 @@ const defaultSettings: DiscordSettings = {
     checkIn: '',
     leave: '',
     hr: '',
-    alerts: ''
+    alerts: '',
+    campaign: '' // เพิ่ม default
   },
   notifications: {
     checkIn: true,
@@ -67,7 +71,8 @@ const defaultSettings: DiscordSettings = {
     absent: true,
     leaveRequest: true,
     overtime: true,
-    dailySummary: true
+    dailySummary: true,
+    campaignUpdates: true // เพิ่ม default
   },
   dailySummaryTime: '18:00'
 }
@@ -94,7 +99,15 @@ export default function DiscordSettingsPage() {
       const docSnap = await getDoc(docRef)
       
       if (docSnap.exists()) {
-        setSettings(docSnap.data() as DiscordSettings)
+        const data = docSnap.data() as DiscordSettings
+        // Ensure campaign fields exist
+        if (!data.webhooks.campaign) {
+          data.webhooks.campaign = ''
+        }
+        if (data.notifications.campaignUpdates === undefined) {
+          data.notifications.campaignUpdates = true
+        }
+        setSettings(data)
       }
     } catch (error) {
       console.error('Error loading settings:', error)
@@ -388,6 +401,65 @@ export default function DiscordSettingsPage() {
             </p>
           </div>
 
+          {/* Campaign Channel - เพิ่มใหม่ */}
+          <div>
+            <Label>Influencer Campaign Channel</Label>
+            <div className="flex gap-2 mt-1">
+              <div className="flex-1 relative">
+                <Input
+                  type={showWebhooks.campaign ? 'text' : 'password'}
+                  value={settings.webhooks.campaign}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    webhooks: { ...settings.webhooks, campaign: e.target.value }
+                  })}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  disabled={!canEdit}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => toggleWebhookVisibility('campaign')}
+                    className="h-8 w-8"
+                  >
+                    {showWebhooks.campaign ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </Button>
+                  {settings.webhooks.campaign && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => copyWebhookUrl(settings.webhooks.campaign)}
+                      className="h-8 w-8"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Button
+                onClick={() => testWebhook('campaign')}
+                disabled={!settings.webhooks.campaign || testing === 'campaign'}
+                variant="outline"
+              >
+                {testing === 'campaign' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <TestTube className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              แจ้งเตือน Campaign, Submission และ Review ของ Influencer
+            </p>
+          </div>
+
           {/* Alerts Channel */}
           <div>
             <Label>System Alerts Channel</Label>
@@ -466,7 +538,8 @@ export default function DiscordSettingsPage() {
               absent: 'แจ้งเตือนพนักงานขาดงาน',
               leaveRequest: 'แจ้งเตือนคำขอลา',
               overtime: 'แจ้งเตือนทำงานเกินเวลา',
-              dailySummary: 'ส่งสรุปประจำวัน'
+              dailySummary: 'ส่งสรุปประจำวัน',
+              campaignUpdates: 'แจ้งเตือน Campaign และ Submission' // เพิ่มใหม่
             }).map(([key, label]) => (
               <label key={key} className="flex items-center gap-3">
                 <Checkbox

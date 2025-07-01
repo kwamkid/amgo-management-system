@@ -14,7 +14,7 @@ import { db } from '@/lib/firebase'
 const BATCH_SIZE = 500 // Firestore batch limit
 
 /**
- * Delete all documents in a collection (except users)
+ * Delete all documents in a collection (except users and discord settings)
  */
 export async function deleteAllData(collectionName: string): Promise<void> {
   // Prevent deleting users collection
@@ -23,6 +23,12 @@ export async function deleteAllData(collectionName: string): Promise<void> {
   }
 
   try {
+    // Special handling for settings - keep discord settings
+    if (collectionName === 'settings') {
+      await deleteSettingsExceptDiscord()
+      return
+    }
+
     // Special handling for checkins (date-partitioned)
     if (collectionName === 'checkins') {
       await deleteCheckinsData()
@@ -204,6 +210,25 @@ export async function getCollectionStats(): Promise<Record<string, number>> {
 export async function deleteDocument(collectionName: string, documentId: string): Promise<void> {
   const docRef = doc(db, collectionName, documentId)
   await deleteDoc(docRef)
+}
+
+/**
+ * Delete settings except discord settings
+ */
+async function deleteSettingsExceptDiscord(): Promise<void> {
+  const settingsRef = collection(db, 'settings')
+  const snapshot = await getDocs(settingsRef)
+  
+  const batch = writeBatch(db)
+  
+  snapshot.docs.forEach((doc) => {
+    // Skip discord settings document
+    if (doc.id !== 'discord') {
+      batch.delete(doc.ref)
+    }
+  })
+  
+  await batch.commit()
 }
 
 /**

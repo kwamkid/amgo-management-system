@@ -23,7 +23,8 @@ import {
   Bell,
   MessageSquare,
   TrendingUp,
-  Baby
+  Baby,
+  Trash2
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -181,6 +182,12 @@ const navItems: NavItem[] = [
         label: 'ความปลอดภัย',
         href: '/settings/security',
         icon: <Shield className="w-4 h-4" />,
+        roles: ['admin']
+      },
+      {
+        label: 'ลบข้อมูลทั้งหมด',
+        icon: <Trash2 className="w-4 h-4" />,
+        href: '/settings/delete-data',
         roles: ['admin']
       }
     ]

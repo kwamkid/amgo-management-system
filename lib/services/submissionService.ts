@@ -267,8 +267,9 @@ const checkAndUpdateCampaignStatus = async (campaignId: string) => {
     }
     
     campaignData.influencers?.forEach((inf: any) => {
-      if (statusCounts[inf.submissionStatus] !== undefined) {
-        statusCounts[inf.submissionStatus]++
+      const status = inf.submissionStatus as keyof typeof statusCounts
+      if (statusCounts[status] !== undefined) {
+        statusCounts[status]++
       }
     })
     

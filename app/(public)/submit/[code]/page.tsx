@@ -54,10 +54,10 @@ export default function SubmissionPage({
     submitFinal
   } = useSubmission(code)
 
-  // Load existing links if editing
+// Load existing links if editing
   useEffect(() => {
     if (submission?.links) {
-      setLinks(submission.links.map(link => ({
+      setLinks(submission.links.map((link: any) => ({
         id: link.id,
         url: link.url,
         platform: link.platform || detectPlatform(link.url)

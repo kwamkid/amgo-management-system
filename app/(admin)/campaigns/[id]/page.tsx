@@ -5,14 +5,13 @@ import { use, useState } from 'react'
 import { useCampaign, useCampaigns } from '@/hooks/useCampaigns'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
+import { useBrands } from '@/hooks/useBrands'
+import { useProducts } from '@/hooks/useProducts'
 import * as submissionService from '@/lib/services/submissionService'
 import { 
   ArrowLeft,
   Edit,
   Calendar,
-  Users,
-  Package,
-  DollarSign,
   FileText,
   Link as LinkIcon,
   Copy,
@@ -22,11 +21,13 @@ import {
   Clock,
   AlertCircle,
   TrendingUp,
-  Eye,
   RefreshCw,
   Send,
   MessageSquare,
-  Loader2
+  Loader2,
+  DollarSign,
+  Package,
+  ShoppingBag
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -35,7 +36,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { safeFormatDate } from '@/lib/utils/date'
@@ -66,12 +66,12 @@ export default function CampaignDetailPage({
   const { showToast } = useToast()
   const { campaign, loading, error } = useCampaign(id)
   const { updateInfluencerSubmission, cancelCampaign } = useCampaigns()
+  const { brands } = useBrands()
+  const { products } = useProducts()
   
-  const [activeTab, setActiveTab] = useState('overview')
   const [reviewingId, setReviewingId] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
   const [processingReview, setProcessingReview] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0) // Add refresh key for force update
 
   // Status config
   const statusConfig: Record<CampaignStatus, { 
@@ -97,6 +97,12 @@ export default function CampaignDetailPage({
       icon: AlertCircle, 
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100'
+    },
+    revising: { 
+      label: 'รอแก้ไข', 
+      icon: Edit, 
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
     },
     completed: { 
       label: 'เสร็จสิ้น', 
@@ -169,30 +175,10 @@ export default function CampaignDetailPage({
       setReviewingId(null)
       setReviewNotes({ ...reviewNotes, [influencerId]: '' })
       
-      // Update local state immediately for better UX
-      if (campaign && campaign.influencers) {
-        const updatedInfluencers = campaign.influencers.map(inf => 
-          inf.influencerId === influencerId 
-            ? {
-                ...inf,
-                submissionStatus: action === 'approve' ? 'approved' : 'revision',
-                reviewedAt: new Date(),
-                reviewedBy: userData.fullName || userData.lineDisplayName || 'Unknown',
-                reviewNotes: notes
-              }
-            : inf
-        )
-        
-        // Force re-render with updated data
-        campaign.influencers = updatedInfluencers
-      }
-      
-      // Force component refresh
-      setRefreshKey(prev => prev + 1)
-      
       // Reload the page to get fresh data
       setTimeout(() => {
         router.refresh()
+        window.location.reload()
       }, 1000)
       
     } catch (error) {
@@ -213,13 +199,22 @@ export default function CampaignDetailPage({
     }
   }
 
+  // Get brand/product names
+  const getBrandName = (brandId: string) => {
+    return brands.find(b => b.id === brandId)?.name || brandId
+  }
+
+  const getProductName = (productId: string) => {
+    return products.find(p => p.id === productId)?.name || productId
+  }
+
   if (loading) {
     return <TechLoader />
   }
 
   if (error || !campaign) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -245,40 +240,29 @@ export default function CampaignDetailPage({
   const status = statusConfig[campaign.status]
   const StatusIcon = status.icon
 
-  // Calculate stats
-  const totalInfluencers = campaign.influencers?.length || 0
-  const submittedCount = campaign.influencers?.filter(
-    inf => ['submitted', 'resubmitted', 'approved'].includes(inf.submissionStatus)
-  ).length || 0
-  const approvedCount = campaign.influencers?.filter(
-    inf => inf.submissionStatus === 'approved'
-  ).length || 0
-  const needsReviewCount = campaign.influencers?.filter(
-    inf => ['submitted', 'resubmitted'].includes(inf.submissionStatus)
-  ).length || 0
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto px-4 space-y-4 md:space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push('/campaigns')}
+            className="flex-shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 break-words">
               {campaign.name}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <Badge className={`${status.bgColor} ${status.color}`}>
                 <StatusIcon className="w-4 h-4 mr-1" />
                 {status.label}
               </Badge>
-              <span className="text-gray-500">•</span>
+              <span className="text-gray-500 text-sm">•</span>
               <span className="text-sm text-gray-600">
                 สร้างโดย {campaign.createdByName}
               </span>
@@ -286,477 +270,353 @@ export default function CampaignDetailPage({
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-end sm:self-auto">
           {campaign.status !== 'cancelled' && campaign.status !== 'completed' && (
             <Button
               variant="outline"
+              size="sm"
               className="text-red-600 hover:bg-red-50"
               onClick={handleCancel}
             >
-              <XCircle className="w-4 h-4 mr-2" />
-              ยกเลิก
+              <XCircle className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">ยกเลิก</span>
+              <span className="sm:hidden">ยกเลิก</span>
             </Button>
           )}
           <Button
             asChild
+            size="sm"
             className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
           >
             <Link href={`/campaigns/${id}/edit`}>
-              <Edit className="w-4 h-4 mr-2" />
-              แก้ไข
+              <Edit className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">แก้ไข</span>
+              <span className="sm:hidden">แก้ไข</span>
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">Influencers</p>
-            <p className="text-2xl font-bold text-gray-900">{totalInfluencers}</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">ส่งแล้ว</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {submittedCount}/{totalInfluencers}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className={needsReviewCount > 0 ? 'ring-2 ring-yellow-500' : ''}>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">รอตรวจสอบ</p>
-            <p className="text-2xl font-bold text-yellow-600">
-              {needsReviewCount}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">ผ่านแล้ว</p>
-            <p className="text-2xl font-bold text-green-600">
-              {approvedCount}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-          <TabsTrigger value="influencers" className="relative">
-            Influencers ({totalInfluencers})
-            {needsReviewCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-            )}
-          </TabsTrigger>
-          {(campaign.status === 'reviewing' || campaign.status === 'completed' || submittedCount > 0) && (
-            <TabsTrigger value="review" className="relative">
-              ตรวจสอบผลงาน
-              {needsReviewCount > 0 && (
-                <Badge variant="warning" className="ml-2">
-                  {needsReviewCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          )}
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Campaign Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">รายละเอียด Campaign</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">คำอธิบาย</p>
-                <p className="mt-1">{campaign.description}</p>
-              </div>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    วันที่เริ่ม
-                  </p>
-                  <p className="mt-1 font-medium">
-                    {safeFormatDate(campaign.startDate, 'dd MMMM yyyy', { locale: th })}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    Deadline
-                  </p>
-                  <p className="mt-1 font-medium">
-                    {safeFormatDate(campaign.deadline, 'dd MMMM yyyy', { locale: th })}
-                  </p>
-                </div>
-              </div>
-              
-              {campaign.briefFileUrl && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Brief File</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(campaign.briefFileUrl, '_blank')}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    ดู Brief
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              )}
-              
-              {campaign.trackingUrl && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Link สำหรับบิลส่งของ</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(campaign.trackingUrl, '_blank')}
-                  >
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    ดู Link Tracking
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Brands & Products */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Brands & สินค้า</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Brands ({campaign.brands?.length || 0})</p>
-                  <div className="flex flex-wrap gap-2">
-                    {campaign.brands?.map(brandId => (
-                      <Badge key={brandId} variant="secondary">
-                        {brandId}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">สินค้า ({campaign.products?.length || 0})</p>
-                  <div className="flex flex-wrap gap-2">
-                    {campaign.products?.map(productId => (
-                      <Badge key={productId} variant="secondary">
-                        {productId}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Influencers Tab */}
-        <TabsContent value="influencers">
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">
-                      Influencer
-                    </th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">
-                      สถานะ
-                    </th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">
-                      Submission Link
-                    </th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">
-                      วันที่ส่ง
-                    </th>
-                    <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {campaign.influencers?.map((inf) => {
-                    const subStatus = submissionStatusConfig[inf.submissionStatus]
-                    
-                    return (
-                      <tr key={inf.influencerId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <p className="font-medium">{inf.influencerName || 'Unknown'}</p>
-                          {inf.influencerNickname && (
-                            <p className="text-sm text-gray-600">@{inf.influencerNickname}</p>
-                          )}
-                        </td>
-                        
-                        <td className="px-6 py-4">
-                          <Badge className={`${subStatus.bgColor} ${subStatus.color}`}>
-                            {subStatus.label}
-                          </Badge>
-                        </td>
-                        
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {inf.submissionLink}
-                            </code>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() => copySubmissionLink(inf.submissionLink!)}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </td>
-                        
-                        <td className="px-6 py-4">
-                          {inf.submittedAt ? (
-                            <span className="text-sm">
-                              {safeFormatDate(inf.submittedAt, 'dd/MM/yyyy HH:mm')}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
-                        </td>
-                        
-                        <td className="px-6 py-4 text-right">
-                          {['submitted', 'resubmitted'].includes(inf.submissionStatus) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setActiveTab('review')
-                                setTimeout(() => {
-                                  const element = document.getElementById(`review-${inf.influencerId}`)
-                                  element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                                }, 100)
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              ตรวจสอบ
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+      {/* Campaign Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">รายละเอียด Campaign</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Description */}
+          <div>
+            <p className="text-sm text-gray-600 mb-1">คำอธิบาย</p>
+            <p className="text-gray-900">{campaign.description}</p>
+          </div>
+          
+          {/* Timeline */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
+                <Calendar className="w-4 h-4" />
+                วันที่เริ่ม
+              </p>
+              <p className="font-medium">
+                {safeFormatDate(campaign.startDate, 'dd MMMM yyyy', { locale: th })}
+              </p>
             </div>
-          </Card>
-        </TabsContent>
-
-        {/* Review Tab */}
-        {(campaign.status === 'reviewing' || campaign.status === 'completed' || submittedCount > 0) && (
-          <TabsContent value="review" className="space-y-4" key={refreshKey}>
-            {campaign.influencers?.filter(inf => 
-              ['submitted', 'resubmitted', 'approved', 'revision'].includes(inf.submissionStatus)
-            ).map((inf) => {
-              const subStatus = submissionStatusConfig[inf.submissionStatus]
-              const isReviewing = reviewingId === inf.influencerId
-              const canReview = ['submitted', 'resubmitted'].includes(inf.submissionStatus)
-              
-              return (
-                <Card 
-                  key={inf.influencerId} 
-                  id={`review-${inf.influencerId}`}
-                  className={cn(
-                    "transition-all",
-                    canReview && "ring-2 ring-yellow-500"
-                  )}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <h3 className="font-semibold text-lg">
-                            {inf.influencerName}
-                            {inf.influencerNickname && (
-                              <span className="text-gray-500 font-normal"> (@{inf.influencerNickname})</span>
-                            )}
-                          </h3>
-                          <Badge className={`${subStatus.bgColor} ${subStatus.color} mt-1`}>
-                            {subStatus.label}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      {inf.submittedAt && (
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">ส่งเมื่อ</p>
-                          <p className="text-sm font-medium">
-                            {safeFormatDate(inf.submittedAt, 'dd/MM/yyyy HH:mm')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    {/* Submitted Links */}
-                    {inf.submittedLinks && inf.submittedLinks.length > 0 ? (
-                      <div className="space-y-3">
-                        <p className="text-sm font-medium text-gray-700 mb-2">
-                          ผลงานที่ส่ง ({inf.submittedLinks.length} links)
-                        </p>
-                        
-                        <div className="grid gap-2">
-                          {inf.submittedLinks.map((link, idx) => (
-                            <div 
-                              key={link.id || idx}
-                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                            >
-                              <span className="text-2xl">
-                                {PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.others}
-                              </span>
-                              <a
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline truncate"
-                              >
-                                {link.url}
-                              </a>
-                              <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Review Actions */}
-                        {canReview && (
-                          <div className="mt-4 pt-4 border-t">
-                            {!isReviewing ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => handleReviewSubmission(inf.influencerId, 'approve')}
-                                  disabled={processingReview === inf.influencerId}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  {processingReview === inf.influencerId ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                  )}
-                                  อนุมัติ
-                                </Button>
-                                <Button
-                                  onClick={() => setReviewingId(inf.influencerId)}
-                                  variant="outline"
-                                  className="text-orange-600 hover:bg-orange-50"
-                                >
-                                  <RefreshCw className="w-4 h-4 mr-2" />
-                                  ขอแก้ไข
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                <div>
-                                  <Label>เหตุผลที่ต้องแก้ไข</Label>
-                                  <Textarea
-                                    placeholder="ระบุรายละเอียดที่ต้องการให้แก้ไข..."
-                                    value={reviewNotes[inf.influencerId] || ''}
-                                    onChange={(e) => setReviewNotes({
-                                      ...reviewNotes,
-                                      [inf.influencerId]: e.target.value
-                                    })}
-                                    className="mt-1"
-                                    rows={3}
-                                  />
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    onClick={() => handleReviewSubmission(inf.influencerId, 'reject')}
-                                    disabled={processingReview === inf.influencerId}
-                                    className="bg-orange-600 hover:bg-orange-700"
-                                  >
-                                    {processingReview === inf.influencerId ? (
-                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                      <Send className="w-4 h-4 mr-2" />
-                                    )}
-                                    ส่งคำขอแก้ไข
-                                  </Button>
-                                  <Button
-                                    onClick={() => {
-                                      setReviewingId(null)
-                                      setReviewNotes({ ...reviewNotes, [inf.influencerId]: '' })
-                                    }}
-                                    variant="outline"
-                                  >
-                                    ยกเลิก
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Review History */}
-                        {inf.reviewedAt && (
-                          <div className="mt-4 pt-4 border-t">
-                            <p className="text-sm text-gray-600">
-                              {inf.submissionStatus === 'approved' ? 'อนุมัติโดย' : 'ตรวจสอบโดย'}: {inf.reviewedBy}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {safeFormatDate(inf.reviewedAt, 'dd/MM/yyyy HH:mm')}
-                            </p>
-                            {inf.reviewNotes && (
-                              <div className="mt-2 p-3 bg-orange-50 rounded-lg">
-                                <p className="text-sm text-orange-800">
-                                  <MessageSquare className="w-4 h-4 inline mr-1" />
-                                  {inf.reviewNotes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-center py-8">
-                        ยังไม่มีการส่งผลงาน
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
             
-            {/* Empty State */}
-            {!campaign.influencers?.some(inf => 
-              ['submitted', 'resubmitted', 'approved', 'revision'].includes(inf.submissionStatus)
-            ) && (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center">
-                    <Send className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      ยังไม่มี Influencer ส่งผลงาน
+            <div>
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
+                <Calendar className="w-4 h-4" />
+                Deadline
+              </p>
+              <p className="font-medium">
+                {safeFormatDate(campaign.deadline, 'dd MMMM yyyy', { locale: th })}
+              </p>
+            </div>
+          </div>
+
+          {/* Budget */}
+          {campaign.budget && (
+            <div>
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
+                <DollarSign className="w-4 h-4" />
+                งบประมาณ
+              </p>
+              <p className="font-medium">฿{campaign.budget.toLocaleString()}</p>
+            </div>
+          )}
+          
+          {/* Files */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            {campaign.briefFileUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(campaign.briefFileUrl, '_blank')}
+                className="justify-start"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                ดู Brief
+                <ExternalLink className="w-3 h-3 ml-2" />
+              </Button>
+            )}
+            
+            {campaign.trackingUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(campaign.trackingUrl, '_blank')}
+                className="justify-start"
+              >
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Link ส่งของ
+                <ExternalLink className="w-3 h-3 ml-2" />
+              </Button>
+            )}
+          </div>
+          
+          {/* Brands & Products */}
+          <div className="grid sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-2">
+                <Package className="w-4 h-4" />
+                Brands ({campaign.brands?.length || 0})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {campaign.brands?.map(brandId => (
+                  <Badge key={brandId} variant="secondary" className="text-xs">
+                    {getBrandName(brandId)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-2">
+                <ShoppingBag className="w-4 h-4" />
+                สินค้า ({campaign.products?.length || 0})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {campaign.products?.map(productId => (
+                  <Badge key={productId} variant="secondary" className="text-xs">
+                    {getProductName(productId)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Influencers & Submissions */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Influencers & ผลงาน</h2>
+        
+        {campaign.influencers?.map((inf) => {
+          const subStatus = submissionStatusConfig[inf.submissionStatus]
+          const isReviewing = reviewingId === inf.influencerId
+          const canReview = ['submitted', 'resubmitted'].includes(inf.submissionStatus)
+          
+          return (
+            <Card 
+              key={inf.influencerId}
+              className={cn(
+                "transition-all",
+                canReview && "ring-2 ring-yellow-500"
+              )}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      {inf.influencerName}
+                      {inf.influencerNickname && (
+                        <span className="text-gray-500 font-normal text-base"> (@{inf.influencerNickname})</span>
+                      )}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <Badge className={`${subStatus.bgColor} ${subStatus.color} text-xs`}>
+                        {subStatus.label}
+                      </Badge>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Link:</span>
+                        <code className="bg-gray-100 px-1.5 py-0.5 rounded">
+                          {inf.submissionLink}
+                        </code>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-5 w-5"
+                          onClick={() => copySubmissionLink(inf.submissionLink!)}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {inf.submittedAt && (
+                    <div className="text-right text-sm">
+                      <p className="text-gray-600">ส่งเมื่อ</p>
+                      <p className="font-medium">
+                        {safeFormatDate(inf.submittedAt, 'dd/MM/yy HH:mm')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                {/* Submitted Links */}
+                {inf.submittedLinks && inf.submittedLinks.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-700">
+                      ผลงานที่ส่ง ({inf.submittedLinks.length} links)
+                    </p>
+                    
+                    <div className="space-y-2">
+                      {inf.submittedLinks.map((link, idx) => {
+                        const platformIcon = link.platform 
+                          ? PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.others
+                          : PLATFORM_ICONS.others
+                        
+                        return (
+                          <div 
+                            key={link.id || idx}
+                            className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="text-xl flex-shrink-0">
+                              {platformIcon}
+                            </span>
+                            <a
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline truncate"
+                            >
+                              {link.url}
+                            </a>
+                            <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          </div>
+                        )
+                      })}
+                    </div>
+                    
+                    {/* Review Actions */}
+                    {canReview && (
+                      <div className="pt-3 border-t">
+                        {!isReviewing ? (
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              onClick={() => handleReviewSubmission(inf.influencerId, 'approve')}
+                              disabled={processingReview === inf.influencerId}
+                              className="bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              {processingReview === inf.influencerId ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                              )}
+                              อนุมัติ
+                            </Button>
+                            <Button
+                              onClick={() => setReviewingId(inf.influencerId)}
+                              variant="outline"
+                              className="text-orange-600 hover:bg-orange-50"
+                              size="sm"
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              ขอแก้ไข
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-sm">เหตุผลที่ต้องแก้ไข</Label>
+                              <Textarea
+                                placeholder="ระบุรายละเอียดที่ต้องการให้แก้ไข..."
+                                value={reviewNotes[inf.influencerId] || ''}
+                                onChange={(e) => setReviewNotes({
+                                  ...reviewNotes,
+                                  [inf.influencerId]: e.target.value
+                                })}
+                                className="mt-1"
+                                rows={3}
+                              />
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Button
+                                onClick={() => handleReviewSubmission(inf.influencerId, 'reject')}
+                                disabled={processingReview === inf.influencerId}
+                                className="bg-orange-600 hover:bg-orange-700"
+                                size="sm"
+                              >
+                                {processingReview === inf.influencerId ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4 mr-2" />
+                                )}
+                                ส่งคำขอแก้ไข
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setReviewingId(null)
+                                  setReviewNotes({ ...reviewNotes, [inf.influencerId]: '' })
+                                }}
+                                variant="outline"
+                                size="sm"
+                              >
+                                ยกเลิก
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Review History */}
+                    {inf.reviewedAt && (
+                      <div className="pt-3 border-t">
+                        <p className="text-sm text-gray-600">
+                          {inf.submissionStatus === 'approved' ? 'อนุมัติโดย' : 'ตรวจสอบโดย'}: {inf.reviewedBy}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {safeFormatDate(inf.reviewedAt, 'dd/MM/yyyy HH:mm')}
+                        </p>
+                        {inf.reviewNotes && (
+                          <div className="mt-2 p-2.5 bg-orange-50 rounded-lg">
+                            <p className="text-sm text-orange-800">
+                              <MessageSquare className="w-4 h-4 inline mr-1" />
+                              {inf.reviewNotes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-gray-500 text-sm">
+                      {inf.submissionStatus === 'pending' 
+                        ? 'ยังไม่มีการส่งผลงาน' 
+                        : 'รอส่งผลงาน'}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+        
+        {/* Empty state */}
+        {(!campaign.influencers || campaign.influencers.length === 0) && (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-center text-gray-500">
+                ยังไม่มี Influencer ในแคมเปญนี้
+              </p>
+            </CardContent>
+          </Card>
         )}
-      </Tabs>
+      </div>
     </div>
   )
 }

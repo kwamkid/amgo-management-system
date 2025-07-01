@@ -83,6 +83,7 @@ export default function CampaignsPage() {
         pending: 0,
         active: 0,
         reviewing: 0,
+        revising: 0,
         completed: 0,
         cancelled: 0
       }
@@ -178,6 +179,12 @@ export default function CampaignsPage() {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100'
     },
+    revising: { 
+      label: 'รอแก้ไข', 
+      icon: Edit, 
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
+    },
     completed: { 
       label: 'เสร็จสิ้น', 
       icon: CheckCircle, 
@@ -233,7 +240,7 @@ export default function CampaignsPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             จัดการ Campaigns
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-base">
             สร้างและติดตาม Influencer Marketing Campaigns
           </p>
         </div>
@@ -251,7 +258,7 @@ export default function CampaignsPage() {
 
       {/* Stats Cards - Clickable */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
           <Card 
             className={cn(
               "p-3 md:p-4 cursor-pointer transition-all hover:shadow-md",
@@ -281,6 +288,22 @@ export default function CampaignsPage() {
                 <p className="text-lg md:text-2xl font-bold text-blue-900">{stats.byStatus.active}</p>
               </div>
               <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+            </div>
+          </Card>
+          
+          <Card 
+            className={cn(
+              "p-3 md:p-4 bg-gradient-to-br from-orange-50 to-amber-100 cursor-pointer transition-all hover:shadow-md",
+              statusFilter === 'revising' && "ring-2 ring-orange-600"
+            )}
+            onClick={() => handleStatCardClick('revising')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-orange-700">รอแก้ไข</p>
+                <p className="text-lg md:text-2xl font-bold text-orange-900">{stats.byStatus.revising}</p>
+              </div>
+              <Edit className="w-6 h-6 md:w-8 md:h-8 text-orange-600" />
             </div>
           </Card>
           
@@ -318,7 +341,7 @@ export default function CampaignsPage() {
 
           <Card 
             className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-red-50 to-rose-100 cursor-pointer transition-all hover:shadow-md col-span-2 lg:col-span-1",
+              "p-3 md:p-4 bg-gradient-to-br from-red-50 to-rose-100 cursor-pointer transition-all hover:shadow-md",
               statusFilter === 'cancelled' && "ring-2 ring-red-600"
             )}
             onClick={() => handleStatCardClick('cancelled')}
@@ -345,7 +368,7 @@ export default function CampaignsPage() {
               placeholder="ค้นหา Campaign, Influencer, Brand..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-sm md:text-base"
+              className="pl-10 text-base"
             />
           </div>
           
@@ -382,7 +405,7 @@ export default function CampaignsPage() {
                     placeholder="พิมพ์เพื่อค้นหา Brand..."
                     value={brandFilter}
                     onChange={(e) => setBrandFilter(e.target.value)}
-                    className="pr-8 text-sm"
+                    className="pr-8 text-base"
                   />
                   {brandFilter && (
                     <button
@@ -406,7 +429,7 @@ export default function CampaignsPage() {
                     placeholder="พิมพ์เพื่อค้นหา Product..."
                     value={productFilter}
                     onChange={(e) => setProductFilter(e.target.value)}
-                    className="pr-8 text-sm"
+                    className="pr-8 text-base"
                   />
                   {productFilter && (
                     <button
@@ -428,7 +451,7 @@ export default function CampaignsPage() {
                   value={creatorFilter || "all"}
                   onValueChange={(value) => setCreatorFilter(value === "all" ? "" : value)}
                 >
-                  <SelectTrigger className="text-sm">
+                  <SelectTrigger className="text-base">
                     <SelectValue placeholder="เลือกผู้สร้าง" />
                   </SelectTrigger>
                   <SelectContent>
@@ -495,7 +518,7 @@ export default function CampaignsPage() {
                     <div className="flex-1 min-w-0">
                       <Link 
                         href={`/campaigns/${campaign.id}`}
-                        className="font-medium text-gray-900 hover:text-red-600 block truncate"
+                        className="font-medium text-gray-900 hover:text-red-600 block truncate text-base"
                       >
                         {campaign.name}
                       </Link>
@@ -560,19 +583,19 @@ export default function CampaignsPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Influencers:</span>
-                    <span className="font-medium">{totalInfluencers} คน</span>
+                    <span className="font-medium text-base">{totalInfluencers} คน</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Brand:</span>
-                    <span className="font-medium truncate ml-2">{brandNames}</span>
+                    <span className="font-medium truncate ml-2 text-base">{brandNames}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Timeline:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-base">
                       {format(new Date(campaign.deadline), 'dd MMM yy', { locale: th })}
                     </span>
                   </div>
-                  {campaign.status === 'active' && totalInfluencers > 0 && (
+                  {['active', 'reviewing', 'revising'].includes(campaign.status) && totalInfluencers > 0 && (
                     <div className="pt-2">
                       <div className="flex items-center justify-between text-sm mb-1">
                         <span className="text-gray-600">Progress</span>
@@ -607,13 +630,13 @@ export default function CampaignsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[30px]"></TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Influencers</TableHead>
-                <TableHead>Brands & Products</TableHead>
-                <TableHead className="w-[120px]">Timeline</TableHead>
-                <TableHead className="w-[100px]">Progress</TableHead>
-                <TableHead className="w-[120px]">สร้างโดย</TableHead>
-                <TableHead className="text-right w-[80px]">Actions</TableHead>
+                <TableHead className="text-base">Campaign</TableHead>
+                <TableHead className="text-base">Influencers</TableHead>
+                <TableHead className="text-base">Brands & Products</TableHead>
+                <TableHead className="w-[120px] text-base">Timeline</TableHead>
+                <TableHead className="w-[100px] text-base">Progress</TableHead>
+                <TableHead className="w-[120px] text-base">สร้างโดย</TableHead>
+                <TableHead className="text-right w-[80px] text-base">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -660,7 +683,7 @@ export default function CampaignsPage() {
                       <div>
                         <Link 
                           href={`/campaigns/${campaign.id}`}
-                          className="font-medium text-gray-900 hover:text-red-600"
+                          className="font-medium text-gray-900 hover:text-red-600 text-base"
                         >
                           {campaign.name}
                         </Link>
@@ -677,7 +700,7 @@ export default function CampaignsPage() {
                     <TableCell>
                       <div>
                         {campaign.influencers && campaign.influencers.length > 0 && (
-                          <div className="text-sm text-gray-600 space-y-0.5">
+                          <div className="text-base text-gray-600 space-y-0.5">
                             {campaign.influencers.slice(0, 3).map((inf, idx) => (
                               <p key={inf.influencerId} className="truncate">
                                 {campaign.influencers.length > 1 && `${idx + 1}. `}
@@ -688,7 +711,7 @@ export default function CampaignsPage() {
                               </p>
                             ))}
                             {campaign.influencers.length > 3 && (
-                              <p className="text-gray-400">+{campaign.influencers.length - 3} more</p>
+                              <p className="text-gray-400 text-sm">+{campaign.influencers.length - 3} more</p>
                             )}
                           </div>
                         )}
@@ -698,9 +721,9 @@ export default function CampaignsPage() {
                     {/* Brands & Products */}
                     <TableCell>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{brandNames}</p>
+                        <p className="text-base font-medium text-gray-900">{brandNames}</p>
                         {productInfo.length > 0 && (
-                          <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+                          <div className="text-sm text-gray-600 mt-1 space-y-0.5">
                             {productInfo.map((product, idx) => (
                               <p key={idx} className="truncate">
                                 • {product?.name}
@@ -723,7 +746,7 @@ export default function CampaignsPage() {
                         <p className="text-gray-500">
                           {format(new Date(campaign.startDate), 'dd/MM', { locale: th })}
                         </p>
-                        <p className="font-medium">
+                        <p className="font-medium text-base">
                           {format(new Date(campaign.deadline), 'dd/MM/yy', { locale: th })}
                         </p>
                       </div>
@@ -731,7 +754,7 @@ export default function CampaignsPage() {
 
                     {/* Progress */}
                     <TableCell>
-                      {campaign.status === 'active' && totalInfluencers > 0 ? (
+                      {['active', 'reviewing', 'revising'].includes(campaign.status) && totalInfluencers > 0 ? (
                         <div className="w-20">
                           <div className="flex items-center justify-between text-xs mb-1">
                             <span className="text-gray-600">{submittedCount}/{totalInfluencers}</span>
@@ -745,13 +768,13 @@ export default function CampaignsPage() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-500">-</span>
+                        <span className="text-sm text-gray-500">-</span>
                       )}
                     </TableCell>
 
                     {/* Created By */}
                     <TableCell>
-                      <p className="text-xs text-gray-600 truncate">{campaign.createdByName || '-'}</p>
+                      <p className="text-sm text-gray-600 truncate">{campaign.createdByName || '-'}</p>
                     </TableCell>
 
                     {/* Actions */}
@@ -849,7 +872,7 @@ export default function CampaignsPage() {
         {filteredCampaigns.length === 0 && (
           <div className="text-center py-12">
             <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">
+            <p className="text-gray-500 text-base">
               {searchTerm || statusFilter !== 'all' || brandFilter || productFilter || creatorFilter !== 'all'
                 ? 'ไม่พบ Campaign ที่ค้นหา' 
                 : 'ยังไม่มี Campaign'}

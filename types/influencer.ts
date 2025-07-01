@@ -187,11 +187,12 @@ export interface SubmittedLink {
 }
 
 export type CampaignStatus = 
-  | 'pending'     // รอดำเนินการ
-  | 'active'      // กำลังดำเนินการ
-  | 'reviewing'   // มีงานรอตรวจสอบ
-  | 'completed'   // เสร็จสิ้น
-  | 'cancelled'   // ยกเลิก
+    | 'pending'     // รอดำเนินการ
+    | 'active'      // กำลังดำเนินการ
+    | 'reviewing'   // มีงานรอตรวจสอบ
+    | 'revising'    // มีงานที่ตีกลับให้แก้ไข (รอ influencer ส่งกลับมา)
+    | 'completed'   // เสร็จสิ้น
+    | 'cancelled'   // ยกเลิก
 
 export type SubmissionStatus =
   | 'pending'     // ยังไม่ submit

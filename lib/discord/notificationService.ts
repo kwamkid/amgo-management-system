@@ -458,6 +458,50 @@ export class DiscordNotificationService {
     }
   }
   
+  // Campaign status changed to revising
+  static async notifyCampaignRevising(data: {
+    campaignName: string
+    revisingCount: number
+    totalInfluencers: number
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      await webhook.send({
+        embeds: [{
+          title: '📝 Campaign เข้าสู่สถานะรอแก้ไข',
+          color: EmbedColors.WARNING,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: '🔄 รอแก้ไข',
+              value: `${data.revisingCount} คน`,
+              inline: true
+            },
+            {
+              name: '👥 จากทั้งหมด',
+              value: `${data.totalInfluencers} คน`,
+              inline: true
+            },
+            {
+              name: 'Status',
+              value: '🟠 Revising - รอ Influencer ส่งงานแก้ไขกลับมา',
+              inline: false
+            }
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send revising notification:', error)
+    }
+  }
+  
   // Campaign completed
   static async notifyCampaignCompleted(data: {
     campaignName: string
@@ -541,7 +585,8 @@ export class DiscordNotificationService {
     campaignName: string
     daysLeft: number
     pendingCount: number
-    totalInfluencers: number
+    reviewCount: number
+    timestamp: Date
   }) {
     try {
       const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
@@ -555,24 +600,68 @@ export class DiscordNotificationService {
           color: data.daysLeft <= 1 ? EmbedColors.DANGER : EmbedColors.WARNING,
           fields: [
             {
-              name: '📅 เหลือเวลา',
-              value: `${data.daysLeft} วัน`,
+              name: '📅 Deadline',
+              value: `เหลือ ${data.daysLeft} วัน`,
               inline: true
             },
             {
               name: '⏳ รอ Submit',
-              value: `${data.pendingCount}/${data.totalInfluencers} คน`,
+              value: `${data.pendingCount} คน`,
+              inline: true
+            },
+            {
+              name: '📝 รอตรวจสอบ',
+              value: `${data.reviewCount} คน`,
               inline: true
             }
           ],
           footer: {
             text: 'กรุณาติดตาม Influencer ที่ยังไม่ส่งผลงาน'
           },
-          timestamp: new Date().toISOString()
+          timestamp: data.timestamp.toISOString()
         }]
       })
     } catch (error) {
       console.error('Failed to send deadline reminder:', error)
+    }
+  }
+  
+  // Overdue alert
+  static async notifyOverdue(data: {
+    campaignName: string
+    daysOverdue: number
+    pendingInfluencers: string[]
+    timestamp: Date
+  }) {
+    try {
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      
+      await webhook.send({
+        embeds: [{
+          title: '🚨 Campaign เลย Deadline แล้ว',
+          color: EmbedColors.DANGER,
+          fields: [
+            {
+              name: 'Campaign',
+              value: data.campaignName,
+              inline: false
+            },
+            {
+              name: '📅 Deadline',
+              value: `เลยมา ${data.daysOverdue} วัน`,
+              inline: true
+            },
+            {
+              name: '❌ ยังไม่ Submit',
+              value: data.pendingInfluencers.join('\n') || '-',
+              inline: false
+            }
+          ],
+          timestamp: data.timestamp.toISOString()
+        }]
+      })
+    } catch (error) {
+      console.error('Failed to send overdue alert:', error)
     }
   }
 }

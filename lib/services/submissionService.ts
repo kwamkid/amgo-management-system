@@ -164,7 +164,7 @@ export const saveSubmission = async (
       }
     )
     
-    // Check if we need to update campaign status to reviewing
+    // Check if we need to update campaign status
     if (!isDraft) {
       await checkAndUpdateCampaignStatus(data.campaign.id)
       
@@ -245,7 +245,7 @@ const updateCampaignInfluencerStatus = async (
   }
 }
 
-// Check and update campaign status to reviewing if needed
+// Check and update campaign status based on influencers' statuses
 const checkAndUpdateCampaignStatus = async (campaignId: string) => {
   try {
     const campaignRef = doc(db, CAMPAIGNS_COLLECTION, campaignId)
@@ -254,18 +254,63 @@ const checkAndUpdateCampaignStatus = async (campaignId: string) => {
     if (!campaignSnap.exists()) return
     
     const campaignData = campaignSnap.data()
+    const currentStatus = campaignData.status
     
-    // Check if any influencer has submitted
-    const hasSubmission = campaignData.influencers?.some((inf: any) => 
-      ['submitted', 'resubmitted'].includes(inf.submissionStatus)
-    )
+    // Count statuses
+    const statusCounts = {
+      pending: 0,
+      submitted: 0,
+      revision: 0,
+      resubmitted: 0,
+      approved: 0,
+      cancelled: 0
+    }
     
-    // Update status to reviewing if currently active and has submissions
-    if (campaignData.status === 'active' && hasSubmission) {
+    campaignData.influencers?.forEach((inf: any) => {
+      if (statusCounts[inf.submissionStatus] !== undefined) {
+        statusCounts[inf.submissionStatus]++
+      }
+    })
+    
+    // Determine new campaign status
+    let newStatus = currentStatus
+    
+    // If any submissions are waiting for review (submitted or resubmitted)
+    if (statusCounts.submitted > 0 || statusCounts.resubmitted > 0) {
+      newStatus = 'reviewing'
+    }
+    // If all submissions need revision (no pending reviews)
+    else if (statusCounts.revision > 0 && statusCounts.submitted === 0 && statusCounts.resubmitted === 0) {
+      newStatus = 'revising'
+    }
+    // If all are approved or cancelled
+    else if (campaignData.influencers?.every((inf: any) => 
+      ['approved', 'cancelled'].includes(inf.submissionStatus)
+    )) {
+      newStatus = 'completed'
+    }
+    // If no submissions yet
+    else if (statusCounts.pending === campaignData.influencers?.length) {
+      newStatus = 'active'
+    }
+    
+    // Update status if changed
+    if (newStatus !== currentStatus) {
       await updateDoc(campaignRef, {
-        status: 'reviewing',
+        status: newStatus,
         updatedAt: serverTimestamp()
       })
+      
+      // Send Discord notification for status change to revising
+      if (newStatus === 'revising' && currentStatus === 'reviewing') {
+        const revisingCount = statusCounts.revision
+        await DiscordNotificationService.notifyCampaignRevising({
+          campaignName: campaignData.name,
+          revisingCount,
+          totalInfluencers: campaignData.influencers?.length || 0,
+          timestamp: new Date()
+        })
+      }
     }
   } catch (error) {
     console.error('Error updating campaign status:', error)
@@ -322,7 +367,10 @@ export const reviewSubmission = async (
       })
     }
     
-    // Check if all submissions are reviewed
+    // Check and update campaign status
+    await checkAndUpdateCampaignStatus(campaignId)
+    
+    // Check if campaign is completed
     await checkCampaignCompletion(campaignId)
     
     return true
@@ -348,7 +396,7 @@ const checkCampaignCompletion = async (campaignId: string) => {
     )
     
     // Update status to completed if all are reviewed
-    if (allReviewed && campaignData.status === 'reviewing') {
+    if (allReviewed && ['reviewing', 'revising'].includes(campaignData.status)) {
       await updateDoc(campaignRef, {
         status: 'completed',
         completedAt: serverTimestamp(),

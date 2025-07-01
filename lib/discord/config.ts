@@ -8,6 +8,7 @@ export const discordConfig: DiscordConfig = {
     leave: process.env.DISCORD_WEBHOOK_LEAVE || '',
     hr: process.env.DISCORD_WEBHOOK_HR || '',
     alerts: process.env.DISCORD_WEBHOOK_ALERTS || '',
+    campaign: process.env.DISCORD_WEBHOOK_CAMPAIGN || '', // เพิ่ม campaign webhook
   },
   
   // Discord Bot Configuration (ยังไม่ใช้ในตอนนี้)
@@ -23,7 +24,8 @@ export const isDiscordConfigured = () => {
     discordConfig.webhookUrls.checkIn ||
     discordConfig.webhookUrls.leave ||
     discordConfig.webhookUrls.hr ||
-    discordConfig.webhookUrls.alerts
+    discordConfig.webhookUrls.alerts ||
+    discordConfig.webhookUrls.campaign // เพิ่ม campaign ในการตรวจสอบ
   )
 }
 

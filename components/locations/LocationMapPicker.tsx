@@ -46,10 +46,18 @@ export default function LocationMapPicker({
     lng: lng || defaultCenter.lng 
   })
   
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries
+ const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+    id: 'google-map-script'
   })
+
+  // Log for debugging
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      console.error('Google Maps API Key is missing!')
+    }
+  }, [])
 
   // Update marker when props change
   useEffect(() => {

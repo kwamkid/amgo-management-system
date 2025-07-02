@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { FieldValue } from 'firebase-admin/firestore'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,17 +37,17 @@ export async function POST(request: NextRequest) {
     const userRef = adminDb.collection('users').doc(userData.lineUserId)
     await userRef.set({
       ...userData,
-      registeredAt: adminDb.FieldValue.serverTimestamp(),
-      createdAt: adminDb.FieldValue.serverTimestamp(),
-      updatedAt: adminDb.FieldValue.serverTimestamp(),
+      registeredAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     })
 
     // 4. อัพเดท invite link usage count
     if (inviteLinkId) {
       const inviteLinkRef = adminDb.collection('inviteLinks').doc(inviteLinkId)
       await inviteLinkRef.update({
-        usedCount: adminDb.FieldValue.increment(1),
-        updatedAt: adminDb.FieldValue.serverTimestamp(),
+        usedCount: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
       })
     }
 

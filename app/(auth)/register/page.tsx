@@ -2,10 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { doc, setDoc, updateDoc, increment } from 'firebase/firestore'
-import { db } from '@/lib/firebase/client'
 import { validateInviteLink } from '@/lib/services/inviteService'
 import { InviteLink } from '@/types/invite'
+import { auth } from '@/lib/firebase/client'
+import { signInWithCustomToken } from 'firebase/auth'
 import Image from 'next/image'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -90,17 +90,31 @@ function RegisterForm() {
         isActive: inviteLink ? !inviteLink.requireApproval : false,
         needsApproval: inviteLink?.requireApproval !== false,
         inviteLinkId: inviteLink?.id || null,
-        inviteLinkCode: inviteLink?.code || null,
-        registeredAt: new Date(),
-        createdAt: new Date()
+        inviteLinkCode: inviteLink?.code || null
       }
 
-      await setDoc(doc(db, 'users', formData.lineId), userData)
-
-      if (inviteLink?.id) {
-        await updateDoc(doc(db, 'inviteLinks', inviteLink.id), {
-          usedCount: increment(1)
+      // เรียกใช้ API Route สำหรับการลงทะเบียน
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userData,
+          inviteLinkId: inviteLink?.id
         })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'การลงทะเบียนล้มเหลว')
+      }
+
+      const data = await response.json()
+      
+      // Sign in ด้วย custom token ถ้ามี
+      if (data.customToken) {
+        await signInWithCustomToken(auth, data.customToken)
       }
 
       router.push('/register/success')

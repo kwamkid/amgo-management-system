@@ -266,11 +266,29 @@ export const getUserStatistics = async () => {
       ))
     ])
     
+    // นับจำนวนตาม role
+    const byRole = {
+      admin: 0,
+      hr: 0,
+      manager: 0,
+      employee: 0,
+      marketing: 0,  // ✅ เพิ่ม
+      driver: 0      // ✅ เพิ่ม
+    }
+
+    totalQuery.docs.forEach(doc => {
+      const userData = doc.data()
+      if (userData.role) {
+        byRole[userData.role as keyof typeof byRole]++
+      }
+    })
+
     return {
       total: totalQuery.size,
       active: activeQuery.size,
       pending: pendingQuery.size,
-      inactive: totalQuery.size - activeQuery.size - pendingQuery.size
+      inactive: totalQuery.size - activeQuery.size - pendingQuery.size,
+      byRole  // ✅ เพิ่ม byRole
     }
   } catch (error) {
     console.error('Error getting user statistics:', error)

@@ -7,7 +7,8 @@ export interface InviteLink {
   createdByName?: string // ชื่อคนสร้าง (สำหรับแสดงผล)
   
   // Default values สำหรับคนที่ใช้ link นี้
-  defaultRole: 'employee' | 'manager' | 'hr'
+  defaultRole: 'employee' | 'manager' | 'hr' | 'marketing' | 'driver'  // ✅ เพิ่ม marketing และ driver
+
   defaultLocationIds?: string[] // สาขาที่จะกำหนดให้
   allowCheckInOutsideLocation?: boolean
   requireApproval: boolean // ต้อง approve หรือ active ทันที

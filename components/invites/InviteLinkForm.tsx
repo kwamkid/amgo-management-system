@@ -187,6 +187,8 @@ export default function InviteLinkForm({
                   <SelectItem value="employee">พนักงาน</SelectItem>
                   <SelectItem value="manager">ผู้จัดการ</SelectItem>
                   <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
+                  <SelectItem value="marketing">Influ Marketing</SelectItem>
+                  <SelectItem value="driver">พนักงานขับรถ</SelectItem>
                 </SelectContent>
               </Select>
             </div>

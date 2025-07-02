@@ -93,10 +93,13 @@ export default function DeleteUserDialog({
                   {user.fullName || user.lineDisplayName}
                 </div>
                 <div className="text-sm text-gray-600">{user.phone}</div>
-                <div className="text-sm text-gray-600">
-                  สิทธิ์: {user.role === 'admin' ? 'ผู้ดูแลระบบ' :
+               <div className="text-sm text-gray-600">
+                สิทธิ์: {user.role === 'admin' ? 'ผู้ดูแลระบบ' :
                         user.role === 'hr' ? 'ฝ่ายบุคคล' :
-                        user.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน'}
+                        user.role === 'manager' ? 'ผู้จัดการ' :
+                        user.role === 'marketing' ? 'Influ Marketing' :  // ✅ เพิ่ม
+                        user.role === 'driver' ? 'พนักงานขับรถ' :       // ✅ เพิ่ม
+                        'พนักงาน'}
                 </div>
               </div>
 

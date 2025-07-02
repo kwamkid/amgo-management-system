@@ -24,7 +24,9 @@ import {
   MessageSquare,
   TrendingUp,
   Baby,
-  Trash2
+  Trash2,
+  Truck  // ✅ เพิ่ม icon สำหรับ delivery
+
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -127,7 +129,8 @@ const navItems: NavItem[] = [
     label: 'Influ Marketing',
     href: '/influencers',
     icon: <TrendingUp className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager'],
+    roles: ['hr', 'admin', 'manager', 'marketing'], // ✅ เพิ่ม marketing
+
     subItems: [
       {
         label: 'ข้อมูล Influencers',
@@ -146,6 +149,29 @@ const navItems: NavItem[] = [
     href: '/reports',
     icon: <FileText className="w-5 h-5" />,
     roles: ['hr', 'admin', 'manager']
+  },
+  {
+    label: 'Delivery Tracking',
+    href: '/delivery',
+    icon: <Truck className="w-5 h-5" />,
+    roles: ['driver', 'admin', 'hr'], // ✅ เมนูสำหรับ driver
+    subItems: [
+      {
+        label: 'เช็คอินจุดส่ง',
+        href: '/delivery/checkin',
+        icon: <MapPin className="w-4 h-4" />
+      },
+      {
+        label: 'ประวัติการส่ง',
+        href: '/delivery/history',
+        icon: <Clock className="w-4 h-4" />
+      },
+      {
+        label: 'แผนที่การส่ง',
+        href: '/delivery/map',
+        icon: <MapPin className="w-4 h-4" />
+      }
+    ]
   },
   {
     label: 'ตั้งค่า',

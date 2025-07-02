@@ -221,11 +221,13 @@ export default function UserEditForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">พนักงาน</SelectItem>
-                  <SelectItem value="manager">ผู้จัดการ</SelectItem>
-                  <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
-                  <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
-                </SelectContent>
+                <SelectItem value="employee">พนักงาน</SelectItem>
+                <SelectItem value="manager">ผู้จัดการ</SelectItem>
+                <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
+                <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                <SelectItem value="marketing">Influ Marketing</SelectItem>
+                <SelectItem value="driver">พนักงานขับรถ</SelectItem>
+              </SelectContent>
               </Select>
             </div>
             

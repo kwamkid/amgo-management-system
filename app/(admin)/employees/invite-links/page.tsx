@@ -48,11 +48,13 @@ export default function InviteLinksPage() {
   }
 
   const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      employee: { label: 'พนักงาน', variant: 'secondary' as const },
-      manager: { label: 'ผู้จัดการ', variant: 'info' as const },
-      hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const }
-    }
+  const roleConfig = {
+    employee: { label: 'พนักงาน', variant: 'secondary' as const },
+    manager: { label: 'ผู้จัดการ', variant: 'info' as const },
+    hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const },
+    marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
+    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
+  }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
     return <Badge variant={config.variant}>{config.label}</Badge>

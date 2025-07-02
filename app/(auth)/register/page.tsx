@@ -201,7 +201,11 @@ function RegisterForm() {
             )}
             <div className="mt-2 text-xs text-teal-700">
               <p>• สิทธิ์: {inviteLink.defaultRole === 'employee' ? 'พนักงาน' : 
-                          inviteLink.defaultRole === 'manager' ? 'ผู้จัดการ' : 'ฝ่ายบุคคล'}</p>
+              inviteLink.defaultRole === 'manager' ? 'ผู้จัดการ' : 
+              inviteLink.defaultRole === 'hr' ? 'ฝ่ายบุคคล' :
+              inviteLink.defaultRole === 'marketing' ? 'Influ Marketing' :  // ✅ เพิ่ม
+              inviteLink.defaultRole === 'driver' ? 'พนักงานขับรถ' :       // ✅ เพิ่ม
+              'ผู้ดูแลระบบ'}</p>
               {inviteLink.defaultLocationIds && inviteLink.defaultLocationIds.length > 0 && (
                 <p>• สาขา: {inviteLink.defaultLocationIds.length} แห่ง</p>
               )}

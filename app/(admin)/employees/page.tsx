@@ -47,13 +47,15 @@ export default function EmployeesPage() {
   const { statistics } = useUserStatistics()
   const { showToast } = useToast()
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
-      hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
-      manager: { label: 'ผู้จัดการ', variant: 'success' as const },
-      employee: { label: 'พนักงาน', variant: 'secondary' as const }
-    }
+const getRoleBadge = (role: string) => {
+  const roleConfig = {
+    admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
+    hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
+    manager: { label: 'ผู้จัดการ', variant: 'success' as const },
+    employee: { label: 'พนักงาน', variant: 'secondary' as const },
+    marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
+    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
+  }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
     return (
@@ -181,6 +183,8 @@ export default function EmployeesPage() {
           <option value="hr">ฝ่ายบุคคล</option>
           <option value="manager">ผู้จัดการ</option>
           <option value="employee">พนักงาน</option>
+          <option value="marketing">Influ Marketing</option>
+          <option value="driver">พนักงานขับรถ</option>
         </select>
         
         <select

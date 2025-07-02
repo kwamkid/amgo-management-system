@@ -6,6 +6,13 @@ export async function POST(request: NextRequest) {
   try {
     const { userData, inviteLinkId } = await request.json()
 
+    console.log('Registration data received:', {
+      lineUserId: userData.lineUserId,
+      role: userData.role,
+      inviteLinkId,
+      defaultLocationIds: userData.allowedLocationIds
+    })
+
     if (!userData.lineUserId) {
       return NextResponse.json(
         { error: 'Line User ID is required' },

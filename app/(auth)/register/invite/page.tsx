@@ -48,9 +48,20 @@ function PreRegisterForm() {
     
     const state = Math.random().toString(36).substring(2, 15)
     
+    // เก็บข้อมูล invite link ไว้ใน sessionStorage
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('line_auth_state', state)
       sessionStorage.setItem('invite_code', inviteLink.code)
+      
+      // เก็บข้อมูล invite link ทั้งหมดไว้
+      sessionStorage.setItem('invite_link_data', JSON.stringify({
+        id: inviteLink.id,
+        code: inviteLink.code,
+        defaultRole: inviteLink.defaultRole,
+        defaultLocationIds: inviteLink.defaultLocationIds,
+        allowCheckInOutsideLocation: inviteLink.allowCheckInOutsideLocation,
+        requireApproval: inviteLink.requireApproval
+      }))
     }
     
     const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?` +
@@ -116,9 +127,10 @@ function PreRegisterForm() {
                 <div className="flex items-center gap-2 text-teal-700">
                   <Shield className="w-4 h-4" />
                   <span>
-                    สิทธิ์เริ่มต้น: <strong>
+                    สิทธิ์เริ่มต้น: <strong className="text-red-600">
                       {inviteLink?.defaultRole === 'employee' ? 'พนักงาน' : 
-                       inviteLink?.defaultRole === 'manager' ? 'ผู้จัดการ' : 'ฝ่ายบุคคล'}
+                       inviteLink?.defaultRole === 'manager' ? 'ผู้จัดการ' : 
+                       inviteLink?.defaultRole === 'hr' ? 'ฝ่ายบุคคล' : 'ผู้ดูแลระบบ'}
                     </strong>
                   </span>
                 </div>

@@ -36,11 +36,29 @@ function RegisterForm() {
       const lineId = searchParams.get('lineId')
       const name = searchParams.get('name')
       const picture = searchParams.get('picture')
-      const inviteCode = searchParams.get('invite')
+      let inviteCode = searchParams.get('invite')
 
       if (!lineId) {
         router.push('/login')
         return
+      }
+
+      // ถ้าไม่มี invite code ใน URL ให้ลองดึงจาก sessionStorage
+      if (!inviteCode && typeof window !== 'undefined') {
+        inviteCode = sessionStorage.getItem('invite_code')
+        
+        // หรือดึงข้อมูล invite link ทั้งหมด
+        const inviteLinkData = sessionStorage.getItem('invite_link_data')
+        if (inviteLinkData) {
+          try {
+            const parsedData = JSON.parse(inviteLinkData)
+            setInviteLink(parsedData)
+            setLoading(false)
+            return
+          } catch (error) {
+            console.error('Error parsing invite link data:', error)
+          }
+        }
       }
 
       if (inviteCode) {

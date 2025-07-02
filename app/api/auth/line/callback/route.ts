@@ -85,12 +85,22 @@ export async function GET(request: NextRequest) {
         )
       } else {
         // Regular new user - redirect to registration
+       // เปลี่ยนเป็น:
         const params = new URLSearchParams({
           lineId: userId,
           name: displayName,
           ...(pictureUrl && { picture: pictureUrl })
         })
-        
+
+        // ดึง invite code จาก session storage (ถ้ามี)
+        const inviteCode = request.headers.get('cookie')?.includes('invite_code') 
+          ? request.headers.get('cookie')?.match(/invite_code=([^;]+)/)?.[1]
+          : null
+
+        if (inviteCode) {
+          params.append('invite', inviteCode)
+        }
+
         return NextResponse.redirect(
           new URL(`/register?${params.toString()}`, request.url)
         )

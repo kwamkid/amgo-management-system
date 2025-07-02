@@ -277,3 +277,46 @@ export const getUserStatistics = async () => {
     throw error
   }
 }
+
+// เพิ่ม function นี้ใน lib/services/userService.ts
+
+// Refresh user custom claims
+export const refreshUserClaims = async (userId: string): Promise<void> => {
+  try {
+    const response = await fetch('/api/users/update-claims', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh user claims')
+    }
+
+    // Force token refresh
+    const { auth } = await import('@/lib/firebase/client')
+    const currentUser = auth.currentUser
+    if (currentUser) {
+      await currentUser.getIdToken(true) // Force refresh token
+    }
+  } catch (error) {
+    console.error('Error refreshing user claims:', error)
+    throw error
+  }
+}
+
+// Update user role with claims refresh
+export const updateUserRoleWithClaims = async (userId: string, role: string): Promise<void> => {
+  try {
+    // First update Firestore
+    await updateUserRole(userId, role)
+    
+    // Then refresh custom claims
+    await refreshUserClaims(userId)
+  } catch (error) {
+    console.error('Error updating user role with claims:', error)
+    throw error
+  }
+}

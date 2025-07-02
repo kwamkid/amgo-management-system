@@ -145,6 +145,13 @@ export const uploadDeliveryPhoto = async (
   deliveryId: string
 ): Promise<DeliveryPhoto> => {
   try {
+    // Check if user is authenticated
+    const { auth } = await import('@/lib/firebase/client')
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      throw new Error('User not authenticated')
+    }
+
     // Compress photo
     const compressed = await compressPhoto(photoData)
     const thumbnail = await createThumbnail(photoData)
@@ -152,8 +159,9 @@ export const uploadDeliveryPhoto = async (
     // Generate filenames
     const timestamp = Date.now()
     const photoId = `${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-    const photoPath = `deliveries/${driverId}/${deliveryId}/${photoId}.jpg`
-    const thumbnailPath = `deliveries/${driverId}/${deliveryId}/${photoId}_thumb.jpg`
+    // ใช้ structure ที่ไม่ซับซ้อน เพื่อหลีกเลี่ยงปัญหา permission
+    const photoPath = `deliveries/${driverId}/${photoId}.jpg`
+    const thumbnailPath = `deliveries/${driverId}/${photoId}_thumb.jpg`
     
     // Upload both images
     const photoRef = ref(storage, photoPath)

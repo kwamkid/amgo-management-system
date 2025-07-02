@@ -24,7 +24,7 @@ export const useDeliveryPoints = (filters?: DeliveryFilters) => {
   const { userData } = useAuth()
   const { showToast } = useToast()
 
-  // Fetch delivery points
+  // Fetch delivery points - ไม่ใส่ showToast ใน dependencies
   const fetchDeliveryPoints = useCallback(async (loadMore = false) => {
     try {
       setLoading(true)
@@ -57,7 +57,7 @@ export const useDeliveryPoints = (filters?: DeliveryFilters) => {
     } finally {
       setLoading(false)
     }
-  }, [filters, lastDoc, userData, showToast])
+  }, [filters, lastDoc, userData?.role, userData?.id]) // เปลี่ยน dependencies
 
   // Load more
   const loadMore = () => {
@@ -360,7 +360,7 @@ export const useDeliveryCleanup = () => {
       // Check if cleanup should run
       const shouldRun = await deliveryService.shouldRunCleanup()
       if (!shouldRun) {
-        showToast('ยังไม่ถึงเวลาทำความสะอาดข้อมูล', 'info')
+        showToast('ยังไม่ถึงเวลาทำความสะอาดข้อมูล', 'success')
         return
       }
 

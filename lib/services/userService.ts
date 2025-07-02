@@ -320,3 +320,71 @@ export const updateUserRoleWithClaims = async (userId: string, role: string): Pr
     throw error
   }
 }
+
+// เพิ่ม function นี้ใน lib/services/userService.ts
+
+// Delete user (soft delete - เก็บข้อมูลไว้แต่ทำให้ใช้งานไม่ได้)
+export const softDeleteUser = async (userId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, userId)
+    await updateDoc(docRef, {
+      isActive: false,
+      isDeleted: true,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+  } catch (error) {
+    console.error('Error soft deleting user:', error)
+    throw error
+  }
+}
+
+// Delete user permanently (ลบจริง - ใช้ด้วยความระวัง!)
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    // Get current user token
+    const { auth } = await import('@/lib/firebase/client')
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      throw new Error('User not authenticated')
+    }
+    const token = await currentUser.getIdToken()
+
+    // Call API to delete from Firebase Auth and Firestore
+    const response = await fetch('/api/users/delete', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to delete user')
+    }
+  } catch (error) {
+    console.error('Error deleting user:', error)
+    throw error
+  }
+}
+
+// Restore deleted user (กู้คืนจาก soft delete)
+export const restoreUser = async (userId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, userId)
+    await updateDoc(docRef, {
+      isActive: true,
+      isDeleted: false,
+      restoredAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+    
+    // Refresh custom claims
+    await refreshUserClaims(userId)
+  } catch (error) {
+    console.error('Error restoring user:', error)
+    throw error
+  }
+}

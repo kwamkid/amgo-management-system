@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
 import { User, UserFilters } from '@/types/user'
+import DeleteUserDialog from '@/components/users/DeleteUserDialog' // 👈 เพิ่ม import นี้
 import { 
   Users, 
   Search, 
@@ -34,7 +35,11 @@ export default function EmployeesPage() {
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active')
   
-  const { users, loading, loadMore, hasMore, updateUserRole, deactivateUser } = useUsers({
+  // 👇 เพิ่ม state สำหรับ Delete Dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null)
+  
+  const { users, loading, loadMore, hasMore, updateUserRole, deactivateUser, refetch } = useUsers({
     role: roleFilter || undefined,
     isActive: statusFilter === 'all' ? undefined : statusFilter === 'active'
   })
@@ -82,10 +87,10 @@ export default function EmployeesPage() {
     }
   }
 
-  const handleDelete = async (user: User) => {
-    if (confirm(`⚠️ คำเตือน: การลบพนักงานจะไม่สามารถกู้คืนได้\n\nต้องการลบ ${user.fullName} ใช่หรือไม่?`)) {
-      showToast('ฟังก์ชันลบพนักงานยังไม่พร้อมใช้งาน', 'error')
-    }
+  // 👇 แก้ไข handleDelete function
+  const handleDelete = (user: User) => {
+    setSelectedUserForDelete(user)
+    setDeleteDialogOpen(true)
   }
 
   if (loading && users.length === 0) {
@@ -316,6 +321,17 @@ export default function EmployeesPage() {
           </div>
         )}
       </Card>
+
+      {/* 👇 เพิ่ม Delete User Dialog Component */}
+      <DeleteUserDialog
+        user={selectedUserForDelete}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onSuccess={() => {
+          setSelectedUserForDelete(null)
+          refetch() // Refresh user list หลังจากลบสำเร็จ
+        }}
+      />
     </div>
   )
 }

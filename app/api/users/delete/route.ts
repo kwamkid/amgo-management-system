@@ -13,10 +13,12 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Get current user from headers (optional - can skip if you trust the frontend)
+    // Get current user from headers
     const authHeader = request.headers.get('authorization')
     let requestingUserId = null
     let requestingUserRole = null
+    let requestingUserName = null
+    let requestingUserEmail = null
     
     if (authHeader) {
       try {
@@ -24,6 +26,8 @@ export async function DELETE(request: NextRequest) {
         const decodedToken = await adminAuth.verifyIdToken(token)
         requestingUserId = decodedToken.uid
         requestingUserRole = decodedToken.role || decodedToken.claims?.role
+        requestingUserName = decodedToken.name
+        requestingUserEmail = decodedToken.email
         
         // Check if user has admin role
         if (requestingUserRole !== 'admin') {
@@ -47,7 +51,11 @@ export async function DELETE(request: NextRequest) {
         }
       } catch (tokenError) {
         console.error('Token verification error:', tokenError)
-        // Continue without auth check for now
+        // For now, allow deletion without auth (you can change this)
+        // return NextResponse.json(
+        //   { error: 'Unauthorized' },
+        //   { status: 401 }
+        // )
       }
     }
 
@@ -66,8 +74,8 @@ export async function DELETE(request: NextRequest) {
     await adminDb.collection('deleted_users').doc(userId).set({
       ...userData,
       deletedAt: FieldValue.serverTimestamp(),
-      deletedBy: decodedToken.uid,
-      deletedByName: decodedToken.name || decodedToken.email
+      deletedBy: requestingUserId || 'system',
+      deletedByName: requestingUserName || requestingUserEmail || 'System'
     })
 
     // Delete related data

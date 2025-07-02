@@ -86,94 +86,96 @@ export default function DeleteUserDialog({
             <AlertTriangle className="w-5 h-5" />
             ลบพนักงาน
           </AlertDialogTitle>
-          <AlertDialogDescription className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-medium text-gray-900">
-                {user.fullName || user.lineDisplayName}
-              </p>
-              <p className="text-sm text-gray-600">{user.phone}</p>
-              <p className="text-sm text-gray-600">
-                สิทธิ์: {user.role === 'admin' ? 'ผู้ดูแลระบบ' :
-                      user.role === 'hr' ? 'ฝ่ายบุคคล' :
-                      user.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน'}
-              </p>
-            </div>
-
-            {/* Delete Type Selection */}
-            <div className="space-y-3">
-              <Label className="text-base font-medium">เลือกวิธีการลบ:</Label>
-              
-              <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="soft"
-                  checked={deleteType === 'soft'}
-                  onChange={(e) => setDeleteType(e.target.value as 'soft' | 'permanent')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <p className="font-medium">ปิดการใช้งาน (Soft Delete)</p>
-                  <p className="text-sm text-gray-600">
-                    • พนักงานจะไม่สามารถเข้าใช้งานระบบได้<br/>
-                    • ข้อมูลยังคงอยู่ในระบบและสามารถกู้คืนได้<br/>
-                    • ประวัติการทำงานยังคงอยู่
-                  </p>
+          <AlertDialogDescription asChild>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="font-medium text-gray-900">
+                  {user.fullName || user.lineDisplayName}
                 </div>
-              </label>
-
-              <label className="flex items-start gap-3 p-3 border border-red-200 rounded-lg cursor-pointer hover:bg-red-50">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="permanent"
-                  checked={deleteType === 'permanent'}
-                  onChange={(e) => setDeleteType(e.target.value as 'soft' | 'permanent')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-red-600">ลบถาวร (Permanent Delete)</p>
-                  <p className="text-sm text-red-600">
-                    • ลบข้อมูลออกจากระบบทั้งหมด<br/>
-                    • ไม่สามารถกู้คืนได้<br/>
-                    • ประวัติการทำงานจะถูกลบ
-                  </p>
+                <div className="text-sm text-gray-600">{user.phone}</div>
+                <div className="text-sm text-gray-600">
+                  สิทธิ์: {user.role === 'admin' ? 'ผู้ดูแลระบบ' :
+                        user.role === 'hr' ? 'ฝ่ายบุคคล' :
+                        user.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน'}
                 </div>
-              </label>
-            </div>
+              </div>
 
-            {/* Warning for permanent delete */}
-            {deleteType === 'permanent' && (
-              <Alert variant="error">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>คำเตือน:</strong> การลบถาวรไม่สามารถกู้คืนได้ 
-                  ข้อมูลทั้งหมดของพนักงานจะถูกลบออกจากระบบ
+              {/* Delete Type Selection */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">เลือกวิธีการลบ:</Label>
+                
+                <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="deleteType"
+                    value="soft"
+                    checked={deleteType === 'soft'}
+                    onChange={(e) => setDeleteType(e.target.value as 'soft' | 'permanent')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">ปิดการใช้งาน (Soft Delete)</div>
+                    <div className="text-sm text-gray-600">
+                      • พนักงานจะไม่สามารถเข้าใช้งานระบบได้<br/>
+                      • ข้อมูลยังคงอยู่ในระบบและสามารถกู้คืนได้<br/>
+                      • ประวัติการทำงานยังคงอยู่
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-3 border border-red-200 rounded-lg cursor-pointer hover:bg-red-50">
+                  <input
+                    type="radio"
+                    name="deleteType"
+                    value="permanent"
+                    checked={deleteType === 'permanent'}
+                    onChange={(e) => setDeleteType(e.target.value as 'soft' | 'permanent')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-red-600">ลบถาวร (Permanent Delete)</div>
+                    <div className="text-sm text-red-600">
+                      • ลบข้อมูลออกจากระบบทั้งหมด<br/>
+                      • ไม่สามารถกู้คืนได้<br/>
+                      • ประวัติการทำงานจะถูกลบ
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Warning for permanent delete */}
+              {deleteType === 'permanent' && (
+                <Alert variant="error">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>คำเตือน:</strong> การลบถาวรไม่สามารถกู้คืนได้ 
+                    ข้อมูลทั้งหมดของพนักงานจะถูกลบออกจากระบบ
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Info about data backup */}
+              <Alert variant="info">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  ระบบจะสำรองข้อมูลไว้ใน deleted_users collection ก่อนลบ
                 </AlertDescription>
               </Alert>
-            )}
 
-            {/* Info about data backup */}
-            <Alert variant="info">
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                ระบบจะสำรองข้อมูลไว้ใน deleted_users collection ก่อนลบ
-              </AlertDescription>
-            </Alert>
-
-            {/* Confirmation checkbox */}
-            <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-              <Checkbox
-                id="confirm-delete"
-                checked={confirmChecked}
-                onCheckedChange={(checked) => setConfirmChecked(checked as boolean)}
-              />
-              <Label 
-                htmlFor="confirm-delete" 
-                className="text-sm text-red-700 cursor-pointer select-none"
-              >
-                ฉันเข้าใจและยืนยันที่จะ{deleteType === 'soft' ? 'ปิดการใช้งาน' : 'ลบ'}พนักงานคนนี้
-              </Label>
+              {/* Confirmation checkbox */}
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
+                <Checkbox
+                  id="confirm-delete"
+                  checked={confirmChecked}
+                  onCheckedChange={(checked) => setConfirmChecked(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="confirm-delete" 
+                  className="text-sm text-red-700 cursor-pointer select-none"
+                >
+                  ฉันเข้าใจและยืนยันที่จะ{deleteType === 'soft' ? 'ปิดการใช้งาน' : 'ลบ'}พนักงานคนนี้
+                </Label>
+              </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

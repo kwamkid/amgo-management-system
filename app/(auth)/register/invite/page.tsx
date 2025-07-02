@@ -46,14 +46,16 @@ function PreRegisterForm() {
     
     showLoading()
     
-    const state = Math.random().toString(36).substring(2, 15)
+    // Generate state with invite code
+    const stateData = {
+      random: Math.random().toString(36).substring(2, 15),
+      inviteCode: inviteLink.code
+    }
+    const state = encodeURIComponent(JSON.stringify(stateData))
     
-    // เก็บข้อมูล invite link ไว้ใน sessionStorage
+    // Store in sessionStorage as backup
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('line_auth_state', state)
       sessionStorage.setItem('invite_code', inviteLink.code)
-      
-      // เก็บข้อมูล invite link ทั้งหมดไว้
       sessionStorage.setItem('invite_link_data', JSON.stringify({
         id: inviteLink.id,
         code: inviteLink.code,

@@ -19,7 +19,7 @@ function RegisterForm() {
   const searchParams = useSearchParams()
   
   const [formData, setFormData] = useState({
-    lineId: '',
+    lineUserId: '', // ✅ เปลี่ยนจาก lineId เป็น lineUserId
     lineDisplayName: '',
     linePictureUrl: '',
     fullName: '',
@@ -33,13 +33,17 @@ function RegisterForm() {
 
   useEffect(() => {
     const initializeForm = async () => {
-      const lineId = searchParams.get('lineId')
-      const name = searchParams.get('name')
-      const picture = searchParams.get('picture')
+      // ✅ เปลี่ยนจาก lineId เป็น lineUserId
+      const lineUserId = searchParams.get('lineUserId')
+      const lineDisplayName = searchParams.get('lineDisplayName')
+      const linePictureUrl = searchParams.get('linePictureUrl')
       let inviteCode = searchParams.get('invite')
 
-      if (!lineId) {
-        router.push('/login')
+      if (!lineUserId) {
+        setError('ไม่พบข้อมูล LINE')
+        setTimeout(() => {
+          router.push('/login')
+        }, 2000)
         return
       }
 
@@ -53,30 +57,27 @@ function RegisterForm() {
           try {
             const parsedData = JSON.parse(inviteLinkData)
             setInviteLink(parsedData)
-            setLoading(false)
-            return
           } catch (error) {
             console.error('Error parsing invite link data:', error)
           }
         }
       }
 
-      if (inviteCode) {
+      if (inviteCode && !inviteLink) {
         const validation = await validateInviteLink(inviteCode)
         if (!validation.valid) {
           setError(validation.error || 'ลิงก์ไม่ถูกต้อง')
-          setLoading(false)
-          return
+        } else {
+          setInviteLink(validation.link!)
         }
-        setInviteLink(validation.link!)
       }
 
       setFormData(prev => ({
         ...prev,
-        lineId: lineId,
-        lineDisplayName: name || '',
-        linePictureUrl: picture || '',
-        fullName: name || ''
+        lineUserId: lineUserId,
+        lineDisplayName: lineDisplayName || '',
+        linePictureUrl: linePictureUrl || '',
+        fullName: lineDisplayName || '' // ใช้ displayName เป็นค่าเริ่มต้น
       }))
       setLoading(false)
     }
@@ -90,13 +91,19 @@ function RegisterForm() {
     setIsSubmitting(true)
 
     try {
+      // Validate phone number
       const phoneRegex = /^0[0-9]{9}$/
       if (!phoneRegex.test(formData.phone)) {
         throw new Error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (0xxxxxxxxx)')
       }
 
+      // ✅ ตรวจสอบข้อมูลที่จำเป็น
+      if (!formData.lineUserId) {
+        throw new Error('ไม่พบข้อมูล LINE User ID')
+      }
+
       const userData = {
-        lineUserId: formData.lineId,
+        lineUserId: formData.lineUserId,
         lineDisplayName: formData.lineDisplayName,
         linePictureUrl: formData.linePictureUrl,
         fullName: formData.fullName,
@@ -111,6 +118,8 @@ function RegisterForm() {
         inviteLinkCode: inviteLink?.code || null
       }
 
+      console.log('Submitting registration:', userData) // Debug log
+
       // เรียกใช้ API Route สำหรับการลงทะเบียน
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -123,21 +132,27 @@ function RegisterForm() {
         })
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || 'การลงทะเบียนล้มเหลว')
       }
-
-      const data = await response.json()
       
       // Sign in ด้วย custom token ถ้ามี
       if (data.customToken) {
         await signInWithCustomToken(auth, data.customToken)
       }
 
+      // Clear sessionStorage
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('invite_code')
+        sessionStorage.removeItem('invite_link_data')
+      }
+
       router.push('/register/success')
     } catch (err) {
       const error = err as Error
+      console.error('Registration error:', error)
       setError(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
       setIsSubmitting(false)
@@ -152,12 +167,12 @@ function RegisterForm() {
     )
   }
 
-  if (error && !formData.lineId) {
+  if (error && !formData.lineUserId) {
     return (
       <Alert variant="error">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <h3 className="text-lg font-semibold mb-2">ลิงก์ไม่ถูกต้อง</h3>
+          <h3 className="text-lg font-semibold mb-2">เกิดข้อผิดพลาด</h3>
           <p className="mb-4">{error}</p>
           <Button
             onClick={() => router.push('/login')}
@@ -207,6 +222,7 @@ function RegisterForm() {
             />
             <div className="absolute inset-0 rounded-full ring-4 ring-red-400 ring-offset-2"></div>
           </div>
+          <p className="mt-2 text-sm text-gray-600">@{formData.lineDisplayName}</p>
         </div>
       )}
 

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'  // ✅ เพิ่ม import นี้
+import { FieldValue } from 'firebase-admin/firestore'
 import axios from 'axios'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
   const error = searchParams.get('error')
+  const state = searchParams.get('state')
 
   // Handle user denial
   if (error) {
@@ -63,10 +64,10 @@ export async function GET(request: NextRequest) {
           lineUserId: userId,
           lineDisplayName: displayName,
           linePictureUrl: pictureUrl || '',
-          fullName: displayName, // Can be updated later
-          phone: '', // Will be required to fill later
-          birthDate: null, // Will be required to fill later
-          role: 'admin', // ⭐ First user = Admin
+          fullName: displayName,
+          phone: '',
+          birthDate: null,
+          role: 'admin',
           permissionGroupId: 'super_admin',
           isActive: true,
           registeredAt: FieldValue.serverTimestamp(),
@@ -85,17 +86,31 @@ export async function GET(request: NextRequest) {
         )
       } else {
         // Regular new user - redirect to registration
-       // เปลี่ยนเป็น:
         const params = new URLSearchParams({
-          lineId: userId,
-          name: displayName,
-          ...(pictureUrl && { picture: pictureUrl })
+          lineUserId: userId, // ✅ เปลี่ยนจาก lineId เป็น lineUserId
+          lineDisplayName: displayName,
+          ...(pictureUrl && { linePictureUrl: pictureUrl })
         })
 
-        // ดึง invite code จาก session storage (ถ้ามี)
-        const inviteCode = request.headers.get('cookie')?.includes('invite_code') 
-          ? request.headers.get('cookie')?.match(/invite_code=([^;]+)/)?.[1]
-          : null
+        // Check for invite code in cookies or state
+        const cookies = request.headers.get('cookie') || ''
+        let inviteCode = null
+        
+        // Try to get from cookies
+        const inviteMatch = cookies.match(/invite_code=([^;]+)/)
+        if (inviteMatch) {
+          inviteCode = inviteMatch[1]
+        }
+        
+        // If not in cookies, try sessionStorage data passed via state
+        if (!inviteCode && state) {
+          try {
+            const stateData = JSON.parse(decodeURIComponent(state))
+            inviteCode = stateData.inviteCode
+          } catch (e) {
+            // State might not be JSON, ignore
+          }
+        }
 
         if (inviteCode) {
           params.append('invite', inviteCode)
@@ -130,7 +145,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('LINE callback error:', error)
     
-    // Log more details for debugging
     if (axios.isAxiosError(error)) {
       console.error('Response data:', error.response?.data)
       console.error('Response status:', error.response?.status)

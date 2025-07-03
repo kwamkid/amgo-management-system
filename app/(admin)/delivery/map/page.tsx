@@ -32,6 +32,7 @@ import TechLoader from '@/components/shared/TechLoader'
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -44,6 +45,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/useToast'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const mapContainerStyle = {
   width: '100%',
@@ -71,7 +79,15 @@ const createMarkerIcon = (label: string) => ({
 export default function DeliveryMapPage() {
   const router = useRouter()
   const { userData } = useAuth()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  // Get local date string in YYYY-MM-DD format
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString(new Date()))
   const [selectedPoint, setSelectedPoint] = useState<DeliveryMapPoint | null>(null)
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [showLightbox, setShowLightbox] = useState(false)
@@ -82,32 +98,53 @@ export default function DeliveryMapPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showMobileList, setShowMobileList] = useState(false)
   const [activeView, setActiveView] = useState<'map' | 'list'>('map') // For mobile
+  const [selectedDriver, setSelectedDriver] = useState<string>('all')
 
   const { mapPoints, loading, deleteDeliveryPoint, refetch } = useDeliveryMap(selectedDate)
   const { showToast } = useToast()
 
-  // Filter points based on search
+  // Get unique drivers
+  const uniqueDrivers = useMemo(() => {
+    const drivers = new Map<string, string>()
+    mapPoints.forEach(point => {
+      if (point.driverName) {
+        // Use driverName as both id and name since we don't have driverId field
+        drivers.set(point.driverName, point.driverName)
+      }
+    })
+    return Array.from(drivers, ([id, name]) => ({ id, name }))
+  }, [mapPoints])
+
+  // Filter points based on search and driver
   const filteredPoints = useMemo(() => {
-    if (!searchTerm.trim()) return mapPoints
+    let filtered = mapPoints
     
-    const search = searchTerm.toLowerCase()
-    return mapPoints.filter(point => 
-      // Search by address
-      (point.address && point.address.toLowerCase().includes(search)) ||
-      (addressCache[point.id] && addressCache[point.id].toLowerCase().includes(search)) ||
-      // Search by note
-      (point.note && point.note.toLowerCase().includes(search)) ||
-      // Search by driver name
-      (point.driverName && point.driverName.toLowerCase().includes(search)) ||
-      // Search by customer name
-      (point.customerName && point.customerName.toLowerCase().includes(search))
-    )
-  }, [mapPoints, searchTerm, addressCache])
+    // Filter by driver
+    if (selectedDriver !== 'all') {
+      filtered = filtered.filter(point => point.driverName === selectedDriver)
+    }
+    
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase()
+      filtered = filtered.filter(point => 
+        (point.address && point.address.toLowerCase().includes(search)) ||
+        (addressCache[point.id] && addressCache[point.id].toLowerCase().includes(search)) ||
+        (point.note && point.note.toLowerCase().includes(search)) ||
+        (point.driverName && point.driverName.toLowerCase().includes(search)) ||
+        (point.customerName && point.customerName.toLowerCase().includes(search))
+      )
+    }
+    
+    return filtered
+  }, [mapPoints, searchTerm, addressCache, selectedDriver])
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries,
-    id: 'google-map-script'
+    id: 'google-map-script',
+    language: 'th',
+    region: 'TH'
   })
 
   // Check permission
@@ -122,7 +159,7 @@ export default function DeliveryMapPage() {
     const fetchMissingAddresses = async () => {
       if (!isLoaded || mapPoints.length === 0) return
 
-      const { getAddressFromCoords } = await import('@/lib/utils/location')
+      const geocoder = new google.maps.Geocoder()
       
       const pointsWithoutAddress = mapPoints.filter(
         point => !point.address && !addressCache[point.id]
@@ -130,10 +167,33 @@ export default function DeliveryMapPage() {
 
       for (const point of pointsWithoutAddress) {
         try {
-          const address = await getAddressFromCoords(point.lat, point.lng)
-          setAddressCache(prev => ({ ...prev, [point.id]: address }))
+          const result = await new Promise<string>((resolve, reject) => {
+            geocoder.geocode(
+              { 
+                location: { lat: point.lat, lng: point.lng },
+                language: 'th' // เพิ่มภาษาไทย
+              },
+              (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                  // Clean up Thailand-specific formatting
+                  const address = results[0].formatted_address
+                    .replace('Unnamed Road, ', '')
+                    .replace('ประเทศไทย', '')
+                    .trim()
+                    .replace(/,\s*$/, '') // Remove trailing comma
+                  
+                  resolve(address)
+                } else {
+                  reject(new Error('ไม่สามารถหาที่อยู่ได้'))
+                }
+              }
+            )
+          })
+          
+          setAddressCache(prev => ({ ...prev, [point.id]: result }))
         } catch (error) {
           console.error('Error fetching address:', error)
+          setAddressCache(prev => ({ ...prev, [point.id]: 'ไม่สามารถระบุที่อยู่ได้' }))
         }
       }
     }
@@ -163,8 +223,12 @@ export default function DeliveryMapPage() {
   const changeDate = (days: number) => {
     const date = new Date(selectedDate)
     date.setDate(date.getDate() + days)
-    if (date <= new Date()) {
-      setSelectedDate(date.toISOString().split('T')[0])
+    
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // Set to end of today
+    
+    if (date <= today) {
+      setSelectedDate(getLocalDateString(date))
     }
   }
 
@@ -228,7 +292,7 @@ export default function DeliveryMapPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <Card className="p-8">
-          <p className="text-red-600">Error loading map</p>
+          <p className="text-red-600 text-base">Error loading map</p>
         </Card>
       </div>
     )
@@ -252,7 +316,7 @@ export default function DeliveryMapPage() {
       ) : filteredPoints.length === 0 ? (
         <div className="text-center py-8">
           <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">ไม่พบข้อมูลการส่งของ</p>
+          <p className="text-gray-600 text-base">ไม่พบข้อมูลการส่งของ</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -287,11 +351,11 @@ export default function DeliveryMapPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-red-600">
+                          <span className="text-base font-medium text-red-600">
                             {point.sequence}
                           </span>
                         </div>
-                        <span className="text-sm md:text-base font-medium">
+                        <span className="text-base font-medium">
                           {formatTime(point.checkInTime)}
                         </span>
                       </div>
@@ -299,7 +363,7 @@ export default function DeliveryMapPage() {
                       <div className="flex items-center gap-1">
                         {/* Driver Name */}
                         {point.driverName && (
-                          <div className="hidden sm:flex items-center gap-1 text-xs text-gray-600">
+                          <div className="hidden sm:flex items-center gap-1 text-sm text-gray-600">
                             <User className="w-3 h-3" />
                             <span>{point.driverName}</span>
                           </div>
@@ -325,20 +389,20 @@ export default function DeliveryMapPage() {
 
                     {/* Customer Name */}
                     {point.customerName && (
-                      <p className="text-sm font-medium text-gray-700 mb-1">
+                      <p className="text-base font-medium text-gray-700 mb-1">
                         {point.customerName}
                       </p>
                     )}
 
                     {/* Address */}
-                    <p className="text-xs md:text-sm text-gray-500 line-clamp-2">
+                    <p className="text-base text-gray-500 line-clamp-2">
                       <MapPin className="w-3 h-3 inline-block mr-1" />
                       {point.address || addressCache[point.id] || 'กำลังโหลดที่อยู่...'}
                     </p>
 
                     {/* Note */}
                     {point.note && (
-                      <p className="text-xs text-gray-500 mt-1 italic">
+                      <p className="text-sm text-gray-500 mt-1 italic">
                         หมายเหตุ: {point.note}
                       </p>
                     )}
@@ -358,7 +422,7 @@ export default function DeliveryMapPage() {
       <div className="hidden lg:flex w-96 bg-white border-r border-gray-200 flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
+          <h2 className="text-xl font-semibold text-gray-900">รายการส่งของ</h2>
           
           {/* Date Navigation */}
           <div className="flex items-center gap-2 mt-3">
@@ -375,15 +439,15 @@ export default function DeliveryMapPage() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="flex-1"
+              max={getLocalDateString(new Date())}
+              className="flex-1 text-base"
             />
             
             <Button
               variant="outline"
               size="icon"
               onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === new Date().toISOString().split('T')[0]}
+              disabled={loading || selectedDate === getLocalDateString(new Date())}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -391,7 +455,7 @@ export default function DeliveryMapPage() {
 
           {/* Summary */}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm text-gray-600">
+            <span className="text-base text-gray-600">
               พบ {filteredPoints.length} จุดส่งของ
             </span>
             {mapPoints.length > 0 && (
@@ -415,9 +479,33 @@ export default function DeliveryMapPage() {
               placeholder="ค้นหาที่อยู่, หมายเหตุ, พนักงาน..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-base"
             />
           </div>
+
+          {/* Driver Filter Dropdown */}
+          {uniqueDrivers.length > 0 && (
+            <div className="mt-3">
+              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                <SelectTrigger className="text-base">
+                  <SelectValue placeholder="เลือกพนักงาน" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      <span className="text-base">พนักงานทั้งหมด</span>
+                    </div>
+                  </SelectItem>
+                  {uniqueDrivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      <span className="text-base">{driver.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Points List */}
@@ -426,107 +514,225 @@ export default function DeliveryMapPage() {
         </div>
       </div>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-16 left-0 right-0 bg-white border-b z-40 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
-          <div className="flex gap-2">
-            <Button
-              variant={activeView === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveView('list')}
-            >
-              <Menu className="w-4 h-4 mr-1" />
-              รายการ
-            </Button>
-            <Button
-              variant={activeView === 'map' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveView('map')}
-            >
-              <MapIcon className="w-4 h-4 mr-1" />
-              แผนที่
-            </Button>
-          </div>
-        </div>
-
-        {/* Date Navigation */}
-        <div className="flex items-center gap-2 mb-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => changeDate(-1)}
-            disabled={loading}
-            className="h-9 w-9"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            className="flex-1 h-9 text-sm"
-          />
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => changeDate(1)}
-            disabled={loading || selectedDate === new Date().toISOString().split('T')[0]}
-            className="h-9 w-9"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Search and Summary */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="ค้นหา..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-sm"
-            />
-          </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              พบ {filteredPoints.length} จุดส่งของ
-            </span>
-            {mapPoints.length > 0 && (
+      {/* Mobile Content Container */}
+      <div className="lg:hidden w-full">
+        {/* Mobile Header - ใช้ sticky positioning */}
+        <div className="sticky top-0 left-0 right-0 bg-white border-b z-40 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
+            <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant={activeView === 'list' ? 'default' : 'outline'}
                 size="sm"
-                onClick={viewAllPoints}
-                disabled={loading}
-                className="h-8 text-xs"
+                onClick={() => setActiveView('list')}
               >
-                <Eye className="w-3 h-3 mr-1" />
-                ดูทั้งหมด
+                <Menu className="w-4 h-4 mr-1" />
+                รายการ
               </Button>
+              <Button
+                variant={activeView === 'map' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveView('map')}
+              >
+                <MapIcon className="w-4 h-4 mr-1" />
+                แผนที่
+              </Button>
+            </div>
+          </div>
+
+          {/* Date Navigation */}
+          <div className="flex items-center gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => changeDate(-1)}
+              disabled={loading}
+              className="h-9 w-9"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="flex-1 h-9 text-base"
+            />
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => changeDate(1)}
+              disabled={loading || selectedDate === new Date().toISOString().split('T')[0]}
+              className="h-9 w-9"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Search and Driver Filter */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="ค้นหา..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9 text-base"
+              />
+            </div>
+            
+            {/* Driver Filter Dropdown */}
+            {uniqueDrivers.length > 0 && (
+              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                <SelectTrigger className="h-9 text-base">
+                  <SelectValue placeholder="เลือกพนักงาน" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <User className="w-3 h-3" />
+                      <span className="text-base">พนักงานทั้งหมด</span>
+                    </div>
+                  </SelectItem>
+                  {uniqueDrivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      <span className="text-base">{driver.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
+            
+            <div className="flex items-center justify-between text-base">
+              <span className="text-gray-600">
+                พบ {filteredPoints.length} จุดส่งของ
+              </span>
+              {mapPoints.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={viewAllPoints}
+                  disabled={loading}
+                  className="h-8"
+                >
+                  <Eye className="w-3 h-3 mr-1" />
+                  ดูทั้งหมด
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile List View */}
-      <div className={`lg:hidden fixed inset-0 bg-white overflow-y-auto z-30 ${
-        activeView === 'list' ? 'block' : 'hidden'
-      }`} style={{ paddingTop: '16.5rem' }}>
-        <div className="p-4">
-          <PointsList />
+        {/* Mobile List View */}
+        <div className={`${activeView === 'list' ? 'block' : 'hidden'}`}>
+          <div className="p-4">
+            <PointsList />
+          </div>
+        </div>
+
+        {/* Mobile Map View */}
+        <div className={`${activeView === 'map' ? 'block' : 'hidden'} h-[calc(100vh-14rem)]`}>
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
+            zoom={13}
+            onLoad={setMap}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: true,
+              fullscreenControl: true,
+              zoomControl: true
+            }}
+          >
+            {/* Markers */}
+            {filteredPoints.map((point, index) => (
+              <Marker
+                key={point.id}
+                position={{ lat: point.lat, lng: point.lng }}
+                icon={{
+                  ...createMarkerIcon(point.sequence?.toString() || (index + 1).toString()),
+                }}
+                label={{
+                  text: point.sequence?.toString() || (index + 1).toString(),
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}
+                onClick={() => setSelectedPoint(point)}
+              />
+            ))}
+
+            {/* Info Window */}
+            {selectedPoint && (
+              <InfoWindow
+                position={{ lat: selectedPoint.lat, lng: selectedPoint.lng }}
+                onCloseClick={() => setSelectedPoint(null)}
+              >
+                <div className="min-w-[180px] max-w-[240px]">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2 pr-8">
+                    <span className="font-medium text-sm">จุดที่ {selectedPoint.sequence}</span>
+                    {selectedPoint.driverName && (
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
+                        <User className="w-3 h-3" />
+                        <span>{selectedPoint.driverName}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Time */}
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                    <Clock className="w-3 h-3" />
+                    {formatTime(selectedPoint.checkInTime)}
+                  </div>
+                  
+                  {/* Customer */}
+                  {selectedPoint.customerName && (
+                    <p className="text-sm font-medium mb-1">{selectedPoint.customerName}</p>
+                  )}
+                  
+                  {/* Address */}
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                    {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลดที่อยู่...'}
+                  </p>
+
+                  {/* Photo Thumbnail */}
+                  {selectedPoint.photo && (
+                    <div className="mb-2 flex justify-center">
+                      <img
+                        src={selectedPoint.photo.thumbnailUrl || selectedPoint.photo.url}
+                        alt="Delivery"
+                        className="max-w-full max-h-24 object-contain rounded cursor-pointer hover:opacity-80"
+                        onClick={() => openLightbox(selectedPoint.photo!.url)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Navigation Button */}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full h-8 text-sm"
+                    onClick={() => {
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
+                      window.open(url, '_blank')
+                    }}
+                  >
+                    <Navigation className="w-3 h-3 mr-1" />
+                    นำทาง
+                  </Button>
+                </div>
+              </InfoWindow>
+            )}
+          </GoogleMap>
         </div>
       </div>
 
-      {/* Map - Full width on mobile when active */}
-      <div className={`flex-1 relative ${
-        activeView === 'map' ? 'block' : 'hidden lg:block'
-      }`}>
+      {/* Desktop Map - Full width */}
+      <div className="hidden lg:block flex-1 relative">
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
@@ -563,12 +769,10 @@ export default function DeliveryMapPage() {
               position={{ lat: selectedPoint.lat, lng: selectedPoint.lng }}
               onCloseClick={() => setSelectedPoint(null)}
             >
-              <div className="p-3 min-w-[200px] max-w-[280px]">
+              <div className="min-w-[180px] max-w-[240px]">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">จุดที่ {selectedPoint.sequence}</span>
-                  </div>
+                <div className="flex items-center justify-between mb-2 pr-8">
+                  <span className="font-medium text-sm">จุดที่ {selectedPoint.sequence}</span>
                   {selectedPoint.driverName && (
                     <div className="flex items-center gap-1 text-xs text-gray-600">
                       <User className="w-3 h-3" />
@@ -578,28 +782,28 @@ export default function DeliveryMapPage() {
                 </div>
                 
                 {/* Time */}
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                  <Clock className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                  <Clock className="w-3 h-3" />
                   {formatTime(selectedPoint.checkInTime)}
                 </div>
                 
                 {/* Customer */}
                 {selectedPoint.customerName && (
-                  <p className="text-sm font-medium mb-2">{selectedPoint.customerName}</p>
+                  <p className="text-sm font-medium mb-1">{selectedPoint.customerName}</p>
                 )}
                 
                 {/* Address */}
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-xs text-gray-500 mb-2 line-clamp-2">
                   {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลดที่อยู่...'}
                 </p>
 
                 {/* Photo Thumbnail */}
                 {selectedPoint.photo && (
-                  <div className="mb-3 flex justify-center">
+                  <div className="mb-2 flex justify-center">
                     <img
                       src={selectedPoint.photo.thumbnailUrl || selectedPoint.photo.url}
                       alt="Delivery"
-                      className="max-w-full max-h-40 object-contain rounded cursor-pointer hover:opacity-80"
+                      className="max-w-full max-h-24 object-contain rounded cursor-pointer hover:opacity-80"
                       onClick={() => openLightbox(selectedPoint.photo!.url)}
                     />
                   </div>
@@ -609,13 +813,13 @@ export default function DeliveryMapPage() {
                 <Button
                   variant="default"
                   size="sm"
-                  className="w-full"
+                  className="w-full h-8 text-sm"
                   onClick={() => {
                     const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
                     window.open(url, '_blank')
                   }}
                 >
-                  <Navigation className="w-4 h-4 mr-2" />
+                  <Navigation className="w-3 h-3 mr-1" />
                   นำทาง
                 </Button>
               </div>
@@ -627,6 +831,7 @@ export default function DeliveryMapPage() {
       {/* Lightbox Dialog */}
       <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
         <DialogContent className="max-w-4xl p-0">
+          <DialogTitle className="sr-only">รูปภาพการส่งของ</DialogTitle>
           <div className="relative">
             <img
               src={lightboxImage}

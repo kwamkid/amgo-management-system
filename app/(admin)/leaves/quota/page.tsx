@@ -268,7 +268,10 @@ function QuotaEditAll({
 export default function LeaveQuotaManagementPage() {
   const router = useRouter()
   const { userData } = useAuth()
-  const { users, loading: usersLoading } = useUsers({ isActive: true })
+  const { users, loading: usersLoading } = useUsers({ 
+    isActive: true,
+    pageSize: 100  // เพิ่ม pageSize เพื่อดึงพนักงานทั้งหมด
+  })
   const { showToast } = useToast()
   
   const [year, setYear] = useState(new Date().getFullYear())

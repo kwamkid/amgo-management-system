@@ -53,7 +53,6 @@ const navItems: NavItem[] = [
   },
   {
     label: 'เช็คอิน/เอาท์',
-    href: '/checkin',
     icon: <Clock className="w-5 h-5" />,
     subItems: [
       {
@@ -76,7 +75,6 @@ const navItems: NavItem[] = [
   },
   {
     label: 'พนักงาน',
-    href: '/employees',
     icon: <Users className="w-5 h-5" />,
     roles: ['hr', 'admin', 'manager'],
     subItems: [
@@ -99,7 +97,6 @@ const navItems: NavItem[] = [
   },
   {
     label: 'การลา',
-    href: '/leaves',
     icon: <Calendar className="w-5 h-5" />,
     subItems: [
       {
@@ -150,12 +147,6 @@ const navItems: NavItem[] = [
     ]
   },
   {
-    label: 'รายงาน',
-    href: '/reports',
-    icon: <FileText className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager']
-  },
-  {
     label: 'Delivery Tracking',
     icon: <Truck className="w-5 h-5" />, // No href for parent
     roles: ['driver', 'admin', 'hr'],
@@ -178,8 +169,13 @@ const navItems: NavItem[] = [
     ]
   },
   {
+    label: 'รายงาน',
+    href: '/reports',
+    icon: <FileText className="w-5 h-5" />,
+    roles: ['hr', 'admin', 'manager']
+  },
+  {
     label: 'ตั้งค่า',
-    href: '/#',
     icon: <Settings className="w-5 h-5" />,
     roles: ['hr', 'admin'],
     subItems: [

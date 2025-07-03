@@ -32,9 +32,11 @@ export default function CheckInMap({
   
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-    id: 'google-map-script' // ใช้ id เดียวกันกับ LocationMapPicker
-  })
+    libraries: ['places'],
+    id: 'google-map-script',
+    language: 'th',  // เพิ่มบรรทัดนี้
+    region: 'TH'     // เพิ่มบรรทัดนี้
+    })
 
   const center = {
     lat: userLat,

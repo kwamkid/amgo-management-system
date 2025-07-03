@@ -138,6 +138,7 @@ export const formatDistance = (meters: number): string => {
  * Get address from coordinates (Reverse Geocoding)
  * ต้องใช้ Google Maps Geocoding API
  */
+// ใน lib/utils/location.ts
 export const getAddressFromCoords = async (
   lat: number,
   lng: number
@@ -151,7 +152,10 @@ export const getAddressFromCoords = async (
     
     return new Promise((resolve, reject) => {
       geocoder.geocode(
-        { location: { lat, lng } },
+        { 
+          location: { lat, lng },
+          language: 'th' // เพิ่มภาษาไทย
+        },
         (results, status) => {
           if (status === 'OK' && results && results[0]) {
             // Get formatted address

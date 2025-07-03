@@ -1,4 +1,4 @@
-// components/dashboard/AttendanceSection.tsx
+// ========== FILE: components/dashboard/AttendanceSection.tsx ==========
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -169,41 +169,15 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
         </Button>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">พนักงานทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900">{totalEmployees}</p>
-                <p className="text-xs text-gray-500">คน</p>
-              </div>
-              <Users className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">มาทำงานแล้ว</p>
-                <p className="text-2xl font-bold text-teal-600">{attendanceData.checkedIn.length}</p>
-                <p className="text-xs text-gray-500">จาก {totalEmployees} คน</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-teal-400" />
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Summary Stats - แสดงแค่ 4 cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-0 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">กำลังทำงาน</p>
                 <p className="text-2xl font-bold text-blue-600">{workingCount}</p>
-                <p className="text-xs text-gray-500">ยังไม่เช็คเอาท์</p>
+                <p className="text-xs text-gray-500">เช็คอินอยู่</p>
               </div>
               <Clock className="w-8 h-8 text-blue-400" />
             </div>
@@ -214,7 +188,20 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">ยังไม่มา</p>
+                <p className="text-sm text-gray-600">เสร็จงานแล้ว</p>
+                <p className="text-2xl font-bold text-teal-600">{attendanceData.checkedIn.length - workingCount}</p>
+                <p className="text-xs text-gray-500">เช็คอิน + เอาท์</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-teal-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ยังไม่เช็คอิน</p>
                 <p className="text-2xl font-bold text-red-600">{attendanceData.notCheckedIn.length}</p>
                 <p className="text-xs text-gray-500">คน</p>
               </div>
@@ -241,75 +228,69 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Checked In */}
         <Card className="border-0 shadow-md">
-          <CardHeader className="bg-gradient-to-r from-teal-50 to-emerald-50">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-teal-600" />
-              เช็คอินแล้ว ({attendanceData.checkedIn.length} คน)
+              <Clock className="w-5 h-5 text-blue-600" />
+              กำลังทำงาน ({workingCount} คน)
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
-            {attendanceData.checkedIn.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">ยังไม่มีพนักงานเช็คอิน</p>
+            {workingCount === 0 ? (
+              <p className="text-center text-gray-500 py-8">ไม่มีพนักงานที่กำลังทำงาน</p>
             ) : (
               <div className="space-y-3">
-                {attendanceData.checkedIn.map(user => {
-                  const record = attendanceData.records[user.id!];
-                  const isWorking = record.status === 'checked-in';
-                  const workingHours = record.checkinTime ? 
-                    Math.floor((Date.now() - new Date(record.checkinTime).getTime()) / (1000 * 60 * 60)) : 0;
-                  
-                  return (
-                    <div 
-                      key={user.id} 
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/employees/${user.id}`)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={user.linePictureUrl || '/avatar-placeholder.png'}
-                          alt={user.fullName}
-                          className="w-10 h-10 rounded-full"
-                        />
-                        <div>
-                          <p className="font-medium">{user.fullName}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="flex items-center gap-1 text-sm text-gray-600">
-                              <LogIn className="w-3.5 h-3.5" />
-                              {formatTime(record.checkinTime)}
-                            </span>
-                            {record.checkoutTime && (
+                {attendanceData.checkedIn
+                  .filter(user => {
+                    const record = attendanceData.records[user.id!];
+                    return record.status === 'checked-in';
+                  })
+                  .map(user => {
+                    const record = attendanceData.records[user.id!];
+                    const checkinTime = record.checkinTime instanceof Date 
+                      ? record.checkinTime 
+                      : new Date(record.checkinTime);
+                    const workingHours = Math.floor((Date.now() - checkinTime.getTime()) / (1000 * 60 * 60));
+                    
+                    return (
+                      <div 
+                        key={user.id} 
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
+                        onClick={() => router.push(`/employees/${user.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={user.linePictureUrl || '/avatar-placeholder.png'}
+                            alt={user.fullName}
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div>
+                            <p className="font-medium">{user.fullName}</p>
+                            <div className="flex items-center gap-2 mt-1">
                               <span className="flex items-center gap-1 text-sm text-gray-600">
-                                <LogOut className="w-3.5 h-3.5" />
-                                {formatTime(record.checkoutTime)}
+                                <LogIn className="w-3.5 h-3.5" />
+                                {formatTime(record.checkinTime)}
                               </span>
-                            )}
-                            <span className="flex items-center gap-1 text-sm text-gray-600">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {record.primaryLocationName || 'นอกสถานที่'}
-                            </span>
+                              <span className="flex items-center gap-1 text-sm text-gray-600">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {record.primaryLocationName || 'นอกสถานที่'}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getShiftBadge(record)}
-                        {record.isLate && (
-                          <Badge variant="error" className="text-xs">
-                            สาย {record.lateMinutes} นาที
-                          </Badge>
-                        )}
-                        {isWorking ? (
+                        <div className="flex items-center gap-2">
+                          {getShiftBadge(record)}
+                          {record.isLate && (
+                            <Badge variant="error" className="text-xs">
+                              สาย {record.lateMinutes} นาที
+                            </Badge>
+                          )}
                           <Badge variant="success" className="text-xs">
                             {workingHours} ชม.
                           </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">
-                            {record.totalHours?.toFixed(1) || '0'} ชม.
-                          </Badge>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </CardContent>

@@ -219,7 +219,7 @@ export class DiscordNotificationService {
     deadline: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.CAMPAIGN)
       
       await webhook.send({
         embeds: [{

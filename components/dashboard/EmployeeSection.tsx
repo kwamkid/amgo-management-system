@@ -1,10 +1,16 @@
-// components/dashboard/EmployeeSection.tsx
+// ========== FILE: components/dashboard/EmployeeSection.tsx ==========
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Calendar,
   Clock,
@@ -44,6 +50,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [birthdays, setBirthdays] = useState<BirthdayUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showBirthdayDialog, setShowBirthdayDialog] = useState(false);
   
   // Get birthdays for the current month
   useEffect(() => {
@@ -130,6 +138,15 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
     return birthdays.filter(user => user.birthDate.getDate() === day.getDate());
   };
 
+  // Handle date click
+  const handleDateClick = (day: Date) => {
+    const dayBirthdays = getBirthdaysForDay(day);
+    if (dayBirthdays.length > 0) {
+      setSelectedDate(day);
+      setShowBirthdayDialog(true);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -188,9 +205,10 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                     className={`
                       relative aspect-square p-2 rounded-lg border
                       ${isCurrentDay ? 'bg-red-50 border-red-300' : 'border-gray-200'}
-                      ${hasBirthday ? 'bg-gradient-to-br from-pink-50 to-purple-50' : ''}
-                      hover:bg-gray-50 transition-colors cursor-pointer
+                      ${hasBirthday ? 'bg-gradient-to-br from-pink-50 to-purple-50 cursor-pointer hover:from-pink-100 hover:to-purple-100' : ''}
+                      transition-colors
                     `}
+                    onClick={() => hasBirthday && handleDateClick(day)}
                   >
                     <div className="text-sm font-medium text-gray-900">
                       {getDate(day)}
@@ -384,6 +402,46 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           )}
         </div>
       </div>
+
+      {/* Birthday Dialog */}
+      <Dialog open={showBirthdayDialog} onOpenChange={setShowBirthdayDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Cake className="w-5 h-5 text-pink-600" />
+              วันเกิดวันที่ {selectedDate && format(selectedDate, 'dd MMMM', { locale: th })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {selectedDate && getBirthdaysForDay(selectedDate).map(user => {
+              const age = new Date().getFullYear() - user.birthDate.getFullYear();
+              return (
+                <div key={user.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg">
+                  <img
+                    src={user.linePictureUrl || '/avatar-placeholder.png'}
+                    alt={user.fullName}
+                    className="w-16 h-16 rounded-full border-2 border-white shadow-md"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{user.fullName}</h3>
+                    <p className="text-sm text-gray-600">
+                      {user.role === 'manager' ? 'ผู้จัดการ' : 
+                       user.role === 'hr' ? 'ฝ่ายบุคคล' : 
+                       user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
+                    </p>
+                    <p className="text-sm text-purple-600 font-medium mt-1">
+                      อายุ {age} ปี
+                    </p>
+                  </div>
+                  {isSameDay(selectedDate, new Date()) && (
+                    <div className="text-2xl animate-bounce">🎉</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -335,14 +335,15 @@ export function extractUsernameFromUrl(url: string, platform: SocialPlatform): s
 
 // Helper to validate social media URL
 export function validateSocialMediaUrl(url: string, platform: SocialPlatform): boolean {
+  // More flexible patterns that accept various URL formats
   const patterns: Record<SocialPlatform, RegExp | null> = {
-    youtube: /^(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:c\/|channel\/|@)[A-Za-z0-9_-]+$/,
-    instagram: /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/[A-Za-z0-9_.]+$/,
-    tiktok: /^(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[A-Za-z0-9_.]+$/,
-    twitter: /^(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/[A-Za-z0-9_]+$/,
-    facebook: /^(?:https?:\/\/)?(?:www\.)?facebook\.com\/.+$/,
-    lemon8: /^(?:https?:\/\/)?(?:www\.)?lemon8-app\.com\/.+$/,
-    website: /^https?:\/\/.+$/,
+    youtube: /^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/.+$/i,
+    instagram: /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/.+$/i,
+    tiktok: /^(?:https?:\/\/)?(?:www\.|vm\.)?tiktok\.com\/.+$/i,
+    twitter: /^(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/.+$/i,
+    facebook: /^(?:https?:\/\/)?(?:www\.|m\.|web\.)?(?:facebook\.com|fb\.com|fb\.watch)\/.+$/i,
+    lemon8: /^(?:https?:\/\/)?(?:www\.)?lemon8-app\.com\/.+$/i,
+    website: /^https?:\/\/.+$/i,
     others: null
   }
   

@@ -1,6 +1,6 @@
 // hooks/useInfluencers.ts
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DocumentSnapshot } from 'firebase/firestore'
 import { useToast } from '@/hooks/useToast'
 import { useAuth } from '@/hooks/useAuth'
@@ -27,6 +27,13 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null)
   const { showToast } = useToast()
   const { userData } = useAuth()
+  
+  // Use ref to track if initial fetch has been done
+  const hasFetchedRef = useRef(false)
+  
+  // Store options in ref to prevent re-renders
+  const optionsRef = useRef(options)
+  optionsRef.current = options
 
   // Fetch influencers with pagination
   const fetchInfluencers = useCallback(async (loadMore = false) => {
@@ -34,14 +41,15 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
       setLoading(true)
       setError(null)
       
+      const currentOptions = optionsRef.current
       const filters = {
-        tier: options?.tier,
-        platform: options?.platform,
+        tier: currentOptions?.tier,
+        platform: currentOptions?.platform,
         isActive: true
       }
       
       const result = await influencerService.getInfluencers(
-        options?.pageSize || 20,
+        currentOptions?.pageSize || 20,
         loadMore ? lastDoc || undefined : undefined,
         filters
       )
@@ -61,14 +69,14 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
     } finally {
       setLoading(false)
     }
-  }, [options, lastDoc, showToast])
+  }, [lastDoc, showToast]) // Remove options from dependencies
 
   // Load more
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (hasMore && !loading) {
       fetchInfluencers(true)
     }
-  }
+  }, [hasMore, loading, fetchInfluencers])
 
   // Create influencer
   const createInfluencer = async (data: CreateInfluencerData): Promise<string | null> => {
@@ -80,8 +88,6 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
       
       const id = await influencerService.createInfluencer(data, userData.id)
       showToast('เพิ่ม Influencer สำเร็จ', 'success')
-      // Don't refetch here to avoid infinite loop
-      // await fetchInfluencers() 
       return id
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create influencer'
@@ -103,8 +109,6 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
       
       await influencerService.updateInfluencer(influencerId, data, userData.id)
       showToast('อัพเดทข้อมูลสำเร็จ', 'success')
-      // Don't refetch here to avoid infinite loop
-      // await fetchInfluencers()
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update influencer'
@@ -236,10 +240,24 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
     }
   }
 
-  // Initial fetch
+  // Initial fetch - use ref to prevent multiple calls
   useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true
+      fetchInfluencers()
+    }
+  }, []) // Empty dependency array - only run once
+
+  // Handle filter changes
+  useEffect(() => {
+    // Skip if this is the initial mount
+    if (!hasFetchedRef.current) return
+    
+    // Reset and fetch when filters change
+    setLastDoc(null)
+    setInfluencers([])
     fetchInfluencers()
-  }, [fetchInfluencers]) // Add proper dependency
+  }, [options?.tier, options?.platform]) // Only re-fetch when filters change
 
   return {
     influencers,
@@ -264,7 +282,6 @@ export const useInfluencer = (influencerId: string) => {
   const [influencer, setInfluencer] = useState<Influencer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { showToast } = useToast()
 
   useEffect(() => {
     let mounted = true;
@@ -287,7 +304,6 @@ export const useInfluencer = (influencerId: string) => {
         const message = err instanceof Error ? err.message : 'Failed to fetch influencer'
         if (mounted) {
           setError(message)
-          // Remove toast to prevent re-renders
           console.error('Error fetching influencer:', message)
         }
       } finally {
@@ -302,7 +318,7 @@ export const useInfluencer = (influencerId: string) => {
     return () => {
       mounted = false
     }
-  }, [influencerId]) // Remove showToast from dependencies
+  }, [influencerId])
 
   return { influencer, loading, error }
 }

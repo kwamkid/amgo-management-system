@@ -133,7 +133,7 @@ const navItems: NavItem[] = [
   },
   {
     label: 'Influ Marketing',
-    href: '/influencers',
+    href: '#',
     icon: <TrendingUp className="w-5 h-5" />,
     roles: ['hr', 'admin', 'manager', 'marketing'],
     subItems: [
@@ -179,7 +179,7 @@ const navItems: NavItem[] = [
   },
   {
     label: 'ตั้งค่า',
-    href: '/settings',
+    href: '/#',
     icon: <Settings className="w-5 h-5" />,
     roles: ['hr', 'admin'],
     subItems: [

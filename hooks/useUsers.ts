@@ -1,16 +1,32 @@
 // hooks/useUsers.ts
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { User, UserFilters } from '@/types/user'
 import * as userService from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
 import { useAuth } from '@/hooks/useAuth'
+
+// Custom debounce function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null
+  
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => {
+      func(...args)
+    }, wait)
+  }
+}
 
 interface UseUsersOptions {
   pageSize?: number
   role?: string
   isActive?: boolean
   locationId?: string
+  searchTerm?: string
 }
 
 export const useUsers = (options?: UseUsersOptions) => {
@@ -21,9 +37,12 @@ export const useUsers = (options?: UseUsersOptions) => {
   const [lastDoc, setLastDoc] = useState<any>(null)
   const { showToast } = useToast()
   const { userData } = useAuth()
+  
+  // Track current filters
+  const currentFilters = useRef(options)
 
-  // Fetch users with pagination
-  const fetchUsers = useCallback(async (loadMore = false) => {
+  // Fetch users with filters
+  const fetchUsers = useCallback(async (loadMore = false, searchTerm?: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -31,7 +50,8 @@ export const useUsers = (options?: UseUsersOptions) => {
       const filters = {
         role: options?.role,
         isActive: options?.isActive,
-        locationId: options?.locationId
+        locationId: options?.locationId,
+        searchTerm: searchTerm || options?.searchTerm
       }
       
       const result = await userService.getUsers(
@@ -55,13 +75,35 @@ export const useUsers = (options?: UseUsersOptions) => {
     } finally {
       setLoading(false)
     }
-  }, [options, lastDoc])
+  }, [options, lastDoc, showToast])
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchTerm: string) => {
+      setLastDoc(null) // Reset pagination
+      fetchUsers(false, searchTerm)
+    }, 500),
+    [fetchUsers]
+  )
 
   // Load more users
   const loadMore = () => {
     if (hasMore && !loading) {
       fetchUsers(true)
     }
+  }
+
+  // Search users
+  const searchUsers = async (searchTerm: string): Promise<User[]> => {
+    if (!searchTerm.trim()) {
+      // If search is empty, fetch all with filters
+      await fetchUsers(false)
+      return users
+    }
+    
+    // Use debounced search
+    debouncedSearch(searchTerm)
+    return users
   }
 
   // Approve user
@@ -125,30 +167,25 @@ export const useUsers = (options?: UseUsersOptions) => {
     }
   }
 
-  // Search users
-  const searchUsers = async (searchTerm: string): Promise<User[]> => {
-    try {
-      if (!searchTerm.trim()) {
-        await fetchUsers()
-        return users
-      }
-      
-      setLoading(true)
-      const results = await userService.searchUsers(searchTerm)
-      setUsers(results)
-      return results
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to search users'
-      showToast(message, 'error')
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Effect to refetch when filters change
+  useEffect(() => {
+    // Check if filters have changed
+    const filtersChanged = 
+      currentFilters.current?.role !== options?.role ||
+      currentFilters.current?.isActive !== options?.isActive ||
+      currentFilters.current?.locationId !== options?.locationId
 
+    if (filtersChanged) {
+      currentFilters.current = options
+      setLastDoc(null) // Reset pagination
+      fetchUsers()
+    }
+  }, [options?.role, options?.isActive, options?.locationId, fetchUsers])
+
+  // Initial fetch
   useEffect(() => {
     fetchUsers()
-  }, []) // Empty deps, fetchUsers มี useCallback
+  }, []) // Empty deps on purpose
 
   return {
     users,
@@ -161,7 +198,7 @@ export const useUsers = (options?: UseUsersOptions) => {
     updateUserRole,
     updateUserLocations,
     searchUsers,
-    refetch: fetchUsers
+    refetch: () => fetchUsers()
   }
 }
 
@@ -185,7 +222,7 @@ export const usePendingUsers = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     fetchPendingUsers()
@@ -205,7 +242,15 @@ export const useUserStatistics = () => {
     total: 0,
     active: 0,
     pending: 0,
-    inactive: 0
+    inactive: 0,
+    byRole: {
+      admin: 0,
+      hr: 0,
+      manager: 0,
+      employee: 0,
+      marketing: 0,
+      driver: 0
+    }
   })
   const [loading, setLoading] = useState(true)
 

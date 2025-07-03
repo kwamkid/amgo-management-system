@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
 import { User, UserFilters } from '@/types/user'
-import DeleteUserDialog from '@/components/users/DeleteUserDialog' // 👈 เพิ่ม import นี้
+import DeleteUserDialog from '@/components/users/DeleteUserDialog'
 import { 
   Users, 
   Search, 
@@ -19,7 +20,8 @@ import {
   Calendar,
   Edit,
   UserX,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 import DropdownMenu from '@/components/ui/DropdownMenu'
@@ -31,31 +33,70 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function EmployeesPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active')
+  const [isNavigating, setIsNavigating] = useState(false)
   
-  // 👇 เพิ่ม state สำหรับ Delete Dialog
+  // Delete Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null)
   
-  const { users, loading, loadMore, hasMore, updateUserRole, deactivateUser, refetch } = useUsers({
+  // Get users with filters
+  const { 
+    users, 
+    loading, 
+    loadMore, 
+    hasMore, 
+    updateUserRole, 
+    deactivateUser, 
+    refetch,
+    searchUsers 
+  } = useUsers({
     role: roleFilter || undefined,
-    isActive: statusFilter === 'all' ? undefined : statusFilter === 'active'
+    isActive: statusFilter === 'all' ? undefined : statusFilter === 'active',
+    searchTerm: searchTerm
   })
   
   const { statistics } = useUserStatistics()
   const { showToast } = useToast()
 
-const getRoleBadge = (role: string) => {
-  const roleConfig = {
-    admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
-    hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
-    manager: { label: 'ผู้จัดการ', variant: 'success' as const },
-    employee: { label: 'พนักงาน', variant: 'secondary' as const },
-    marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
-    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
-  }
+  // Handle search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        searchUsers(searchTerm)
+      } else {
+        refetch() // Refetch all when search is cleared
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Filter displayed users based on search term (client-side additional filtering)
+  const filteredUsers = users.filter(user => {
+    if (!searchTerm) return true
+    
+    const search = searchTerm.toLowerCase()
+    return (
+      user.fullName?.toLowerCase().includes(search) ||
+      user.lineDisplayName?.toLowerCase().includes(search) ||
+      user.phone?.includes(search) ||
+      user.discordUsername?.toLowerCase().includes(search)
+    )
+  })
+
+  const getRoleBadge = (role: string) => {
+    const roleConfig = {
+      admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
+      hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
+      manager: { label: 'ผู้จัดการ', variant: 'success' as const },
+      employee: { label: 'พนักงาน', variant: 'secondary' as const },
+      marketing: { label: 'Influ Marketing', variant: 'warning' as const },
+      driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
+    }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
     return (
@@ -89,24 +130,46 @@ const getRoleBadge = (role: string) => {
     }
   }
 
-  // 👇 แก้ไข handleDelete function
   const handleDelete = (user: User) => {
     setSelectedUserForDelete(user)
     setDeleteDialogOpen(true)
   }
 
-  if (loading && users.length === 0) {
+  const handleEdit = (userId: string) => {
+    setIsNavigating(true)
+    router.push(`/employees/${userId}/edit`)
+  }
+
+  const handleRefresh = () => {
+    setSearchTerm('')
+    setRoleFilter('')
+    setStatusFilter('active')
+    refetch()
+  }
+
+  if ((loading && users.length === 0) || isNavigating) {
     return <TechLoader />
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">จัดการพนักงาน</h1>
-        <p className="text-gray-600 mt-1 text-base">
-          จัดการข้อมูลและสิทธิ์การใช้งานของพนักงาน
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">จัดการพนักงาน</h1>
+          <p className="text-gray-600 mt-1 text-base">
+            จัดการข้อมูลและสิทธิ์การใช้งานของพนักงาน
+          </p>
+        </div>
+        
+        <Button
+          onClick={handleRefresh}
+          variant="outline"
+          size="icon"
+          title="รีเฟรชข้อมูล"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Statistics Cards */}
@@ -166,7 +229,7 @@ const getRoleBadge = (role: string) => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
             type="text"
-            placeholder="ค้นหาชื่อพนักงาน..."
+            placeholder="ค้นหาชื่อ, เบอร์โทร, LINE..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -198,121 +261,140 @@ const getRoleBadge = (role: string) => {
         </select>
       </div>
 
+      {/* Results info */}
+      {searchTerm && (
+        <Alert variant="info">
+          <AlertDescription>
+            พบ {filteredUsers.length} รายการ {searchTerm && `สำหรับคำค้นหา "${searchTerm}"`}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Users Table */}
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">พนักงาน</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ติดต่อ</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สิทธิ์</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">เข้าร่วม</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {user.linePictureUrl ? (
-                        <img
-                          src={user.linePictureUrl}
-                          alt={user.fullName}
-                          className="w-10 h-10 rounded-full"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-gray-500" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-medium text-gray-900">{user.fullName}</p>
-                        <p className="text-sm text-gray-500">{user.lineDisplayName}</p>
-                      </div>
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      {user.phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone className="w-4 h-4" />
-                          {user.phone}
-                        </div>
-                      )}
-                      {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-xs">{user.allowedLocationIds.length} สาขา</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    {getRoleBadge(user.role)}
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    {getStatusBadge(user.isActive)}
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4 text-right">
-                    <DropdownMenu
-                      items={[
-                        {
-                          label: (
-                            <Link href={`/employees/${user.id}/edit`} className="flex items-center gap-2">
-                              <Edit className="w-4 h-4" />
-                              แก้ไขข้อมูล
-                            </Link>
-                          ),
-                          onClick: () => {}
-                        },
-                        { divider: true },
-                        {
-                          label: (
-                            <span className="flex items-center gap-2">
-                              <UserX className="w-4 h-4" />
-                              ระงับการใช้งาน
-                            </span>
-                          ),
-                          onClick: () => handleDeactivate(user),
-                          className: 'text-orange-600 hover:bg-orange-50'
-                        },
-                        {
-                          label: (
-                            <span className="flex items-center gap-2">
-                              <Trash2 className="w-4 h-4" />
-                              ลบพนักงาน
-                            </span>
-                          ),
-                          onClick: () => handleDelete(user),
-                          className: 'text-red-600 hover:bg-red-50'
-                        }
-                      ]}
-                    />
-                  </td>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">
+                {searchTerm ? 'ไม่พบผู้ใช้ที่ค้นหา' : 'ไม่มีข้อมูลผู้ใช้'}
+              </p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">พนักงาน</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ติดต่อ</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สิทธิ์</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">เข้าร่วม</th>
+                  <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {user.linePictureUrl ? (
+                          <img
+                            src={user.linePictureUrl}
+                            alt={user.fullName}
+                            className="w-10 h-10 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5 text-gray-500" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">{user.fullName}</p>
+                          <p className="text-sm text-gray-500">{user.lineDisplayName}</p>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        {user.phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone className="w-4 h-4" />
+                            {user.phone}
+                          </div>
+                        )}
+                        {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4" />
+                            <span className="text-xs">{user.allowedLocationIds.length} สาขา</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    
+                    <td className="px-6 py-4">
+                      {getRoleBadge(user.role)}
+                    </td>
+                    
+                    <td className="px-6 py-4">
+                      {getStatusBadge(user.isActive)}
+                    </td>
+                    
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
+                      </div>
+                    </td>
+                    
+                    <td className="px-6 py-4 text-right">
+                      <DropdownMenu
+                        items={[
+                          {
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <Edit className="w-4 h-4" />
+                                แก้ไขข้อมูล
+                              </span>
+                            ),
+                            onClick: () => handleEdit(user.id!)
+                          },
+                          { divider: true },
+                          {
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <UserX className="w-4 h-4" />
+                                ระงับการใช้งาน
+                              </span>
+                            ),
+                            onClick: () => handleDeactivate(user),
+                            className: 'text-orange-600 hover:bg-orange-50',
+                            disabled: !user.isActive
+                          },
+                          {
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <Trash2 className="w-4 h-4" />
+                                ลบพนักงาน
+                              </span>
+                            ),
+                            onClick: () => handleDelete(user),
+                            className: 'text-red-600 hover:bg-red-50'
+                          }
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         
         {/* Load More */}
-        {hasMore && (
+        {hasMore && filteredUsers.length > 0 && !searchTerm && (
           <div className="p-4 text-center border-t border-gray-100">
             <Button
               onClick={loadMore}
@@ -326,14 +408,14 @@ const getRoleBadge = (role: string) => {
         )}
       </Card>
 
-      {/* 👇 เพิ่ม Delete User Dialog Component */}
+      {/* Delete User Dialog */}
       <DeleteUserDialog
         user={selectedUserForDelete}
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onSuccess={() => {
           setSelectedUserForDelete(null)
-          refetch() // Refresh user list หลังจากลบสำเร็จ
+          refetch() // Refresh user list
         }}
       />
     </div>

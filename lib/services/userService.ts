@@ -14,14 +14,15 @@ import {
   serverTimestamp,
   Timestamp,
   limit,
-  startAfter
+  startAfter,
+  or
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { User, UserFilters } from '@/types/user'
 
 const COLLECTION_NAME = 'users'
 
-// Get all users with pagination
+// Get all users with improved filtering
 export const getUsers = async (
   pageSize = 20, 
   lastDoc?: any,
@@ -33,44 +34,131 @@ export const getUsers = async (
   }
 ): Promise<{ users: User[], lastDoc: any, hasMore: boolean }> => {
   try {
-    let q = query(collection(db, COLLECTION_NAME))
+    let allUsers: User[] = []
     
-    // Apply filters
-    if (filters?.role) {
-      q = query(q, where('role', '==', filters.role))
+    // ถ้ามี searchTerm ให้ใช้การ search แทน
+    if (filters?.searchTerm && filters.searchTerm.trim()) {
+      const searchResults = await searchUsersByTerm(filters.searchTerm)
+      allUsers = searchResults
+    } else {
+      // Basic query - แยก query ตาม filters เพื่อหลีกเลี่ยงปัญหา composite index
+      let baseQuery = collection(db, COLLECTION_NAME)
+      
+      // สร้าง queries แยกตาม filter แต่ละตัว
+      const queries = []
+      
+      // Base query with isActive filter (most common)
+      if (filters?.isActive !== undefined) {
+        queries.push(
+          query(baseQuery, 
+            where('isActive', '==', filters.isActive),
+            orderBy('createdAt', 'desc')
+          )
+        )
+      } else {
+        queries.push(
+          query(baseQuery, orderBy('createdAt', 'desc'))
+        )
+      }
+      
+      // Fetch all documents from base query
+      const snapshots = await Promise.all(
+        queries.map(q => getDocs(q))
+      )
+      
+      // Combine and deduplicate results
+      const userMap = new Map<string, User>()
+      
+      snapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
+          const userData = {
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate(),
+            updatedAt: doc.data().updatedAt?.toDate(),
+            approvedAt: doc.data().approvedAt?.toDate(),
+            lastLoginAt: doc.data().lastLoginAt?.toDate()
+          } as User
+          
+          userMap.set(doc.id, userData)
+        })
+      })
+      
+      allUsers = Array.from(userMap.values())
+      
+      // Apply client-side filters
+      if (filters?.role) {
+        allUsers = allUsers.filter(user => user.role === filters.role)
+      }
+      
+      if (filters?.locationId) {
+        allUsers = allUsers.filter(user => 
+          user.allowedLocationIds?.includes(filters.locationId!)
+        )
+      }
+      
+      // Sort by createdAt desc
+      allUsers.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return dateB - dateA
+      })
     }
-    if (filters?.isActive !== undefined) {
-      q = query(q, where('isActive', '==', filters.isActive))
-    }
-    if (filters?.locationId) {
-      q = query(q, where('locationId', '==', filters.locationId))
-    }
     
-    // Order and pagination
-    q = query(q, orderBy('createdAt', 'desc'), limit(pageSize + 1))
+    // Implement pagination on client side
+    const startIndex = lastDoc ? allUsers.findIndex(u => u.id === lastDoc.id) + 1 : 0
+    const paginatedUsers = allUsers.slice(startIndex, startIndex + pageSize)
+    const hasMore = startIndex + pageSize < allUsers.length
+    const newLastDoc = paginatedUsers.length > 0 ? { id: paginatedUsers[paginatedUsers.length - 1].id } : null
     
-    if (lastDoc) {
-      q = query(q, startAfter(lastDoc))
-    }
-    
-    const snapshot = await getDocs(q)
-    const users = snapshot.docs.slice(0, pageSize).map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-      approvedAt: doc.data().approvedAt?.toDate(),
-      lastLoginAt: doc.data().lastLoginAt?.toDate()
-    } as User))
-    
-    // Check if there are more documents
-    const hasMore = snapshot.docs.length > pageSize
-    const newLastDoc = snapshot.docs[pageSize - 1]
-    
-    return { users, lastDoc: newLastDoc, hasMore }
+    return { users: paginatedUsers, lastDoc: newLastDoc, hasMore }
   } catch (error) {
     console.error('Error getting users:', error)
     throw error
+  }
+}
+
+// Improved search function
+const searchUsersByTerm = async (searchTerm: string): Promise<User[]> => {
+  try {
+    const normalizedSearch = searchTerm.toLowerCase().trim()
+    const users: User[] = []
+    
+    // Get all active users first (more efficient than complex queries)
+    const allUsersQuery = query(
+      collection(db, COLLECTION_NAME),
+      where('isActive', '==', true)
+    )
+    
+    const snapshot = await getDocs(allUsersQuery)
+    
+    snapshot.docs.forEach(doc => {
+      const userData = {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate(),
+        approvedAt: doc.data().approvedAt?.toDate(),
+        lastLoginAt: doc.data().lastLoginAt?.toDate()
+      } as User
+      
+      // Search in multiple fields
+      const searchableText = [
+        userData.fullName,
+        userData.lineDisplayName,
+        userData.phone,
+        userData.discordUsername
+      ].filter(Boolean).join(' ').toLowerCase()
+      
+      if (searchableText.includes(normalizedSearch)) {
+        users.push(userData)
+      }
+    })
+    
+    return users
+  } catch (error) {
+    console.error('Error searching users:', error)
+    return []
   }
 }
 
@@ -193,54 +281,23 @@ export const getPendingUsers = async (): Promise<User[]> => {
   }
 }
 
-// Search users
+// Search users - ใช้ function searchUsersByTerm ที่ปรับปรุงแล้ว
 export const searchUsers = async (searchTerm: string): Promise<User[]> => {
-  try {
-    // Note: Firestore doesn't support full-text search
-    // This is a simple implementation that searches by exact match
-    // For production, consider using Algolia or ElasticSearch
-    
-    const users: User[] = []
-    
-    // Search by fullName
-    const nameQuery = query(
-      collection(db, COLLECTION_NAME),
-      where('fullName', '>=', searchTerm),
-      where('fullName', '<=', searchTerm + '\uf8ff'),
-      limit(10)
-    )
-    
-    const nameSnapshot = await getDocs(nameQuery)
-    nameSnapshot.docs.forEach(doc => {
-      users.push({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-        approvedAt: doc.data().approvedAt?.toDate(),
-        lastLoginAt: doc.data().lastLoginAt?.toDate()
-      } as User)
-    })
-    
-    return users
-  } catch (error) {
-    console.error('Error searching users:', error)
-    throw error
-  }
+  return searchUsersByTerm(searchTerm)
 }
 
 // Get users by location
 export const getUsersByLocation = async (locationId: string): Promise<User[]> => {
   try {
+    // เนื่องจาก array-contains กับ orderBy อาจต้องการ composite index
+    // เราจะ query แบบง่ายๆ แล้ว filter ฝั่ง client
     const q = query(
       collection(db, COLLECTION_NAME),
-      where('allowedLocationIds', 'array-contains', locationId),
-      where('isActive', '==', true),
-      orderBy('fullName')
+      where('isActive', '==', true)
     )
     
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => ({
+    const allUsers = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
@@ -248,6 +305,11 @@ export const getUsersByLocation = async (locationId: string): Promise<User[]> =>
       approvedAt: doc.data().approvedAt?.toDate(),
       lastLoginAt: doc.data().lastLoginAt?.toDate()
     } as User))
+    
+    // Filter by location on client side
+    return allUsers
+      .filter(user => user.allowedLocationIds?.includes(locationId))
+      .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
   } catch (error) {
     console.error('Error getting users by location:', error)
     throw error
@@ -272,13 +334,13 @@ export const getUserStatistics = async () => {
       hr: 0,
       manager: 0,
       employee: 0,
-      marketing: 0,  // ✅ เพิ่ม
-      driver: 0      // ✅ เพิ่ม
+      marketing: 0,
+      driver: 0
     }
 
     totalQuery.docs.forEach(doc => {
       const userData = doc.data()
-      if (userData.role) {
+      if (userData.role && userData.role in byRole) {
         byRole[userData.role as keyof typeof byRole]++
       }
     })
@@ -288,15 +350,13 @@ export const getUserStatistics = async () => {
       active: activeQuery.size,
       pending: pendingQuery.size,
       inactive: totalQuery.size - activeQuery.size - pendingQuery.size,
-      byRole  // ✅ เพิ่ม byRole
+      byRole
     }
   } catch (error) {
     console.error('Error getting user statistics:', error)
     throw error
   }
 }
-
-// เพิ่ม function นี้ใน lib/services/userService.ts
 
 // Refresh user custom claims
 export const refreshUserClaims = async (userId: string): Promise<void> => {
@@ -338,8 +398,6 @@ export const updateUserRoleWithClaims = async (userId: string, role: string): Pr
     throw error
   }
 }
-
-// เพิ่ม function นี้ใน lib/services/userService.ts
 
 // Delete user (soft delete - เก็บข้อมูลไว้แต่ทำให้ใช้งานไม่ได้)
 export const softDeleteUser = async (userId: string): Promise<void> => {

@@ -221,48 +221,89 @@ export const useDeliveryMap = (date?: string) => {
   const [mapPoints, setMapPoints] = useState<DeliveryMapPoint[]>([])
   const [loading, setLoading] = useState(true)
   const { userData } = useAuth()
+  const { showToast } = useToast()
 
-  useEffect(() => {
-    const fetchMapData = async () => {
-      if (!userData?.id) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        
-        const filters: DeliveryFilters = {
-          driverId: userData.role === 'driver' ? userData.id : undefined,
-          date: date || new Date().toISOString().split('T')[0]
-        }
-
-        const { points } = await deliveryService.getDeliveryPoints(filters, 100)
-
-        const mapData: DeliveryMapPoint[] = points.map((point, index) => ({
-          id: point.id!,
-          lat: point.lat,
-          lng: point.lng,
-          checkInTime: point.checkInTime as Date,
-          deliveryType: point.deliveryType,
-          deliveryStatus: point.deliveryStatus,
-          customerName: point.customerName,
-          address: point.address,
-          sequence: points.length - index
-        }))
-
-        setMapPoints(mapData)
-      } catch (error) {
-        console.error('Error fetching map data:', error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchMapData = useCallback(async () => {
+    if (!userData?.id) {
+      setLoading(false)
+      return
     }
 
-    fetchMapData()
+    try {
+      setLoading(true)
+      
+      const filters: DeliveryFilters = {
+        driverId: userData.role === 'driver' ? userData.id : undefined,
+        date: date || new Date().toISOString().split('T')[0]
+      }
+
+      const { points } = await deliveryService.getDeliveryPoints(filters, 100)
+
+      // Import getAddressFromCoords
+      const { getAddressFromCoords } = await import('@/lib/utils/location')
+
+      // Map points and fetch addresses
+      const mapData: DeliveryMapPoint[] = await Promise.all(
+        points.map(async (point, index) => {
+          let address = point.address
+
+          // ถ้ายังไม่มีที่อยู่ ให้ดึงจาก Geocoding
+          if (!address && window.google && window.google.maps) {
+            try {
+              address = await getAddressFromCoords(point.lat, point.lng)
+            } catch (error) {
+              console.error('Error getting address:', error)
+              address = undefined
+            }
+          }
+
+          return {
+            id: point.id!,
+            lat: point.lat,
+            lng: point.lng,
+            checkInTime: point.checkInTime as Date,
+            deliveryType: point.deliveryType,
+            deliveryStatus: point.deliveryStatus,
+            customerName: point.customerName,
+            address, // ใช้ที่อยู่จาก Geocoding
+            sequence: points.length - index,
+            photo: point.photo,
+            note: point.note,
+            driverName: point.driverName // เพิ่ม driver name
+          }
+        })
+      )
+
+      setMapPoints(mapData)
+    } catch (error) {
+      console.error('Error fetching map data:', error)
+    } finally {
+      setLoading(false)
+    }
   }, [userData, date])
 
-  return { mapPoints, loading }
+  // Delete delivery point
+  const deleteDeliveryPoint = async (deliveryId: string): Promise<boolean> => {
+    try {
+      await deliveryService.deleteDeliveryPoint(deliveryId)
+      return true
+    } catch (error) {
+      console.error('Error deleting delivery point:', error)
+      showToast('ไม่สามารถลบจุดส่งของได้', 'error')
+      return false
+    }
+  }
+
+  useEffect(() => {
+    fetchMapData()
+  }, [fetchMapData])
+
+  return { 
+    mapPoints, 
+    loading, 
+    deleteDeliveryPoint,
+    refetch: fetchMapData 
+  }
 }
 
 // Hook for camera capture

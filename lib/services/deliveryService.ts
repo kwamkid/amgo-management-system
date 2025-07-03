@@ -162,7 +162,7 @@ export const uploadDeliveryPhoto = async (
     // ใช้ structure ที่ไม่ซับซ้อน เพื่อหลีกเลี่ยงปัญหา permission
     const photoPath = `deliveries/${driverId}/${photoId}.jpg`
     const thumbnailPath = `deliveries/${driverId}/${photoId}_thumb.jpg`
-    
+
     // Upload both images
     const photoRef = ref(storage, photoPath)
     const thumbnailRef = ref(storage, thumbnailPath)
@@ -205,6 +205,15 @@ export const createDeliveryPoint = async (
   driverName: string
 ): Promise<string> => {
   try {
+    // Get address from coordinates
+    let address: string | undefined
+    try {
+      const { getAddressFromCoords } = await import('@/lib/utils/location')
+      address = await getAddressFromCoords(data.lat, data.lng)
+    } catch (error) {
+      console.error('Error getting address:', error)
+    }
+
     // Create delivery point document first to get ID
     const deliveryData: any = {
       driverId,
@@ -212,6 +221,7 @@ export const createDeliveryPoint = async (
       checkInTime: serverTimestamp(),
       lat: data.lat,
       lng: data.lng,
+      address: address || null, // บันทึกที่อยู่จาก Geocoding
       customerName: data.customerName || null,
       customerPhone: data.customerPhone || null,
       orderNumber: data.orderNumber || null,
@@ -549,5 +559,49 @@ export const shouldRunCleanup = async (): Promise<boolean> => {
   } catch (error) {
     console.error('Error checking cleanup status:', error)
     return false
+  }
+}
+
+/**
+ * Delete delivery point (admin only)
+ */
+export const deleteDeliveryPoint = async (deliveryId: string): Promise<void> => {
+  try {
+    // Get delivery point first to check if has photo
+    const deliveryDoc = await getDoc(doc(db, COLLECTION_NAME, deliveryId))
+    
+    if (!deliveryDoc.exists()) {
+      throw new Error('Delivery point not found')
+    }
+
+    const deliveryData = deliveryDoc.data()
+
+    // Delete photo from storage if exists
+    if (deliveryData.photo?.url) {
+      try {
+        // Extract path from URL
+        const url = new URL(deliveryData.photo.url)
+        const path = decodeURIComponent(url.pathname.split('/o/')[1].split('?')[0])
+        const photoRef = ref(storage, path)
+        await deleteObject(photoRef)
+
+        // Delete thumbnail if exists
+        if (deliveryData.photo.thumbnailUrl) {
+          const thumbUrl = new URL(deliveryData.photo.thumbnailUrl)
+          const thumbPath = decodeURIComponent(thumbUrl.pathname.split('/o/')[1].split('?')[0])
+          const thumbRef = ref(storage, thumbPath)
+          await deleteObject(thumbRef)
+        }
+      } catch (error) {
+        console.error('Error deleting photo:', error)
+        // Continue even if photo deletion fails
+      }
+    }
+
+    // Delete the document
+    await deleteDoc(doc(db, COLLECTION_NAME, deliveryId))
+  } catch (error) {
+    console.error('Error deleting delivery point:', error)
+    throw error
   }
 }

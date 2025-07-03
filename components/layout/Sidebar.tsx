@@ -3,7 +3,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { 
   LayoutDashboard, 
@@ -25,18 +25,24 @@ import {
   TrendingUp,
   Baby,
   Trash2,
-  Truck  // ✅ เพิ่ม icon สำหรับ delivery
-
+  Truck,
+  Camera,
+  Map,
+  Home
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
-
 interface NavItem {
   label: string
-  href: string
+  href?: string // Make href optional for parent items
   icon: React.ReactNode
   roles?: string[]
   subItems?: NavItem[]
+}
+
+interface SidebarProps {
+  userData?: UserData | null
+  onNavigate?: () => void // Add callback for navigation
 }
 
 const navItems: NavItem[] = [
@@ -129,8 +135,7 @@ const navItems: NavItem[] = [
     label: 'Influ Marketing',
     href: '/influencers',
     icon: <TrendingUp className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager', 'marketing'], // ✅ เพิ่ม marketing
-
+    roles: ['hr', 'admin', 'manager', 'marketing'],
     subItems: [
       {
         label: 'ข้อมูล Influencers',
@@ -152,24 +157,23 @@ const navItems: NavItem[] = [
   },
   {
     label: 'Delivery Tracking',
-    href: '/delivery',
-    icon: <Truck className="w-5 h-5" />,
-    roles: ['driver', 'admin', 'hr'], // ✅ เมนูสำหรับ driver
+    icon: <Truck className="w-5 h-5" />, // No href for parent
+    roles: ['driver', 'admin', 'hr'],
     subItems: [
+      {
+        label: 'สรุปประจำวัน',
+        href: '/delivery',
+        icon: <Home className="w-4 h-4" />
+      },
       {
         label: 'เช็คอินจุดส่ง',
         href: '/delivery/checkin',
-        icon: <MapPin className="w-4 h-4" />
-      },
-      {
-        label: 'ประวัติการส่ง',
-        href: '/delivery/history',
-        icon: <Clock className="w-4 h-4" />
+        icon: <Camera className="w-4 h-4" />
       },
       {
         label: 'แผนที่การส่ง',
         href: '/delivery/map',
-        icon: <MapPin className="w-4 h-4" />
+        icon: <Map className="w-4 h-4" />
       }
     ]
   },
@@ -220,12 +224,9 @@ const navItems: NavItem[] = [
   }
 ]
 
-interface SidebarProps {
-  userData?: UserData | null
-}
-
-export default function Sidebar({ userData }: SidebarProps) {
+export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   
   const userRole = userData?.role || 'employee'
@@ -262,12 +263,20 @@ export default function Sidebar({ userData }: SidebarProps) {
     )
   }
 
+  const handleNavigation = (href: string) => {
+    router.push(href)
+    // Call onNavigate to close mobile sidebar
+    if (onNavigate) {
+      onNavigate()
+    }
+  }
+
   const renderNavItem = (item: NavItem, isSubItem = false) => {
     const hasSubItems = item.subItems && item.subItems.length > 0
     const isExpanded = expandedItems.includes(item.label)
     
     // Check if this exact item is active
-    const isActive = pathname === item.href
+    const isActive = item.href && pathname === item.href
     
     // Check if any subitem is active (for parent styling)
     const hasActiveSubItem = item.subItems?.some(subItem => 
@@ -281,11 +290,17 @@ export default function Sidebar({ userData }: SidebarProps) {
     })
 
     return (
-      <div key={item.href}>
+      <div key={item.href || item.label}>
         {hasSubItems ? (
           <>
             <button
-              onClick={() => toggleExpanded(item.label)}
+              onClick={() => {
+                // If has href and subitems, navigate on first click then expand
+                if (item.href && !isExpanded) {
+                  handleNavigation(item.href)
+                }
+                toggleExpanded(item.label)
+              }}
               className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg transition-colors ${
                 hasActiveSubItem
                   ? 'text-red-600 font-medium'
@@ -309,10 +324,10 @@ export default function Sidebar({ userData }: SidebarProps) {
                   const isSubItemActive = pathname === subItem.href
                   
                   return (
-                    <Link
+                    <button
                       key={subItem.href}
-                      href={subItem.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      onClick={() => handleNavigation(subItem.href!)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
                         isSubItemActive
                           ? 'bg-red-50 text-red-600 font-medium'
                           : 'hover:bg-gray-100 text-gray-600'
@@ -320,16 +335,16 @@ export default function Sidebar({ userData }: SidebarProps) {
                     >
                       {subItem.icon}
                       <span className="text-sm">{subItem.label}</span>
-                    </Link>
+                    </button>
                   )
                 })}
               </div>
             )}
           </>
         ) : (
-          <Link
-            href={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+          <button
+            onClick={() => handleNavigation(item.href!)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
               isActive
                 ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 font-medium'
                 : 'hover:bg-gray-100 text-gray-700'
@@ -337,7 +352,7 @@ export default function Sidebar({ userData }: SidebarProps) {
           >
             {item.icon}
             <span className="text-base">{item.label}</span>
-          </Link>
+          </button>
         )}
       </div>
     )
@@ -347,13 +362,16 @@ export default function Sidebar({ userData }: SidebarProps) {
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
-        <Link href="/dashboard">
+        <button 
+          onClick={() => handleNavigation('/dashboard')}
+          className="hover:opacity-80 transition-opacity"
+        >
           <img 
             src="/logo.svg" 
             alt="AMGO Logo" 
             className="h-10 w-auto"
           />
-        </Link>
+        </button>
       </div>
 
       <nav className="p-4 space-y-1">

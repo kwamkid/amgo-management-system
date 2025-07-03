@@ -104,6 +104,10 @@ export interface DeliveryMapPoint {
   customerName?: string
   address?: string
   sequence?: number // Order in route
+    photo?: DeliveryPhoto // เพิ่ม photo
+    note?: string // เพิ่ม note
+    driverName?: string // เพิ่ม driver name
+
 }
 
 // Daily summary

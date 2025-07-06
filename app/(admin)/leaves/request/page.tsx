@@ -176,7 +176,7 @@ export default function LeaveRequestPage() {
               <div className="space-y-2 pt-2 border-t border-amber-200">
                 <div className="font-medium text-amber-900">ลากิจ</div>
                 <ul className="space-y-1 text-amber-800 ml-4">
-                  <li>• ต้องแจ้งล่วงหน้า 7 วัน</li>
+                  <li>• ต้องแจ้งล่วงหน้า 3 วัน</li>
                   <li>• ลาด่วนคิดโควต้า 2 เท่า</li>
                   <li>• ไม่สามารถลาย้อนหลังได้</li>
                 </ul>
@@ -185,8 +185,8 @@ export default function LeaveRequestPage() {
               <div className="space-y-2 pt-2 border-t border-amber-200">
                 <div className="font-medium text-amber-900">ลาพักร้อน</div>
                 <ul className="space-y-1 text-amber-800 ml-4">
-                  <li>• ต้องแจ้งล่วงหน้า 14 วัน</li>
-                  <li>• ลาด่วนคิดโควต้า 3 เท่า</li>
+                  <li>• ต้องแจ้งล่วงหน้า 7 วัน</li>
+                  <li>• ลาด่วนคิดโควต้า 2 เท่า</li>
                   <li>• สามารถสะสมได้</li>
                 </ul>
               </div>

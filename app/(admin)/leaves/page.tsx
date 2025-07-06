@@ -275,11 +275,12 @@ export default function LeavePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm text-blue-800">
-                <li>• ลาป่วยเกิน 2 วันต้องแนบใบรับรองแพทย์</li>
-                <li>• ลาล่วงหน้าอย่างน้อย 3 วันสำหรับลากิจ</li>
-                <li>• วันลาพักร้อนสามารถสะสมได้</li>
-              </ul>
+             <ul className="space-y-2 text-sm text-blue-800">
+              <li>• ลาป่วยเกิน 2 วันต้องแนบใบรับรองแพทย์</li>
+              <li>• ลากิจต้องแจ้งล่วงหน้า 3 วัน</li>      {/* เปลี่ยนจาก "ลาล่วงหน้าอย่างน้อย 3 วัน" */}
+              <li>• ลาพักร้อนต้องแจ้งล่วงหน้า 7 วัน</li>  {/* เพิ่มบรรทัดนี้ */}
+              <li>• วันลาพักร้อนไม่สามารถสะสมได้</li>
+            </ul>
             </CardContent>
           </Card>
 

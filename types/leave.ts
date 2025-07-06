@@ -84,13 +84,13 @@ export const LEAVE_RULES: LeaveRules = {
   },
   personal: {
     allowBackdate: false,
-    advanceNotice: 7,
+    advanceNotice: 3,
     urgentMultiplier: 2
   },
   vacation: {
     allowBackdate: false,
-    advanceNotice: 14,
-    urgentMultiplier: 3
+    advanceNotice: 7,
+    urgentMultiplier: 2
   }
 };
 

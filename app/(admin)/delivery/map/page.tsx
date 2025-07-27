@@ -21,7 +21,9 @@ import {
   Search,
   User,
   Menu,
-  Map as MapIcon
+  Map as MapIcon,
+  Package,
+  Filter
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -65,14 +67,14 @@ const defaultCenter = {
 
 const libraries: ("places")[] = ['places']
 
-// Custom marker icon - ขนาดใหญ่ขึ้น
+// Custom marker icon - ขนาดเล็กลง
 const createMarkerIcon = (label: string) => ({
   path: google.maps.SymbolPath.CIRCLE,
   fillColor: '#DC2626',
   fillOpacity: 1,
   strokeColor: '#ffffff',
-  strokeWeight: 3,
-  scale: 12, // เพิ่มขนาดจาก 10 เป็น 12
+  strokeWeight: 2, // ลดจาก 3 เป็น 2
+  scale: 10, // ลดจาก 12 เป็น 10
   labelOrigin: new google.maps.Point(0, 0)
 })
 
@@ -108,7 +110,6 @@ export default function DeliveryMapPage() {
     const drivers = new Map<string, string>()
     mapPoints.forEach(point => {
       if (point.driverName) {
-        // Use driverName as both id and name since we don't have driverId field
         drivers.set(point.driverName, point.driverName)
       }
     })
@@ -171,16 +172,15 @@ export default function DeliveryMapPage() {
             geocoder.geocode(
               { 
                 location: { lat: point.lat, lng: point.lng },
-                language: 'th' // เพิ่มภาษาไทย
+                language: 'th'
               },
               (results, status) => {
                 if (status === 'OK' && results && results[0]) {
-                  // Clean up Thailand-specific formatting
                   const address = results[0].formatted_address
                     .replace('Unnamed Road, ', '')
                     .replace('ประเทศไทย', '')
                     .trim()
-                    .replace(/,\s*$/, '') // Remove trailing comma
+                    .replace(/,\s*$/, '')
                   
                   resolve(address)
                 } else {
@@ -225,7 +225,7 @@ export default function DeliveryMapPage() {
     date.setDate(date.getDate() + days)
     
     const today = new Date()
-    today.setHours(23, 59, 59, 999) // Set to end of today
+    today.setHours(23, 59, 59, 999)
     
     if (date <= today) {
       setSelectedDate(getLocalDateString(date))
@@ -264,7 +264,7 @@ export default function DeliveryMapPage() {
       if (success) {
         showToast('ลบจุดส่งของสำเร็จ', 'success')
         setSelectedPoint(null)
-        await refetch() // Refresh data
+        await refetch()
       }
     } catch (error) {
       showToast('ไม่สามารถลบจุดส่งของได้', 'error')
@@ -292,7 +292,7 @@ export default function DeliveryMapPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <Card className="p-8">
-          <p className="text-red-600 text-base">Error loading map</p>
+          <p className="text-red-600 text-sm">Error loading map</p>
         </Card>
       </div>
     )
@@ -306,37 +306,37 @@ export default function DeliveryMapPage() {
     )
   }
 
-  // Points List Component
+  // Points List Component - Optimized
   const PointsList = () => (
     <>
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
       ) : filteredPoints.length === 0 ? (
         <div className="text-center py-8">
-          <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600 text-base">ไม่พบข้อมูลการส่งของ</p>
+          <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 text-sm">ไม่พบข้อมูลการส่งของ</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filteredPoints.map((point, index) => (
             <Card
               key={point.id}
-              className={`cursor-pointer transition-all ${
-                selectedPoint?.id === point.id ? 'ring-2 ring-red-500' : 'hover:shadow-md'
+              className={`cursor-pointer transition-all hover:shadow-sm ${
+                selectedPoint?.id === point.id ? 'ring-2 ring-red-500' : ''
               }`}
               onClick={() => handleSelectPoint(point)}
             >
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
+              <CardContent className="p-3">
+                <div className="flex gap-3">
+                  {/* Thumbnail - ขนาดเล็กลง */}
                   {point.photo && (
                     <div className="flex-shrink-0">
                       <img
                         src={point.photo.thumbnailUrl || point.photo.url}
                         alt="Delivery"
-                        className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        className="w-12 h-12 md:w-14 md:h-14 object-cover rounded cursor-pointer hover:opacity-80 hover:scale-105 transition-all duration-200"
                         onClick={(e) => {
                           e.stopPropagation()
                           openLightbox(point.photo!.url)
@@ -345,27 +345,27 @@ export default function DeliveryMapPage() {
                     </div>
                   )}
 
-                  {/* Content */}
+                  {/* Content - ย่อขนาด font */}
                   <div className="flex-1 min-w-0">
                     {/* Time and Sequence */}
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-base font-medium text-red-600">
+                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-red-600">
                             {point.sequence}
                           </span>
                         </div>
-                        <span className="text-base font-medium">
+                        <span className="text-sm font-medium">
                           {formatTime(point.checkInTime)}
                         </span>
                       </div>
                       
                       <div className="flex items-center gap-1">
-                        {/* Driver Name */}
+                        {/* Driver Name - Mobile hide */}
                         {point.driverName && (
-                          <div className="hidden sm:flex items-center gap-1 text-sm text-gray-600">
+                          <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500">
                             <User className="w-3 h-3" />
-                            <span>{point.driverName}</span>
+                            <span className="truncate max-w-[80px]">{point.driverName}</span>
                           </div>
                         )}
                         
@@ -374,7 +374,7 @@ export default function DeliveryMapPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 ml-auto"
+                            className="h-6 w-6"
                             onClick={(e) => {
                               e.stopPropagation()
                               setDeletePointId(point.id)
@@ -389,21 +389,21 @@ export default function DeliveryMapPage() {
 
                     {/* Customer Name */}
                     {point.customerName && (
-                      <p className="text-base font-medium text-gray-700 mb-1">
+                      <p className="text-sm font-medium text-gray-700 truncate">
                         {point.customerName}
                       </p>
                     )}
 
-                    {/* Address */}
-                    <p className="text-base text-gray-500 line-clamp-2">
+                    {/* Address - ย่อลงและ limit 1 บรรทัด */}
+                    <p className="text-xs text-gray-500 line-clamp-1 mt-1">
                       <MapPin className="w-3 h-3 inline-block mr-1" />
-                      {point.address || addressCache[point.id] || 'กำลังโหลดที่อยู่...'}
+                      {point.address || addressCache[point.id] || 'กำลังโหลด...'}
                     </p>
 
-                    {/* Note */}
+                    {/* Note - เฉพาะ mobile จะซ่อน */}
                     {point.note && (
-                      <p className="text-sm text-gray-500 mt-1 italic">
-                        หมายเหตุ: {point.note}
+                      <p className="text-xs text-gray-400 mt-1 italic hidden sm:block line-clamp-1">
+                        {point.note}
                       </p>
                     )}
                   </div>
@@ -418,21 +418,22 @@ export default function DeliveryMapPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] relative">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex w-96 bg-white border-r border-gray-200 flex-col">
+      {/* Desktop Sidebar - ลดความกว้าง */}
+      <div className="hidden lg:flex w-80 bg-white border-r border-gray-200 flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">รายการส่งของ</h2>
+        <div className="p-3 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
           
           {/* Date Navigation */}
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-2 mt-2">
             <Button
               variant="outline"
               size="icon"
               onClick={() => changeDate(-1)}
               disabled={loading}
+              className="h-8 w-8"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3" />
             </Button>
             
             <Input
@@ -440,7 +441,7 @@ export default function DeliveryMapPage() {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               max={getLocalDateString(new Date())}
-              className="flex-1 text-base"
+              className="flex-1 text-sm h-8"
             />
             
             <Button
@@ -448,15 +449,16 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(1)}
               disabled={loading || selectedDate === getLocalDateString(new Date())}
+              className="h-8 w-8"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
 
           {/* Summary */}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-base text-gray-600">
-              พบ {filteredPoints.length} จุดส่งของ
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-sm text-gray-600">
+              พบ {filteredPoints.length} จุด
             </span>
             {mapPoints.length > 0 && (
               <Button
@@ -464,42 +466,43 @@ export default function DeliveryMapPage() {
                 size="sm"
                 onClick={viewAllPoints}
                 disabled={loading}
+                className="h-7 text-xs cursor-pointer hover:bg-gray-100"
               >
-                <Eye className="w-4 h-4 mr-1" />
+                <Eye className="w-3 h-3 mr-1" />
                 ดูทั้งหมด
               </Button>
             )}
           </div>
 
           {/* Search */}
-          <div className="mt-3 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="mt-2 relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
             <Input
               type="text"
-              placeholder="ค้นหาที่อยู่, หมายเหตุ, พนักงาน..."
+              placeholder="ค้นหา..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-base"
+              className="pl-8 text-sm h-8"
             />
           </div>
 
           {/* Driver Filter Dropdown */}
           {uniqueDrivers.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-2">
               <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                <SelectTrigger className="text-base">
+                <SelectTrigger className="text-sm h-8">
                   <SelectValue placeholder="เลือกพนักงาน" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      <span className="text-base">พนักงานทั้งหมด</span>
+                      <User className="w-3 h-3" />
+                      <span className="text-sm">พนักงานทั้งหมด</span>
                     </div>
                   </SelectItem>
                   {uniqueDrivers.map((driver) => (
                     <SelectItem key={driver.id} value={driver.id}>
-                      <span className="text-base">{driver.name}</span>
+                      <span className="text-sm">{driver.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -509,47 +512,49 @@ export default function DeliveryMapPage() {
         </div>
 
         {/* Points List */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3">
           <PointsList />
         </div>
       </div>
 
       {/* Mobile Content Container */}
       <div className="lg:hidden w-full">
-        {/* Mobile Header - ใช้ sticky positioning */}
-        <div className="sticky top-0 left-0 right-0 bg-white border-b z-40 p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
-            <div className="flex gap-2">
+        {/* Mobile Header - Compact */}
+        <div className="sticky top-0 left-0 right-0 bg-white border-b z-40 p-3 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-base font-semibold text-gray-900">รายการส่งของ</h2>
+            <div className="flex gap-1">
               <Button
                 variant={activeView === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setActiveView('list')}
+                className="h-7 text-xs"
               >
-                <Menu className="w-4 h-4 mr-1" />
+                <Menu className="w-3 h-3 mr-1" />
                 รายการ
               </Button>
               <Button
                 variant={activeView === 'map' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setActiveView('map')}
+                className="h-7 text-xs"
               >
-                <MapIcon className="w-4 h-4 mr-1" />
+                <MapIcon className="w-3 h-3 mr-1" />
                 แผนที่
               </Button>
             </div>
           </div>
 
           {/* Date Navigation */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1 mb-2">
             <Button
               variant="outline"
               size="icon"
               onClick={() => changeDate(-1)}
               disabled={loading}
-              className="h-9 w-9"
+              className="h-7 w-7"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3" />
             </Button>
             
             <Input
@@ -557,7 +562,7 @@ export default function DeliveryMapPage() {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               max={new Date().toISOString().split('T')[0]}
-              className="flex-1 h-9 text-base"
+              className="flex-1 h-7 text-xs"
             />
             
             <Button
@@ -565,58 +570,56 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(1)}
               disabled={loading || selectedDate === new Date().toISOString().split('T')[0]}
-              className="h-9 w-9"
+              className="h-7 w-7"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
 
-          {/* Search and Driver Filter */}
-          <div className="space-y-2">
+          {/* Search and Filter - Compact */}
+          <div className="space-y-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
               <Input
                 type="text"
                 placeholder="ค้นหา..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9 text-base"
+                className="pl-8 h-7 text-xs"
               />
             </div>
             
-            {/* Driver Filter Dropdown */}
-            {uniqueDrivers.length > 0 && (
-              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                <SelectTrigger className="h-9 text-base">
-                  <SelectValue placeholder="เลือกพนักงาน" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    <div className="flex items-center gap-2">
-                      <User className="w-3 h-3" />
-                      <span className="text-base">พนักงานทั้งหมด</span>
-                    </div>
-                  </SelectItem>
-                  {uniqueDrivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      <span className="text-base">{driver.name}</span>
+            {/* Driver Filter and Summary */}
+            <div className="flex items-center justify-between">
+              {uniqueDrivers.length > 0 ? (
+                <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                  <SelectTrigger className="h-7 text-xs w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <span className="text-xs">ทั้งหมด</span>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            <div className="flex items-center justify-between text-base">
-              <span className="text-gray-600">
-                พบ {filteredPoints.length} จุดส่งของ
-              </span>
+                    {uniqueDrivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        <span className="text-xs">{driver.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="text-xs text-gray-600">
+                  พบ {filteredPoints.length} จุด
+                </span>
+              )}
+              
               {mapPoints.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={viewAllPoints}
                   disabled={loading}
-                  className="h-8"
+                  className="h-7 text-xs cursor-pointer hover:bg-gray-100"
                 >
                   <Eye className="w-3 h-3 mr-1" />
                   ดูทั้งหมด
@@ -628,13 +631,13 @@ export default function DeliveryMapPage() {
 
         {/* Mobile List View */}
         <div className={`${activeView === 'list' ? 'block' : 'hidden'}`}>
-          <div className="p-4">
+          <div className="p-3">
             <PointsList />
           </div>
         </div>
 
         {/* Mobile Map View */}
-        <div className={`${activeView === 'map' ? 'block' : 'hidden'} h-[calc(100vh-14rem)]`}>
+        <div className={`${activeView === 'map' ? 'block' : 'hidden'} h-[calc(100vh-10rem)]`}>
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
@@ -658,54 +661,45 @@ export default function DeliveryMapPage() {
                 label={{
                   text: point.sequence?.toString() || (index + 1).toString(),
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   fontWeight: 'bold'
                 }}
                 onClick={() => setSelectedPoint(point)}
               />
             ))}
 
-            {/* Info Window */}
+            {/* Info Window - Compact */}
             {selectedPoint && (
               <InfoWindow
                 position={{ lat: selectedPoint.lat, lng: selectedPoint.lng }}
                 onCloseClick={() => setSelectedPoint(null)}
               >
-                <div className="min-w-[180px] max-w-[240px]">
+                <div className="min-w-[160px] max-w-[200px]">
                   {/* Header */}
-                  <div className="flex items-center justify-between mb-2 pr-8">
-                    <span className="font-medium text-sm">จุดที่ {selectedPoint.sequence}</span>
-                    {selectedPoint.driverName && (
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <User className="w-3 h-3" />
-                        <span>{selectedPoint.driverName}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Time */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                    <Clock className="w-3 h-3" />
-                    {formatTime(selectedPoint.checkInTime)}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-xs">จุดที่ {selectedPoint.sequence}</span>
+                    <span className="text-xs text-gray-600">
+                      {formatTime(selectedPoint.checkInTime)}
+                    </span>
                   </div>
                   
                   {/* Customer */}
                   {selectedPoint.customerName && (
-                    <p className="text-sm font-medium mb-1">{selectedPoint.customerName}</p>
+                    <p className="text-xs font-medium mb-1">{selectedPoint.customerName}</p>
                   )}
                   
                   {/* Address */}
                   <p className="text-xs text-gray-500 mb-2 line-clamp-2">
-                    {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลดที่อยู่...'}
+                    {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลด...'}
                   </p>
 
-                  {/* Photo Thumbnail */}
+                  {/* Photo Thumbnail - Smaller */}
                   {selectedPoint.photo && (
                     <div className="mb-2 flex justify-center">
                       <img
                         src={selectedPoint.photo.thumbnailUrl || selectedPoint.photo.url}
                         alt="Delivery"
-                        className="max-w-full max-h-24 object-contain rounded cursor-pointer hover:opacity-80"
+                        className="max-w-full max-h-16 object-contain rounded cursor-pointer hover:opacity-80 hover:scale-105 transition-all duration-200"
                         onClick={() => openLightbox(selectedPoint.photo!.url)}
                       />
                     </div>
@@ -715,7 +709,7 @@ export default function DeliveryMapPage() {
                   <Button
                     variant="default"
                     size="sm"
-                    className="w-full h-8 text-sm"
+                    className="w-full h-7 text-xs"
                     onClick={() => {
                       const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
                       window.open(url, '_blank')
@@ -756,7 +750,7 @@ export default function DeliveryMapPage() {
               label={{
                 text: point.sequence?.toString() || (index + 1).toString(),
                 color: '#ffffff',
-                fontSize: '14px',
+                fontSize: '12px',
                 fontWeight: 'bold'
               }}
               onClick={() => setSelectedPoint(point)}
@@ -769,32 +763,23 @@ export default function DeliveryMapPage() {
               position={{ lat: selectedPoint.lat, lng: selectedPoint.lng }}
               onCloseClick={() => setSelectedPoint(null)}
             >
-              <div className="min-w-[180px] max-w-[240px]">
+              <div className="min-w-[160px] max-w-[200px]">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-2 pr-8">
-                  <span className="font-medium text-sm">จุดที่ {selectedPoint.sequence}</span>
-                  {selectedPoint.driverName && (
-                    <div className="flex items-center gap-1 text-xs text-gray-600">
-                      <User className="w-3 h-3" />
-                      <span>{selectedPoint.driverName}</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Time */}
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                  <Clock className="w-3 h-3" />
-                  {formatTime(selectedPoint.checkInTime)}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-xs">จุดที่ {selectedPoint.sequence}</span>
+                  <span className="text-xs text-gray-600">
+                    {formatTime(selectedPoint.checkInTime)}
+                  </span>
                 </div>
                 
                 {/* Customer */}
                 {selectedPoint.customerName && (
-                  <p className="text-sm font-medium mb-1">{selectedPoint.customerName}</p>
+                  <p className="text-xs font-medium mb-1">{selectedPoint.customerName}</p>
                 )}
                 
                 {/* Address */}
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">
-                  {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลดที่อยู่...'}
+                  {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลด...'}
                 </p>
 
                 {/* Photo Thumbnail */}
@@ -803,7 +788,7 @@ export default function DeliveryMapPage() {
                     <img
                       src={selectedPoint.photo.thumbnailUrl || selectedPoint.photo.url}
                       alt="Delivery"
-                      className="max-w-full max-h-24 object-contain rounded cursor-pointer hover:opacity-80"
+                      className="max-w-full max-h-16 object-contain rounded cursor-pointer hover:opacity-80"
                       onClick={() => openLightbox(selectedPoint.photo!.url)}
                     />
                   </div>
@@ -813,7 +798,7 @@ export default function DeliveryMapPage() {
                 <Button
                   variant="default"
                   size="sm"
-                  className="w-full h-8 text-sm"
+                  className="w-full h-7 text-xs"
                   onClick={() => {
                     const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
                     window.open(url, '_blank')
@@ -830,7 +815,7 @@ export default function DeliveryMapPage() {
 
       {/* Lightbox Dialog */}
       <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
-        <DialogContent className="max-w-4xl p-0">
+        <DialogContent className="max-w-4xl p-0 [&>button]:hidden">
           <DialogTitle className="sr-only">รูปภาพการส่งของ</DialogTitle>
           <div className="relative">
             <img
@@ -844,7 +829,7 @@ export default function DeliveryMapPage() {
               className="absolute top-2 right-2 bg-white/80 hover:bg-white"
               onClick={() => setShowLightbox(false)}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </DialogContent>

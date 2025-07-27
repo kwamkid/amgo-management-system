@@ -73,3 +73,49 @@ body {
   color: #171717;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* เพิ่มใน app/globals.css หรือ styles/globals.css */
+
+/* ทำให้ทุก button มี cursor pointer */
+button:not(:disabled) {
+  cursor: pointer !important;
+}
+
+/* สำหรับ shadcn/ui Button component */
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer !important;
+}
+
+/* สำหรับ links ที่ styled เป็น button */
+a.inline-flex:not([aria-disabled="true"]) {
+  cursor: pointer !important;
+}
+
+/* สำหรับ elements ที่มี onClick */
+[onclick]:not(:disabled) {
+  cursor: pointer !important;
+}
+
+/* Fix สำหรับ Select, Checkbox, Radio */
+[role="combobox"]:not([aria-disabled="true"]),
+[role="checkbox"]:not([aria-disabled="true"]),
+[role="radio"]:not([aria-disabled="true"]) {
+  cursor: pointer !important;
+}
+
+/* Disabled state */
+button:disabled,
+[aria-disabled="true"],
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}
+
+/* Loading state */
+.cursor-wait {
+  cursor: wait !important;
+}
+
+/* Interactive elements */
+.cursor-pointer {
+  cursor: pointer !important;
+}

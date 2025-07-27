@@ -233,7 +233,6 @@ export const useDeliveryMap = (date?: string) => {
       setLoading(true)
       
       const filters: DeliveryFilters = {
-        driverId: userData.role === 'driver' ? userData.id : undefined,
         date: date || new Date().toISOString().split('T')[0]
       }
 

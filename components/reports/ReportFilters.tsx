@@ -1,8 +1,9 @@
-// components/reports/ReportFilters.tsx
+// components/reports/ReportFilters.tsx - Updated to use API
 
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import React from 'react'
 import { Filter, Loader2, Users, Search, X } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,17 +34,18 @@ import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
 import { 
-  getAttendanceReport, 
-  getAttendanceSummary,
+  getAttendanceReportPaginated,
   AttendanceReportData,
-  AttendanceReportFilters
+  AttendanceReportFilters,
+  AttendanceReportResponse
 } from '@/lib/services/reportService'
 
 interface ReportFiltersProps {
   onGenerateReport: (
     data: AttendanceReportData[], 
     summary: any[],
-    filters: AttendanceReportFilters
+    filters: AttendanceReportFilters,
+    pagination?: AttendanceReportResponse['pagination']
   ) => void
   onLoadingChange: (loading: boolean) => void
 }
@@ -69,6 +71,9 @@ export default function ReportFilters({
   const [openUserSelect, setOpenUserSelect] = useState(false)
   const [userSearchTerm, setUserSearchTerm] = useState('')
   const [filteredUsers, setFilteredUsers] = useState(users)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [selectedPreset, setSelectedPreset] = useState<string>('thisMonth') // Track selected preset
   
   // Filter users based on search term
   useEffect(() => {
@@ -88,10 +93,18 @@ export default function ReportFilters({
   // Quick date ranges
   const setDateRange = (type: string) => {
     const now = new Date()
+    setSelectedPreset(type) // Set selected preset
+    
     switch (type) {
       case 'today':
         setStartDate(format(now, 'yyyy-MM-dd'))
         setEndDate(format(now, 'yyyy-MM-dd'))
+        break
+      case 'yesterday':
+        const yesterday = new Date(now)
+        yesterday.setDate(now.getDate() - 1)
+        setStartDate(format(yesterday, 'yyyy-MM-dd'))
+        setEndDate(format(yesterday, 'yyyy-MM-dd'))
         break
       case 'thisWeek':
         const weekStart = new Date(now)
@@ -100,6 +113,14 @@ export default function ReportFilters({
         weekEnd.setDate(now.getDate() + (6 - now.getDay()))
         setStartDate(format(weekStart, 'yyyy-MM-dd'))
         setEndDate(format(weekEnd, 'yyyy-MM-dd'))
+        break
+      case 'lastWeek':
+        const lastWeekStart = new Date(now)
+        lastWeekStart.setDate(now.getDate() - now.getDay() - 7)
+        const lastWeekEnd = new Date(now)
+        lastWeekEnd.setDate(now.getDate() - now.getDay() - 1)
+        setStartDate(format(lastWeekStart, 'yyyy-MM-dd'))
+        setEndDate(format(lastWeekEnd, 'yyyy-MM-dd'))
         break
       case 'thisMonth':
         setStartDate(format(startOfMonth(now), 'yyyy-MM-dd'))
@@ -111,6 +132,7 @@ export default function ReportFilters({
         setEndDate(format(endOfMonth(lastMonth), 'yyyy-MM-dd'))
         break
     }
+    setCurrentPage(1) // Reset page when changing date range
   }
   
   // Toggle user selection
@@ -135,8 +157,8 @@ export default function ReportFilters({
     setUserSearchTerm('')
   }
   
-  // Generate report
-  const generateReport = async () => {
+  // Generate report using API
+  const generateReport = async (page: number = 1) => {
     try {
       setLoading(true)
       onLoadingChange(true)
@@ -145,27 +167,69 @@ export default function ReportFilters({
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         userIds: selectedUsers.length > 0 ? selectedUsers : undefined,
-        locationId: selectedLocation || undefined
-      }
+        locationId: selectedLocation || undefined,
+        page,
+        pageSize,
+        showOnlyPresent: true // Default to show only present
+      } as AttendanceReportFilters // Type assertion to fix TS error
       
-      const data = await getAttendanceReport(filters)
-      const summary = getAttendanceSummary(data)
+      console.log('Sending request with filters:', filters)
       
-      onGenerateReport(data, summary, filters)
+      const response = await getAttendanceReportPaginated(filters)
+      console.log('Received response:', response)
+      
+      setCurrentPage(page)
+      onGenerateReport(
+        response.data, 
+        response.summary || [], 
+        filters,
+        response.pagination
+      )
       showToast('ดึงข้อมูลสำเร็จ', 'success')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating report:', error)
-      showToast('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error')
+      showToast(error.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error')
     } finally {
       setLoading(false)
       onLoadingChange(false)
     }
   }
   
+  // Export generate function to parent
+  React.useEffect(() => {
+    // Store the generateReport function in a way the parent can access
+    if (typeof window !== 'undefined') {
+      (window as any).__generateReport = generateReport
+    }
+  }, [startDate, endDate, selectedUsers, selectedLocation, pageSize])
+  
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg">ตัวกรองข้อมูล</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-lg">ตัวกรองข้อมูล</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">แสดง:</Label>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(value) => {
+                setPageSize(Number(value))
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-500">รายการ</span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Date Section */}
@@ -175,7 +239,7 @@ export default function ReportFilters({
             <Label className="text-sm font-medium min-w-[60px]">ช่วงเวลา</Label>
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant="outline"
+                variant={selectedPreset === 'today' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setDateRange('today')}
                 className="cursor-pointer hover:bg-gray-100 h-8"
@@ -183,7 +247,15 @@ export default function ReportFilters({
                 วันนี้
               </Button>
               <Button
-                variant="outline"
+                variant={selectedPreset === 'yesterday' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDateRange('yesterday')}
+                className="cursor-pointer hover:bg-gray-100 h-8"
+              >
+                เมื่อวาน
+              </Button>
+              <Button
+                variant={selectedPreset === 'thisWeek' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setDateRange('thisWeek')}
                 className="cursor-pointer hover:bg-gray-100 h-8"
@@ -191,7 +263,15 @@ export default function ReportFilters({
                 สัปดาห์นี้
               </Button>
               <Button
-                variant="outline"
+                variant={selectedPreset === 'lastWeek' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDateRange('lastWeek')}
+                className="cursor-pointer hover:bg-gray-100 h-8"
+              >
+                สัปดาห์ที่แล้ว
+              </Button>
+              <Button
+                variant={selectedPreset === 'thisMonth' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setDateRange('thisMonth')}
                 className="cursor-pointer hover:bg-gray-100 h-8"
@@ -199,7 +279,7 @@ export default function ReportFilters({
                 เดือนนี้
               </Button>
               <Button
-                variant="outline"
+                variant={selectedPreset === 'lastMonth' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setDateRange('lastMonth')}
                 className="cursor-pointer hover:bg-gray-100 h-8"
@@ -216,7 +296,11 @@ export default function ReportFilters({
               <Input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  setStartDate(e.target.value)
+                  setSelectedPreset('') // Clear preset when custom date
+                  setCurrentPage(1)
+                }}
                 className="cursor-pointer h-10"
               />
             </div>
@@ -226,7 +310,11 @@ export default function ReportFilters({
               <Input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setEndDate(e.target.value)
+                  setSelectedPreset('') // Clear preset when custom date
+                  setCurrentPage(1)
+                }}
                 className="cursor-pointer h-10"
               />
             </div>
@@ -236,7 +324,10 @@ export default function ReportFilters({
               <Label className="text-sm mb-1">สถานที่</Label>
               <Select
                 value={selectedLocation || 'all'}
-                onValueChange={(value) => setSelectedLocation(value === 'all' ? '' : value)}
+                onValueChange={(value) => {
+                  setSelectedLocation(value === 'all' ? '' : value)
+                  setCurrentPage(1)
+                }}
               >
                 <SelectTrigger className="cursor-pointer h-10">
                   <SelectValue placeholder="ทั้งหมด" />
@@ -278,27 +369,31 @@ export default function ReportFilters({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <div className="flex items-center border-b px-3">
-                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                      <input
-                        placeholder="ค้นหาพนักงาน..."
-                        value={userSearchTerm}
-                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                        className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </div>
-                    <CommandEmpty>ไม่พบพนักงาน</CommandEmpty>
-                    <div className="max-h-[300px] overflow-auto">
-                      {selectedUsers.length > 0 && (
-                        <div
-                          onClick={clearSelectedUsers}
-                          className="relative flex cursor-pointer select-none items-center rounded-sm px-4 py-2 text-sm outline-none hover:bg-gray-100"
-                        >
-                          <span className="font-medium text-red-600">ล้างการเลือกทั้งหมด</span>
-                        </div>
-                      )}
-                      {filteredUsers.map(user => (
+                  <div className="flex items-center border-b px-3 py-2 bg-gray-50">
+                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                    <input
+                      placeholder="ค้นหาชื่อหรือเบอร์โทร..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="flex h-8 w-full rounded-md bg-white px-2 py-1 text-sm outline-none border border-gray-200 focus:border-gray-400 placeholder:text-gray-400"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="max-h-[300px] overflow-auto">
+                    {selectedUsers.length > 0 && (
+                      <div
+                        onClick={clearSelectedUsers}
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-4 py-2 text-sm outline-none hover:bg-gray-100 border-b"
+                      >
+                        <span className="font-medium text-red-600">ล้างการเลือกทั้งหมด ({selectedUsers.length})</span>
+                      </div>
+                    )}
+                    {filteredUsers.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-gray-500">
+                        ไม่พบพนักงานที่ค้นหา
+                      </div>
+                    ) : (
+                      filteredUsers.map(user => (
                         <div
                           key={user.id}
                           onClick={() => toggleUserSelection(user.id!)}
@@ -318,9 +413,9 @@ export default function ReportFilters({
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </Command>
+                      ))
+                    )}
+                  </div>
                 </PopoverContent>
               </Popover>
             </div>
@@ -353,7 +448,7 @@ export default function ReportFilters({
         {/* Generate Button */}
         <div className="pt-2">
           <Button
-            onClick={generateReport}
+            onClick={() => generateReport(1)}
             disabled={loading}
             className="w-full bg-gradient-to-r from-red-500 to-rose-600 cursor-pointer h-10"
           >

@@ -9,9 +9,12 @@ import { useToast } from '@/hooks/useToast'
 import { 
   AttendanceReportData,
   AttendanceReportFilters,
+  AttendanceReportResponse,
+  getAttendanceReportPaginated,
+  getAttendanceReportForExport,
   getAttendanceSummary
 } from '@/lib/services/reportService'
-import { exportDetailedReport } from '@/lib/services/excelExportService'
+import { exportDetailedReport, exportByEmployeeReport } from '@/lib/services/excelExportService'
 import TechLoader from '@/components/shared/TechLoader'
 import ReportFilters from '@/components/reports/ReportFilters'
 import ReportResults from '@/components/reports/ReportResults'
@@ -26,45 +29,115 @@ export default function CheckInReportPage() {
   const [reportData, setReportData] = useState<AttendanceReportData[]>([])
   const [summaryData, setSummaryData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [filters, setFilters] = useState<AttendanceReportFilters | null>(null)
+  const [pagination, setPagination] = useState<AttendanceReportResponse['pagination'] | undefined>()
   
-  // Handle report generation
-  const handleGenerateReport = (data: AttendanceReportData[], summary: any[], filters: AttendanceReportFilters) => {
+  // Store the current filters for pagination
+  const [currentFilters, setCurrentFilters] = useState<AttendanceReportFilters | null>(null)
+  
+  // Handle report generation with pagination
+  const handleGenerateReport = (
+    data: AttendanceReportData[], 
+    summary: any[], 
+    filters: AttendanceReportFilters,
+    paginationInfo?: AttendanceReportResponse['pagination']
+  ) => {
     setReportData(data)
     setSummaryData(summary)
     setFilters(filters)
+    setCurrentFilters(filters) // Store filters for pagination
+    setPagination(paginationInfo)
     setLoading(false)
   }
   
-  // Export to Excel
-  const handleExport = () => {
-    if (reportData.length === 0) {
-      showToast('ไม่มีข้อมูลสำหรับ Export', 'error')
+  // Handle page change
+  const handlePageChange = async (page: number) => {
+    if (!currentFilters) return
+    
+    try {
+      setLoading(true)
+      const response = await getAttendanceReportPaginated({
+        ...currentFilters,
+        page
+      })
+      
+      setReportData(response.data)
+      setSummaryData(response.summary || [])
+      setPagination(response.pagination)
+    } catch (error: any) {
+      console.error('Error changing page:', error)
+      showToast(error.message || 'เกิดข้อผิดพลาดในการเปลี่ยนหน้า', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // Export to Excel - fetch all data
+  const handleExport = async (exportType: 'daily' | 'byEmployee' = 'daily') => {
+    if (!filters) {
+      showToast('กรุณาสร้างรายงานก่อน Export', 'error')
       return
     }
     
-    if (!filters) return
+    // Prevent multiple exports
+    if (exporting) {
+      return
+    }
     
-    const locationName = locations.find(l => l.id === filters.locationId)?.name
-    
-    // Get current filtered data from DOM or recalculate
-    const showOnlyWithData = (document.querySelector('input[type="checkbox"]') as HTMLInputElement)?.checked ?? true
-    const dataToExport = showOnlyWithData 
-      ? reportData.filter(record => record.status !== 'absent' && record.status !== 'holiday')
-      : reportData
-    const summaryToExport = getAttendanceSummary(dataToExport)
-    
-    exportDetailedReport(
-      dataToExport,
-      summaryToExport,
-      {
+    try {
+      setExporting(true)
+      
+      // Get checkbox state from DOM
+      const showOnlyWithData = (document.querySelector('input[type="checkbox"]') as HTMLInputElement)?.checked ?? true
+      
+      // Fetch all data without pagination
+      const response = await getAttendanceReportForExport({
         startDate: filters.startDate,
         endDate: filters.endDate,
-        locationName
+        userIds: filters.userIds,
+        locationId: filters.locationId,
+        showOnlyPresent: showOnlyWithData
+      })
+      
+      // Filter data if needed
+      const dataToExport = showOnlyWithData 
+        ? response.data.filter(record => record.status !== 'absent' && record.status !== 'holiday')
+        : response.data
+      
+      const locationName = locations.find(l => l.id === filters.locationId)?.name
+      
+      if (exportType === 'byEmployee') {
+        // Export grouped by employee
+        exportByEmployeeReport(
+          dataToExport,
+          response.summary || [],
+          {
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            locationName
+          }
+        )
+      } else {
+        // Export daily report
+        exportDetailedReport(
+          dataToExport,
+          response.summary || [],
+          {
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            locationName
+          }
+        )
       }
-    )
-    
-    showToast('Export สำเร็จ', 'success')
+      
+      showToast('Export สำเร็จ', 'success')
+    } catch (error: any) {
+      console.error('Export error:', error)
+      showToast(error.message || 'เกิดข้อผิดพลาดในการ Export', 'error')
+    } finally {
+      setExporting(false)
+    }
   }
   
   // Check permissions
@@ -95,13 +168,24 @@ export default function CheckInReportPage() {
         </div>
         
         {reportData.length > 0 && (
-          <Button
-            onClick={handleExport}
-            className="bg-gradient-to-r from-green-500 to-emerald-600"
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Export Excel
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleExport('daily')}
+              disabled={exporting}
+              className="bg-gradient-to-r from-green-500 to-emerald-600"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {exporting ? 'กำลัง Export...' : 'Export รายวัน'}
+            </Button>
+            <Button
+              onClick={() => handleExport('byEmployee')}
+              disabled={exporting}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {exporting ? 'กำลัง Export...' : 'Export แยกพนักงาน'}
+            </Button>
+          </div>
         )}
       </div>
       
@@ -111,12 +195,14 @@ export default function CheckInReportPage() {
         onLoadingChange={setLoading}
       />
       
-      {/* Results */}
+      {/* Results with Pagination */}
       <ReportResults
         reportData={reportData}
         summaryData={summaryData}
         loading={loading}
         filters={filters}
+        pagination={pagination}
+        onPageChange={handlePageChange}
       />
     </div>
   )

@@ -1,6 +1,7 @@
+// app/(admin)/delivery/page.tsx
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -13,7 +14,9 @@ import {
   CheckCircle,
   Camera,
   ArrowRight,
-  Calendar
+  Calendar,
+  Users,
+  User
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,13 +24,20 @@ import { Badge } from '@/components/ui/badge'
 import TechLoader from '@/components/shared/TechLoader'
 import { db } from '@/lib/firebase/client'
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore'
-import { useState } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function DeliveryDashboardPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const [loading, setLoading] = useState(true)
   const [deliveryPoints, setDeliveryPoints] = useState<any[]>([])
+  const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine') // เพิ่ม state สำหรับ view mode
 
   // Check permission
   useEffect(() => {
@@ -36,7 +46,7 @@ export default function DeliveryDashboardPage() {
     }
   }, [userData, router])
 
-  // Fetch data directly without using hooks to avoid infinite loop
+  // Fetch data
   useEffect(() => {
     const fetchDeliveryPoints = async () => {
       if (!userData?.id) {
@@ -53,7 +63,7 @@ export default function DeliveryDashboardPage() {
         const endOfDay = new Date(today)
         endOfDay.setHours(23, 59, 59, 999)
 
-        // Build query
+        // Build query based on view mode
         let q = query(
           collection(db, 'deliveryPoints'),
           where('checkInTime', '>=', Timestamp.fromDate(today)),
@@ -61,8 +71,8 @@ export default function DeliveryDashboardPage() {
           orderBy('checkInTime', 'desc')
         )
 
-        // Add driver filter if needed
-        if (userData.role === 'driver') {
+        // Apply driver filter only if viewing "mine" and user is driver
+        if (viewMode === 'mine' && userData.role === 'driver') {
           q = query(
             collection(db, 'deliveryPoints'),
             where('driverId', '==', userData.id),
@@ -88,11 +98,10 @@ export default function DeliveryDashboardPage() {
       }
     }
 
-    // Only fetch if we have userData
     if (userData) {
       fetchDeliveryPoints()
     }
-  }, [userData?.id, userData?.role]) // Specific dependencies
+  }, [userData?.id, userData?.role, viewMode]) // เพิ่ม viewMode ใน dependencies
 
   // คำนวณสถิติ
   const totalPoints = deliveryPoints.length
@@ -126,6 +135,29 @@ export default function DeliveryDashboardPage() {
             })}
           </p>
         </div>
+
+        {/* View Mode Selector - สำหรับ Driver */}
+        {userData?.role === 'driver' && (
+          <Select value={viewMode} onValueChange={(value: 'mine' | 'all') => setViewMode(value)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mine">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  <span>เฉพาะของฉัน</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="all">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span>ทั้งหมด</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Quick Action */}
@@ -188,7 +220,7 @@ export default function DeliveryDashboardPage() {
       </div>
 
       {/* Working Time */}
-      {totalPoints > 0 && firstDelivery && lastDelivery && (
+      {totalPoints > 0 && firstDelivery && lastDelivery && viewMode === 'mine' && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">ข้อมูลการทำงาน</CardTitle>
@@ -221,7 +253,7 @@ export default function DeliveryDashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Truck className="w-5 h-5" />
-              จุดส่งของล่าสุด
+              จุดส่งของล่าสุด {viewMode === 'all' && '(ทั้งหมด)'}
             </CardTitle>
             <Link href="/delivery/map">
               <Button variant="ghost" size="sm">
@@ -247,6 +279,13 @@ export default function DeliveryDashboardPage() {
                   </div>
 
                   <div className="flex-1">
+                    {/* แสดงชื่อ Driver ถ้าดูแบบ All */}
+                    {viewMode === 'all' && point.driverName && (
+                      <p className="text-sm text-gray-500">
+                        <User className="w-3 h-3 inline mr-1" />
+                        {point.driverName}
+                      </p>
+                    )}
                     {point.customerName && (
                       <p className="text-base font-medium">{point.customerName}</p>
                     )}
@@ -271,7 +310,9 @@ export default function DeliveryDashboardPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-base text-gray-600 mb-4">ยังไม่มีการส่งของวันนี้</p>
+            <p className="text-base text-gray-600 mb-4">
+              {viewMode === 'mine' ? 'ยังไม่มีการส่งของของคุณวันนี้' : 'ยังไม่มีการส่งของวันนี้'}
+            </p>
             <Link href="/delivery/checkin">
               <Button>
                 <Camera className="w-4 h-4 mr-2" />

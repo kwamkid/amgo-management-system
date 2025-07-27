@@ -193,6 +193,11 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                 </div>
               ))}
               
+              {/* Empty cells for days before month starts */}
+              {Array.from({ length: monthStart.getDay() }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="aspect-square" />
+              ))}
+              
               {/* Calendar Days */}
               {calendarDays.map((day, idx) => {
                 const dayBirthdays = getBirthdaysForDay(day);

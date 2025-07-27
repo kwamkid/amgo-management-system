@@ -1,4 +1,4 @@
-// lib/services/reportService.ts - Client-side Version with Optimization
+// lib/services/reportService.ts - Updated with Holiday Support
 
 import {
   collection,
@@ -11,7 +11,9 @@ import {
 import { db } from '@/lib/firebase'
 import { CheckInRecord } from '@/types/checkin'
 import { User } from '@/types/user'
+import { Holiday } from '@/types/holiday'
 import { format, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns'
+import { getHolidaysInRange } from './holidayService'
 
 export interface AttendanceReportData {
   date: string
@@ -25,6 +27,8 @@ export interface AttendanceReportData {
   isLate: boolean
   lateMinutes: number
   note?: string
+  holidayName?: string // เพิ่ม field สำหรับชื่อวันหยุด
+  isWorkingHoliday?: boolean // เพิ่ม field สำหรับวันหยุดที่ต้องทำงาน
 }
 
 export interface AttendanceReportFilters {
@@ -51,7 +55,7 @@ export interface AttendanceReportResponse {
 }
 
 /**
- * Get attendance report with optimization
+ * Get attendance report with optimization and holiday support
  */
 export async function getAttendanceReport(
   filters: AttendanceReportFilters
@@ -104,20 +108,30 @@ export async function getAttendanceReportPaginated(
       console.warn('Large date range detected. Consider using smaller ranges.')
     }
     
-    // Step 3: Generate all report data (optimized with caching)
-    const allReportData = await generateReportDataOptimized(users, dates)
+    // Step 3: Get holidays in range
+    const holidayMap = await getHolidaysInRange(
+      filters.startDate,
+      filters.endDate,
+      filters.locationId
+    )
+    console.log(`Found ${holidayMap.size} holidays in range`)
+    
+    // Step 4: Generate all report data (optimized with caching)
+    const allReportData = await generateReportDataOptimized(users, dates, holidayMap)
     console.log(`Generated ${allReportData.length} records`)
     
-    // Step 4: Apply showOnlyPresent filter
+    // Step 5: Apply showOnlyPresent filter
     let filteredData = allReportData
     if (showOnlyPresent) {
+      // Don't filter out holidays that are working days
       filteredData = allReportData.filter(record => 
-        record.status !== 'absent' && record.status !== 'holiday'
+        record.status !== 'absent' && 
+        (record.status !== 'holiday' || record.isWorkingHoliday)
       )
       console.log(`After filter: ${filteredData.length} records`)
     }
     
-    // Step 5: Apply pagination
+    // Step 6: Apply pagination
     const totalRecords = filteredData.length
     const totalPages = Math.ceil(totalRecords / pageSize)
     const startIndex = (page - 1) * pageSize
@@ -125,7 +139,7 @@ export async function getAttendanceReportPaginated(
     const paginatedData = filteredData.slice(startIndex, endIndex)
     console.log(`Showing page ${page} with ${paginatedData.length} records`)
     
-    // Step 6: Calculate summary
+    // Step 7: Calculate summary
     const summary = getAttendanceSummary(filteredData)
     
     return {
@@ -160,7 +174,7 @@ export async function getAttendanceReportForExport(
       ...filters,
       page: 1,
       pageSize: 999999, // Get all data
-      showOnlyPresent: false // Get all data including absent
+      showOnlyPresent: false // Get all data including absent and holidays
     }
     
     const result = await getAttendanceReportPaginated(exportFilters)
@@ -234,11 +248,12 @@ async function getFilteredUsers(
 }
 
 /**
- * Generate report data with optimization
+ * Generate report data with optimization and holiday support
  */
 async function generateReportDataOptimized(
   users: User[],
-  dates: Date[]
+  dates: Date[],
+  holidayMap: Map<string, Holiday>
 ): Promise<AttendanceReportData[]> {
   const reportData: AttendanceReportData[] = []
   
@@ -247,6 +262,9 @@ async function generateReportDataOptimized(
     const dateStr = format(date, 'yyyy-MM-dd')
     const dayOfWeek = date.getDay()
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    
+    // Check if this date is a holiday
+    const holiday = holidayMap.get(dateStr)
     
     try {
       // Get ALL check-ins for this date (more efficient than per-user queries)
@@ -279,7 +297,18 @@ async function generateReportDataOptimized(
         const userCheckins = checkinsByUser.get(user.id!) || []
         
         if (userCheckins.length === 0) {
-          // No check-in = absent (unless weekend)
+          // No check-in = check if holiday or absent
+          let status: AttendanceReportData['status'] = 'absent'
+          let note = ''
+          
+          if (holiday) {
+            status = 'holiday'
+            note = holiday.name
+          } else if (isWeekend) {
+            status = 'holiday'
+            note = 'วันหยุดสุดสัปดาห์'
+          }
+          
           reportData.push({
             date: dateStr,
             userId: user.id!,
@@ -287,9 +316,12 @@ async function generateReportDataOptimized(
             firstCheckIn: '-',
             lastCheckOut: '-',
             totalHours: 0,
-            status: isWeekend ? 'holiday' : 'absent',
+            status,
             isLate: false,
-            lateMinutes: 0
+            lateMinutes: 0,
+            note,
+            holidayName: holiday?.name,
+            isWorkingHoliday: holiday?.isWorkingDay
           })
         } else {
           // Process check-ins
@@ -329,6 +361,12 @@ async function generateReportDataOptimized(
             }
           }
           
+          // Prepare note
+          let note = userCheckins.map(c => c.note).filter(Boolean).join(', ')
+          if (holiday) {
+            note = note ? `${holiday.name} - ${note}` : holiday.name
+          }
+          
           reportData.push({
             date: dateStr,
             userId: user.id!,
@@ -336,18 +374,31 @@ async function generateReportDataOptimized(
             firstCheckIn: format(firstCheckinTime, 'HH:mm'),
             lastCheckOut: lastCheckoutTime ? format(lastCheckoutTime, 'HH:mm') : '-',
             totalHours: Math.round(totalHours * 100) / 100,
-            status: firstCheckin.isLate ? 'late' : 'normal',
+            status: holiday && !holiday.isWorkingDay ? 'holiday' : (firstCheckin.isLate ? 'late' : 'normal'),
             locationName: firstCheckin.primaryLocationName || 'นอกสถานที่',
             isLate: firstCheckin.isLate || false,
             lateMinutes: firstCheckin.lateMinutes || 0,
-            note: userCheckins.map(c => c.note).filter(Boolean).join(', ')
+            note,
+            holidayName: holiday?.name,
+            isWorkingHoliday: holiday?.isWorkingDay
           })
         }
       }
     } catch (error) {
       console.error(`Error processing date ${dateStr}:`, error)
-      // Add absent records for all users on error
+      // Add absent/holiday records for all users on error
       users.forEach(user => {
+        let status: AttendanceReportData['status'] = 'absent'
+        let note = ''
+        
+        if (holiday) {
+          status = 'holiday'
+          note = holiday.name
+        } else if (isWeekend) {
+          status = 'holiday'
+          note = 'วันหยุดสุดสัปดาห์'
+        }
+        
         reportData.push({
           date: dateStr,
           userId: user.id!,
@@ -355,9 +406,12 @@ async function generateReportDataOptimized(
           firstCheckIn: '-',
           lastCheckOut: '-',
           totalHours: 0,
-          status: isWeekend ? 'holiday' : 'absent',
+          status,
           isLate: false,
-          lateMinutes: 0
+          lateMinutes: 0,
+          note,
+          holidayName: holiday?.name,
+          isWorkingHoliday: holiday?.isWorkingDay
         })
       })
     }
@@ -384,6 +438,8 @@ export function getAttendanceSummary(data: AttendanceReportData[]) {
     presentDays: number
     absentDays: number
     lateDays: number
+    holidayDays: number
+    workingHolidayDays: number
     totalHours: number
     averageHoursPerDay: number
   }>()
@@ -397,6 +453,8 @@ export function getAttendanceSummary(data: AttendanceReportData[]) {
         presentDays: 0,
         absentDays: 0,
         lateDays: 0,
+        holidayDays: 0,
+        workingHolidayDays: 0,
         totalHours: 0,
         averageHoursPerDay: 0
       })
@@ -407,7 +465,14 @@ export function getAttendanceSummary(data: AttendanceReportData[]) {
     
     if (record.status === 'absent') {
       stats.absentDays++
-    } else if (record.status !== 'holiday') {
+    } else if (record.status === 'holiday') {
+      stats.holidayDays++
+      if (record.isWorkingHoliday && record.totalHours > 0) {
+        stats.workingHolidayDays++
+        stats.presentDays++
+        stats.totalHours += record.totalHours
+      }
+    } else {
       stats.presentDays++
       stats.totalHours += record.totalHours
       

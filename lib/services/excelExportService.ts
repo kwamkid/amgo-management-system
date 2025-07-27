@@ -1,4 +1,4 @@
-// lib/services/excelExportService.ts
+// lib/services/excelExportService.ts - Updated with Holiday Support
 
 import * as XLSX from 'xlsx'
 import { AttendanceReportData } from './reportService'
@@ -6,7 +6,7 @@ import { format, eachDayOfInterval } from 'date-fns'
 import { th } from 'date-fns/locale'
 
 /**
- * Export detailed attendance report (daily view)
+ * Export detailed attendance report (daily view) with holiday support
  */
 export function exportDetailedReport(
   data: AttendanceReportData[],
@@ -40,7 +40,7 @@ export function exportDetailedReport(
     record.totalHours > 0 ? record.totalHours : '-',
     record.locationName || 'นอกสถานที่',
     getStatusText(record),
-    record.note || ''
+    getRecordNote(record)
   ])
   
   const dailyWs = XLSX.utils.aoa_to_sheet([dailyHeaders, ...dailyRows])
@@ -54,8 +54,11 @@ export function exportDetailedReport(
     { wch: 10 }, // รวม
     { wch: 20 }, // สถานที่
     { wch: 15 }, // สถานะ
-    { wch: 30 }  // หมายเหตุ
+    { wch: 40 }  // หมายเหตุ (เพิ่มขนาดสำหรับชื่อวันหยุด)
   ]
+  
+  // Apply styles for holidays
+  applyHolidayStyles(dailyWs, data)
   
   XLSX.utils.book_append_sheet(wb, dailyWs, 'รายงานรายวัน')
   
@@ -66,6 +69,8 @@ export function exportDetailedReport(
       'วันทำงาน',
       'วันขาด',
       'วันสาย',
+      'วันหยุด',
+      'ทำงานวันหยุด',
       'รวมชั่วโมง',
       'เฉลี่ย/วัน'
     ]
@@ -75,6 +80,8 @@ export function exportDetailedReport(
       stat.presentDays,
       stat.absentDays,
       stat.lateDays,
+      stat.holidayDays || 0,
+      stat.workingHolidayDays || 0,
       stat.totalHours.toFixed(2),
       stat.averageHoursPerDay.toFixed(2)
     ])
@@ -87,6 +94,8 @@ export function exportDetailedReport(
       { wch: 12 }, // วันทำงาน
       { wch: 10 }, // วันขาด
       { wch: 10 }, // วันสาย
+      { wch: 10 }, // วันหยุด
+      { wch: 15 }, // ทำงานวันหยุด
       { wch: 12 }, // รวมชั่วโมง
       { wch: 12 }  // เฉลี่ย/วัน
     ]
@@ -104,8 +113,7 @@ export function exportDetailedReport(
 }
 
 /**
- * Export attendance report grouped by employee
- * แสดงข้อมูลแยกตามพนักงาน พร้อมวันที่ครบทุกวัน (วันไหนไม่มาให้เว้นว่าง)
+ * Export attendance report grouped by employee with holiday support
  */
 export function exportByEmployeeReport(
   data: AttendanceReportData[],
@@ -166,6 +174,8 @@ export function exportByEmployeeReport(
     let employeeWorkDays = 0
     let employeeAbsentDays = 0
     let employeeLateDays = 0
+    let employeeHolidayDays = 0
+    let employeeWorkingHolidayDays = 0
     
     // Add employee header row
     rows.push([userName, '', '', '', '', '', '', '', '', ''])
@@ -182,11 +192,18 @@ export function exportByEmployeeReport(
         const otHours = totalHours > 8 ? totalHours - 8 : 0
         const regularHours = totalHours > 8 ? 8 : totalHours
         
-        employeeTotalHours += totalHours
-        
-        if (record.status !== 'absent' && record.status !== 'holiday') {
+        if (record.status === 'holiday') {
+          employeeHolidayDays++
+          if (record.isWorkingHoliday && totalHours > 0) {
+            employeeWorkingHolidayDays++
+            employeeWorkDays++
+            employeeTotalHours += totalHours
+          }
+        } else if (record.status !== 'absent') {
           employeeWorkDays++
+          employeeTotalHours += totalHours
         }
+        
         if (record.status === 'absent') {
           employeeAbsentDays++
         }
@@ -194,10 +211,7 @@ export function exportByEmployeeReport(
           employeeLateDays++
         }
         
-        let statusText = 'ปกติ'
-        if (record.status === 'absent') statusText = 'ขาด'
-        else if (record.status === 'holiday') statusText = 'วันหยุด'
-        else if (record.isLate) statusText = `สาย ${record.lateMinutes} นาที`
+        let statusText = getStatusText(record)
         
         rows.push([
           '', // ชื่อพนักงาน (เว้นว่างเพราะแสดงข้างบนแล้ว)
@@ -209,7 +223,7 @@ export function exportByEmployeeReport(
           otHours > 0 ? otHours.toFixed(2) : '',
           statusText,
           record.locationName || '',
-          record.note || ''
+          getRecordNote(record)
         ])
       } else {
         // ไม่มีข้อมูล = ไม่มาทำงาน (แสดงวันที่แต่เว้นข้อมูลว่าง)
@@ -229,7 +243,7 @@ export function exportByEmployeeReport(
           '', // OT
           isWeekend ? 'วันหยุด' : 'ขาด',
           '',
-          ''
+          isWeekend ? 'วันหยุดสุดสัปดาห์' : ''
         ])
       }
     })
@@ -240,9 +254,9 @@ export function exportByEmployeeReport(
       `มาทำงาน ${employeeWorkDays} วัน`,
       `ขาด ${employeeAbsentDays} วัน`,
       `สาย ${employeeLateDays} วัน`,
-      '',
+      `วันหยุด ${employeeHolidayDays} วัน`,
+      `ทำงานวันหยุด ${employeeWorkingHolidayDays} วัน`,
       `รวม ${employeeTotalHours.toFixed(2)} ชม.`,
-      '',
       '',
       '',
       ''
@@ -266,8 +280,11 @@ export function exportByEmployeeReport(
     { wch: 10 }, // OT
     { wch: 15 }, // สถานะ
     { wch: 20 }, // สถานที่
-    { wch: 30 }  // หมายเหตุ
+    { wch: 40 }  // หมายเหตุ (เพิ่มขนาดสำหรับชื่อวันหยุด)
   ]
+  
+  // Apply styles for employee summary rows
+  applyEmployeeSummaryStyles(ws, rows)
   
   // Add worksheet to workbook
   XLSX.utils.book_append_sheet(wb, ws, 'รายงานแยกพนักงาน')
@@ -281,10 +298,97 @@ export function exportByEmployeeReport(
   XLSX.writeFile(wb, filename)
 }
 
-// Helper function to get status text
+/**
+ * Helper function to get status text
+ */
 function getStatusText(record: AttendanceReportData): string {
   if (record.status === 'absent') return 'ขาด'
-  if (record.status === 'holiday') return 'วันหยุด'
+  if (record.status === 'holiday') {
+    if (record.isWorkingHoliday && record.totalHours > 0) {
+      return 'ทำงานวันหยุด'
+    }
+    return 'วันหยุด'
+  }
   if (record.isLate) return `สาย ${record.lateMinutes} นาที`
   return 'ปกติ'
+}
+
+/**
+ * Helper function to get record note with holiday name
+ */
+function getRecordNote(record: AttendanceReportData): string {
+  const notes: string[] = []
+  
+  // Add holiday name
+  if (record.holidayName) {
+    notes.push(`🎉 ${record.holidayName}`)
+  }
+  
+  // Add working holiday note
+  if (record.isWorkingHoliday && record.totalHours > 0) {
+    notes.push('(ทำงานวันหยุด)')
+  }
+  
+  // Add other notes
+  if (record.note) {
+    notes.push(record.note)
+  }
+  
+  return notes.join(' ')
+}
+
+/**
+ * Apply styles for holiday rows
+ */
+function applyHolidayStyles(ws: XLSX.WorkSheet, data: AttendanceReportData[]) {
+  // Add cell styles for holiday rows
+  data.forEach((record, index) => {
+    if (record.status === 'holiday') {
+      const rowIndex = index + 2 // +2 because of header row and 0-based index
+      
+      // Style cells in holiday rows
+      for (let col = 0; col < 8; col++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: rowIndex, c: col })
+        if (!ws[cellAddr]) continue
+        
+        ws[cellAddr].s = {
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: record.isWorkingHoliday ? 'FFE4E1' : 'F0F0F0' }
+          },
+          font: {
+            color: { rgb: record.isWorkingHoliday ? 'B91C1C' : '666666' }
+          }
+        }
+      }
+    }
+  })
+}
+
+/**
+ * Apply styles for employee summary rows
+ */
+function applyEmployeeSummaryStyles(ws: XLSX.WorkSheet, rows: any[]) {
+  rows.forEach((row, index) => {
+    if (row[0] && row[0].startsWith('สรุป')) {
+      const rowIndex = index + 2 // +2 because of header row and 0-based index
+      
+      // Style summary row
+      for (let col = 0; col < 10; col++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: rowIndex, c: col })
+        if (!ws[cellAddr]) continue
+        
+        ws[cellAddr].s = {
+          fill: {
+            patternType: 'solid',
+            fgColor: { rgb: 'E5E7EB' }
+          },
+          font: {
+            bold: true,
+            color: { rgb: '1F2937' }
+          }
+        }
+      }
+    }
+  })
 }

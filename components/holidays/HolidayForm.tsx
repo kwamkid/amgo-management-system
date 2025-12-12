@@ -149,7 +149,7 @@ export default function HolidayForm({
         if (successCount === dates.length) {
           showToast(`เพิ่มวันหยุด ${successCount} วันสำเร็จ`, 'success')
         } else if (successCount > 0) {
-          showToast(`เพิ่มวันหยุดสำเร็จ ${successCount} จาก ${dates.length} วัน`, 'warning')
+          showToast(`เพิ่มวันหยุดสำเร็จ ${successCount} จาก ${dates.length} วัน`, 'success')
         } else {
           showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error')
         }

@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
 import { useLocations } from '@/hooks/useLocations'
@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/table'
 import TechLoader from '@/components/shared/TechLoader'
 import { gradients } from '@/lib/theme/colors'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function HolidaysPage() {
   const router = useRouter()
@@ -57,6 +58,10 @@ export default function HolidaysPage() {
   const [selectedType, setSelectedType] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [showImportDialog, setShowImportDialog] = useState(false)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   
   // Hooks
   const { holidays, loading, deleteHoliday, importPublicHolidays } = useHolidays({
@@ -68,11 +73,26 @@ export default function HolidaysPage() {
   const { locations } = useLocations()
   
   // Filter holidays by search term
-  const filteredHolidays = holidays.filter(holiday => {
-    const matchesSearch = holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         holiday.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
-  })
+  const filteredHolidays = useMemo(() => {
+    return holidays.filter(holiday => {
+      const matchesSearch = holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           holiday.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      return matchesSearch
+    })
+  }, [holidays, searchTerm])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredHolidays.length / itemsPerPage)
+  const paginatedHolidays = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return filteredHolidays.slice(start, end)
+  }, [filteredHolidays, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedYear, selectedType])
   
   // Get existing holiday dates for comparison
   const existingHolidayDates = holidays.map(h => 
@@ -282,7 +302,7 @@ export default function HolidaysPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredHolidays.map(holiday => (
+                  {paginatedHolidays.map(holiday => (
                     <TableRow key={holiday.id}>
                       <TableCell>
                         {format(new Date(holiday.date), 'dd MMM yyyy', { locale: th })}
@@ -346,6 +366,19 @@ export default function HolidaysPage() {
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Pagination */}
+              {filteredHolidays.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredHolidays.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </div>
           )}
         </CardContent>

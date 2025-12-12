@@ -92,8 +92,8 @@ export default function InviteLinkDetailPage({
       employee: { label: 'พนักงาน', variant: 'secondary' as const },
       manager: { label: 'ผู้จัดการ', variant: 'info' as const },
       hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const },
-      marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
-      driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
+      marketing: { label: 'Influ Marketing', variant: 'warning' as const },
+      driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
     }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee

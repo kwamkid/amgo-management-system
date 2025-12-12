@@ -106,3 +106,56 @@ export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
   rejected: 'ไม่อนุมัติ',
   cancelled: 'ยกเลิก'
 };
+
+// Carry Over Types
+export interface CarryOverRules {
+  sick: CarryOverRule;
+  personal: CarryOverRule;
+  vacation: CarryOverRule;
+}
+
+export interface CarryOverRule {
+  enabled: boolean;        // เปิด/ปิดการยกยอด
+  maxDays: number | null;  // จำนวนวันสูงสุดที่ยกยอดได้ (null = ไม่จำกัด)
+  percentage: number;      // เปอร์เซ็นต์ที่ยกยอดได้ (100 = ยกยอดทั้งหมด)
+}
+
+export interface CarryOverResult {
+  userId: string;
+  userName: string;
+  fromYear: number;
+  toYear: number;
+  sick: { remaining: number; carriedOver: number };
+  personal: { remaining: number; carriedOver: number };
+  vacation: { remaining: number; carriedOver: number };
+  success: boolean;
+  error?: string;
+}
+
+export interface CarryOverSummary {
+  totalUsers: number;
+  successCount: number;
+  failedCount: number;
+  results: CarryOverResult[];
+  executedBy: string;
+  executedAt: Date;
+}
+
+// Default carry over rules
+export const DEFAULT_CARRY_OVER_RULES: CarryOverRules = {
+  sick: {
+    enabled: false,     // ลาป่วยไม่ยกยอด
+    maxDays: null,
+    percentage: 0
+  },
+  personal: {
+    enabled: false,     // ลากิจไม่ยกยอด
+    maxDays: null,
+    percentage: 0
+  },
+  vacation: {
+    enabled: true,      // ลาพักร้อนยกยอดได้
+    maxDays: 5,         // สูงสุด 5 วัน
+    percentage: 100     // ยกยอดทั้งหมด (แต่ไม่เกิน maxDays)
+  }
+};

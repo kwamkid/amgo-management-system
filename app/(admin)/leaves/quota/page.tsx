@@ -2,14 +2,14 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
-import { 
-  Calendar, 
-  Users, 
+import {
+  Calendar,
+  Users,
   Search,
   Save,
   AlertCircle,
@@ -21,7 +21,8 @@ import {
   Edit3,
   Check,
   X,
-  Filter
+  Filter,
+  RefreshCw
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -53,6 +54,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Pagination } from '@/components/ui/pagination'
+import CarryOverDialog from '@/components/leave/CarryOverDialog'
 
 interface UserQuota {
   user: {
@@ -280,6 +283,13 @@ export default function LeaveQuotaManagementPage() {
   const [loading, setLoading] = useState(false)
   const [userQuotas, setUserQuotas] = useState<UserQuota[]>([])
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // CarryOver Dialog state
+  const [showCarryOverDialog, setShowCarryOverDialog] = useState(false)
+
   // Check permission
   const canManage = userData && ['hr', 'admin'].includes(userData.role)
 
@@ -341,21 +351,36 @@ export default function LeaveQuotaManagementPage() {
   }
 
   // Filter users
-  const filteredQuotas = userQuotas.filter(({ user, quota }) => {
-    // Search filter
-    const matchSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lineDisplayName.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Quota filter
-    let matchFilter = true
-    if (filterType === 'no-quota') {
-      matchFilter = !quota || (quota.sick.total === 0 && quota.personal.total === 0 && quota.vacation.total === 0)
-    } else if (filterType === 'has-quota') {
-      matchFilter = quota !== null && (quota.sick.total > 0 || quota.personal.total > 0 || quota.vacation.total > 0)
-    }
-    
-    return matchSearch && matchFilter
-  })
+  const filteredQuotas = useMemo(() => {
+    return userQuotas.filter(({ user, quota }) => {
+      // Search filter
+      const matchSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lineDisplayName.toLowerCase().includes(searchTerm.toLowerCase())
+
+      // Quota filter
+      let matchFilter = true
+      if (filterType === 'no-quota') {
+        matchFilter = !quota || (quota.sick.total === 0 && quota.personal.total === 0 && quota.vacation.total === 0)
+      } else if (filterType === 'has-quota') {
+        matchFilter = quota !== null && (quota.sick.total > 0 || quota.personal.total > 0 || quota.vacation.total > 0)
+      }
+
+      return matchSearch && matchFilter
+    })
+  }, [userQuotas, searchTerm, filterType])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredQuotas.length / itemsPerPage)
+  const paginatedQuotas = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return filteredQuotas.slice(start, end)
+  }, [filteredQuotas, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filterType, year])
 
   // Show loading while checking auth
   if (!userData) {
@@ -438,6 +463,14 @@ export default function LeaveQuotaManagementPage() {
         </div>
         
         <div className="flex gap-3">
+          <Button
+            onClick={() => setShowCarryOverDialog(true)}
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            ยกยอดโควต้าปีใหม่
+          </Button>
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
@@ -559,7 +592,7 @@ export default function LeaveQuotaManagementPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredQuotas.map(({ user, quota }) => {
+            {paginatedQuotas.map(({ user, quota }) => {
               const noQuota = hasNoQuota(quota)
               return (
                 <TableRow 
@@ -631,7 +664,30 @@ export default function LeaveQuotaManagementPage() {
             <p className="text-gray-500">ไม่พบข้อมูลพนักงาน</p>
           </div>
         )}
+
+        {/* Pagination */}
+        {filteredQuotas.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredQuotas.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </Card>
+
+      {/* CarryOver Dialog */}
+      <CarryOverDialog
+        open={showCarryOverDialog}
+        onOpenChange={setShowCarryOverDialog}
+        users={users.map(u => ({ id: u.id!, fullName: u.fullName }))}
+        currentYear={year}
+        executedBy={userData?.id || ''}
+        onSuccess={fetchAllQuotas}
+      />
     </div>
   )
 }

@@ -130,11 +130,11 @@ function PreRegisterForm() {
                   <Shield className="w-4 h-4" />
                   <span>
                    สิทธิ์เริ่มต้น: <strong className="text-red-600">
-                    {inviteLink?.defaultRole === 'employee' ? 'พนักงาน' : 
-                    inviteLink?.defaultRole === 'manager' ? 'ผู้จัดการ' : 
-                    inviteLink?.defaultRole === 'hr' ? 'ฝ่ายบุคคล' : 
-                    inviteLink?.defaultRole === 'marketing' ? 'Influ Marketing' :  // ✅ เพิ่ม
-                    inviteLink?.defaultRole === 'driver' ? 'พนักงานขับรถ' :       // ✅ เพิ่ม
+                    {inviteLink?.defaultRole === 'employee' ? 'พนักงาน' :
+                    inviteLink?.defaultRole === 'manager' ? 'ผู้จัดการ' :
+                    inviteLink?.defaultRole === 'hr' ? 'ฝ่ายบุคคล' :
+                    inviteLink?.defaultRole === 'marketing' ? 'Influ Marketing' :
+                    inviteLink?.defaultRole === 'driver' ? 'พนักงานขับรถ' :
                     'ผู้ดูแลระบบ'}
                   </strong>
                   </span>

@@ -14,7 +14,7 @@ export interface UserData {
     fullName: string
     phone: string
     birthDate?: string | Date
-    role: 'admin' | 'hr' | 'manager' | 'employee' | 'marketing' | 'driver'  // ✅ เพิ่ม marketing และ driver
+    role: 'admin' | 'hr' | 'manager' | 'employee' | 'marketing' | 'driver'
     permissionGroupId: string | null
     allowedLocationIds?: string[]              // ✅ เพิ่ม
     allowCheckInOutsideLocation?: boolean      // ✅ เพิ่ม

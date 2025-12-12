@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function EmployeesPage() {
   const router = useRouter()
@@ -42,6 +43,10 @@ export default function EmployeesPage() {
   // Delete Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   
   // Get users with filters
   const { 
@@ -76,17 +81,32 @@ export default function EmployeesPage() {
   }, [searchTerm])
 
   // Filter displayed users based on search term (client-side additional filtering)
-  const filteredUsers = users.filter(user => {
-    if (!searchTerm) return true
-    
-    const search = searchTerm.toLowerCase()
-    return (
-      user.fullName?.toLowerCase().includes(search) ||
-      user.lineDisplayName?.toLowerCase().includes(search) ||
-      user.phone?.includes(search) ||
-      user.discordUsername?.toLowerCase().includes(search)
-    )
-  })
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      if (!searchTerm) return true
+
+      const search = searchTerm.toLowerCase()
+      return (
+        user.fullName?.toLowerCase().includes(search) ||
+        user.lineDisplayName?.toLowerCase().includes(search) ||
+        user.phone?.includes(search) ||
+        user.discordUsername?.toLowerCase().includes(search)
+      )
+    })
+  }, [users, searchTerm])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return filteredUsers.slice(start, end)
+  }, [filteredUsers, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, roleFilter, statusFilter])
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
@@ -273,7 +293,7 @@ export default function EmployeesPage() {
       {/* Users Table */}
       <Card>
         <div className="overflow-x-auto">
-          {filteredUsers.length === 0 ? (
+          {paginatedUsers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-500">
@@ -295,7 +315,7 @@ export default function EmployeesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -393,17 +413,16 @@ export default function EmployeesPage() {
           )}
         </div>
         
-        {/* Load More */}
-        {hasMore && filteredUsers.length > 0 && !searchTerm && (
-          <div className="p-4 text-center border-t border-gray-100">
-            <Button
-              onClick={loadMore}
-              disabled={loading}
-              variant="ghost"
-              className="text-red-600 hover:bg-red-50"
-            >
-              {loading ? 'กำลังโหลด...' : 'แสดงเพิ่มเติม'}
-            </Button>
+        {/* Pagination */}
+        {filteredUsers.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredUsers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </Card>

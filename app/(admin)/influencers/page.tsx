@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useInfluencers, useInfluencerStats } from '@/hooks/useInfluencers'
 import { 
   InfluencerTier, 
@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Pagination } from '@/components/ui/pagination'
 
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
@@ -55,6 +56,10 @@ export default function InfluencersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [tierFilter, setTierFilter] = useState<string>('all')
   const [platformFilter, setPlatformFilter] = useState<string>('all')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   
   const { 
     influencers, 
@@ -77,9 +82,22 @@ export default function InfluencersPage() {
         searchInfluencers(searchTerm)
       }
     }, 300)
-    
+
     return () => clearTimeout(timer)
   }, [searchTerm])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(influencers.length / itemsPerPage)
+  const paginatedInfluencers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return influencers.slice(start, end)
+  }, [influencers, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, tierFilter, platformFilter])
 
   // Format follower count
   const formatFollowers = (count?: number) => {
@@ -267,10 +285,10 @@ export default function InfluencersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-               {influencers.map((influencer) => {
+               {paginatedInfluencers.map((influencer) => {
                 // Use the stored tier directly, don't recalculate
                 const displayTier = influencer.tier || 'nano'
-                
+
                 return (
                   <tr key={influencer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
@@ -420,17 +438,16 @@ export default function InfluencersPage() {
           </div>
         )}
         
-        {/* Load More */}
-        {hasMore && influencers.length > 0 && (
-          <div className="p-4 text-center border-t border-gray-100">
-            <Button
-              onClick={loadMore}
-              disabled={loading}
-              variant="ghost"
-              className="text-red-600 hover:bg-red-50"
-            >
-              {loading ? 'กำลังโหลด...' : 'แสดงเพิ่มเติม'}
-            </Button>
+        {/* Pagination */}
+        {influencers.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={influencers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </Card>

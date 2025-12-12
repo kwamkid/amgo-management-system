@@ -97,8 +97,8 @@ export default function DeleteUserDialog({
                 สิทธิ์: {user.role === 'admin' ? 'ผู้ดูแลระบบ' :
                         user.role === 'hr' ? 'ฝ่ายบุคคล' :
                         user.role === 'manager' ? 'ผู้จัดการ' :
-                        user.role === 'marketing' ? 'Influ Marketing' :  // ✅ เพิ่ม
-                        user.role === 'driver' ? 'พนักงานขับรถ' :       // ✅ เพิ่ม
+                        user.role === 'marketing' ? 'Influ Marketing' :
+                        user.role === 'driver' ? 'พนักงานขับรถ' :
                         'พนักงาน'}
                 </div>
               </div>

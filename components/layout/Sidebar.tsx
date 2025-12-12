@@ -128,24 +128,25 @@ const navItems: NavItem[] = [
       }
     ]
   },
-  {
-    label: 'Influ Marketing',
-    href: '#',
-    icon: <TrendingUp className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager', 'marketing'],
-    subItems: [
-      {
-        label: 'ข้อมูล Influencers',
-        href: '/influencers',
-        icon: <Baby className="w-4 h-4" />
-      },
-      {
-        label: 'Campaigns',
-        href: '/campaigns',
-        icon: <TrendingUp className="w-4 h-4" />
-      }
-    ]
-  },
+  // ปิดเมนู Influ Marketing ชั่วคราว - พนักงานยังไม่ใช้
+  // {
+  //   label: 'Influ Marketing',
+  //   href: '#',
+  //   icon: <TrendingUp className="w-5 h-5" />,
+  //   roles: ['hr', 'admin', 'manager', 'marketing'],
+  //   subItems: [
+  //     {
+  //       label: 'ข้อมูล Influencers',
+  //       href: '/influencers',
+  //       icon: <Baby className="w-4 h-4" />
+  //     },
+  //     {
+  //       label: 'Campaigns',
+  //       href: '/campaigns',
+  //       icon: <TrendingUp className="w-4 h-4" />
+  //     }
+  //   ]
+  // },
   {
     label: 'Delivery Tracking',
     icon: <Truck className="w-5 h-5" />, // No href for parent

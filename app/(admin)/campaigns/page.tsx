@@ -1,7 +1,7 @@
 // ========== FILE: app/(admin)/campaigns/page.tsx ==========
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useInfluencers } from '@/hooks/useInfluencers'
@@ -59,6 +59,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function CampaignsPage() {
   const router = useRouter()
@@ -70,7 +71,11 @@ export default function CampaignsPage() {
   const [productFilter, setProductFilter] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
-  
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
   const { campaigns, loading, cancelCampaign, deleteCampaign } = useCampaigns()
   
   // Calculate stats from campaigns directly
@@ -153,6 +158,19 @@ export default function CampaignsPage() {
       return matchesSearch && matchesStatus && matchesBrand && matchesProduct && matchesCreator
     })
   }, [campaigns, searchTerm, statusFilter, brandFilter, productFilter, creatorFilter, brands, products])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage)
+  const paginatedCampaigns = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return filteredCampaigns.slice(start, end)
+  }, [filteredCampaigns, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, brandFilter, productFilter, creatorFilter])
 
   // Status config
   const statusConfig: Record<CampaignStatus, { 
@@ -489,7 +507,7 @@ export default function CampaignsPage() {
       <Card>
         {/* Mobile View - Cards */}
         <div className="lg:hidden">
-          {filteredCampaigns.map((campaign) => {
+          {paginatedCampaigns.map((campaign) => {
             const status = statusConfig[campaign.status]
             const StatusIcon = status.icon
             
@@ -640,16 +658,16 @@ export default function CampaignsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCampaigns.map((campaign) => {
+              {paginatedCampaigns.map((campaign) => {
                 const status = statusConfig[campaign.status]
                 const StatusIcon = status.icon
-                
+
                 // Calculate progress
                 const totalInfluencers = campaign.influencers?.length || 0
                 const submittedCount = campaign.influencers?.filter(
                   inf => ['submitted', 'resubmitted', 'approved'].includes(inf.submissionStatus)
                 ).length || 0
-                const progress = totalInfluencers > 0 
+                const progress = totalInfluencers > 0
                   ? Math.round((submittedCount / totalInfluencers) * 100)
                   : 0
 
@@ -874,7 +892,7 @@ export default function CampaignsPage() {
             <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 text-base">
               {searchTerm || statusFilter !== 'all' || brandFilter || productFilter || creatorFilter !== 'all'
-                ? 'ไม่พบ Campaign ที่ค้นหา' 
+                ? 'ไม่พบ Campaign ที่ค้นหา'
                 : 'ยังไม่มี Campaign'}
             </p>
             {!searchTerm && statusFilter === 'all' && !brandFilter && !productFilter && creatorFilter === 'all' && (
@@ -889,6 +907,19 @@ export default function CampaignsPage() {
                 </Link>
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {filteredCampaigns.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredCampaigns.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </Card>

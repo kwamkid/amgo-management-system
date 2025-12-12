@@ -38,9 +38,9 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
       case 'manager':
         return 'ผู้จัดการ'
       case 'marketing':
-        return 'Influ Marketing'  // ✅ เพิ่ม
+        return 'Influ Marketing'
       case 'driver':
-        return 'พนักงานขับรถ'      // ✅ เพิ่ม
+        return 'พนักงานขับรถ'
       default:
         return 'พนักงาน'
     }

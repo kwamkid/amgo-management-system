@@ -16,13 +16,17 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { 
-  LeaveRequest, 
-  LeaveQuotaYear, 
-  LeaveType, 
+import {
+  LeaveRequest,
+  LeaveQuotaYear,
+  LeaveType,
   LeaveStatus,
   LEAVE_RULES,
-  QuotaHistory
+  QuotaHistory,
+  CarryOverRules,
+  CarryOverResult,
+  CarryOverSummary,
+  DEFAULT_CARRY_OVER_RULES
 } from '@/types/leave';
 
 // Quota Management
@@ -530,3 +534,248 @@ export const cleanupOldAttachments = async (): Promise<void> => {
 
 // Re-export LEAVE_RULES for external use
 export { LEAVE_RULES } from '@/types/leave';
+
+// =====================================================
+// Carry Over Functions - ยกยอดโควต้าวันลาข้ามปี
+// =====================================================
+
+/**
+ * คำนวณจำนวนวันที่จะยกยอดตาม rules
+ */
+const calculateCarryOverDays = (
+  remaining: number,
+  rule: { enabled: boolean; maxDays: number | null; percentage: number }
+): number => {
+  if (!rule.enabled || remaining <= 0) return 0;
+
+  // คำนวณตาม percentage
+  let carryOver = Math.floor(remaining * (rule.percentage / 100));
+
+  // จำกัดตาม maxDays ถ้ามี
+  if (rule.maxDays !== null && carryOver > rule.maxDays) {
+    carryOver = rule.maxDays;
+  }
+
+  return carryOver;
+};
+
+/**
+ * ยกยอดโควต้าสำหรับพนักงานคนเดียว
+ */
+export const carryOverQuotaForUser = async (
+  userId: string,
+  userName: string,
+  fromYear: number,
+  toYear: number,
+  rules: CarryOverRules,
+  executedBy: string,
+  baseQuota?: { sick: number; personal: number; vacation: number }
+): Promise<CarryOverResult> => {
+  try {
+    // ดึงโควต้าปีเดิม
+    const oldQuota = await getQuotaForYear(userId, fromYear);
+
+    if (!oldQuota) {
+      return {
+        userId,
+        userName,
+        fromYear,
+        toYear,
+        sick: { remaining: 0, carriedOver: 0 },
+        personal: { remaining: 0, carriedOver: 0 },
+        vacation: { remaining: 0, carriedOver: 0 },
+        success: false,
+        error: 'ไม่พบโควต้าปีเดิม'
+      };
+    }
+
+    // คำนวณจำนวนวันที่ยกยอด
+    const sickCarryOver = calculateCarryOverDays(oldQuota.sick.remaining, rules.sick);
+    const personalCarryOver = calculateCarryOverDays(oldQuota.personal.remaining, rules.personal);
+    const vacationCarryOver = calculateCarryOverDays(oldQuota.vacation.remaining, rules.vacation);
+
+    // ดึงหรือสร้างโควต้าปีใหม่
+    const newQuotaRef = doc(db, 'quotas', userId, 'years', toYear.toString());
+    const newQuotaSnap = await getDoc(newQuotaRef);
+
+    let newQuota: LeaveQuotaYear;
+
+    if (newQuotaSnap.exists()) {
+      // มีโควต้าปีใหม่อยู่แล้ว - เพิ่มยอดยกมา
+      newQuota = newQuotaSnap.data() as LeaveQuotaYear;
+
+      const updatedQuota = {
+        sick: {
+          total: newQuota.sick.total + sickCarryOver,
+          used: newQuota.sick.used,
+          remaining: newQuota.sick.total + sickCarryOver - newQuota.sick.used
+        },
+        personal: {
+          total: newQuota.personal.total + personalCarryOver,
+          used: newQuota.personal.used,
+          remaining: newQuota.personal.total + personalCarryOver - newQuota.personal.used
+        },
+        vacation: {
+          total: newQuota.vacation.total + vacationCarryOver,
+          used: newQuota.vacation.used,
+          remaining: newQuota.vacation.total + vacationCarryOver - newQuota.vacation.used
+        }
+      };
+
+      // สร้าง history entry
+      const historyEntry: QuotaHistory = {
+        changedBy: executedBy,
+        changedAt: new Date(),
+        changes: {
+          sick: sickCarryOver > 0 ? { from: newQuota.sick.total, to: updatedQuota.sick.total } : undefined,
+          personal: personalCarryOver > 0 ? { from: newQuota.personal.total, to: updatedQuota.personal.total } : undefined,
+          vacation: vacationCarryOver > 0 ? { from: newQuota.vacation.total, to: updatedQuota.vacation.total } : undefined
+        },
+        reason: `ยกยอดจากปี ${fromYear} (ป่วย: ${sickCarryOver}, กิจ: ${personalCarryOver}, พักร้อน: ${vacationCarryOver})`
+      };
+
+      await updateDoc(newQuotaRef, {
+        ...updatedQuota,
+        updatedBy: executedBy,
+        updatedAt: serverTimestamp(),
+        history: [...(newQuota.history || []), historyEntry]
+      });
+    } else {
+      // ยังไม่มีโควต้าปีใหม่ - สร้างใหม่พร้อมยอดยกมา
+      const baseSick = baseQuota?.sick ?? 0;
+      const basePersonal = baseQuota?.personal ?? 0;
+      const baseVacation = baseQuota?.vacation ?? 0;
+
+      newQuota = {
+        userId,
+        year: toYear,
+        sick: {
+          total: baseSick + sickCarryOver,
+          used: 0,
+          remaining: baseSick + sickCarryOver
+        },
+        personal: {
+          total: basePersonal + personalCarryOver,
+          used: 0,
+          remaining: basePersonal + personalCarryOver
+        },
+        vacation: {
+          total: baseVacation + vacationCarryOver,
+          used: 0,
+          remaining: baseVacation + vacationCarryOver
+        },
+        updatedBy: executedBy,
+        updatedAt: new Date(),
+        history: [{
+          changedBy: executedBy,
+          changedAt: new Date(),
+          changes: {
+            sick: { from: 0, to: baseSick + sickCarryOver },
+            personal: { from: 0, to: basePersonal + personalCarryOver },
+            vacation: { from: 0, to: baseVacation + vacationCarryOver }
+          },
+          reason: `สร้างโควต้าปี ${toYear} พร้อมยกยอดจากปี ${fromYear}`
+        }]
+      };
+
+      await setDoc(newQuotaRef, newQuota);
+    }
+
+    return {
+      userId,
+      userName,
+      fromYear,
+      toYear,
+      sick: { remaining: oldQuota.sick.remaining, carriedOver: sickCarryOver },
+      personal: { remaining: oldQuota.personal.remaining, carriedOver: personalCarryOver },
+      vacation: { remaining: oldQuota.vacation.remaining, carriedOver: vacationCarryOver },
+      success: true
+    };
+  } catch (error) {
+    console.error(`Error carrying over quota for user ${userId}:`, error);
+    return {
+      userId,
+      userName,
+      fromYear,
+      toYear,
+      sick: { remaining: 0, carriedOver: 0 },
+      personal: { remaining: 0, carriedOver: 0 },
+      vacation: { remaining: 0, carriedOver: 0 },
+      success: false,
+      error: error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'
+    };
+  }
+};
+
+/**
+ * ยกยอดโควต้าสำหรับพนักงานทั้งหมด
+ */
+export const carryOverQuotaForAllUsers = async (
+  users: Array<{ id: string; fullName: string }>,
+  fromYear: number,
+  toYear: number,
+  rules: CarryOverRules,
+  executedBy: string,
+  baseQuota?: { sick: number; personal: number; vacation: number }
+): Promise<CarryOverSummary> => {
+  const results: CarryOverResult[] = [];
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const user of users) {
+    const result = await carryOverQuotaForUser(
+      user.id,
+      user.fullName,
+      fromYear,
+      toYear,
+      rules,
+      executedBy,
+      baseQuota
+    );
+
+    results.push(result);
+
+    if (result.success) {
+      successCount++;
+    } else {
+      failedCount++;
+    }
+  }
+
+  // บันทึก log การยกยอด
+  const summaryRef = doc(collection(db, 'carryOverLogs'));
+  const summary: CarryOverSummary = {
+    totalUsers: users.length,
+    successCount,
+    failedCount,
+    results,
+    executedBy,
+    executedAt: new Date()
+  };
+
+  await setDoc(summaryRef, {
+    ...summary,
+    fromYear,
+    toYear,
+    rules
+  });
+
+  return summary;
+};
+
+/**
+ * ดึงประวัติการยกยอด
+ */
+export const getCarryOverLogs = async (year?: number): Promise<any[]> => {
+  let q = query(collection(db, 'carryOverLogs'), orderBy('executedAt', 'desc'), limit(10));
+
+  if (year) {
+    q = query(q, where('toYear', '==', year));
+  }
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};

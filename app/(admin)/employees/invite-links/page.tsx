@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import { InviteLink } from '@/types/invite'
 import { 
@@ -24,10 +24,23 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function InviteLinksPage() {
   const { inviteLinks, loading, copyInviteLink, deleteInviteLink } = useInviteLinks()
   const [showQR, setShowQR] = useState<string | null>(null)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Pagination calculations
+  const totalPages = Math.ceil(inviteLinks.length / itemsPerPage)
+  const paginatedLinks = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return inviteLinks.slice(start, end)
+  }, [inviteLinks, currentPage, itemsPerPage])
 
   const getStatusBadge = (link: InviteLink) => {
     const now = new Date()
@@ -52,8 +65,8 @@ export default function InviteLinksPage() {
     employee: { label: 'พนักงาน', variant: 'secondary' as const },
     manager: { label: 'ผู้จัดการ', variant: 'info' as const },
     hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const },
-    marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
-    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
+    marketing: { label: 'Influ Marketing', variant: 'warning' as const },
+    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
   }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
@@ -195,7 +208,7 @@ export default function InviteLinksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {inviteLinks.map((link) => (
+                {paginatedLinks.map((link) => (
                   <tr key={link.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="space-y-1">
@@ -305,6 +318,19 @@ export default function InviteLinksPage() {
                 ))}
               </tbody>
             </table>
+
+          {/* Pagination */}
+          {inviteLinks.length > 0 && (
+            <div className="p-4 border-t border-gray-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={inviteLinks.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
           </div>
         </Card>
       )}

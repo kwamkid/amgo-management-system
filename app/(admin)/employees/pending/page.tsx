@@ -56,8 +56,8 @@ export default function PendingUsersPage() {
     hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
     manager: { label: 'ผู้จัดการ', variant: 'success' as const },
     employee: { label: 'พนักงาน', variant: 'secondary' as const },
-    marketing: { label: 'Influ Marketing', variant: 'warning' as const },  // ✅ เพิ่ม
-    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }           // ✅ เพิ่ม
+    marketing: { label: 'Influ Marketing', variant: 'warning' as const },
+    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
   }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee

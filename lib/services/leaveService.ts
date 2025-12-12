@@ -779,3 +779,72 @@ export const getCarryOverLogs = async (year?: number): Promise<any[]> => {
     ...doc.data()
   }));
 };
+
+/**
+ * เช็คว่าเคยยกยอดจากปี fromYear ไป toYear แล้วหรือยัง
+ */
+export const checkCarryOverExists = async (
+  fromYear: number,
+  toYear: number
+): Promise<{ exists: boolean; lastCarryOver: any | null }> => {
+  const q = query(
+    collection(db, 'carryOverLogs'),
+    where('fromYear', '==', fromYear),
+    where('toYear', '==', toYear),
+    orderBy('executedAt', 'desc'),
+    limit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return { exists: false, lastCarryOver: null };
+  }
+
+  const doc = snapshot.docs[0];
+  return {
+    exists: true,
+    lastCarryOver: {
+      id: doc.id,
+      ...doc.data(),
+      executedAt: doc.data().executedAt?.toDate?.() || doc.data().executedAt
+    }
+  };
+};
+
+/**
+ * เช็คว่ามีโควต้าปี toYear แล้วหรือยัง (สำหรับพนักงานทั้งหมด)
+ */
+export const checkQuotaExistsForYear = async (
+  year: number,
+  userIds: string[]
+): Promise<{
+  hasQuota: boolean;
+  usersWithQuota: number;
+  usersWithoutQuota: string[];
+}> => {
+  if (userIds.length === 0) {
+    return { hasQuota: false, usersWithQuota: 0, usersWithoutQuota: [] };
+  }
+
+  const usersWithoutQuota: string[] = [];
+  let usersWithQuota = 0;
+
+  // ตรวจสอบทีละ user (เพราะ Firestore in query รองรับแค่ 30 items)
+  for (const userId of userIds) {
+    const quotaRef = doc(db, 'leaveQuotas', `${userId}_${year}`);
+    const quotaSnap = await getDoc(quotaRef);
+
+    if (quotaSnap.exists()) {
+      usersWithQuota++;
+    } else {
+      usersWithoutQuota.push(userId);
+    }
+  }
+
+  return {
+    hasQuota: usersWithQuota > 0,
+    usersWithQuota,
+    usersWithoutQuota
+  };
+};

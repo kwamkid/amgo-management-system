@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   ArrowRight,
   Loader2,
@@ -24,14 +25,17 @@ import {
   Heart,
   Briefcase,
   Activity,
-  RefreshCw
+  RefreshCw,
+  History
 } from 'lucide-react'
 import {
   CarryOverRules,
   CarryOverSummary,
   DEFAULT_CARRY_OVER_RULES
 } from '@/types/leave'
-import { carryOverQuotaForAllUsers } from '@/lib/services/leaveService'
+import { carryOverQuotaForAllUsers, checkCarryOverExists, checkQuotaExistsForYear } from '@/lib/services/leaveService'
+import { format } from 'date-fns'
+import { th } from 'date-fns/locale'
 
 interface CarryOverDialogProps {
   open: boolean
@@ -54,9 +58,39 @@ export default function CarryOverDialog({
   const [rules, setRules] = useState<CarryOverRules>(DEFAULT_CARRY_OVER_RULES)
   const [isProcessing, setIsProcessing] = useState(false)
   const [result, setResult] = useState<CarryOverSummary | null>(null)
+  const [previousCarryOver, setPreviousCarryOver] = useState<any | null>(null)
+  const [checkingPrevious, setCheckingPrevious] = useState(false)
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false)
+  const [quotaStatus, setQuotaStatus] = useState<{
+    hasQuota: boolean;
+    usersWithQuota: number;
+    usersWithoutQuota: string[];
+  } | null>(null)
 
   const fromYear = currentYear - 1
   const toYear = currentYear
+
+  // เช็คว่าเคยยกยอดไปแล้วหรือยัง และมีโควต้าปีใหม่หรือยัง เมื่อเปิด Dialog
+  useEffect(() => {
+    if (open && users.length > 0) {
+      setCheckingPrevious(true)
+
+      Promise.all([
+        checkCarryOverExists(fromYear, toYear),
+        checkQuotaExistsForYear(toYear, users.map(u => u.id))
+      ])
+        .then(([carryOverResult, quotaResult]) => {
+          if (carryOverResult.exists) {
+            setPreviousCarryOver(carryOverResult.lastCarryOver)
+          } else {
+            setPreviousCarryOver(null)
+          }
+          setQuotaStatus(quotaResult)
+        })
+        .catch(console.error)
+        .finally(() => setCheckingPrevious(false))
+    }
+  }, [open, fromYear, toYear, users])
 
   const handleRuleChange = (
     type: 'sick' | 'personal' | 'vacation',
@@ -108,6 +142,9 @@ export default function CarryOverDialog({
     setStep('config')
     setRules(DEFAULT_CARRY_OVER_RULES)
     setResult(null)
+    setPreviousCarryOver(null)
+    setConfirmDuplicate(false)
+    setQuotaStatus(null)
     onOpenChange(false)
   }
 
@@ -151,13 +188,76 @@ export default function CarryOverDialog({
         {/* Step: Config */}
         {step === 'config' && (
           <div className="space-y-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                การยกยอดจะเพิ่มวันลาคงเหลือจากปี {fromYear} ไปยังโควต้าปี {toYear}
-                สำหรับพนักงาน {users.length} คน
-              </AlertDescription>
-            </Alert>
+            {/* Loading state */}
+            {checkingPrevious ? (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>
+                  กำลังตรวจสอบข้อมูล...
+                </AlertDescription>
+              </Alert>
+            ) : quotaStatus && !quotaStatus.hasQuota ? (
+              /* Error: ยังไม่มีโควต้าปีใหม่ */
+              <Alert variant="error" className="border-red-300 bg-red-50">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong className="block mb-1">❌ ยังไม่มีโควต้าปี {toYear}</strong>
+                  <span className="text-sm">
+                    กรุณาตั้งโควต้าปี {toYear} ให้กับพนักงานก่อน จึงจะสามารถยกยอดได้
+                  </span>
+                  <p className="text-sm mt-2">
+                    ไปที่ <strong>การลา → จัดการโควต้า</strong> เพื่อตั้งค่าโควต้าปี {toYear}
+                  </p>
+                </AlertDescription>
+              </Alert>
+            ) : quotaStatus && quotaStatus.usersWithoutQuota.length > 0 ? (
+              /* Warning: มีบางคนยังไม่มีโควต้าปีใหม่ */
+              <Alert variant="warning" className="border-amber-300 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong className="block mb-1">⚠️ มีพนักงานบางคนยังไม่มีโควต้าปี {toYear}</strong>
+                  <span className="text-sm">
+                    มีโควต้าแล้ว: {quotaStatus.usersWithQuota} คน
+                    <br />
+                    ยังไม่มีโควต้า: {quotaStatus.usersWithoutQuota.length} คน
+                  </span>
+                  <p className="text-sm mt-2">
+                    พนักงานที่ยังไม่มีโควต้าปี {toYear} จะถูกสร้างโควต้าใหม่พร้อมยอดยกมา (โควต้าพื้นฐาน = 0)
+                  </p>
+                </AlertDescription>
+              </Alert>
+            ) : previousCarryOver ? (
+              /* Warning: เคยยกยอดไปแล้ว */
+              <Alert variant="error" className="border-red-300 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong className="block mb-1">⚠️ เคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว!</strong>
+                  <span className="text-sm">
+                    ยกยอดล่าสุดเมื่อ: {format(new Date(previousCarryOver.executedAt), 'd MMMM yyyy HH:mm น.', { locale: th })}
+                    <br />
+                    โดย: {previousCarryOver.executedBy}
+                    <br />
+                    ผลลัพธ์: สำเร็จ {previousCarryOver.successCount} คน
+                  </span>
+                  <p className="text-sm mt-2 font-medium text-red-700">
+                    หากยกยอดอีกครั้ง โควต้าจะถูกเพิ่มซ้ำ (ไม่ใช่การแทนที่)
+                  </p>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              /* Normal state */
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong className="block mb-1">✓ พร้อมยกยอด</strong>
+                  <span className="text-sm">
+                    พนักงาน {quotaStatus?.usersWithQuota || 0} คน มีโควต้าปี {toYear} เรียบร้อย
+                    <br />
+                    ระบบจะเพิ่มวันลาคงเหลือจากปี {fromYear} ไปยังโควต้าปี {toYear}
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-4">
               <Label className="text-base font-medium">ตั้งค่าการยกยอดแต่ละประเภท</Label>
@@ -224,9 +324,16 @@ export default function CarryOverDialog({
                 ยกเลิก
               </Button>
               <Button
-                onClick={() => setStep('confirm')}
+                onClick={() => {
+                  setConfirmDuplicate(false)
+                  setStep('confirm')
+                }}
                 className="bg-gradient-to-r from-red-500 to-rose-600"
-                disabled={!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled}
+                disabled={
+                  (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
+                  checkingPrevious ||
+                  (quotaStatus && !quotaStatus.hasQuota)
+                }
               >
                 ถัดไป
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -238,14 +345,28 @@ export default function CarryOverDialog({
         {/* Step: Confirm */}
         {step === 'confirm' && (
           <div className="space-y-4">
-            <Alert variant="warning">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>ยืนยันการยกยอดโควต้า</strong>
-                <br />
-                การดำเนินการนี้ไม่สามารถยกเลิกได้
-              </AlertDescription>
-            </Alert>
+            {previousCarryOver ? (
+              <Alert variant="error" className="border-red-300 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong>⚠️ คำเตือน: กำลังยกยอดซ้ำ!</strong>
+                  <br />
+                  <span className="text-sm">
+                    คุณเคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว
+                    การยกยอดอีกครั้งจะทำให้โควต้าถูกเพิ่มซ้ำ
+                  </span>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="warning">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>ยืนยันการยกยอดโควต้า</strong>
+                  <br />
+                  การดำเนินการนี้ไม่สามารถยกเลิกได้
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -286,6 +407,23 @@ export default function CarryOverDialog({
               </div>
             </div>
 
+            {/* Checkbox ยืนยันเมื่อยกยอดซ้ำ */}
+            {previousCarryOver && (
+              <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <Checkbox
+                  id="confirm-duplicate"
+                  checked={confirmDuplicate}
+                  onCheckedChange={(checked) => setConfirmDuplicate(checked as boolean)}
+                />
+                <Label
+                  htmlFor="confirm-duplicate"
+                  className="text-sm text-red-800 cursor-pointer leading-relaxed"
+                >
+                  ฉันเข้าใจว่าการยกยอดซ้ำจะทำให้โควต้าถูกเพิ่มอีกครั้ง และต้องการดำเนินการต่อ
+                </Label>
+              </div>
+            )}
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep('config')}>
                 ย้อนกลับ
@@ -293,6 +431,7 @@ export default function CarryOverDialog({
               <Button
                 onClick={handleCarryOver}
                 className="bg-gradient-to-r from-red-500 to-rose-600"
+                disabled={previousCarryOver && !confirmDuplicate}
               >
                 ยืนยันยกยอด
               </Button>

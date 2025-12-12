@@ -332,7 +332,7 @@ export default function CarryOverDialog({
                 disabled={
                   (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
                   checkingPrevious ||
-                  (quotaStatus && !quotaStatus.hasQuota)
+                  (quotaStatus !== null && !quotaStatus.hasQuota)
                 }
               >
                 ถัดไป

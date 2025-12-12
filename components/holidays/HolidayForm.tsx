@@ -88,7 +88,12 @@ export default function HolidayForm({
         date: format(new Date(initialData.date), 'yyyy-MM-dd'),
         type: initialData.type,
         isWorkingDay: initialData.isWorkingDay,
-        overtimeRates: initialData.overtimeRates || DEFAULT_OT_RATES,
+        overtimeRates: {
+          office: initialData.overtimeRates?.office ?? DEFAULT_OT_RATES.office,
+          retail: initialData.overtimeRates?.retail ?? DEFAULT_OT_RATES.retail,
+          driver: initialData.overtimeRates?.driver ?? DEFAULT_OT_RATES.driver,
+          marketing: initialData.overtimeRates?.marketing ?? DEFAULT_OT_RATES.marketing
+        },
         applicableLocationIds: initialData.applicableLocationIds || [],
         applicableRoles: initialData.applicableRoles || [],
         description: initialData.description || '',

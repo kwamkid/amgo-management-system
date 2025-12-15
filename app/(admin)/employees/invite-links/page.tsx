@@ -95,23 +95,24 @@ export default function InviteLinksPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
             จัดการ Invite Links
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             สร้างลิงก์สำหรับเชิญพนักงานใหม่เข้าระบบ
           </p>
         </div>
-        
+
         <Button
           asChild
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
+          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 self-end sm:self-auto"
         >
           <Link href="/employees/invite-links/create">
             <Plus className="w-5 h-5 mr-2" />
-            สร้างลิงก์ใหม่
+            <span className="hidden sm:inline">สร้างลิงก์ใหม่</span>
+            <span className="sm:hidden">สร้างใหม่</span>
           </Link>
         </Button>
       </div>
@@ -173,7 +174,7 @@ export default function InviteLinksPage() {
         </Card>
       </div>
 
-      {/* Links Table */}
+      {/* Links List */}
       {inviteLinks.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -192,136 +193,240 @@ export default function InviteLinksPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">รหัสลิงก์</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ตั้งค่า</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">การใช้งาน</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สร้างโดย</th>
-                  <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedLinks.map((link) => (
-                  <tr key={link.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                            {link.code}
-                          </code>
-                          <button
-                            onClick={() => copyInviteLink(link.code)}
-                            className="p-1 hover:bg-gray-200 rounded transition-colors"
-                            title="คัดลอกลิงก์"
-                          >
-                            <Copy className="w-4 h-4 text-gray-500" />
-                          </button>
-                        </div>
-                        {link.note && (
-                          <p className="text-xs text-gray-500">{link.note}</p>
-                        )}
+        <>
+          {/* Mobile: Card View */}
+          <div className="md:hidden space-y-3">
+            {paginatedLinks.map((link) => (
+              <Card key={link.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Link Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded truncate">
+                          {link.code}
+                        </code>
+                        <button
+                          onClick={() => copyInviteLink(link.code)}
+                          className="p-1.5 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+                          title="คัดลอกลิงก์"
+                        >
+                          <Copy className="w-4 h-4 text-gray-500" />
+                        </button>
                       </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {getStatusBadge(link)}
                         {getRoleBadge(link.defaultRole)}
-                        <div className="text-xs text-gray-500">
-                          {link.requireApproval ? 'ต้องอนุมัติ' : 'ใช้งานได้ทันที'}
-                        </div>
-                        {link.defaultLocationIds && link.defaultLocationIds.length > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {link.defaultLocationIds.length} สาขา
-                          </div>
-                        )}
                       </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="text-sm">
-                          ใช้แล้ว {link.usedCount} / {link.maxUses || '∞'}
-                        </div>
-                        {link.expiresAt && (
-                          <div className="text-xs text-gray-500">
-                            หมดอายุ {formatDate(link.expiresAt)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      {getStatusBadge(link)}
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="text-gray-900">{link.createdByName || '-'}</p>
-                        <p className="text-xs text-gray-500">{formatDate(link.createdAt)}</p>
-                      </div>
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu
-                        items={[
-                          {
-                            label: (
-                              <Link href={`/employees/invite-links/${link.id}`} className="flex items-center gap-2">
-                                <Users className="w-4 h-4" />
-                                ดูผู้ใช้งาน
-                              </Link>
-                            ),
-                            onClick: () => {}
-                          },
-                          {
-                            label: (
-                              <Link href={`/employees/invite-links/${link.id}/edit`} className="flex items-center gap-2">
-                                <Edit className="w-4 h-4" />
-                                แก้ไข
-                              </Link>
-                            ),
-                            onClick: () => {}
-                          },
-                          { divider: true },
-                          {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <QrCode className="w-4 h-4" />
-                                QR Code
-                              </span>
-                            ),
-                            onClick: () => setShowQR(link.code)
-                          },
-                          { divider: true },
-                          {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Trash2 className="w-4 h-4" />
-                                ปิดใช้งาน
-                              </span>
-                            ),
-                            onClick: () => handleDelete(link),
-                            className: 'text-red-600 hover:bg-red-50',
-                            disabled: !link.isActive
-                          }
-                        ]}
-                      />
-                    </td>
+                      {link.note && (
+                        <p className="text-xs text-gray-500 mt-1 truncate">{link.note}</p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <DropdownMenu
+                      items={[
+                        {
+                          label: (
+                            <Link href={`/employees/invite-links/${link.id}`} className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              ดูผู้ใช้งาน
+                            </Link>
+                          ),
+                          onClick: () => {}
+                        },
+                        {
+                          label: (
+                            <Link href={`/employees/invite-links/${link.id}/edit`} className="flex items-center gap-2">
+                              <Edit className="w-4 h-4" />
+                              แก้ไข
+                            </Link>
+                          ),
+                          onClick: () => {}
+                        },
+                        { divider: true },
+                        {
+                          label: (
+                            <span className="flex items-center gap-2">
+                              <QrCode className="w-4 h-4" />
+                              QR Code
+                            </span>
+                          ),
+                          onClick: () => setShowQR(link.code)
+                        },
+                        { divider: true },
+                        {
+                          label: (
+                            <span className="flex items-center gap-2">
+                              <Trash2 className="w-4 h-4" />
+                              ปิดใช้งาน
+                            </span>
+                          ),
+                          onClick: () => handleDelete(link),
+                          className: 'text-red-600 hover:bg-red-50',
+                          disabled: !link.isActive
+                        }
+                      ]}
+                    />
+                  </div>
+
+                  {/* Details */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-gray-500 text-xs">การใช้งาน</p>
+                      <p className="font-medium">{link.usedCount} / {link.maxUses || '∞'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">หมดอายุ</p>
+                      <p className="font-medium">{link.expiresAt ? formatDate(link.expiresAt) : 'ไม่มี'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">สร้างโดย</p>
+                      <p className="font-medium truncate">{link.createdByName || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">อนุมัติ</p>
+                      <p className="font-medium">{link.requireApproval ? 'ต้องอนุมัติ' : 'ทันที'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop: Table View */}
+          <Card className="hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">รหัสลิงก์</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ตั้งค่า</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">การใช้งาน</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สร้างโดย</th>
+                    <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedLinks.map((link) => (
+                    <tr key={link.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                              {link.code}
+                            </code>
+                            <button
+                              onClick={() => copyInviteLink(link.code)}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="คัดลอกลิงก์"
+                            >
+                              <Copy className="w-4 h-4 text-gray-500" />
+                            </button>
+                          </div>
+                          {link.note && (
+                            <p className="text-xs text-gray-500">{link.note}</p>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          {getRoleBadge(link.defaultRole)}
+                          <div className="text-xs text-gray-500">
+                            {link.requireApproval ? 'ต้องอนุมัติ' : 'ใช้งานได้ทันที'}
+                          </div>
+                          {link.defaultLocationIds && link.defaultLocationIds.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {link.defaultLocationIds.length} สาขา
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <div className="text-sm">
+                            ใช้แล้ว {link.usedCount} / {link.maxUses || '∞'}
+                          </div>
+                          {link.expiresAt && (
+                            <div className="text-xs text-gray-500">
+                              หมดอายุ {formatDate(link.expiresAt)}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {getStatusBadge(link)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <p className="text-gray-900">{link.createdByName || '-'}</p>
+                          <p className="text-xs text-gray-500">{formatDate(link.createdAt)}</p>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <DropdownMenu
+                          items={[
+                            {
+                              label: (
+                                <Link href={`/employees/invite-links/${link.id}`} className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  ดูผู้ใช้งาน
+                                </Link>
+                              ),
+                              onClick: () => {}
+                            },
+                            {
+                              label: (
+                                <Link href={`/employees/invite-links/${link.id}/edit`} className="flex items-center gap-2">
+                                  <Edit className="w-4 h-4" />
+                                  แก้ไข
+                                </Link>
+                              ),
+                              onClick: () => {}
+                            },
+                            { divider: true },
+                            {
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <QrCode className="w-4 h-4" />
+                                  QR Code
+                                </span>
+                              ),
+                              onClick: () => setShowQR(link.code)
+                            },
+                            { divider: true },
+                            {
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Trash2 className="w-4 h-4" />
+                                  ปิดใช้งาน
+                                </span>
+                              ),
+                              onClick: () => handleDelete(link),
+                              className: 'text-red-600 hover:bg-red-50',
+                              disabled: !link.isActive
+                            }
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
           {/* Pagination */}
           {inviteLinks.length > 0 && (
-            <div className="p-4 border-t border-gray-100">
+            <div className="mt-4">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -331,8 +436,7 @@ export default function InviteLinksPage() {
               />
             </div>
           )}
-          </div>
-        </Card>
+        </>
       )}
 
       {/* QR Code Modal */}

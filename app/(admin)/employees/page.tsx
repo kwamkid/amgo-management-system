@@ -174,19 +174,20 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการพนักงาน</h1>
-          <p className="text-gray-600 mt-1 text-base">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">จัดการพนักงาน</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             จัดการข้อมูลและสิทธิ์การใช้งานของพนักงาน
           </p>
         </div>
-        
+
         <Button
           onClick={handleRefresh}
           variant="outline"
           size="icon"
           title="รีเฟรชข้อมูล"
+          className="self-end sm:self-auto"
         >
           <RefreshCw className="w-4 h-4" />
         </Button>
@@ -244,8 +245,8 @@ export default function EmployeesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
+      <div className="space-y-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
             type="text"
@@ -255,30 +256,32 @@ export default function EmployeesPage() {
             className="pl-10"
           />
         </div>
-        
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="h-12 px-4 py-3 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 transition-all"
-        >
-          <option value="">ทุกสิทธิ์</option>
-          <option value="admin">ผู้ดูแลระบบ</option>
-          <option value="hr">ฝ่ายบุคคล</option>
-          <option value="manager">ผู้จัดการ</option>
-          <option value="employee">พนักงาน</option>
-          <option value="marketing">Influ Marketing</option>
-          <option value="driver">พนักงานขับรถ</option>
-        </select>
-        
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="h-12 px-4 py-3 bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 transition-all"
-        >
-          <option value="active">เฉพาะที่ใช้งาน</option>
-          <option value="inactive">เฉพาะที่ระงับ</option>
-          <option value="all">ทั้งหมด</option>
-        </select>
+
+        <div className="flex gap-2">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="flex-1 h-10 px-3 py-2 text-sm bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 transition-all"
+          >
+            <option value="">ทุกสิทธิ์</option>
+            <option value="admin">ผู้ดูแลระบบ</option>
+            <option value="hr">ฝ่ายบุคคล</option>
+            <option value="manager">ผู้จัดการ</option>
+            <option value="employee">พนักงาน</option>
+            <option value="marketing">Influ Marketing</option>
+            <option value="driver">พนักงานขับรถ</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="flex-1 h-10 px-3 py-2 text-sm bg-gray-50 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 transition-all"
+          >
+            <option value="active">ใช้งาน</option>
+            <option value="inactive">ระงับ</option>
+            <option value="all">ทั้งหมด</option>
+          </select>
+        </div>
       </div>
 
       {/* Results info */}
@@ -290,142 +293,240 @@ export default function EmployeesPage() {
         </Alert>
       )}
 
-      {/* Users Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          {paginatedUsers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">
-                {searchTerm ? 'ไม่พบผู้ใช้ที่ค้นหา' : 'ไม่มีข้อมูลผู้ใช้'}
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">พนักงาน</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ติดต่อ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สิทธิ์</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">เข้าร่วม</th>
-                  <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {user.linePictureUrl ? (
-                          <img
-                            src={user.linePictureUrl}
-                            alt={user.fullName}
-                            className="w-10 h-10 rounded-full"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-gray-500" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-gray-900">{user.fullName}</p>
-                          <p className="text-sm text-gray-500">{user.lineDisplayName}</p>
+      {/* Users List */}
+      {paginatedUsers.length === 0 ? (
+        <Card>
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500">
+              {searchTerm ? 'ไม่พบผู้ใช้ที่ค้นหา' : 'ไม่มีข้อมูลผู้ใช้'}
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile: Card View */}
+          <div className="md:hidden space-y-3">
+            {paginatedUsers.map((user) => (
+              <Card key={user.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* User Info */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {user.linePictureUrl ? (
+                        <img
+                          src={user.linePictureUrl}
+                          alt={user.fullName}
+                          className="w-12 h-12 rounded-full flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Users className="w-6 h-6 text-gray-500" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 truncate">{user.fullName}</p>
+                        <p className="text-sm text-gray-500 truncate">{user.lineDisplayName}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {getRoleBadge(user.role)}
+                          {getStatusBadge(user.isActive)}
                         </div>
                       </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        {user.phone && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone className="w-4 h-4" />
-                            {user.phone}
-                          </div>
-                        )}
-                        {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-xs">{user.allowedLocationIds.length} สาขา</span>
-                          </div>
-                        )}
+                    </div>
+
+                    {/* Actions */}
+                    <DropdownMenu
+                      items={[
+                        {
+                          label: (
+                            <span className="flex items-center gap-2">
+                              <Edit className="w-4 h-4" />
+                              แก้ไขข้อมูล
+                            </span>
+                          ),
+                          onClick: () => handleEdit(user.id!)
+                        },
+                        { divider: true },
+                        {
+                          label: (
+                            <span className="flex items-center gap-2">
+                              <UserX className="w-4 h-4" />
+                              ระงับการใช้งาน
+                            </span>
+                          ),
+                          onClick: () => handleDeactivate(user),
+                          className: 'text-orange-600 hover:bg-orange-50',
+                          disabled: !user.isActive
+                        },
+                        {
+                          label: (
+                            <span className="flex items-center gap-2">
+                              <Trash2 className="w-4 h-4" />
+                              ลบพนักงาน
+                            </span>
+                          ),
+                          onClick: () => handleDelete(user),
+                          className: 'text-red-600 hover:bg-red-50'
+                        }
+                      ]}
+                    />
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                    {user.phone && (
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{user.phone}</span>
                       </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      {getRoleBadge(user.role)}
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      {getStatusBadge(user.isActive)}
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
+                    )}
+                    {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>{user.allowedLocationIds.length} สาขา</span>
                       </div>
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu
-                        items={[
-                          {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Edit className="w-4 h-4" />
-                                แก้ไขข้อมูล
-                              </span>
-                            ),
-                            onClick: () => handleEdit(user.id!)
-                          },
-                          { divider: true },
-                          {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <UserX className="w-4 h-4" />
-                                ระงับการใช้งาน
-                              </span>
-                            ),
-                            onClick: () => handleDeactivate(user),
-                            className: 'text-orange-600 hover:bg-orange-50',
-                            disabled: !user.isActive
-                          },
-                          {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Trash2 className="w-4 h-4" />
-                                ลบพนักงาน
-                              </span>
-                            ),
-                            onClick: () => handleDelete(user),
-                            className: 'text-red-600 hover:bg-red-50'
-                          }
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        
-        {/* Pagination */}
-        {filteredUsers.length > 0 && (
-          <div className="p-4 border-t border-gray-100">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredUsers.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+                    )}
+                    {user.createdAt && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>{new Date(user.createdAt).toLocaleDateString('th-TH')}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </Card>
+
+          {/* Desktop: Table View */}
+          <Card className="hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">พนักงาน</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ติดต่อ</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สิทธิ์</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
+                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">เข้าร่วม</th>
+                    <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {user.linePictureUrl ? (
+                            <img
+                              src={user.linePictureUrl}
+                              alt={user.fullName}
+                              className="w-10 h-10 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <Users className="w-5 h-5 text-gray-500" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">{user.fullName}</p>
+                            <p className="text-sm text-gray-500">{user.lineDisplayName}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          {user.phone && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone className="w-4 h-4" />
+                              {user.phone}
+                            </div>
+                          )}
+                          {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MapPin className="w-4 h-4" />
+                              <span className="text-xs">{user.allowedLocationIds.length} สาขา</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {getRoleBadge(user.role)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {getStatusBadge(user.isActive)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <DropdownMenu
+                          items={[
+                            {
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Edit className="w-4 h-4" />
+                                  แก้ไขข้อมูล
+                                </span>
+                              ),
+                              onClick: () => handleEdit(user.id!)
+                            },
+                            { divider: true },
+                            {
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <UserX className="w-4 h-4" />
+                                  ระงับการใช้งาน
+                                </span>
+                              ),
+                              onClick: () => handleDeactivate(user),
+                              className: 'text-orange-600 hover:bg-orange-50',
+                              disabled: !user.isActive
+                            },
+                            {
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Trash2 className="w-4 h-4" />
+                                  ลบพนักงาน
+                                </span>
+                              ),
+                              onClick: () => handleDelete(user),
+                              className: 'text-red-600 hover:bg-red-50'
+                            }
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Pagination */}
+          {filteredUsers.length > 0 && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredUsers.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {/* Delete User Dialog */}
       <DeleteUserDialog

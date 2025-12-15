@@ -48,17 +48,18 @@ export default function EmployeesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   
-  // Get users with filters
-  const { 
-    users, 
-    loading, 
-    loadMore, 
-    hasMore, 
-    updateUserRole, 
-    deactivateUser, 
+  // Get users with filters - ใช้ pageSize 500 เพื่อดึงข้อมูลทั้งหมด
+  const {
+    users,
+    loading,
+    loadMore,
+    hasMore,
+    updateUserRole,
+    deactivateUser,
     refetch,
-    searchUsers 
+    searchUsers
   } = useUsers({
+    pageSize: 500,
     role: roleFilter || undefined,
     isActive: statusFilter === 'all' ? undefined : statusFilter === 'active',
     searchTerm: searchTerm

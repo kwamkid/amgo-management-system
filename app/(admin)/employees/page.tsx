@@ -6,9 +6,9 @@ import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
 import { User, UserFilters } from '@/types/user'
 import DeleteUserDialog from '@/components/users/DeleteUserDialog'
-import { 
-  Users, 
-  Search, 
+import {
+  Users,
+  Search,
   Filter,
   MoreVertical,
   CheckCircle,
@@ -39,7 +39,7 @@ export default function EmployeesPage() {
   const [roleFilter, setRoleFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active')
   const [isNavigating, setIsNavigating] = useState(false)
-  
+
   // Delete Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null)

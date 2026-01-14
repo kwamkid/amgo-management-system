@@ -372,12 +372,12 @@ function applyEmployeeSummaryStyles(ws: XLSX.WorkSheet, rows: any[]) {
   rows.forEach((row, index) => {
     if (row[0] && row[0].startsWith('สรุป')) {
       const rowIndex = index + 2 // +2 because of header row and 0-based index
-      
+
       // Style summary row
       for (let col = 0; col < 10; col++) {
         const cellAddr = XLSX.utils.encode_cell({ r: rowIndex, c: col })
         if (!ws[cellAddr]) continue
-        
+
         ws[cellAddr].s = {
           fill: {
             patternType: 'solid',
@@ -391,4 +391,107 @@ function applyEmployeeSummaryStyles(ws: XLSX.WorkSheet, rows: any[]) {
       }
     }
   })
+}
+
+/**
+ * Export Payroll Report - สำหรับคำนวณเงินเดือน
+ * แสดงเวลาทำงานจริง (ไม่รวม break time)
+ */
+export function exportPayrollReport(
+  data: AttendanceReportData[],
+  summary: any[],
+  options: {
+    startDate: Date
+    endDate: Date
+    locationName?: string
+  }
+) {
+  const wb = XLSX.utils.book_new()
+
+  // สรุปรายเดือน - แสดงแค่เวลาทำงาน
+  const payrollHeaders = [
+    'ชื่อพนักงาน',
+    'วันทำงาน (วัน)',
+    'ชั่วโมงทำงาน (ชม.)',
+    'วันขาด (วัน)',
+    'ครั้งที่สาย',
+    'นาทีที่สาย (รวม)',
+    'ทำงานวันหยุด (วัน)',
+    'หมายเหตุ'
+  ]
+
+  const payrollRows = summary.map(stat => {
+    return [
+      stat.userName,
+      stat.presentDays || 0,
+      stat.totalHours.toFixed(2), // เวลาทำงานจริง (ไม่รวม break)
+      stat.absentDays || 0,
+      stat.lateDays || 0,
+      stat.totalLateMinutes || 0,
+      stat.workingHolidayDays || 0,
+      '' // หมายเหตุว่างไว้ให้ HR เขียนเพิ่ม
+    ]
+  })
+
+  const payrollWs = XLSX.utils.aoa_to_sheet([payrollHeaders, ...payrollRows])
+
+  // Set column widths
+  payrollWs['!cols'] = [
+    { wch: 25 }, // ชื่อพนักงาน
+    { wch: 15 }, // วันทำงาน
+    { wch: 18 }, // ชั่วโมงทำงาน
+    { wch: 15 }, // วันขาด
+    { wch: 12 }, // ครั้งที่สาย
+    { wch: 18 }, // นาทีที่สาย
+    { wch: 20 }, // ทำงานวันหยุด
+    { wch: 30 }  // หมายเหตุ
+  ]
+
+  XLSX.utils.book_append_sheet(wb, payrollWs, 'รายงานเงินเดือน')
+
+  // เพิ่ม Sheet รายละเอียดแต่ละวัน (สำหรับตรวจสอบ)
+  const detailHeaders = [
+    'วันที่',
+    'ชื่อพนักงาน',
+    'เวลาเข้า',
+    'เวลาออก',
+    'ชั่วโมงทำงาน',
+    'สถานะ',
+    'สายกี่นาที',
+    'สถานที่'
+  ]
+
+  const detailRows = data.map(record => [
+    format(new Date(record.date), 'dd/MM/yyyy'),
+    record.userName,
+    record.firstCheckIn,
+    record.lastCheckOut,
+    record.totalHours > 0 ? record.totalHours.toFixed(2) : '-',
+    getStatusText(record),
+    record.isLate ? record.lateMinutes : '',
+    record.locationName || 'นอกสถานที่'
+  ])
+
+  const detailWs = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows])
+
+  detailWs['!cols'] = [
+    { wch: 12 }, // วันที่
+    { wch: 25 }, // ชื่อ
+    { wch: 10 }, // เวลาเข้า
+    { wch: 10 }, // เวลาออก
+    { wch: 15 }, // ชั่วโมง
+    { wch: 15 }, // สถานะ
+    { wch: 12 }, // สาย
+    { wch: 20 }  // สถานที่
+  ]
+
+  XLSX.utils.book_append_sheet(wb, detailWs, 'รายละเอียด')
+
+  // Generate filename
+  const dateRange = `${format(options.startDate, 'ddMMyy')}-${format(options.endDate, 'ddMMyy')}`
+  const locationPart = options.locationName ? `_${options.locationName}` : ''
+  const filename = `รายงานเงินเดือน${locationPart}_${dateRange}.xlsx`
+
+  // Save file
+  XLSX.writeFile(wb, filename)
 }

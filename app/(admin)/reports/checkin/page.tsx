@@ -14,7 +14,7 @@ import {
   getAttendanceReportForExport,
   getAttendanceSummary
 } from '@/lib/services/reportService'
-import { exportDetailedReport, exportByEmployeeReport } from '@/lib/services/excelExportService'
+import { exportDetailedReport, exportByEmployeeReport, exportPayrollReport } from '@/lib/services/excelExportService'
 import TechLoader from '@/components/shared/TechLoader'
 import ReportFilters from '@/components/reports/ReportFilters'
 import ReportResults from '@/components/reports/ReportResults'
@@ -74,23 +74,23 @@ export default function CheckInReportPage() {
   }
   
   // Export to Excel - fetch all data
-  const handleExport = async (exportType: 'daily' | 'byEmployee' = 'daily') => {
+  const handleExport = async (exportType: 'daily' | 'byEmployee' | 'payroll' = 'daily') => {
     if (!filters) {
       showToast('กรุณาสร้างรายงานก่อน Export', 'error')
       return
     }
-    
+
     // Prevent multiple exports
     if (exporting) {
       return
     }
-    
+
     try {
       setExporting(true)
-      
+
       // Get checkbox state from DOM
       const showOnlyWithData = (document.querySelector('input[type="checkbox"]') as HTMLInputElement)?.checked ?? true
-      
+
       // Fetch all data without pagination
       const response = await getAttendanceReportForExport({
         startDate: filters.startDate,
@@ -107,7 +107,18 @@ export default function CheckInReportPage() {
       
       const locationName = locations.find(l => l.id === filters.locationId)?.name
       
-      if (exportType === 'byEmployee') {
+      if (exportType === 'payroll') {
+        // Export payroll report
+        exportPayrollReport(
+          dataToExport,
+          response.summary || [],
+          {
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            locationName
+          }
+        )
+      } else if (exportType === 'byEmployee') {
         // Export grouped by employee
         exportByEmployeeReport(
           dataToExport,
@@ -169,6 +180,14 @@ export default function CheckInReportPage() {
         
         {reportData.length > 0 && (
           <div className="flex gap-2">
+            <Button
+              onClick={() => handleExport('payroll')}
+              disabled={exporting}
+              className="bg-gradient-to-r from-purple-500 to-pink-600"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {exporting ? 'กำลัง Export...' : 'Export เงินเดือน'}
+            </Button>
             <Button
               onClick={() => handleExport('daily')}
               disabled={exporting}

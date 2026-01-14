@@ -456,7 +456,7 @@ export const restoreUser = async (userId: string): Promise<void> => {
       restoredAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     })
-    
+
     // Refresh custom claims
     await refreshUserClaims(userId)
   } catch (error) {
@@ -464,3 +464,4 @@ export const restoreUser = async (userId: string): Promise<void> => {
     throw error
   }
 }
+

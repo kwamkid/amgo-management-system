@@ -100,7 +100,7 @@ export async function sendCheckInNotification(event: NotificationEvent) {
   if (!enabled) return false
 
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
-  
+
   const embed: DiscordEmbed = {
     author: {
       name: event.userName,
@@ -126,7 +126,12 @@ export async function sendCheckInNotification(event: NotificationEvent) {
     timestamp: new Date().toISOString()
   }
 
-  return webhook.sendEmbed(embed)
+  // Send with custom username and avatar for notification
+  return webhook.send({
+    username: event.userName,
+    avatar_url: event.userAvatar || undefined,
+    embeds: [embed]
+  })
 }
 
 export async function sendCheckOutNotification(event: NotificationEvent) {
@@ -136,7 +141,7 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
 
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
   const { totalHours, overtime } = event.data || {}
-  
+
   const embed: DiscordEmbed = {
     author: {
       name: event.userName,
@@ -156,10 +161,18 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
         inline: true
       }] : [])
     ],
+    footer: {
+      text: 'AMGO Check-in System'
+    },
     timestamp: new Date().toISOString()
   }
 
-  return webhook.sendEmbed(embed)
+  // Send with custom username and avatar for notification
+  return webhook.send({
+    username: event.userName,
+    avatar_url: event.userAvatar || undefined,
+    embeds: [embed]
+  })
 }
 
 export async function sendLeaveRequestNotification(event: NotificationEvent) {

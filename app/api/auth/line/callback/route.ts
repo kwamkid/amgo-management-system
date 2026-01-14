@@ -124,12 +124,20 @@ export async function GET(request: NextRequest) {
 
     // Existing user - check if active
     const userData = userDoc.data()!
-    
+
     if (!userData.isActive) {
       return NextResponse.redirect(
         new URL('/login?error=account_inactive', request.url)
       )
     }
+
+    // Update profile picture and display name every login
+    await adminDb.collection('users').doc(userId).update({
+      linePictureUrl: pictureUrl || userData.linePictureUrl || '',
+      lineDisplayName: displayName,
+      lastLoginAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    })
 
     // Create Firebase custom token
     const customToken = await adminAuth.createCustomToken(userId, {

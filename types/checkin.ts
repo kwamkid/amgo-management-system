@@ -47,6 +47,7 @@ export interface CheckInRecord {
   isEarlyCheckout?: boolean
   forgotCheckout?: boolean
   manualCheckout?: boolean // HR checked out for employee
+  autoCheckout?: boolean // System auto-checked out (forgot checkout at 23:59)
   needsOvertimeApproval?: boolean // Worked past closing time, needs HR approval
   overtimeApproved?: boolean // OT hours approved by HR
   

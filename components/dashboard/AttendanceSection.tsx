@@ -272,7 +272,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                               </span>
                               <span className="flex items-center gap-1 text-sm text-gray-600">
                                 <MapPin className="w-3.5 h-3.5" />
-                                {record.primaryLocationName || 'นอกสถานที่'}
+                                {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
                               </span>
                             </div>
                           </div>

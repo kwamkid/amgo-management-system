@@ -38,7 +38,7 @@ export function exportDetailedReport(
     record.firstCheckIn,
     record.lastCheckOut,
     record.totalHours > 0 ? record.totalHours : '-',
-    record.locationName || 'นอกสถานที่',
+    record.locationName || 'เช็คอินนอกสถานที่',
     getStatusText(record),
     getRecordNote(record)
   ])

@@ -231,7 +231,7 @@ export default function CheckInButton() {
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
               <MapPin className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-700">
-                {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
+                {currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
               </span>
             </div>
             

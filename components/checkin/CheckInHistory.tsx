@@ -103,15 +103,19 @@ export default function CheckInHistory({
     if (record.status === 'pending') {
       return 'รอ HR อนุมัติ'
     }
+    if (record.autoCheckout) {
+      return 'Auto Checkout'
+    }
     if (record.forgotCheckout) {
       return 'ลืมเช็คเอาท์'
     }
     return 'เสร็จสิ้น'
   }
 
-  const getStatusVariant = (record: CheckInRecord): 'success' | 'warning' | 'error' | 'default' => {
+  const getStatusVariant = (record: CheckInRecord): 'success' | 'warning' | 'error' | 'default' | 'info' => {
     if (record.status === 'checked-in') return 'success'
     if (record.status === 'pending') return 'warning'
+    if (record.autoCheckout) return 'info'
     if (record.isLate) return 'error'
     return 'default'
   }
@@ -210,7 +214,7 @@ export default function CheckInHistory({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{record.primaryLocationName || 'นอกสถานที่'}</span>
+                    <span>{record.primaryLocationName || 'เช็คอินนอกสถานที่'}</span>
                     {record.isLate && (
                       <Badge variant="error" className="ml-auto text-xs">
                         สาย {record.lateMinutes} นาที
@@ -228,6 +232,13 @@ export default function CheckInHistory({
                 </div>
 
               {/* Note or Warning */}
+              {record.autoCheckout && (
+                <Alert variant="info" className="mt-2 py-2 bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-xs text-blue-700">
+                    🤖 ระบบเช็คเอาท์อัตโนมัติ (ลืมเช็คเอาท์เกิน 12 ชั่วโมง)
+                  </AlertDescription>
+                </Alert>
+              )}
               {record.needsOvertimeApproval && (
                 <Alert variant="warning" className="mt-2 py-2">
                   <AlertDescription className="text-xs">

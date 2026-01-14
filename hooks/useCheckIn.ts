@@ -164,20 +164,31 @@ export function useCheckIn(): UseCheckInReturn {
       showToast('กรุณารอสักครู่', 'error')
       return
     }
-    
+
     if (!locationCheckResult.canCheckIn) {
       showToast(locationCheckResult.reason || 'ไม่สามารถเช็คอินได้', 'error')
       return
     }
-    
+
     try {
       setIsCheckingIn(true)
       setShowShiftSelector(false)
-      
+
       // Prepare check-in data
-      const primaryLocation = locationCheckResult.locationsInRange[0] || locationCheckResult.nearestLocation
       const checkinType = locationCheckResult.locationsInRange.length > 0 ? 'onsite' : 'offsite'
-      
+
+      // For offsite check-in: use exact GPS location without mapping to nearest location
+      // For onsite check-in: use primary location from locations in range
+      let primaryLocation = null
+      let locationsInRange: string[] = []
+
+      if (checkinType === 'onsite') {
+        // Onsite: use first location in range
+        primaryLocation = locationCheckResult.locationsInRange[0]
+        locationsInRange = locationCheckResult.locationsInRange.map(l => l.id)
+      }
+      // else: offsite remains null and empty array
+
       // Create check-in
       await checkinService.createCheckIn({
         userId: userData.id!,
@@ -185,7 +196,7 @@ export function useCheckIn(): UseCheckInReturn {
         userAvatar: userData.linePictureUrl,
         lat: currentPosition.coords.latitude,
         lng: currentPosition.coords.longitude,
-        locationsInRange: locationCheckResult.locationsInRange.map(l => l.id),
+        locationsInRange: locationsInRange,
         primaryLocationId: primaryLocation?.id || null,
         primaryLocationName: primaryLocation?.name,
         checkinType,
@@ -198,7 +209,7 @@ export function useCheckIn(): UseCheckInReturn {
         await DiscordNotificationService.notifyCheckIn(
           userData.id!,
           userData.fullName,
-          primaryLocation?.name || 'นอกสถานที่',
+          primaryLocation?.name || 'เช็คอินนอกสถานที่',
           userData.linePictureUrl
         )
       } catch (err) {

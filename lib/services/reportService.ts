@@ -375,7 +375,7 @@ async function generateReportDataOptimized(
             lastCheckOut: lastCheckoutTime ? format(lastCheckoutTime, 'HH:mm') : '-',
             totalHours: Math.round(totalHours * 100) / 100,
             status: holiday && !holiday.isWorkingDay ? 'holiday' : (firstCheckin.isLate ? 'late' : 'normal'),
-            locationName: firstCheckin.primaryLocationName || 'นอกสถานที่',
+            locationName: firstCheckin.primaryLocationName || 'เช็คอินนอกสถานที่',
             isLate: firstCheckin.isLate || false,
             lateMinutes: firstCheckin.lateMinutes || 0,
             note,

@@ -312,7 +312,7 @@ function DailyReportTable({ data }: { data: AttendanceReportData[] }) {
                   <span className="font-medium">{record.totalHours}</span>
                 ) : '-'}
               </TableCell>
-              <TableCell>{record.locationName || 'นอกสถานที่'}</TableCell>
+              <TableCell>{record.locationName || 'เช็คอินนอกสถานที่'}</TableCell>
               <TableCell>
                 <AttendanceStatusBadge 
                   status={record.status} 

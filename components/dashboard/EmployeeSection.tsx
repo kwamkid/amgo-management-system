@@ -283,7 +283,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                     </p>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <MapPin className="w-4 h-4" />
-                      {currentCheckIn.primaryLocationName || 'นอกสถานที่'}
+                      {currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
                     </div>
                   </div>
                   

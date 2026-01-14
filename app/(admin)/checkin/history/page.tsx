@@ -307,11 +307,9 @@ export default function CheckInHistoryPage() {
                                         checkoutTime ? format(checkoutTime, 'HH:mm') : '--:--'
                                       }
                                     </span>
-                                    {record.primaryLocationName && (
-                                      <span className="text-sm text-gray-500">
-                                        @ {record.primaryLocationName}
-                                      </span>
-                                    )}
+                                    <span className="text-sm text-gray-500">
+                                      @ {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
+                                    </span>
                                     {record.selectedShiftName && (
                                       <Badge variant="info" className="text-xs ml-2">
                                         {record.selectedShiftName}

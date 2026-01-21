@@ -101,13 +101,18 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
 
+  const { checkinType, lat, lng } = event.data || {}
+  const isOffsite = checkinType === 'offsite'
+
   const embed: DiscordEmbed = {
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: `เช็คอินเรียบร้อย ที่**${event.locationName}**`,
-    color: EmbedColors.SUCCESS,
+    description: isOffsite
+      ? `📍 เช็คอินนอกสถานที่`
+      : `เช็คอินเรียบร้อย ที่**${event.locationName}**`,
+    color: isOffsite ? EmbedColors.WARNING : EmbedColors.SUCCESS,
     fields: [
       {
         name: 'เวลา',
@@ -118,10 +123,16 @@ export async function sendCheckInNotification(event: NotificationEvent) {
         name: 'วันที่',
         value: safeFormatDate(event.timestamp, 'dd MMM yyyy'),
         inline: true
-      }
+      },
+      // Add location link for offsite check-in
+      ...(isOffsite && lat && lng ? [{
+        name: '📌 ตำแหน่ง',
+        value: `[ดูใน Google Maps](https://www.google.com/maps?q=${lat},${lng})`,
+        inline: false
+      }] : [])
     ],
     footer: {
-      text: 'AMGO Check-in System'
+      text: isOffsite ? '⚠️ เช็คอินนอกพื้นที่ | AMGO Check-in System' : 'AMGO Check-in System'
     },
     timestamp: new Date().toISOString()
   }

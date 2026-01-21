@@ -12,7 +12,10 @@ export class DiscordNotificationService {
     userId: string,
     userName: string,
     locationName: string,
-    userAvatar?: string
+    userAvatar?: string,
+    checkinType?: 'onsite' | 'offsite',
+    lat?: number,
+    lng?: number
   ) {
     const event: NotificationEvent = {
       type: 'check_in',
@@ -20,9 +23,14 @@ export class DiscordNotificationService {
       userName,
       userAvatar,
       locationName,
-      timestamp: new Date()
+      timestamp: new Date(),
+      data: {
+        checkinType,
+        lat,
+        lng
+      }
     }
-    
+
     try {
       await webhookHandlers.sendCheckInNotification(event)
     } catch (error) {

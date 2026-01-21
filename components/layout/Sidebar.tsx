@@ -66,6 +66,12 @@ const navItems: NavItem[] = [
         icon: <Calendar className="w-4 h-4" />
       },
       {
+        label: 'แผนที่เช็คอิน',
+        href: '/checkin/map',
+        icon: <Map className="w-4 h-4" />,
+        roles: ['admin']
+      },
+      {
         label: 'รอดำเนินการ',
         href: '/checkin/pending',
         icon: <Clock className="w-4 h-4" />,

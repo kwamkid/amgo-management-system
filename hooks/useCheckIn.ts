@@ -210,7 +210,10 @@ export function useCheckIn(): UseCheckInReturn {
           userData.id!,
           userData.fullName,
           primaryLocation?.name || 'เช็คอินนอกสถานที่',
-          userData.linePictureUrl
+          userData.linePictureUrl,
+          checkinType,
+          currentPosition.coords.latitude,
+          currentPosition.coords.longitude
         )
       } catch (err) {
         console.error('Discord notification failed:', err)

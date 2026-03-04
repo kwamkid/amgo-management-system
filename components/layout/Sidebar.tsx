@@ -365,15 +365,16 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
-        <button 
+        <button
           onClick={() => handleNavigation('/dashboard')}
-          className="hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <img 
-            src="/amgo-logo.svg" 
-            alt="AMGO Logo" 
+          <img
+            src="/amgo-logo.svg"
+            alt="AMGO Logo"
             className="h-10 w-auto"
           />
+          <span className="text-base font-bold tracking-widest text-gray-700">AMGO HR</span>
         </button>
       </div>
 

@@ -51,11 +51,16 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}
           {onMenuClick && (
-            <MobileMenuButton 
-              isOpen={sidebarOpen} 
-              onClick={onMenuClick} 
+            <MobileMenuButton
+              isOpen={sidebarOpen}
+              onClick={onMenuClick}
             />
           )}
+        </div>
+
+        {/* Mobile Logo - center */}
+        <div className="absolute left-1/2 -translate-x-1/2 lg:hidden">
+          <img src="/amgo-logo.svg" alt="AMGO Logo" className="h-[42px] w-auto" />
         </div>
 
         <div className="flex items-center gap-3">

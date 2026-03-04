@@ -326,9 +326,13 @@ async function generateReportDataOptimized(
         } else {
           // Process check-ins
           const firstCheckin = userCheckins[0]
-          const firstCheckinTime = firstCheckin.checkinTime instanceof Timestamp 
-            ? firstCheckin.checkinTime.toDate() 
-            : new Date(firstCheckin.checkinTime)
+          const firstCheckinTime = (() => {
+            const ct = firstCheckin.checkinTime as any
+            if (ct instanceof Timestamp) return ct.toDate()
+            if (ct && typeof ct === 'object' && typeof ct.seconds === 'number') return new Date(ct.seconds * 1000)
+            if (ct instanceof Date) return ct
+            return new Date(ct)
+          })()
           
           // Find last checkout
           let lastCheckoutTime: Date | null = null
@@ -336,15 +340,27 @@ async function generateReportDataOptimized(
           
           for (const checkin of userCheckins) {
             if (checkin.checkoutTime) {
-              const checkoutTime = checkin.checkoutTime instanceof Timestamp 
-                ? checkin.checkoutTime.toDate() 
-                : new Date(checkin.checkoutTime)
-              
-              if (!lastCheckoutTime || checkoutTime > lastCheckoutTime) {
-                lastCheckoutTime = checkoutTime
+              let checkoutDate: Date | null = null
+              const ct = checkin.checkoutTime as any
+              if (ct instanceof Timestamp) {
+                checkoutDate = ct.toDate()
+              } else if (ct && typeof ct === 'object' && typeof ct.seconds === 'number') {
+                // Plain Timestamp-like object {seconds, nanoseconds}
+                checkoutDate = new Date(ct.seconds * 1000)
+              } else if (ct instanceof Date) {
+                checkoutDate = ct
+              } else if (typeof ct === 'string' || typeof ct === 'number') {
+                const d = new Date(ct)
+                if (!isNaN(d.getTime())) checkoutDate = d
+              }
+
+              if (checkoutDate && !isNaN(checkoutDate.getTime())) {
+                if (!lastCheckoutTime || checkoutDate > lastCheckoutTime) {
+                  lastCheckoutTime = checkoutDate
+                }
               }
             }
-            
+
             totalHours += checkin.totalHours || 0
           }
           

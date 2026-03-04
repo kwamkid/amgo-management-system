@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { validateInviteLink } from '@/lib/services/inviteService'
 import { InviteLink } from '@/types/invite'
 import { auth } from '@/lib/firebase/client'
 import { signInWithCustomToken } from 'firebase/auth'
@@ -13,6 +12,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+async function validateInviteCode(code: string): Promise<{ valid: boolean; link?: InviteLink; error?: string }> {
+  const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`)
+  return res.json()
+}
 
 function RegisterForm() {
   const router = useRouter()
@@ -64,7 +68,7 @@ function RegisterForm() {
       }
 
       if (inviteCode && !inviteLink) {
-        const validation = await validateInviteLink(inviteCode)
+        const validation = await validateInviteCode(inviteCode)
         if (!validation.valid) {
           setError(validation.error || 'ลิงก์ไม่ถูกต้อง')
         } else {
@@ -203,7 +207,6 @@ function RegisterForm() {
               <p>• สิทธิ์: {inviteLink.defaultRole === 'employee' ? 'พนักงาน' :
               inviteLink.defaultRole === 'manager' ? 'ผู้จัดการ' :
               inviteLink.defaultRole === 'hr' ? 'ฝ่ายบุคคล' :
-              inviteLink.defaultRole === 'marketing' ? 'Influ Marketing' :
               inviteLink.defaultRole === 'driver' ? 'พนักงานขับรถ' :
               'ผู้ดูแลระบบ'}</p>
               {inviteLink.defaultLocationIds && inviteLink.defaultLocationIds.length > 0 && (
@@ -325,7 +328,7 @@ export default function RegisterPage() {
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center mb-4">
                 <Image 
-                  src="/logo.svg" 
+                  src="/amgo-logo.svg" 
                   alt="AMGO Logo" 
                   width={150} 
                   height={60}

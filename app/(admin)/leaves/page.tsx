@@ -36,7 +36,7 @@ export default function LeavePage() {
   const { quota, myLeaves, teamLeaves, loading } = useLeave()
 
   // Check if should show management view
-  const isManagement = userData && ['hr', 'admin'].includes(userData.role)
+  const isManagement = userData && ['hr', 'manager', 'admin'].includes(userData.role)
   
   // Calculate stats
   const currentYear = new Date().getFullYear()

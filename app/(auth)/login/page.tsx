@@ -1,19 +1,24 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useLoading } from '@/lib/contexts/LoadingContext'
 import Image from 'next/image'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from '@/lib/firebase/client'
 
 // แยก Component ที่ใช้ useSearchParams
 function LoginForm() {
   const { showLoading } = useLoading()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [devLoading, setDevLoading] = useState(false)
   const [error, setError] = useState('')
   const searchParams = useSearchParams()
+  const isDev = process.env.NODE_ENV === 'development'
 
   useEffect(() => {
     const errorParam = searchParams.get('error')
@@ -30,6 +35,22 @@ function LoginForm() {
       }
     }
   }, [searchParams])
+
+  const handleDevLogin = async () => {
+    try {
+      setDevLoading(true)
+      const res = await fetch('/api/auth/dev-login', { method: 'POST' })
+      if (!res.ok) throw new Error('Dev login failed')
+      const { token } = await res.json()
+      await signInWithCustomToken(auth, token)
+      router.push('/dashboard')
+    } catch (err) {
+      setError('Dev login ล้มเหลว ลองใหม่อีกครั้ง')
+      console.error(err)
+    } finally {
+      setDevLoading(false)
+    }
+  }
 
   const handleLineLogin = () => {
     showLoading()
@@ -73,6 +94,19 @@ function LoginForm() {
         </svg>
         {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
       </Button>
+
+      {/* Dev Login — development only */}
+      {isDev && (
+        <Button
+          onClick={handleDevLogin}
+          disabled={devLoading}
+          variant="outline"
+          className="w-full mt-3 border-dashed border-orange-400 text-orange-600 hover:bg-orange-50"
+          size="lg"
+        >
+          🛠️ {devLoading ? 'กำลังเข้าสู่ระบบ...' : 'Dev Login (Admin)'}
+        </Button>
+      )}
     </>
   )
 }
@@ -88,7 +122,7 @@ export default function LoginPage() {
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center mb-4">
                 <Image 
-                  src="/logo.svg" 
+                  src="/amgo-logo.svg" 
                   alt="AMGO Logo" 
                   width={150} 
                   height={60}

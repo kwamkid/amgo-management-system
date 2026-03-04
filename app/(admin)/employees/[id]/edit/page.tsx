@@ -7,13 +7,16 @@ import { db } from '@/lib/firebase'
 import { User, UpdateUserData } from '@/types/user'
 import { updateUser } from '@/lib/services/userService'
 import UserEditForm from '@/components/users/UserEditForm'
+import UserAvatar from '@/components/shared/UserAvatar'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
+import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { auth } from '@/lib/firebase/client'
 
 export default function EditUserPage({ 
   params 
@@ -25,7 +28,9 @@ export default function EditUserPage({
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncingPhoto, setSyncingPhoto] = useState(false)
   const { showToast } = useToast()
+  const { userData: currentUser } = useAuth()
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -73,6 +78,32 @@ export default function EditUserPage({
     router.push('/employees')
   }
 
+  const handleSyncPhoto = async () => {
+    if (syncingPhoto) return
+    setSyncingPhoto(true)
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      const res = await fetch('/api/users/sync-avatar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: id }),
+      })
+      if (res.ok) {
+        setUser(prev => prev ? { ...prev, linePictureUrl: '' } : prev)
+        showToast('รีเซ็ตรูปแล้ว รูปจะอัพเดทเมื่อพนักงานเข้าสู่ระบบครั้งต่อไป', 'success')
+      } else {
+        showToast('เกิดข้อผิดพลาด', 'error')
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาด', 'error')
+    } finally {
+      setSyncingPhoto(false)
+    }
+  }
+
   if (loading) {
     return <TechLoader />
   }
@@ -113,16 +144,23 @@ export default function EditUserPage({
           <h1 className="text-2xl font-bold text-gray-900">
             แก้ไขข้อมูลพนักงาน
           </h1>
-          <p className="text-gray-600 mt-1 text-base flex items-center gap-2">
-            {user.linePictureUrl && (
-              <img
-                src={user.linePictureUrl}
-                alt={user.fullName}
-                className="w-6 h-6 rounded-full"
+          <div className="flex items-center gap-2 mt-1">
+            <div className="relative group">
+              <UserAvatar
+                name={user.fullName}
+                imageUrl={user.linePictureUrl}
+                size="sm"
+                showSyncHint={['admin', 'hr', 'manager'].includes(currentUser?.role || '')}
+                onClick={['admin', 'hr', 'manager'].includes(currentUser?.role || '') ? handleSyncPhoto : undefined}
               />
-            )}
-            {user.fullName}
-          </p>
+              {syncingPhoto && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <span className="text-gray-600 text-base">{user.fullName}</span>
+          </div>
         </div>
       </div>
 

@@ -225,7 +225,6 @@ export default function UserEditForm({
                 <SelectItem value="manager">ผู้จัดการ</SelectItem>
                 <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
                 <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
-                <SelectItem value="marketing">Influ Marketing</SelectItem>
                 <SelectItem value="driver">พนักงานขับรถ</SelectItem>
               </SelectContent>
               </Select>

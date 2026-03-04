@@ -87,7 +87,7 @@ export default function DiscordSettingsPage() {
   const [testing, setTesting] = useState<string | null>(null)
 
   // Check permissions
-  const canEdit = userData?.role === 'admin' || userData?.role === 'hr'
+  const canEdit = ['admin', 'hr', 'manager'].includes(userData?.role || '')
 
   useEffect(() => {
     loadSettings()

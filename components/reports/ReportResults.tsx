@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -19,6 +18,13 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
 
 interface ReportResultsProps {
@@ -28,18 +34,21 @@ interface ReportResultsProps {
   filters: AttendanceReportFilters | null
   pagination?: AttendanceReportResponse['pagination']
   onPageChange?: (page: number) => void
+  pageSize?: number
+  onPageSizeChange?: (size: number) => void
 }
 
-export default function ReportResults({ 
-  reportData, 
+export default function ReportResults({
+  reportData,
   summaryData,
   loading,
   filters,
   pagination,
-  onPageChange
+  onPageChange,
+  pageSize = 50,
+  onPageSizeChange,
 }: ReportResultsProps) {
   const [activeTab, setActiveTab] = useState('daily')
-  const [showOnlyWithData, setShowOnlyWithData] = useState(true)
   const [loadingPage, setLoadingPage] = useState(false)
   
   // Handle page change with loading state
@@ -83,39 +92,21 @@ export default function ReportResults({
   
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="text-lg">
-              ผลลัพธ์รายงาน 
-              {pagination && (
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  (แสดง {reportData.length} จาก {pagination.totalRecords} รายการ)
-                </span>
-              )}
-            </CardTitle>
-          </div>
+          <CardTitle className="text-base">
+            ผลลัพธ์รายงาน
+            {pagination && (
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                ({reportData.length} / {pagination.totalRecords} รายการ)
+              </span>
+            )}
+          </CardTitle>
           {filters && (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="showOnlyWithData" 
-                  checked={showOnlyWithData}
-                  onCheckedChange={(checked) => setShowOnlyWithData(checked as boolean)}
-                  disabled
-                />
-                <label
-                  htmlFor="showOnlyWithData"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  แสดงเฉพาะคนที่มาทำงาน (กำลังแสดงข้อมูลตาม filter จาก server)
-                </label>
-              </div>
-              <Badge variant="secondary">
-                {format(filters.startDate, 'dd MMM', { locale: th })} - 
-                {format(filters.endDate, 'dd MMM yyyy', { locale: th })}
-              </Badge>
-            </div>
+            <Badge variant="secondary" className="text-xs">
+              {format(filters.startDate, 'dd MMM', { locale: th })} –{' '}
+              {format(filters.endDate, 'dd MMM yyyy', { locale: th })}
+            </Badge>
           )}
         </div>
       </CardHeader>
@@ -146,13 +137,13 @@ export default function ReportResults({
             ) : (
               <>
                 <DailyReportTable data={reportData} />
-                {pagination && pagination.totalPages > 1 && (
-                  <PaginationControls 
-                    pagination={pagination} 
-                    onPageChange={handlePageChange}
-                    loading={loadingPage}
-                  />
-                )}
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  loading={loadingPage}
+                  pageSize={pageSize}
+                  onPageSizeChange={onPageSizeChange}
+                />
               </>
             )}
           </TabsContent>
@@ -168,99 +159,103 @@ export default function ReportResults({
 }
 
 // Pagination Controls Component
-function PaginationControls({ 
-  pagination, 
+function PaginationControls({
+  pagination,
   onPageChange,
-  loading = false
-}: { 
-  pagination: AttendanceReportResponse['pagination']
-  onPageChange?: (page: number) => void 
+  loading = false,
+  pageSize,
+  onPageSizeChange,
+}: {
+  pagination?: AttendanceReportResponse['pagination']
+  onPageChange?: (page: number) => void
   loading?: boolean
+  pageSize?: number
+  onPageSizeChange?: (size: number) => void
 }) {
-  const { currentPage, totalPages, hasNext, hasPrev } = pagination
-  
-  // Generate page numbers to show
-  const getPageNumbers = () => {
-    const pages = []
-    const maxPagesToShow = 7
-    const halfRange = Math.floor(maxPagesToShow / 2)
-    
-    let startPage = Math.max(1, currentPage - halfRange)
-    let endPage = Math.min(totalPages, currentPage + halfRange)
-    
-    // Adjust if we're near the beginning or end
-    if (currentPage <= halfRange) {
-      endPage = Math.min(totalPages, maxPagesToShow)
-    }
-    if (currentPage + halfRange >= totalPages) {
-      startPage = Math.max(1, totalPages - maxPagesToShow + 1)
-    }
-    
-    // Always show first page
-    if (startPage > 1) {
-      pages.push(1)
-      if (startPage > 2) pages.push('...')
-    }
-    
-    // Add page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i)
-    }
-    
-    // Always show last page
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pages.push('...')
-      pages.push(totalPages)
-    }
-    
+  const getPageNumbers = (currentPage: number, totalPages: number) => {
+    const pages: (number | string)[] = []
+    const max = 7
+    const half = Math.floor(max / 2)
+    let start = Math.max(1, currentPage - half)
+    let end = Math.min(totalPages, currentPage + half)
+    if (currentPage <= half) end = Math.min(totalPages, max)
+    if (currentPage + half >= totalPages) start = Math.max(1, totalPages - max + 1)
+    if (start > 1) { pages.push(1); if (start > 2) pages.push('...') }
+    for (let i = start; i <= end; i++) pages.push(i)
+    if (end < totalPages) { if (end < totalPages - 1) pages.push('...'); pages.push(totalPages) }
     return pages
   }
-  
+
+  const showPages = pagination && pagination.totalPages > 1
+
   return (
-    <div className="flex items-center justify-between mt-4 px-2">
-      <div className="text-sm text-gray-600">
-        หน้า {currentPage} จาก {totalPages}
-      </div>
-      
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange?.(currentPage - 1)}
-          disabled={!hasPrev || loading}
-          className="h-8 w-8 p-0"
+    <div className="flex items-center justify-between mt-4 pt-3 border-t px-1">
+      {/* Left: rows per page */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">แสดง</span>
+        <Select
+          value={String(pageSize ?? 50)}
+          onValueChange={(v) => onPageSizeChange?.(Number(v))}
         >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        {getPageNumbers().map((page, index) => (
-          <div key={index}>
-            {page === '...' ? (
-              <span className="px-2 text-gray-400">...</span>
-            ) : (
-              <Button
-                variant={page === currentPage ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onPageChange?.(page as number)}
-                disabled={loading}
-                className="h-8 min-w-[32px] px-2"
-              >
-                {page}
-              </Button>
-            )}
-          </div>
-        ))}
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange?.(currentPage + 1)}
-          disabled={!hasNext || loading}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+          <SelectTrigger className="h-7 w-16 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[20, 50, 100, 200].map(n => (
+              <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-gray-500">รายการ/หน้า</span>
+        {pagination && (
+          <span className="text-xs text-gray-400 ml-2">
+            หน้า {pagination.currentPage} / {pagination.totalPages}
+          </span>
+        )}
       </div>
+
+      {/* Right: page navigation */}
+      {showPages && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange?.(pagination!.currentPage - 1)}
+            disabled={!pagination!.hasPrev || loading}
+            className="h-7 w-7 p-0"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+
+          {getPageNumbers(pagination!.currentPage, pagination!.totalPages).map((page, i) => (
+            <div key={i}>
+              {page === '...' ? (
+                <span className="px-1.5 text-xs text-gray-400">...</span>
+              ) : (
+                <Button
+                  variant={page === pagination!.currentPage ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onPageChange?.(page as number)}
+                  disabled={loading}
+                  className="h-7 min-w-[28px] px-1.5 text-xs"
+                >
+                  {page}
+                </Button>
+              )}
+            </div>
+          ))}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange?.(pagination!.currentPage + 1)}
+            disabled={!pagination!.hasNext || loading}
+            className="h-7 w-7 p-0"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

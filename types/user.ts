@@ -18,9 +18,10 @@ export interface User {
   birthDate?: Date | string
   
   // Work Info
-  role: 'admin' | 'hr' | 'manager' | 'employee' | 'marketing' | 'driver'
+  role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
+  allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
   
   // Invite Link Info
   inviteLinkId?: string // ID ของ invite link ที่ใช้
@@ -87,7 +88,6 @@ export interface UserStatistics {
     hr: number
     manager: number
     employee: number
-    marketing: number
     driver: number
   }
 }
@@ -97,7 +97,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 
 export interface AuthUser extends FirebaseUser {
   // Essential fields from User type
-  role: 'admin' | 'hr' | 'manager' | 'employee' | 'marketing' | 'driver'
+  role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
   fullName?: string
   lineDisplayName?: string
   allowedLocationIds?: string[]

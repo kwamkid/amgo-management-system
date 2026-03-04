@@ -9,13 +9,15 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
   const state = searchParams.get('state')
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
+
   // Handle user denial
   if (error) {
-    return NextResponse.redirect(new URL('/login?error=access_denied', request.url))
+    return NextResponse.redirect(new URL('/login?error=access_denied', appUrl))
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=no_code', request.url))
+    return NextResponse.redirect(new URL('/login?error=no_code', appUrl))
   }
 
   try {
@@ -82,12 +84,12 @@ export async function GET(request: NextRequest) {
 
         // Redirect to auth verify page
         return NextResponse.redirect(
-          new URL(`/auth/verify?token=${customToken}&firstLogin=true`, request.url)
+          new URL(`/auth/verify?token=${customToken}&firstLogin=true`, appUrl)
         )
       } else {
         // Regular new user - redirect to registration
         const params = new URLSearchParams({
-          lineUserId: userId, // ✅ เปลี่ยนจาก lineId เป็น lineUserId
+          lineUserId: userId,
           lineDisplayName: displayName,
           ...(pictureUrl && { linePictureUrl: pictureUrl })
         })
@@ -95,13 +97,13 @@ export async function GET(request: NextRequest) {
         // Check for invite code in cookies or state
         const cookies = request.headers.get('cookie') || ''
         let inviteCode = null
-        
+
         // Try to get from cookies
         const inviteMatch = cookies.match(/invite_code=([^;]+)/)
         if (inviteMatch) {
           inviteCode = inviteMatch[1]
         }
-        
+
         // If not in cookies, try sessionStorage data passed via state
         if (!inviteCode && state) {
           try {
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.redirect(
-          new URL(`/register?${params.toString()}`, request.url)
+          new URL(`/register?${params.toString()}`, appUrl)
         )
       }
     }
@@ -127,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     if (!userData.isActive) {
       return NextResponse.redirect(
-        new URL('/login?error=account_inactive', request.url)
+        new URL('/login?error=account_inactive', appUrl)
       )
     }
 
@@ -147,17 +149,17 @@ export async function GET(request: NextRequest) {
 
     // Redirect to auth verify page
     return NextResponse.redirect(
-      new URL(`/auth/verify?token=${customToken}`, request.url)
+      new URL(`/auth/verify?token=${customToken}`, appUrl)
     )
 
   } catch (error) {
     console.error('LINE callback error:', error)
-    
+
     if (axios.isAxiosError(error)) {
       console.error('Response data:', error.response?.data)
       console.error('Response status:', error.response?.status)
     }
-    
-    return NextResponse.redirect(new URL('/login?error=auth_failed', request.url))
+
+    return NextResponse.redirect(new URL('/login?error=auth_failed', appUrl))
   }
 }

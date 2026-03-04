@@ -14,10 +14,11 @@ export interface UserData {
     fullName: string
     phone: string
     birthDate?: string | Date
-    role: 'admin' | 'hr' | 'manager' | 'employee' | 'marketing' | 'driver'
+    role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
     permissionGroupId: string | null
     allowedLocationIds?: string[]              // ✅ เพิ่ม
     allowCheckInOutsideLocation?: boolean      // ✅ เพิ่ม
+    allowWorkFromHome?: boolean                // ✅ เพิ่ม
     inviteLinkId?: string                     // ✅ เพิ่ม
     inviteLinkCode?: string                   // ✅ เพิ่ม
     isActive: boolean

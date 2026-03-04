@@ -7,8 +7,9 @@ import { UserData } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
-import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react'
+import { LogOut, ChevronDown } from 'lucide-react'
 import MobileMenuButton from './MobileMenuButton'
+import UserAvatar from '@/components/shared/UserAvatar'
 
 interface NavbarProps {
   userData?: UserData | null
@@ -37,8 +38,6 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
         return 'ฝ่ายบุคคล'
       case 'manager':
         return 'ผู้จัดการ'
-      case 'marketing':
-        return 'Influ Marketing'
       case 'driver':
         return 'พนักงานขับรถ'
       default:
@@ -66,17 +65,11 @@ export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: N
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              {userData?.linePictureUrl ? (
-                <img
-                  src={userData.linePictureUrl}
-                  alt={userData.lineDisplayName || userData.fullName}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-gray-600" />
-                </div>
-              )}
+              <UserAvatar
+                name={userData?.fullName || userData?.lineDisplayName || '?'}
+                imageUrl={userData?.linePictureUrl}
+                size="sm"
+              />
               <div className="text-right">
                 <span className="text-sm font-medium text-gray-700">
                   {userData?.lineDisplayName || userData?.fullName || 'User'}

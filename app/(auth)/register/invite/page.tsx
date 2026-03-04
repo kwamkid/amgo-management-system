@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { validateInviteLink } from '@/lib/services/inviteService'
 import { InviteLink } from '@/types/invite'
 import Image from 'next/image'
 import { AlertCircle, CheckCircle, Users, Shield, MapPin } from 'lucide-react'
@@ -11,6 +10,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+
+async function validateInviteCode(code: string): Promise<{ valid: boolean; link?: InviteLink; error?: string }> {
+  const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`)
+  return res.json()
+}
 
 function PreRegisterForm() {
   const searchParams = useSearchParams()
@@ -29,7 +33,7 @@ function PreRegisterForm() {
         return
       }
 
-      const validation = await validateInviteLink(inviteCode)
+      const validation = await validateInviteCode(inviteCode)
       if (!validation.valid) {
         setError(validation.error || 'ลิงก์ไม่ถูกต้อง')
       } else {
@@ -133,7 +137,6 @@ function PreRegisterForm() {
                     {inviteLink?.defaultRole === 'employee' ? 'พนักงาน' :
                     inviteLink?.defaultRole === 'manager' ? 'ผู้จัดการ' :
                     inviteLink?.defaultRole === 'hr' ? 'ฝ่ายบุคคล' :
-                    inviteLink?.defaultRole === 'marketing' ? 'Influ Marketing' :
                     inviteLink?.defaultRole === 'driver' ? 'พนักงานขับรถ' :
                     'ผู้ดูแลระบบ'}
                   </strong>
@@ -204,7 +207,7 @@ export default function PreRegisterPage() {
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center mb-4">
                 <Image 
-                  src="/logo.svg" 
+                  src="/amgo-logo.svg" 
                   alt="AMGO Logo" 
                   width={150} 
                   height={60}

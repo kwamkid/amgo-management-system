@@ -337,7 +337,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
                       }`}
                     >
                       {subItem.icon}
-                      <span className="text-sm">{subItem.label}</span>
+                      <span className="text-base">{subItem.label}</span>
                     </button>
                   )
                 })}
@@ -370,7 +370,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
           className="hover:opacity-80 transition-opacity"
         >
           <img 
-            src="/logo.svg" 
+            src="/amgo-logo.svg" 
             alt="AMGO Logo" 
             className="h-10 w-auto"
           />

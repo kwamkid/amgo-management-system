@@ -248,7 +248,6 @@ export const useUserStatistics = () => {
       hr: 0,
       manager: 0,
       employee: 0,
-      marketing: 0,
       driver: 0
     }
   })

@@ -10,7 +10,8 @@ export interface CheckInRecord {
   checkinTime: Date | string
   checkinLat: number
   checkinLng: number
-  checkinType: 'onsite' | 'offsite'
+  checkinType: 'onsite' | 'offsite' | 'wfh'
+  checkinPhotoUrl?: string // Selfie photo taken at check-in
   
   // Support multiple locations in range
   locationsInRange: string[] // All location IDs within radius
@@ -88,12 +89,13 @@ export interface CreateCheckInData {
   lng: number
   selectedShiftId?: string
   note?: string
+  checkinPhotoUrl?: string
 }
 
 // For check-out
 export interface CheckOutData {
-  lat: number
-  lng: number
+  lat?: number
+  lng?: number
   note?: string
 }
 

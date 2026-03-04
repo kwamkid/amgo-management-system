@@ -8,6 +8,7 @@ import { CheckInRecord, LocationCheckResult } from '@/types/checkin'
 import { Shift } from '@/types/location'
 import * as checkinService from '@/lib/services/checkinService'
 import * as locationDetectionService from '@/lib/services/locationDetectionService'
+import { format } from 'date-fns'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
 
 interface UseCheckInReturn {
@@ -20,9 +21,9 @@ interface UseCheckInReturn {
   availableShifts: Shift[]
   selectedLocation: any | null
   showShiftSelector: boolean
-  
+
   // Actions
-  checkIn: (selectedShift?: Shift) => Promise<void>
+  checkIn: (selectedShift?: Shift, isWFH?: boolean, photoUrl?: string) => Promise<void>
   checkOut: (note?: string) => Promise<void>
   refreshStatus: () => Promise<void>
   getCurrentLocation: () => Promise<GeolocationPosition | undefined>
@@ -159,7 +160,7 @@ export function useCheckIn(): UseCheckInReturn {
   }
 
   // Check in
-  const checkIn = async (selectedShift?: Shift) => {
+  const checkIn = async (selectedShift?: Shift, isWFH = false, photoUrl?: string) => {
     if (!userData || !currentPosition || !locationCheckResult) {
       showToast('กรุณารอสักครู่', 'error')
       return
@@ -174,8 +175,28 @@ export function useCheckIn(): UseCheckInReturn {
       setIsCheckingIn(true)
       setShowShiftSelector(false)
 
+      // Auto-close stale session from a previous calendar day
+      if (currentCheckIn) {
+        const checkinDate = new Date(currentCheckIn.checkinTime as Date)
+        const isFromToday = checkinDate.toDateString() === new Date().toDateString()
+        if (!isFromToday) {
+          try {
+            const dateStr = format(checkinDate, 'yyyy-MM-dd')
+            await checkinService.forceCheckOut(
+              currentCheckIn.id!,
+              dateStr,
+              'ระบบปิดการทำงานค้างจากวันก่อนโดยอัตโนมัติ'
+            )
+          } catch (e) {
+            console.error('Auto-close stale session failed:', e)
+          }
+          setCurrentCheckIn(null)
+        }
+      }
+
       // Prepare check-in data
-      const checkinType = locationCheckResult.locationsInRange.length > 0 ? 'onsite' : 'offsite'
+      const offsiteType = isWFH ? 'wfh' : 'offsite'
+      const checkinType = locationCheckResult.locationsInRange.length > 0 ? 'onsite' : offsiteType
 
       // For offsite check-in: use exact GPS location without mapping to nearest location
       // For onsite check-in: use primary location from locations in range
@@ -201,7 +222,8 @@ export function useCheckIn(): UseCheckInReturn {
         primaryLocationName: primaryLocation?.name,
         checkinType,
         selectedShift,
-        note: locationCheckResult.reason
+        note: locationCheckResult.reason,
+        checkinPhotoUrl: photoUrl,
       })
       
       // Send Discord notification (no toast if fails)
@@ -231,17 +253,64 @@ export function useCheckIn(): UseCheckInReturn {
 
   // Check out
   const checkOut = async (note?: string) => {
-    if (!userData?.id || !currentCheckIn || !currentPosition) {
+    if (!userData?.id || !currentCheckIn) {
       showToast('กรุณารอสักครู่', 'error')
       return
     }
-    
+
     try {
       setIsCheckingOut(true)
-      
+
+      // Get fresh GPS — don't rely on state
+      let pos = currentPosition
+      if (!pos) {
+        try {
+          pos = await locationDetectionService.getCurrentLocation()
+          setCurrentPosition(pos)
+        } catch (e) {
+          // GPS unavailable
+        }
+      }
+
+      // ── Location guard: must checkout at the same location you checked in ──
+      // Onsite employees must checkout at the specific location they checked in at
+      // to prevent hour inflation (check in at office, go home, checkout from home)
+      // Exception: employees with allowCheckInOutsideLocation can checkout anywhere
+      if (
+        currentCheckIn.checkinType === 'onsite' &&
+        !userData.allowCheckInOutsideLocation
+      ) {
+        if (!pos) {
+          showToast('กรุณาเปิด GPS เพื่อเช็คเอาท์', 'error')
+          return
+        }
+
+        // Check against the specific location they checked in at (not just any allowed location)
+        const checkInLocationId = currentCheckIn.primaryLocationId
+        const allowedIds = checkInLocationId
+          ? [checkInLocationId]
+          : (userData.allowedLocationIds || [])
+
+        const locationCheck = locationDetectionService.checkUserLocation(
+          pos.coords.latitude,
+          pos.coords.longitude,
+          locations,
+          allowedIds,
+          false // no outside-location override
+        )
+
+        if (!locationCheck.canCheckIn) {
+          const locationName = currentCheckIn.primaryLocationName || locationCheck.nearestLocation?.name || 'สถานที่ทำงาน'
+          const distanceText = locationCheck.nearestLocation ? ` (ห่าง ${locationCheck.nearestLocation.distance} ม.)` : ''
+          showToast(`ต้องเช็คเอาท์ที่ ${locationName}${distanceText}`, 'error')
+          return
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────────
+
       await checkinService.checkOut(userData.id, {
-        lat: currentPosition.coords.latitude,
-        lng: currentPosition.coords.longitude,
+        lat: pos?.coords.latitude,
+        lng: pos?.coords.longitude,
         note
       })
       

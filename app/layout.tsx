@@ -17,6 +17,11 @@ export const metadata: Metadata = {
     template: '%s | AMGO'
   },
   description: 'ระบบบริหารจัดการพนักงาน AMGO',
+  icons: {
+    icon: '/amgo-logo.svg',
+    shortcut: '/amgo-logo.svg',
+    apple: '/amgo-logo.svg',
+  },
 }
 
 export default function RootLayout({

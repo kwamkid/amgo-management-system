@@ -6,6 +6,7 @@ import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
 import { User, UserFilters } from '@/types/user'
 import DeleteUserDialog from '@/components/users/DeleteUserDialog'
+import UserAvatar from '@/components/shared/UserAvatar'
 import {
   Users,
   Search,
@@ -115,7 +116,6 @@ export default function EmployeesPage() {
       hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
       manager: { label: 'ผู้จัดการ', variant: 'success' as const },
       employee: { label: 'พนักงาน', variant: 'secondary' as const },
-      marketing: { label: 'Influ Marketing', variant: 'warning' as const },
       driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
     }
     
@@ -269,7 +269,6 @@ export default function EmployeesPage() {
             <option value="hr">ฝ่ายบุคคล</option>
             <option value="manager">ผู้จัดการ</option>
             <option value="employee">พนักงาน</option>
-            <option value="marketing">Influ Marketing</option>
             <option value="driver">พนักงานขับรถ</option>
           </select>
 
@@ -314,17 +313,11 @@ export default function EmployeesPage() {
                   <div className="flex items-start justify-between gap-3">
                     {/* User Info */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {user.linePictureUrl ? (
-                        <img
-                          src={user.linePictureUrl}
-                          alt={user.fullName}
-                          className="w-12 h-12 rounded-full flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Users className="w-6 h-6 text-gray-500" />
-                        </div>
-                      )}
+                      <UserAvatar
+                        name={user.fullName}
+                        imageUrl={user.linePictureUrl}
+                        size="lg"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-gray-900 truncate">{user.fullName}</p>
                         <p className="text-sm text-gray-500 truncate">{user.lineDisplayName}</p>
@@ -420,17 +413,11 @@ export default function EmployeesPage() {
                     <tr key={user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          {user.linePictureUrl ? (
-                            <img
-                              src={user.linePictureUrl}
-                              alt={user.fullName}
-                              className="w-10 h-10 rounded-full"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                              <Users className="w-5 h-5 text-gray-500" />
-                            </div>
-                          )}
+                          <UserAvatar
+                            name={user.fullName}
+                            imageUrl={user.linePictureUrl}
+                            size="md"
+                          />
                           <div>
                             <p className="font-medium text-gray-900">{user.fullName}</p>
                             <p className="text-sm text-gray-500">{user.lineDisplayName}</p>

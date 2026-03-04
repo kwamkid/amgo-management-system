@@ -30,6 +30,26 @@ import { getLocation } from './locationService'
 const COLLECTION_NAME = 'checkins'
 
 /**
+ * Force-close a stale check-in (e.g., overnight worker forgot to checkout)
+ * No GPS required — used when starting a new day's check-in
+ */
+export async function forceCheckOut(
+  recordId: string,
+  dateStr: string,
+  note: string
+): Promise<void> {
+  const docRef = doc(db, COLLECTION_NAME, dateStr, 'records', recordId)
+  await updateDoc(docRef, {
+    checkoutTime: serverTimestamp(),
+    status: 'completed',
+    autoCheckout: true,
+    forgotCheckout: true,
+    autoCheckoutNote: note,
+    updatedAt: serverTimestamp()
+  })
+}
+
+/**
  * Create a new check-in record
  */
 export async function createCheckIn(
@@ -37,7 +57,7 @@ export async function createCheckIn(
     locationsInRange: string[]
     primaryLocationId: string | null
     primaryLocationName?: string
-    checkinType: 'onsite' | 'offsite'
+    checkinType: 'onsite' | 'offsite' | 'wfh'
     selectedShift?: any
   }
 ): Promise<string> {
@@ -46,12 +66,13 @@ export async function createCheckIn(
       userId: data.userId,
       userName: data.userName,
       userAvatar: data.userAvatar || null,
-      
+
       // Check-in info
       checkinTime: serverTimestamp(),
       checkinLat: data.lat,
       checkinLng: data.lng,
       checkinType: data.checkinType,
+      checkinPhotoUrl: data.checkinPhotoUrl || null,
       
       // Location info
       locationsInRange: data.locationsInRange,
@@ -154,8 +175,8 @@ export async function checkOut(
     
     await updateDoc(docRef, {
       checkoutTime: serverTimestamp(),
-      checkoutLat: checkoutData.lat,
-      checkoutLng: checkoutData.lng,
+      checkoutLat: checkoutData.lat ?? null,
+      checkoutLng: checkoutData.lng ?? null,
       
       // Working hours
       regularHours: hoursCalc.regularHours,

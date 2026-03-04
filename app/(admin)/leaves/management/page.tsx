@@ -513,7 +513,7 @@ export default function LeaveManagementPage() {
                       )}
                       
                       {/* Cancel button for approved leaves (HR/Admin only) */}
-                      {leave.status === 'approved' && ['hr', 'admin'].includes(userData?.role || '') && (
+                      {leave.status === 'approved' && ['hr', 'manager', 'admin'].includes(userData?.role || '') && (
                         <Button
                           size="sm"
                           variant="outline"

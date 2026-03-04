@@ -5,13 +5,15 @@
 import { useState, useEffect } from 'react'
 import { useCheckIn } from '@/hooks/useCheckIn'
 import { useLocations } from '@/hooks/useLocations'
-import { 
-  MapPin, 
+import { useAuth } from '@/hooks/useAuth'
+import {
+  MapPin,
   Loader2,
-  X,
   AlertCircle,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Home,
+  Camera
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -21,16 +23,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { colorClasses, gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import ShiftSelector from './ShiftSelector'
+import CameraCapture from './CameraCapture'
 import { Shift } from '@/types/location'
-import * as locationDetectionService from '@/lib/services/locationDetectionService'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase/client'
 
 // Dynamic import CheckInMap
 const CheckInMap = dynamic(
   () => import('./CheckInMap'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="w-full h-[400px] bg-gray-100 rounded-lg flex items-center justify-center">
@@ -56,132 +59,130 @@ export default function CheckInButton() {
     loading,
     error
   } = useCheckIn()
-  
-  const { locations } = useLocations(true) // Get active locations
-  
+
+  const { userData } = useAuth()
+  const { locations } = useLocations(true)
+
   const [showNote, setShowNote] = useState(false)
   const [note, setNote] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Shift selector state
   const [showShiftSelector, setShowShiftSelector] = useState(false)
   const [availableShifts, setAvailableShifts] = useState<Shift[]>([])
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
 
-  // Auto get location when component mounts
+  // Camera / photo state
+  const [showCamera, setShowCamera] = useState(false)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  // Pending check-in params stored while camera is open
+  const [pendingShift, setPendingShift] = useState<Shift | undefined>(undefined)
+  const [pendingIsWFH, setPendingIsWFH] = useState(false)
+
+  // Auto get location on mount
   useEffect(() => {
     if (!loading && !currentPosition) {
       getCurrentLocation()
     }
   }, [loading])
 
-  // Update current time every second
+  // Clock
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
 
-  // Calculate working hours
-  const getWorkingTime = () => {
-    if (!currentCheckIn?.checkinTime) return { hours: 0, minutes: 0, seconds: 0 }
-    
-    const checkinTime = currentCheckIn.checkinTime instanceof Date 
-      ? currentCheckIn.checkinTime 
-      : new Date(currentCheckIn.checkinTime)
-    
-    const totalSeconds = Math.floor((currentTime.getTime() - checkinTime.getTime()) / 1000)
-    const hours = Math.floor(totalSeconds / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-    const seconds = totalSeconds % 60
-    
-    return { hours, minutes, seconds }
+  // Upload selfie blob to Firebase Storage
+  const uploadPhoto = async (blob: Blob): Promise<string> => {
+    const dateStr = format(new Date(), 'yyyy-MM-dd')
+    const timestamp = Date.now()
+    const storageRef = ref(storage, `checkin-photos/${userData!.id}/${dateStr}/${timestamp}.jpg`)
+    await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
+    return getDownloadURL(storageRef)
   }
 
-  const handleCheckInClick = async () => {
-    console.log('=== CheckIn Button Clicked ===')
-    
+  // Working time counter
+  const getWorkingTime = () => {
+    if (!currentCheckIn?.checkinTime) return { hours: 0, minutes: 0, seconds: 0 }
+    const checkinTime = currentCheckIn.checkinTime instanceof Date
+      ? currentCheckIn.checkinTime
+      : new Date(currentCheckIn.checkinTime)
+    const totalSeconds = Math.floor((currentTime.getTime() - checkinTime.getTime()) / 1000)
+    return {
+      hours: Math.floor(totalSeconds / 3600),
+      minutes: Math.floor((totalSeconds % 3600) / 60),
+      seconds: totalSeconds % 60,
+    }
+  }
+
+  // Determine shift (if any) and open camera
+  const handleCheckInClick = async (isWFH = false) => {
     if (!currentPosition || !locationCheckResult) {
-      console.log('No position or location result, getting location...')
       await getCurrentLocation()
       return
     }
 
-    console.log('Location Check Result:', locationCheckResult)
-    console.log('Can Check In:', locationCheckResult.canCheckIn)
-    console.log('Locations in Range:', locationCheckResult.locationsInRange)
+    let shift: Shift | undefined = undefined
 
-    // Check if at a location that requires shift selection
-    if (locationCheckResult.canCheckIn && locationCheckResult.locationsInRange.length > 0) {
+    if (!isWFH && locationCheckResult.canCheckIn && locationCheckResult.locationsInRange.length > 0) {
       const primaryLocation = locationCheckResult.locationsInRange[0]
-      console.log('Primary Location:', primaryLocation)
-      
       const location = locations.find(l => l.id === primaryLocation.id)
-      console.log('Found Location:', location)
-      
-      if (location) {
-        console.log('Location Name:', location.name)
-        console.log('All Shifts in Location:', location.shifts)
-        
-        // ใช้ทุกกะ ไม่ filter ตามเวลา
-        const shifts = location.shifts
-        console.log('Available Shifts (All):', shifts)
-        console.log('Number of Available Shifts:', shifts.length)
-        console.log('Current Time:', new Date().toLocaleTimeString())
-        
-        if (shifts.length > 1) {
-          // Multiple shifts available, show selector
-          console.log('>>> Showing Shift Selector')
-          setAvailableShifts(shifts)
-          setShowShiftSelector(true)
-        } else if (shifts.length === 1) {
-          // Only one shift, select automatically
-          console.log('>>> Auto selecting single shift:', shifts[0])
-          setSelectedShift(shifts[0])
-          await checkIn(shifts[0])
-        } else {
-          // No shifts available, check in without shift
-          console.log('>>> No shifts available, checking in without shift')
-          await checkIn()
-        }
-      } else {
-        // Location not found, check in without shift
-        console.log('>>> Location not found in locations list')
-        await checkIn()
+
+      if (location && location.shifts.length > 1) {
+        // Multiple shifts: show selector first, camera comes after
+        setAvailableShifts(location.shifts)
+        setPendingIsWFH(false)
+        setShowShiftSelector(true)
+        return
+      } else if (location && location.shifts.length === 1) {
+        shift = location.shifts[0]
       }
-    } else {
-      // Offsite check-in, no shift needed
-      console.log('>>> Offsite check-in or cannot check in')
-      console.log('>>> Reason:', locationCheckResult?.reason)
-      await checkIn()
     }
+
+    // Open camera with stored pending action
+    setPendingShift(shift)
+    setPendingIsWFH(isWFH)
+    setShowCamera(true)
   }
 
-  const handleShiftSelect = async (shift: Shift) => {
-    setSelectedShift(shift)
+  // After shift selected → open camera
+  const handleShiftSelect = (shift: Shift) => {
     setShowShiftSelector(false)
-    await checkIn(shift)
+    setPendingShift(shift)
+    setPendingIsWFH(false)
+    setShowCamera(true)
+  }
+
+  // Camera confirmed → upload → check in
+  const handlePhotoCapture = async (blob: Blob) => {
+    setIsUploadingPhoto(true)
+    try {
+      const photoUrl = await uploadPhoto(blob)
+      setShowCamera(false)
+      await checkIn(pendingShift, pendingIsWFH, photoUrl)
+    } catch (e) {
+      console.error('Photo upload failed:', e)
+      // Still allow check-in without photo if upload fails
+      setShowCamera(false)
+      await checkIn(pendingShift, pendingIsWFH)
+    } finally {
+      setIsUploadingPhoto(false)
+      setPendingShift(undefined)
+      setPendingIsWFH(false)
+    }
   }
 
   const handleCheckOut = async () => {
-    if (!currentPosition) {
-      await getCurrentLocation()
-    }
     await checkOut(note)
     setNote('')
     setShowNote(false)
   }
 
-  if (loading) {
-    return <TechLoader />
-  }
+  if (loading) return <TechLoader />
 
   const workingTime = getWorkingTime()
 
-  // Render Map Component (used in both check-in and checkout)
   const renderMap = () => {
     if (!currentPosition) return null
-    
     return (
       <div className="mb-4 rounded-lg overflow-hidden h-[400px]">
         <CheckInMap
@@ -194,10 +195,10 @@ export default function CheckInButton() {
     )
   }
 
-  // Already checked in - Show checkout UI
+  // ─── Already checked in → show checkout UI ───────────────────────────────
   if (currentCheckIn) {
-    const checkinTime = currentCheckIn.checkinTime instanceof Date 
-      ? currentCheckIn.checkinTime 
+    const checkinTime = currentCheckIn.checkinTime instanceof Date
+      ? currentCheckIn.checkinTime
       : new Date(currentCheckIn.checkinTime)
 
     return (
@@ -214,6 +215,17 @@ export default function CheckInButton() {
             </Badge>
           </div>
 
+          {/* Selfie photo (if available) */}
+          {currentCheckIn.checkinPhotoUrl && (
+            <div className="flex justify-center mb-4">
+              <img
+                src={currentCheckIn.checkinPhotoUrl}
+                alt="selfie check-in"
+                className="w-20 h-20 rounded-full object-cover border-2 border-teal-300 shadow"
+              />
+            </div>
+          )}
+
           {/* Working Time */}
           <div className="text-center mb-6">
             <div className="inline-flex items-baseline gap-1">
@@ -229,12 +241,18 @@ export default function CheckInButton() {
           {/* Location & Shift Info */}
           <div className="space-y-2 mb-6">
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-              <MapPin className="w-4 h-4 text-gray-500" />
+              {currentCheckIn.checkinType === 'wfh' ? (
+                <Home className="w-4 h-4 text-blue-500" />
+              ) : (
+                <MapPin className="w-4 h-4 text-gray-500" />
+              )}
               <span className="text-sm text-gray-700">
-                {currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
+                {currentCheckIn.checkinType === 'wfh'
+                  ? 'Work From Home (WFH)'
+                  : currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
               </span>
             </div>
-            
+
             {currentCheckIn.selectedShiftName && (
               <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
                 <Clock className="w-4 h-4 text-blue-500" />
@@ -247,6 +265,33 @@ export default function CheckInButton() {
 
           {/* Map */}
           {renderMap()}
+
+          {/* Location guard warning: must checkout at same location as check-in */}
+          {currentCheckIn.checkinType === 'onsite' && !userData?.allowCheckInOutsideLocation && (() => {
+            const checkInLocationName = currentCheckIn.primaryLocationName || 'สถานที่ทำงาน'
+            // Check if user is near the specific check-in location
+            const inRange = locationCheckResult?.locationsInRange.some(
+              l => l.id === currentCheckIn.primaryLocationId
+            )
+            return (
+              <div className={`flex items-center gap-2 p-3 rounded-lg mb-4 text-sm ${
+                inRange
+                  ? 'bg-green-50 text-green-700'
+                  : !currentPosition
+                  ? 'bg-yellow-50 text-yellow-700'
+                  : 'bg-red-50 text-red-700'
+              }`}>
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span>
+                  {!currentPosition
+                    ? `กำลังตรวจสอบตำแหน่ง (ต้องเช็คเอาท์ที่ ${checkInLocationName})`
+                    : inRange
+                    ? `อยู่ที่ ${checkInLocationName} — สามารถเช็คเอาท์ได้`
+                    : `ต้องเช็คเอาท์ที่ ${checkInLocationName} เท่านั้น`}
+                </span>
+              </div>
+            )
+          })()}
 
           {/* Note Section */}
           {showNote ? (
@@ -262,10 +307,7 @@ export default function CheckInButton() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setShowNote(false)
-                  setNote('')
-                }}
+                onClick={() => { setShowNote(false); setNote('') }}
                 className="text-xs"
               >
                 ยกเลิก
@@ -281,7 +323,7 @@ export default function CheckInButton() {
               + เพิ่มหมายเหตุ
             </Button>
           )}
-          
+
           {/* Checkout Button */}
           <Button
             onClick={handleCheckOut}
@@ -303,7 +345,10 @@ export default function CheckInButton() {
     )
   }
 
-  // Not checked in - Show check-in UI
+  // ─── Not checked in → show check-in UI ───────────────────────────────────
+  const isOffsite = locationCheckResult?.canCheckIn && locationCheckResult.locationsInRange.length === 0
+  const showWFHOption = isOffsite && userData?.allowWorkFromHome
+
   return (
     <>
       <Card className="border-0 shadow-md">
@@ -352,45 +397,100 @@ export default function CheckInButton() {
             </Alert>
           )}
 
-          {locationCheckResult && locationCheckResult.canCheckIn && (
+          {locationCheckResult?.canCheckIn && (
             <div className="flex items-center justify-center gap-2 mb-4 text-teal-600">
               <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">พื้นที่ที่อนุญาต</span>
+              <span className="font-medium">
+                {locationCheckResult.locationsInRange.length > 0
+                  ? 'พื้นที่ที่อนุญาต'
+                  : 'อนุญาตให้เช็คอินนอกสถานที่'}
+              </span>
             </div>
           )}
 
-          {/* Check-in Button */}
-          <Button
-            onClick={handleCheckInClick}
-            disabled={
-              isCheckingIn || 
-              !locationCheckResult || 
-              !locationCheckResult.canCheckIn
-            }
-            className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
-            size="lg"
-          >
-            {isCheckingIn ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                กำลังเช็คอิน...
-              </span>
-            ) : !currentPosition ? (
-              'กำลังขอตำแหน่ง...'
-            ) : (
-              'เช็คอิน'
-            )}
-          </Button>
+          {/* Camera info notice */}
+          {locationCheckResult?.canCheckIn && (
+            <p className="text-xs text-gray-500 text-center mb-3 flex items-center justify-center gap-1">
+              <Camera className="w-3 h-3" />
+              ระบบจะขอถ่ายรูปยืนยันตัวตนก่อนเช็คอิน
+            </p>
+          )}
+
+          {/* Check-in Button(s) */}
+          {showWFHOption ? (
+            <div className="space-y-2">
+              <Button
+                onClick={() => handleCheckInClick(false)}
+                disabled={isCheckingIn || isUploadingPhoto}
+                className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
+                size="lg"
+              >
+                {isCheckingIn ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
+                  </span>
+                ) : 'เช็คอินนอกสถานที่'}
+              </Button>
+              <Button
+                onClick={() => handleCheckInClick(true)}
+                disabled={isCheckingIn || isUploadingPhoto}
+                variant="outline"
+                className="w-full h-12 text-base font-medium border-blue-400 text-blue-700 hover:bg-blue-50"
+                size="lg"
+              >
+                {isCheckingIn ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Home className="w-4 h-4" />Work From Home (WFH)
+                  </span>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={() => handleCheckInClick(false)}
+              disabled={isCheckingIn || isUploadingPhoto || !locationCheckResult?.canCheckIn}
+              className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
+              size="lg"
+            >
+              {isCheckingIn || isUploadingPhoto ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {isUploadingPhoto ? 'กำลังบันทึกรูป...' : 'กำลังเช็คอิน...'}
+                </span>
+              ) : !currentPosition ? (
+                'กำลังขอตำแหน่ง...'
+              ) : (
+                'เช็คอิน'
+              )}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {/* Shift Selector Modal */}
+      {/* Shift Selector */}
       {showShiftSelector && (
         <ShiftSelector
           shifts={availableShifts}
           onSelect={handleShiftSelect}
           onCancel={() => setShowShiftSelector(false)}
           currentTime={currentTime}
+        />
+      )}
+
+      {/* Camera Capture */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handlePhotoCapture}
+          onCancel={() => {
+            setShowCamera(false)
+            setPendingShift(undefined)
+            setPendingIsWFH(false)
+          }}
+          uploading={isUploadingPhoto}
         />
       )}
     </>

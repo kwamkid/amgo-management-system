@@ -291,7 +291,7 @@ export default function LeaveQuotaManagementPage() {
   const [showCarryOverDialog, setShowCarryOverDialog] = useState(false)
 
   // Check permission
-  const canManage = userData && ['hr', 'admin'].includes(userData.role)
+  const canManage = userData && ['hr', 'manager', 'admin'].includes(userData.role)
 
   useEffect(() => {
     if (userData && !canManage) {

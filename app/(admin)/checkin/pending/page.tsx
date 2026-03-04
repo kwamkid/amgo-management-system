@@ -36,7 +36,7 @@ export default function PendingCheckoutsPage() {
   const [processing, setProcessing] = useState<string | null>(null)
 
   // Check if user has permission
-  const canManage = userData?.role === 'admin' || userData?.role === 'hr'
+  const canManage = ['admin', 'hr', 'manager'].includes(userData?.role || '')
 
   useEffect(() => {
     if (canManage) {

@@ -27,7 +27,7 @@ export default function RegisterSuccessPage() {
           {/* Logo */}
           <div className="mb-6">
             <Image 
-              src="/logo.svg" 
+              src="/amgo-logo.svg" 
               alt="AMGO Logo" 
               width={150} 
               height={60}

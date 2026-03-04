@@ -8,6 +8,12 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        // Remap text-sm from 14px → 16px so all UI components use 16px by default
+        sm: ['1rem', { lineHeight: '1.5rem' }],
+        // Keep base the same
+        base: ['1rem', { lineHeight: '1.5rem' }],
+      },
       colors: {
         primary: {
           50: "#fef2f2",

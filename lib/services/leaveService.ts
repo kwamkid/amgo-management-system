@@ -832,7 +832,7 @@ export const checkQuotaExistsForYear = async (
 
   // ตรวจสอบทีละ user (เพราะ Firestore in query รองรับแค่ 30 items)
   for (const userId of userIds) {
-    const quotaRef = doc(db, 'leaveQuotas', `${userId}_${year}`);
+    const quotaRef = doc(db, 'quotas', userId, 'years', year.toString());
     const quotaSnap = await getDoc(quotaRef);
 
     if (quotaSnap.exists()) {

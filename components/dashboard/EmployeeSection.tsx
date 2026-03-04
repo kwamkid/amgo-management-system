@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -11,24 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { 
-  Calendar,
-  Clock,
+import {
   Cake,
   Gift,
   PartyPopper,
-  LogIn,
-  User,
-  CheckCircle,
-  MapPin
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { UserData } from '@/hooks/useAuth';
-import { useCheckIn } from '@/hooks/useCheckIn';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth } from '@/lib/firebase/client';
 
 interface EmployeeSectionProps {
   userData: UserData;
@@ -45,8 +35,6 @@ interface BirthdayUser {
 }
 
 export default function EmployeeSection({ userData }: EmployeeSectionProps) {
-  const router = useRouter();
-  const { currentCheckIn } = useCheckIn();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [birthdays, setBirthdays] = useState<BirthdayUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,45 +46,25 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
     const fetchBirthdays = async () => {
       try {
         setLoading(true);
-        const usersSnapshot = await getDocs(
-          query(collection(db, 'users'), where('isActive', '==', true))
-        );
-        
-        const birthdayUsers: BirthdayUser[] = [];
-        
-        usersSnapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.birthDate) {
-            // Convert birthDate to Date
-            let birthDate: Date;
-            if (data.birthDate.toDate) {
-              birthDate = data.birthDate.toDate();
-            } else if (data.birthDate.seconds) {
-              birthDate = new Date(data.birthDate.seconds * 1000);
-            } else {
-              birthDate = new Date(data.birthDate);
-            }
-            
-            // Check if birthday is in current month
-            const birthMonth = birthDate.getMonth();
-            const currentMonthNum = currentMonth.getMonth();
-            
-            if (birthMonth === currentMonthNum) {
-              birthdayUsers.push({
-                id: doc.id,
-                fullName: data.fullName,
-                lineDisplayName: data.lineDisplayName,
-                linePictureUrl: data.linePictureUrl,
-                birthDate,
-                role: data.role,
-                locationIds: data.allowedLocationIds
-              });
-            }
-          }
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+
+        const res = await fetch('/api/users/birthdays', {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
-        // Sort by birth date
-        birthdayUsers.sort((a, b) => a.birthDate.getDate() - b.birthDate.getDate());
+        if (!res.ok) throw new Error('Failed to fetch birthdays');
+
+        const { birthdays: allBirthdays } = await res.json();
+
+        const currentMonthNum = currentMonth.getMonth();
+        const birthdayUsers: BirthdayUser[] = allBirthdays
+          .map((u: { id: string; fullName: string; lineDisplayName: string; linePictureUrl?: string; birthDate: string; role: string }) => ({
+            ...u,
+            birthDate: new Date(u.birthDate),
+          }))
+          .filter((u: BirthdayUser) => u.birthDate.getMonth() === currentMonthNum)
+          .sort((a: BirthdayUser, b: BirthdayUser) => a.birthDate.getDate() - b.birthDate.getDate());
+
         setBirthdays(birthdayUsers);
       } catch (error) {
         console.error('Error fetching birthdays:', error);
@@ -104,7 +72,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
         setLoading(false);
       }
     };
-    
+
     fetchBirthdays();
   }, [currentMonth]);
   
@@ -261,60 +229,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           </CardContent>
         </Card>
 
-        {/* Right Column - Quick Actions & Upcoming Birthdays */}
+        {/* Right Column - Upcoming Birthdays */}
         <div className="space-y-6">
-          {/* Check-in Status & Quick Action */}
-          <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-slate-600" />
-                สถานะการทำงาน
-              </h3>
-              
-              {currentCheckIn ? (
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg p-4 border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-base font-medium text-green-700">กำลังทำงาน</span>
-                    </div>
-                    <p className="text-2xl font-bold text-slate-800 mb-2">
-                      เช็คอิน {format(new Date(currentCheckIn.checkinTime), 'HH:mm')}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <MapPin className="w-4 h-4" />
-                      {currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.push('/checkin')}
-                  >
-                    ไปหน้าเช็คอิน/เช็คเอาท์
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                    <p className="text-base font-medium text-orange-800 mb-1">ยังไม่ได้เช็คอิน</p>
-                    <p className="text-sm text-orange-600">กรุณาเช็คอินเพื่อเริ่มงาน</p>
-                  </div>
-                  
-                  <Button 
-                    className="w-full bg-slate-700 hover:bg-slate-800 text-white"
-                    onClick={() => router.push('/checkin')}
-                    size="lg"
-                  >
-                    <LogIn className="w-5 h-5 mr-2" />
-                    เช็คอินเลย
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Upcoming Birthdays */}
           <Card className="border-0 shadow-md bg-gradient-to-br from-pink-50 to-purple-100">
             <CardHeader>

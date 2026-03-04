@@ -13,7 +13,7 @@ export class DiscordNotificationService {
     userName: string,
     locationName: string,
     userAvatar?: string,
-    checkinType?: 'onsite' | 'offsite',
+    checkinType?: 'onsite' | 'offsite' | 'wfh',
     lat?: number,
     lng?: number
   ) {

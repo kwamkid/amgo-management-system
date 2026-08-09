@@ -92,7 +92,7 @@ const navSections: NavSection[] = [
         subItems: [
           { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
-          { label: 'แผนที่การส่ง', href: '/delivery/map', icon: subIcon(Map) },
+          { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
         ],
       },
     ],

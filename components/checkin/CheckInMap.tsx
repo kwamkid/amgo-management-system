@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { GoogleMap, Marker, Circle, useJsApiLoader } from '@react-google-maps/api'
 import { LocationCheckResult } from '@/types/checkin'
 import { useLocations } from '@/hooks/useLocations'
+import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
 
 interface CheckInMapProps {
   userLat: number
@@ -19,7 +20,6 @@ const mapContainerStyle = {
   height: '100%'
 }
 
-const libraries: ("places")[] = ['places']
 
 export default function CheckInMap({ 
   userLat, 
@@ -30,13 +30,7 @@ export default function CheckInMap({
   const { locations } = useLocations(true)
   const [map, setMap] = useState<google.maps.Map | null>(null)
   
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['places'],
-    id: 'google-map-script',
-    language: 'th',  // เพิ่มบรรทัดนี้
-    region: 'TH'     // เพิ่มบรรทัดนี้
-    })
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER)
 
   const center = {
     lat: userLat,

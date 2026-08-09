@@ -54,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
 
 const mapContainerStyle = {
   width: '100%',
@@ -65,7 +66,6 @@ const defaultCenter = {
   lng: 100.5018
 }
 
-const libraries: ("places")[] = ['places']
 
 // Custom marker icon - ขนาดเล็กลง
 const createMarkerIcon = (label: string) => ({
@@ -140,13 +140,7 @@ export default function DeliveryMapPage() {
     return filtered
   }, [mapPoints, searchTerm, addressCache, selectedDriver])
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-    id: 'google-map-script',
-    language: 'th',
-    region: 'TH'
-  })
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER)
 
   // Check permission
   useEffect(() => {

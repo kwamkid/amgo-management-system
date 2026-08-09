@@ -38,6 +38,21 @@ const ts = (v) => (v?.toDate ? v.toDate().toISOString() : v ?? null)
 const dt = (v) => (v?.toDate ? v.toDate().toISOString().slice(0, 10) : null)
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 const str = (v) => (typeof v === 'string' ? v.trim() : '')
+
+/**
+ * วันที่ล้วน (YYYY-MM-DD) จากค่าที่ Firestore เก็บมาได้หลายแบบ
+ *   · Timestamp                     → .toDate()
+ *   · "1995-01-29T00:00:00.000Z"    ← แบบที่ birthDate ใช้จริง
+ *   · "1995-01-29"
+ * ของเดิมเช็คแค่รูปแบบ YYYY-MM-DD เป๊ะ ๆ ทำให้วันเกิดหายหมด 56 คน
+ */
+const dateOnly = (v) => {
+  if (v?.toDate) return v.toDate().toISOString().slice(0, 10)
+  const t = str(v)
+  if (!t) return null
+  const d = new Date(t)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+}
 const emailFor = (lineUserId) => `${lineUserId.toLowerCase()}@line.invalid`
 
 // ── id map (idempotent) ──────────────────────────────────────────────
@@ -248,7 +263,7 @@ async function migrateUsers() {
       line_picture_url: str(d.linePictureUrl),
       full_name: str(d.fullName) || str(d.lineDisplayName) || lineId,
       phone: str(d.phone),
-      birth_date: /^\d{4}-\d{2}-\d{2}$/.test(str(d.birthDate)) ? str(d.birthDate) : null,
+      birth_date: dateOnly(d.birthDate),
       role: ['admin','hr','manager','employee','driver','marketing'].includes(d.role) ? d.role : 'employee',
       is_active: d.isActive !== false,
       needs_approval: d.needsApproval === true,
@@ -281,6 +296,29 @@ async function migrateUsers() {
     for (const f of fixes) await sb.from('users').update(f).eq('id', f.id)
     ok(`ผูก approved_by/deleted_by ${fixes.length} แถว`)
   }
+
+  // ── เติมเฉพาะช่องที่ยังว่าง ─────────────────────────────────────────
+  // ตาราง users กันทับไว้ (HR กรอกวันเริ่มงาน/เงินเดือนเอง) แต่ถ้าช่องไหน
+  // ยังว่างอยู่ก็เติมจาก Firestore ได้ ไม่ทับอะไรของใคร
+  const { data: current } = await sb.from('users').select('id, birth_date, phone')
+  const blanks = new Map((current ?? []).map((u) => [u.id, u]))
+  let filled = 0
+  for (const d of docs) {
+    const uid = getId('users', d.id)
+    const cur = uid && blanks.get(uid)
+    if (!cur) continue
+
+    const patch = {}
+    const bd = dateOnly(d.birthDate)
+    if (!cur.birth_date && bd) patch.birth_date = bd
+    if (!cur.phone && str(d.phone)) patch.phone = str(d.phone)
+    if (!Object.keys(patch).length) continue
+
+    const { error } = await sb.from('users').update(patch).eq('id', uid)
+    if (error) warn('users', `เติมข้อมูลว่าง ${d.id}: ${error.message}`)
+    else filled++
+  }
+  if (filled) ok(`เติมช่องที่ยังว่าง ${filled} คน (วันเกิด/เบอร์โทร)`)
 
   // allowedLocationIds[] → user_allowed_locations
   const links = []

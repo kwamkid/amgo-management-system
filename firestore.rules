@@ -1,0 +1,236 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // ใช้ custom claims จาก token
+    function hasRole(role) {
+      return request.auth != null && 
+        request.auth.token.role == role;
+    }
+    
+    function hasAnyRole(roles) {
+      return request.auth != null && 
+        request.auth.token.role in roles;
+    }
+    
+    // Fallback: ตรวจสอบจาก database ถ้า claims ยังไม่อัพเดท
+    function hasRoleInDB(role) {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    function hasAnyRoleInDB(roles) {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
+    }
+    
+    // Combined check: claims หรือ database
+    function hasRoleCheck(role) {
+      return hasRole(role) || hasRoleInDB(role);
+    }
+    
+    function hasAnyRoleCheck(roles) {
+      return hasAnyRole(roles) || hasAnyRoleInDB(roles);
+    }
+    
+    // Invite Links
+    match /inviteLinks/{linkId} {
+      allow read: if true;
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Allow create during registration
+      allow create: if isOwner(userId) && 
+        request.resource.data.keys().hasAll([
+          'lineUserId', 'lineDisplayName', 'fullName', 
+          'phone', 'role', 'isActive', 'needsApproval'
+        ]) &&
+        request.resource.data.lineUserId == userId;
+      
+      // Allow read - HR ต้องเห็นพนักงานทั้งหมด
+      allow read: if isOwner(userId) || hasAnyRoleCheck(['admin', 'hr', 'manager']);
+      
+      // Allow update
+      allow update: if hasAnyRoleCheck(['admin', 'hr']) ||
+        (isOwner(userId) && 
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['fullName', 'phone', 'birthDate', 'updatedAt']));
+      
+      allow delete: if false;
+    }
+    
+    // Locations
+    match /locations/{locationId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+    }
+    
+    // Check-ins
+    match /checkins/{date}/records/{recordId} {
+      // อนุญาตให้อ่าน: เจ้าของ record หรือ admin/hr/manager
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         hasAnyRoleCheck(['admin', 'hr', 'manager']));
+      
+      // อนุญาตให้สร้าง: ต้องเป็นเจ้าของ
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้อัพเดท: 
+      // 1. Admin/HR ทำได้ทุกอย่าง
+      // 2. เจ้าของ record อัพเดทได้เฉพาะ field ที่เกี่ยวกับ checkout และ status
+      allow update: if hasAnyRoleCheck(['admin', 'hr']) ||
+        (isAuthenticated() && 
+         resource.data.userId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['checkoutTime', 'checkoutLat', 'checkoutLng', 
+                    'status', 'regularHours', 'overtimeHours', 'totalHours', 
+                    'breakHours', 'needsOvertimeApproval', 'isOvernightShift',
+                    'checkoutNote', 'updatedAt']));
+    }
+    
+    // Leaves
+    match /leaves/{leaveId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid ||
+         hasAnyRoleCheck(['admin', 'hr', 'manager']));
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if hasAnyRoleCheck(['admin', 'hr', 'manager']) ||
+        (isAuthenticated() && 
+         resource.data.userId == request.auth.uid && 
+         resource.data.status == 'pending');
+    }
+    
+    // Quotas collection
+    match /quotas/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+      
+      match /years/{year} {
+        allow read: if isAuthenticated();
+        allow write: if hasAnyRoleCheck(['admin', 'hr']);
+      }
+    }
+    
+    // Leave Types Configuration
+    match /leaveTypes/{typeId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+    }
+    
+    // Holidays
+    match /holidays/{holidayId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+    }
+    
+    // Influencers - Marketing module
+    match /influencers/{influencerId} {
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+      allow write: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+    }
+    
+    // Campaigns - เพิ่ม public read สำหรับ submissions
+    match /campaigns/{campaignId} {
+      // อนุญาตให้ public read เพื่อให้ submission system ทำงานได้
+      allow read: if true;
+      allow write: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+    }
+    
+    // Submissions - PUBLIC ACCESS สำหรับ influencers
+    match /submissions/{submissionId} {
+      // อนุญาตให้ทุกคนอ่าน submissions ที่มี code ตรงกัน
+      allow read: if true;
+      
+      // อนุญาตให้ทุกคนสร้าง submission ใหม่ได้ (ไม่ต้อง login)
+      allow create: if request.resource.data.keys().hasAll([
+        'code', 'campaignId', 'campaignName', 
+        'influencerId', 'influencerName', 'links'
+      ]);
+      
+      // อนุญาตให้อัพเดท submission ที่มี code ตรงกัน
+      // หรือ admin/hr/manager/marketing
+      allow update: if 
+        (resource.data.code == request.resource.data.code) ||
+        hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+      
+      // ไม่อนุญาตให้ลบ submission
+      allow delete: if false;
+    }
+    
+    // Brands & Products
+    match /brands/{brandId} {
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+      allow write: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+    }
+    
+    match /products/{productId} {
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+      allow write: if hasAnyRoleCheck(['admin', 'hr', 'manager', 'marketing']);
+    }
+    
+    // Delivery Points สำหรับ Driver
+    match /deliveryPoints/{deliveryId} {
+      // อนุญาตให้ admin, hr และ driver อ่านได้
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'driver']) ||
+        (isAuthenticated() && resource.data.driverId == request.auth.uid);
+      
+      // อนุญาตให้ driver สร้างเฉพาะของตัวเอง
+      allow create: if hasRoleCheck('driver') && 
+        request.resource.data.driverId == request.auth.uid;
+      
+      // อนุญาตให้ admin, hr อัพเดทได้ทั้งหมด หรือ driver อัพเดทของตัวเอง
+      allow update: if hasAnyRoleCheck(['admin', 'hr']) ||
+        (hasRoleCheck('driver') && resource.data.driverId == request.auth.uid);
+      
+      // อนุญาตให้ admin ลบได้เท่านั้น
+      allow delete: if hasRoleCheck('admin');
+    }
+    
+    // Delivery Routes
+    match /deliveryRoutes/{routeId} {
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'driver']);
+      allow write: if hasAnyRoleCheck(['admin', 'hr', 'driver']);
+    }
+    
+    // Config collection (สำหรับ cleanup และการตั้งค่าต่างๆ)
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin', 'hr']);
+    }
+    
+    // Settings collection สำหรับ Discord webhooks
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if hasAnyRoleCheck(['admin']);
+    }
+    
+    // Legacy rules สำหรับ compatibility
+    match /deliveries/{deliveryId} {
+      allow read: if hasAnyRoleCheck(['admin', 'hr', 'driver']) ||
+        (isAuthenticated() && resource.data.driverId == request.auth.uid);
+      allow create: if hasRoleCheck('driver') && 
+        request.resource.data.driverId == request.auth.uid;
+      allow update: if hasAnyRoleCheck(['admin', 'hr']) ||
+        (hasRoleCheck('driver') && resource.data.driverId == request.auth.uid);
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if hasRoleCheck('admin');
+    }
+  }
+}

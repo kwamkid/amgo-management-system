@@ -1,8 +1,18 @@
 // ใส่ข้อมูลพนักงานทีละหลายคน — หน่วยงาน · เงินเดือน · วันเริ่มงาน
-// ใช้ช่วงย้ายระบบ ลบทิ้งได้เมื่อทำ RLS เสร็จ (Phase 6)
+//
+// ── เคยปิดไว้ ตอนนี้เปิดใช้จริงแล้ว ────────────────────────────────────
+// ตอนแรกหน้านี้เขียนข้อมูลด้วย secret key ที่ข้าม RLS ได้ทั้งหมด จึงต้อง
+// ล็อกด้วย env flag ไว้ก่อน (ENABLE_MIGRATION_TOOLS)
+//
+// พอ RLS เสร็จแล้วก็ไม่ต้องใช้ secret key อีก — HR เขียน users กับ
+// user_compensation ได้อยู่แล้วผ่าน session ตัวเอง (policy users_manage /
+// user_compensation_manage) ซึ่ง "ปลอดภัยกว่าเดิม" เพราะ:
+//   · ฐานข้อมูลเป็นคนตัดสินสิทธิ์ ไม่ใช่ env flag
+//   · คนที่ไม่ใช่ HR เขียนไม่ผ่านแม้จะเข้าหน้านี้มาได้
+//   · การแก้ทุกครั้งมีชื่อคนแก้ใน audit_log (secret key ไม่มีชื่อ)
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { migrationToolsEnabled } from '@/lib/supabase/migration-tools'
+import { redirect } from 'next/navigation'
+import { createServerSupabase, getCurrentUser } from '@/lib/supabase/server'
 import BulkEditTable, { type Person, type Unit } from './BulkEditTable'
 import { PageHeader } from '@/components/shared'
 import { Table2 } from 'lucide-react'
@@ -10,20 +20,20 @@ import { Table2 } from 'lucide-react'
 export const dynamic = 'force-dynamic'
 
 export default async function BulkEditPage() {
-  if (!migrationToolsEnabled()) {
+  const me = await getCurrentUser()
+  if (!me) redirect('/login')
+
+  if (!['hr', 'admin'].includes(me.profile.role)) {
     return (
       <div className="max-w-xl rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <p className="font-semibold">หน้านี้ปิดอยู่</p>
-        <p className="mt-1">
-          เป็นเครื่องมือช่วงย้ายระบบ เขียนข้อมูลได้โดยไม่ผ่าน RLS
-          ต้องตั้ง <code className="font-mono">ENABLE_MIGRATION_TOOLS=true</code> ใน{' '}
-          <code className="font-mono">.env.local</code> แล้ว restart dev server ก่อน
-        </p>
+        <p className="font-semibold">ไม่มีสิทธิ์เข้าหน้านี้</p>
+        <p className="mt-1">หน้านี้แก้ข้อมูลพนักงานและเงินเดือน เปิดให้เฉพาะฝ่ายบุคคลกับผู้ดูแลระบบ</p>
       </div>
     )
   }
 
-  const sb = createAdminClient()
+  // ใช้ session ของ HR — RLS กรองให้เอง ไม่ต้องใช้ secret key
+  const sb = await createServerSupabase()
 
   const [usersRes, unitsRes, compRes] = await Promise.all([
     sb

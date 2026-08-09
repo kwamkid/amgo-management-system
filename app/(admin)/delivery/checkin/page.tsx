@@ -23,13 +23,13 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api'
 import { PageHeader } from '@/components/shared'
+import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
 
 const mapContainerStyle = {
   width: '100%',
   height: '300px'
 }
 
-const libraries: ("places")[] = ['places']
 
 export default function DeliveryCheckInPage() {
   const router = useRouter()
@@ -52,13 +52,7 @@ export default function DeliveryCheckInPage() {
   const [note, setNote] = useState('')
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-    const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-    id: 'google-map-script',
-    language: 'th',
-    region: 'TH'
-    })
+    const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER)
 
   // Check if user is driver
   useEffect(() => {

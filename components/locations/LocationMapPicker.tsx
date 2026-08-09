@@ -8,6 +8,7 @@ import { MapPin, Search } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
 
 interface LocationMapPickerProps {
   lat: number
@@ -27,7 +28,6 @@ const defaultCenter = {
   lng: 100.5018
 }
 
-const libraries: ("places")[] = ['places']
 
 export default function LocationMapPicker({
   lat,
@@ -46,13 +46,7 @@ export default function LocationMapPicker({
     lng: lng || defaultCenter.lng 
   })
   
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-    id: 'google-map-script',
-    language: 'th',  // เพิ่มบรรทัดนี้
-    region: 'TH'     // เพิ่มบรรทัดนี้
-  })
+  const { isLoaded, loadError } = useJsApiLoader(GOOGLE_MAPS_LOADER)
 
   // Update marker when props change
   useEffect(() => {

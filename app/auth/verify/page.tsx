@@ -33,7 +33,10 @@ function VerifyAuth() {
       }
 
       // refresh() เพื่อให้ Server Component อ่าน cookie ใหม่เห็น session
-      router.replace('/dashboard')
+      // ล็อกอินสำเร็จแล้วไปไหนต่อ — ปกติ /dashboard
+      // แต่ถ้ายังไม่ได้ผูก Discord จะถูกส่งมาพร้อม next=/link-discord
+      const next = params.get('next')
+      router.replace(next && next.startsWith('/') ? next : '/dashboard')
       router.refresh()
     }
     run()

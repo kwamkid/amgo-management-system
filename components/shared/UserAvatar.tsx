@@ -67,6 +67,9 @@ export default function UserAvatar({
           alt={name}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
+          // LINE CDN ปฏิเสธคำขอที่มี referrer จากโดเมนแปลกหน้า
+          // ไม่ส่ง referrer ไปเลยจะชัวร์กว่า (รูปโปรไฟล์ไม่ใช่ของลับ)
+          referrerPolicy="no-referrer"
         />
         {showSyncHint && isClickable && (
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const { data: user } = await sb
       .from('users')
-      .select('id, role, is_active, employment_status, deleted_at, full_name')
+      .select('id, role, is_active, employment_status, deleted_at, full_name, discord_user_id')
       .eq('line_user_id', profile.userId)
       .maybeSingle()
 
@@ -122,8 +122,11 @@ export async function GET(request: NextRequest) {
     const hash = await createSessionToken(user.id, emailForLine(profile.userId))
     const fb = await legacyFirebaseToken(profile.userId, user.role)
 
+    // กติกาบริษัท: ต้องมีทั้ง LINE และ Discord — ยังไม่ผูกก็พาไปผูกก่อน
+    const next = user.discord_user_id ? '' : '&next=/link-discord'
+
     return NextResponse.redirect(
-      new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}`, appUrl)
+      new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}${next}`, appUrl)
     )
   } catch (err) {
     console.error('LINE callback error:', err)

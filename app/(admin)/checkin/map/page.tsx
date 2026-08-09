@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
+import { DatePicker } from '@/components/aoo'
 
 const mapContainerStyle = {
   width: '100%',
@@ -433,12 +434,11 @@ export default function CheckinMapPage() {
               <ChevronLeft className="w-3 h-3" />
             </Button>
 
-            <Input
-              type="date"
+            <DatePicker
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 text-sm h-8"
+              className="flex-1 flex-1 text-sm h-8"
             />
 
             <Button
@@ -554,12 +554,11 @@ export default function CheckinMapPage() {
               <ChevronLeft className="w-3 h-3" />
             </Button>
 
-            <Input
-              type="date"
+            <DatePicker
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 h-7 text-xs"
+              className="flex-1 flex-1 h-7 text-xs"
             />
 
             <Button

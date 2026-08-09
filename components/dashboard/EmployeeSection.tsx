@@ -1,7 +1,7 @@
 // ========== FILE: components/dashboard/EmployeeSection.tsx ==========
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -40,36 +40,37 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBirthdayDialog, setShowBirthdayDialog] = useState(false);
   
-  // Get birthdays for the current month
+  // ดึงครั้งเดียวตอนเปิดหน้า แล้วเก็บไว้ทั้งปี
+  // ของเดิมใส่ currentMonth ไว้ใน dependency → กดเปลี่ยนเดือนทีก็ยิง API ใหม่ทุกครั้ง
+  // ทั้งที่ข้อมูลชุดเดิม (พนักงาน 56 คน) กรองในเครื่องได้เลย
   useEffect(() => {
+    let cancelled = false
+
     const fetchBirthdays = async () => {
       try {
-        setLoading(true);
-        // session อยู่ใน cookie อยู่แล้ว ไม่ต้องแนบ token เอง
-        const res = await fetch('/api/users/birthdays');
-        if (!res.ok) throw new Error('Failed to fetch birthdays');
+        setLoading(true)
+        const res = await fetch('/api/users/birthdays')
+        if (!res.ok) throw new Error('โหลดวันเกิดไม่สำเร็จ')
 
-        const { birthdays: allBirthdays } = await res.json();
+        const { birthdays: all } = await res.json()
+        if (cancelled) return
 
-        const currentMonthNum = currentMonth.getMonth();
-        const birthdayUsers: BirthdayUser[] = allBirthdays
-          .map((u: { id: string; fullName: string; lineDisplayName: string; linePictureUrl?: string; birthDate: string; role: string }) => ({
+        setBirthdays(
+          all.map((u: { id: string; fullName: string; lineDisplayName: string; linePictureUrl?: string; birthDate: string; role: string }) => ({
             ...u,
             birthDate: new Date(u.birthDate),
           }))
-          .filter((u: BirthdayUser) => u.birthDate.getMonth() === currentMonthNum)
-          .sort((a: BirthdayUser, b: BirthdayUser) => a.birthDate.getDate() - b.birthDate.getDate());
-
-        setBirthdays(birthdayUsers);
+        )
       } catch (error) {
-        console.error('Error fetching birthdays:', error);
+        console.error('โหลดวันเกิดไม่สำเร็จ:', error)
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false)
       }
-    };
+    }
 
-    fetchBirthdays();
-  }, [currentMonth]);
+    fetchBirthdays()
+    return () => { cancelled = true }
+  }, []);
   
   // Get upcoming birthdays (within ±5 days)
   const getUpcomingBirthdays = () => {
@@ -96,9 +97,18 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
   const monthEnd = endOfMonth(currentMonth);
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
   
+  // เฉพาะคนที่เกิดเดือนที่กำลังเปิดดูอยู่
+  const monthBirthdays = useMemo(
+    () =>
+      birthdays
+        .filter((u: BirthdayUser) => u.birthDate.getMonth() === currentMonth.getMonth())
+        .sort((a: BirthdayUser, b: BirthdayUser) => a.birthDate.getDate() - b.birthDate.getDate()),
+    [birthdays, currentMonth]
+  );
+
   // Get birthdays for a specific day
   const getBirthdaysForDay = (day: Date) => {
-    return birthdays.filter(user => user.birthDate.getDate() === day.getDate());
+    return monthBirthdays.filter(user => user.birthDate.getDate() === day.getDate());
   };
 
   // Handle date click
@@ -147,8 +157,23 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
               </button>
             </div>
 
+            {/* ตอนโหลดต้องเห็นว่ากำลังโหลด ของเดิมขึ้นปฏิทินว่างเปล่าแล้วข้อมูล
+                โผล่มาเฉย ๆ คนใช้นึกว่าไม่มีใครเกิดเดือนนี้ */}
+            {loading && (
+              <div className="grid grid-cols-7 gap-2" aria-busy="true" aria-label="กำลังโหลดวันเกิด">
+                {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
+                  <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
+                    {day}
+                  </div>
+                ))}
+                {Array.from({ length: 35 }).map((_, idx) => (
+                  <div key={idx} className="aspect-square rounded-lg bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            )}
+
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            <div className={`grid grid-cols-7 gap-2 ${loading ? 'hidden' : ''}`}>
               {/* Weekday Headers */}
               {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
                 <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">

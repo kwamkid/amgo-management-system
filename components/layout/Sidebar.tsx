@@ -23,16 +23,12 @@ import {
   UserPlus,
   ChevronDown,
   Shield,
-  Bell,
   MessageSquare,
-  Trash2,
   Truck,
   Camera,
   Map,
   Home,
   Table2,
-  Database,
-  Palette,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -131,21 +127,13 @@ const navSections: NavSection[] = [
           { label: 'ปิดกะอัตโนมัติ', href: '/settings/auto-checkout', icon: subIcon(Clock) },
           { label: 'สิทธิ์การใช้งาน', href: '/settings/permissions', icon: subIcon(Shield), roles: ['admin'] },
           { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },
-          { label: 'ลบข้อมูลทั้งหมด', href: '/settings/delete-data', icon: subIcon(Trash2), roles: ['admin'] },
         ],
       },
-      {
-        label: 'สถานะย้ายระบบ',
-        href: '/migration',
-        icon: icon(Database),
-        roles: ['admin'],
-      },
-      {
-        label: 'คอมโพเนนต์กลาง',
-        href: '/design',
-        icon: icon(Palette),
-        roles: ['admin'],
-      },
+      // เอาออกจากเมนูแล้ว 3 อัน — เป็นเครื่องมือช่วงย้ายระบบ ไม่ใช่ของที่ใช้งานจริง
+      //   /settings/delete-data  ปิดการทำงานไปแล้ว (ลบได้แค่ข้อมูลสำรองบน Firebase)
+      //   /migration             หน้าตรวจสถานะย้ายข้อมูล ถูกล็อกด้วย env flag อยู่แล้ว
+      //   /design                หน้าโชว์คอมโพเนนต์ ไว้ดูตอนพัฒนา
+      // หน้ายังอยู่ในโค้ด เข้าได้ด้วยการพิมพ์ URL ตรง ๆ ถ้าต้องใช้
     ],
   },
 ]

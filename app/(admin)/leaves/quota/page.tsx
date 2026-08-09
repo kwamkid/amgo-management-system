@@ -33,7 +33,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
-import { getQuotasForYear, updateQuota } from '@/lib/services/leaveService'
+import {
+  getQuotasForYear,
+  updateQuota,
+  hasQuotaDefaults,
+  copyQuotaDefaults,
+} from '@/lib/services/leaveService'
 import Link from 'next/link'
 import {
   Popover,
@@ -293,6 +298,29 @@ export default function LeaveQuotaManagementPage() {
   // CarryOver Dialog state
   const [showCarryOverDialog, setShowCarryOverDialog] = useState(false)
 
+  // ปีหน้าต้องตั้งค่าโควตาไว้ล่วงหน้าตั้งแต่ปลายปีนี้
+  // ถ้าไม่ตั้ง พอถึง 1 ม.ค. พนักงานจะยื่นใบลาไม่ได้ และจะไม่มีใครรู้จนมีคนบ่น
+  const nextYear = new Date().getFullYear() + 1
+  const [nextYearReady, setNextYearReady] = useState<boolean | null>(null)
+  const [copyingDefaults, setCopyingDefaults] = useState(false)
+
+  useEffect(() => {
+    hasQuotaDefaults(nextYear).then(setNextYearReady).catch(() => setNextYearReady(null))
+  }, [nextYear])
+
+  const handleCopyDefaults = async () => {
+    setCopyingDefaults(true)
+    try {
+      const n = await copyQuotaDefaults(nextYear - 1, nextYear, userData!.id!)
+      showToast(`ตั้งค่าโควต้าปี ${nextYear + 543} แล้ว ${n} ประเภท`, 'success')
+      setNextYearReady(true)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'ตั้งค่าไม่สำเร็จ', 'error')
+    } finally {
+      setCopyingDefaults(false)
+    }
+  }
+
   // Check permission
   const canManage = userData && ['hr', 'manager', 'admin'].includes(userData.role)
 
@@ -455,6 +483,28 @@ export default function LeaveQuotaManagementPage() {
 
   return (
     <div className="space-y-6">
+      {nextYearReady === false && (
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>ยังไม่ได้ตั้งโควต้าตั้งต้นของปี {nextYear + 543}</AlertTitle>
+          <AlertDescription>
+            <p>
+              ต้องตั้งไว้ก่อนขึ้นปีใหม่ ไม่งั้นวันที่ 1 มกราคม พนักงานจะยื่นใบลาไม่ได้
+              เพราะไม่มีโควต้า
+            </p>
+            <AooButton
+              variant="secondary"
+              size="sm"
+              className="mt-3"
+              disabled={copyingDefaults}
+              onClick={handleCopyDefaults}
+            >
+              {copyingDefaults ? 'กำลังตั้งค่า...' : `คัดลอกค่าจากปี ${nextYear + 542}`}
+            </AooButton>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <PageHeader
         title="จัดการโควต้าการลา"
         description="กำหนดจำนวนวันลาสำหรับพนักงานแต่ละคน"

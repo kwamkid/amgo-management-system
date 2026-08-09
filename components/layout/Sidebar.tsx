@@ -124,7 +124,6 @@ const navSections: NavSection[] = [
           { label: 'สถานที่ทำงาน', href: '/settings/locations', icon: subIcon(MapPin) },
           { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
           { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
-          { label: 'ปิดกะอัตโนมัติ', href: '/settings/auto-checkout', icon: subIcon(Clock) },
           { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },
         ],
       },

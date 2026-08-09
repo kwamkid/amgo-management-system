@@ -470,13 +470,13 @@ export default function DiscordSettingsPage() {
           </div>
 
 
-          {/* Alerts Channel */}
+          {/* Birthday Channel */}
           <div>
             <Label>Birthday Channel</Label>
             <div className="flex gap-2 mt-1">
               <div className="flex-1 relative">
                 <Input
-                  type={showWebhooks.alerts ? 'text' : 'password'}
+                  type={showWebhooks.birthday ? 'text' : 'password'}
                   value={settings.webhooks.birthday}
                   onChange={(e) => setSettings({
                     ...settings,
@@ -493,7 +493,7 @@ export default function DiscordSettingsPage() {
                     onClick={() => toggleWebhookVisibility('birthday')}
                     className="h-8 w-8"
                   >
-                    {showWebhooks.alerts ? (
+                    {showWebhooks.birthday ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
                       <Eye className="w-4 h-4" />

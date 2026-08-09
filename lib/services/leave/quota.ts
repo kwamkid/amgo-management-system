@@ -150,6 +150,57 @@ export async function hasQuotaDefaults(year: number): Promise<boolean> {
   return (count ?? 0) > 0
 }
 
+/** ค่าโควตาตั้งต้นของปีนั้น */
+export async function getQuotaDefaults(
+  year: number
+): Promise<{ leaveType: LeaveType; days: number; note: string }[]> {
+  const { data, error } = await sb()
+    .from('leave_type_defaults')
+    .select('leave_type, default_days, note')
+    .eq('year', year)
+    .order('leave_type')
+
+  if (error) throw new Error(`ดึงค่าเริ่มต้นไม่สำเร็จ: ${error.message}`)
+  return (data ?? []).map((d) => ({
+    leaveType: d.leave_type as LeaveType,
+    days: Number(d.default_days),
+    note: d.note ?? '',
+  }))
+}
+
+/**
+ * ก๊อปค่าโควตาตั้งต้นไปปีถัดไป
+ *
+ * ปีใหม่ต้องตั้งค่าไว้ล่วงหน้าตั้งแต่ปลายปีก่อน ไม่ใช่รอให้ถึงวันที่ 1 ม.ค.
+ * แล้วค่อยมารู้ว่าไม่มีโควตา — ตัวนี้ทำให้ HR กดทีเดียวจบ แล้วค่อยไปแก้ทีหลัง
+ * ถ้าปีนั้นตัวเลขต่างจากปีก่อน
+ */
+export async function copyQuotaDefaults(
+  fromYear: number,
+  toYear: number,
+  updatedBy: string
+): Promise<number> {
+  const source = await getQuotaDefaults(fromYear)
+  if (!source.length) throw new Error(`ปี ${fromYear} ยังไม่ได้ตั้งค่าเริ่มต้น`)
+
+  const { data, error } = await sb()
+    .from('leave_type_defaults')
+    .upsert(
+      source.map((d) => ({
+        year: toYear,
+        leave_type: d.leaveType,
+        default_days: d.days,
+        note: `คัดลอกจากปี ${fromYear}`,
+        updated_by: updatedBy,
+      })),
+      { onConflict: 'year,leave_type', ignoreDuplicates: true }
+    )
+    .select('leave_type')
+
+  if (error) throw new Error(`คัดลอกค่าเริ่มต้นไม่สำเร็จ: ${error.message}`)
+  return data?.length ?? 0
+}
+
 /** สร้างโควต้าตั้งต้นให้หลายคน — ใช้ตอนเปิดปีใหม่ */
 export async function seedQuotaForUsers(
   userIds: string[],

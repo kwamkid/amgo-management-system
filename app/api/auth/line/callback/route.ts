@@ -123,7 +123,11 @@ export async function GET(request: NextRequest) {
     const fb = await legacyFirebaseToken(profile.userId, user.role)
 
     // กติกาบริษัท: ต้องมีทั้ง LINE และ Discord — ยังไม่ผูกก็พาไปผูกก่อน
-    const next = user.discord_user_id ? '' : '&next=/link-discord'
+    //
+    // แต่บังคับได้ต่อเมื่อตั้ง DISCORD_CLIENT_ID ไว้แล้วเท่านั้น
+    // ไม่งั้นจะพาคนไปหน้าที่กดเชื่อมต่อไม่ได้ = ล็อกทุกคนออกจากระบบ
+    const discordReady = !!process.env.DISCORD_CLIENT_ID
+    const next = user.discord_user_id || !discordReady ? '' : '&next=/link-discord'
 
     return NextResponse.redirect(
       new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}${next}`, appUrl)

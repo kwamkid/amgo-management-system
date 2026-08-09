@@ -125,7 +125,6 @@ const navSections: NavSection[] = [
           { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
           { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
           { label: 'ปิดกะอัตโนมัติ', href: '/settings/auto-checkout', icon: subIcon(Clock) },
-          { label: 'สิทธิ์การใช้งาน', href: '/settings/permissions', icon: subIcon(Shield), roles: ['admin'] },
           { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },
         ],
       },

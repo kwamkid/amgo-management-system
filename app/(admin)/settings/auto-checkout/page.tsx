@@ -85,6 +85,7 @@ export default function AutoCheckoutSettingsPage() {
               <p className="font-medium">เกี่ยวกับ Auto-Checkout</p>
               <ul className="space-y-1 text-blue-800">
                 <li>• ระบบจะทำงานทุกวันตอน 23:59 อัตโนมัติ</li>
+                <li>• ชั่วโมงทำงานจะถูกตั้งเป็น 0 และติดสถานะ &quot;รอตรวจ&quot; ไม่ได้เดาให้</li>
                 <li>• เช็คเอาท์พนักงานที่ลืมเช็คเอาท์เกิน 12 ชั่วโมง</li>
                 <li>• ใช้เวลาเช็คเอาท์ตามกะ (ถ้ามี) หรือ default 18:00</li>
                 <li>• HR สามารถแก้ไขเวลาเช็คเอาท์ย้อนหลังได้ในหน้า Pending</li>
@@ -116,7 +117,14 @@ export default function AutoCheckoutSettingsPage() {
 
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> Cron job ต้องตั้งค่าใน <code className="bg-yellow-100 px-1.5 py-0.5 rounded">vercel.json</code> หรือ external cron service
+              <strong>ตั้งเวลาที่:</strong>{' '}
+              <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="underline">
+                cron-job.org
+              </a>{' '}
+              — timezone <code className="bg-yellow-100 px-1.5 py-0.5 rounded">Asia/Bangkok</code>{' '}
+              พร้อม header <code className="bg-yellow-100 px-1.5 py-0.5 rounded">Authorization: Bearer &lt;CRON_SECRET&gt;</code>
+              <br />
+              ไม่ใช้ Vercel Cron เพราะแผนที่ใช้อยู่จำกัดจำนวน job
             </p>
           </div>
         </CardContent>

@@ -122,12 +122,15 @@ const navSections: NavSection[] = [
         icon: icon(Settings),
         roles: ['hr', 'admin'],
         subItems: [
+          // ⚠️ ทุกลิงก์ต้องมีหน้าอยู่จริงใน app/(admin)/settings/
+          //    Next.js prefetch ลิงก์ในเมนูอัตโนมัติ ลิงก์ตายจึงยิง 404
+          //    รัวใน console ตั้งแต่เปิดหน้า โดยยังไม่มีใครกดด้วยซ้ำ
           { label: 'สถานที่ทำงาน', href: '/settings/locations', icon: subIcon(MapPin) },
           { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
           { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
-          { label: 'ประเภทการลา', href: '/settings/leave-types', icon: subIcon(FileText) },
-          { label: 'การแจ้งเตือน', href: '/settings/notifications', icon: subIcon(Bell) },
-          { label: 'ความปลอดภัย', href: '/settings/security', icon: subIcon(Shield), roles: ['admin'] },
+          { label: 'ปิดกะอัตโนมัติ', href: '/settings/auto-checkout', icon: subIcon(Clock) },
+          { label: 'สิทธิ์การใช้งาน', href: '/settings/permissions', icon: subIcon(Shield), roles: ['admin'] },
+          { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },
           { label: 'ลบข้อมูลทั้งหมด', href: '/settings/delete-data', icon: subIcon(Trash2), roles: ['admin'] },
         ],
       },

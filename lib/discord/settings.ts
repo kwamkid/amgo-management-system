@@ -21,6 +21,7 @@ export interface DiscordSettings {
     hr: string
     alerts: string
     campaign: string
+    birthday: string
   }
   notifications: {
     checkIn: boolean
@@ -31,6 +32,7 @@ export interface DiscordSettings {
     overtime: boolean
     dailySummary: boolean
     campaignUpdates: boolean
+    birthday: boolean
   }
   /** เวลาส่งสรุปประจำวัน (HH:mm) */
   dailySummaryTime: string
@@ -38,7 +40,7 @@ export interface DiscordSettings {
 }
 
 export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
-  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '' },
+  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '', birthday: '' },
   notifications: {
     checkIn: true,
     checkOut: true,
@@ -48,6 +50,7 @@ export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
     overtime: true,
     dailySummary: true,
     campaignUpdates: true,
+    birthday: true,
   },
   dailySummaryTime: '18:00',
 }

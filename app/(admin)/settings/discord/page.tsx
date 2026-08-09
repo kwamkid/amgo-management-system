@@ -468,6 +468,66 @@ export default function DiscordSettingsPage() {
               การแจ้งเตือนระบบ เช่น พนักงานมาสาย, ทำงานเกินเวลา
             </p>
           </div>
+
+
+          {/* Alerts Channel */}
+          <div>
+            <Label>Birthday Channel</Label>
+            <div className="flex gap-2 mt-1">
+              <div className="flex-1 relative">
+                <Input
+                  type={showWebhooks.alerts ? 'text' : 'password'}
+                  value={settings.webhooks.birthday}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    webhooks: { ...settings.webhooks, birthday: e.target.value }
+                  })}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  disabled={!canEdit}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => toggleWebhookVisibility('birthday')}
+                    className="h-8 w-8"
+                  >
+                    {showWebhooks.alerts ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </Button>
+                  {settings.webhooks.birthday && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => copyWebhookUrl(settings.webhooks.birthday)}
+                      className="h-8 w-8"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Button
+                onClick={() => testWebhook('birthday')}
+                disabled={!settings.webhooks.birthday || testing === 'birthday'}
+                variant="outline"
+              >
+                {testing === 'birthday' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <TestTube className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              อวยพรวันเกิดพนักงานอัตโนมัติทุกเช้า
+            </p>
+          </div>
         </CardContent>
       </Card>
 

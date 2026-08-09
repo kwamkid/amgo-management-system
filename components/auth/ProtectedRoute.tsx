@@ -7,7 +7,7 @@ import TechLoader from '@/components/shared/TechLoader'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  allowedRoles?: Array<'admin' | 'hr' | 'manager' | 'employee' | 'driver'>
+  allowedRoles?: Array<'admin' | 'hr' | 'manager' | 'employee' | 'driver' | 'marketing'>
   redirectTo?: string
 }
 

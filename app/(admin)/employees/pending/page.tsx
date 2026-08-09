@@ -1,6 +1,8 @@
 'use client'
 
 import { usePendingUsers } from '@/hooks/useUsers'
+import { PageHeader } from '@/components/shared'
+import { Pill } from '@/components/aoo'
 import { useUsers } from '@/hooks/useUsers'
 import { useLocations } from '@/hooks/useLocations'
 import { User } from '@/types/user'
@@ -77,32 +79,17 @@ export default function PendingUsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/employees"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">รออนุมัติ</h1>
-            <p className="text-gray-600 mt-1 text-base">
-              พนักงานที่ลงทะเบียนและรอการอนุมัติ
-            </p>
-          </div>
-        </div>
-        
-        {pendingUsers.length > 0 && (
-          <Alert variant="warning" className="w-auto">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="font-medium">
-              {pendingUsers.length} รายการ
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
+      <PageHeader
+        title="รออนุมัติ"
+        description="พนักงานที่ลงทะเบียนและรอการอนุมัติ"
+        icon={Clock}
+        backHref="/employees"
+        actions={
+          pendingUsers.length > 0 ? (
+            <Pill tone="warning">{pendingUsers.length} รายการ</Pill>
+          ) : undefined
+        }
+      />
 
       {/* Pending Users */}
       {pendingUsers.length === 0 ? (

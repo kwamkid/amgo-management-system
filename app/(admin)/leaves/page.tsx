@@ -3,6 +3,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { PageHeader } from '@/components/shared'
+import { Button as AooButton } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useLeave } from '@/hooks/useLeave'
 import { 
@@ -65,38 +67,32 @@ export default function LeavePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">ระบบลา</h1>
-          <p className="text-gray-600 mt-1">
-            จัดการวันลาและดูประวัติการลาของคุณ
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
-          <Link href="/leaves/history">
-            <Button variant="outline">
-              <History className="w-4 h-4 mr-2" />
-              ประวัติการลา
-            </Button>
-          </Link>
-          <Link href="/leaves/request">
-            <Button className={`bg-gradient-to-r ${gradients.primary}`}>
-              <Plus className="w-4 h-4 mr-2" />
-              ขอลา
-            </Button>
-          </Link>
-          {isManagement && (
-            <Link href="/leaves/management">
-              <Button variant="outline" className="border-purple-200 text-purple-600 hover:bg-purple-50">
-                <Users className="w-4 h-4 mr-2" />
-                จัดการคำขอลา
-              </Button>
+      <PageHeader
+        title="ระบบลา"
+        description="จัดการวันลาและดูประวัติการลาของคุณ"
+        icon={Calendar}
+        actions={
+          <>
+            <Link href="/leaves/history">
+              <AooButton variant="ghost" size="sm" icon="Clock">
+                ประวัติการลา
+              </AooButton>
             </Link>
-          )}
-        </div>
-      </div>
+            {isManagement && (
+              <Link href="/leaves/management">
+                <AooButton variant="secondary" size="sm" icon="Users">
+                  จัดการคำขอลา
+                </AooButton>
+              </Link>
+            )}
+            <Link href="/leaves/request">
+              <AooButton size="sm" icon="Plus">
+                ขอลา
+              </AooButton>
+            </Link>
+          </>
+        }
+      />
 
       {/* Pending Alert */}
       {pendingCount > 0 && (

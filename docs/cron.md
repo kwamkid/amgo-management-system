@@ -1,0 +1,165 @@
+# งานตามเวลา (cron)
+
+ตั้งที่ **cron-job.org** ที่เดียว — ไม่ใช้ Vercel Cron (ลบ `vercel.json` ทิ้งแล้ว)
+
+เหตุผลที่เลือก cron-job.org: เลือก timezone ได้ต่อ job จึงตั้งเป็นเวลาไทยตรง ๆ
+(Vercel Cron ใช้ UTC อย่างเดียว ต้องคอยลบ 7 ชั่วโมงเอง และพลาดง่ายตอนแก้)
+
+---
+
+## 1. เตรียมก่อน
+
+### ตั้ง `CRON_SECRET`
+
+สุ่มรหัสยาว ๆ มาหนึ่งอัน:
+
+```bash
+openssl rand -hex 32
+```
+
+เอาไปใส่ 2 ที่ให้ตรงกัน:
+
+- ไฟล์ `.env.local` (ตอน dev)
+- Environment Variables ของที่ deploy จริง (Vercel → Settings → Environment Variables)
+
+> ถ้าไม่ตั้ง `CRON_SECRET` ตอน production ระบบจะปฏิเสธทุกคำเรียก — ตั้งใจให้เป็นแบบนั้น
+> จะได้ไม่มีกรณี "ลืมตั้งแล้วใครก็ยิงงานได้"
+
+### โดเมน
+
+ต้องเป็นโดเมนจริงที่เปิดจากอินเทอร์เน็ตได้
+`NEXT_PUBLIC_APP_URL` ตอนนี้ยังเป็น ngrok (`https://amgo.ngrok.app`) ซึ่ง**ใช้กับ cron ไม่ได้**
+เพราะต้องเปิดเครื่องค้างไว้ตลอด — รอ deploy ขึ้นโดเมนจริงก่อนแล้วค่อยตั้ง
+
+ในเอกสารนี้แทนโดเมนจริงด้วย `https://โดเมนของคุณ`
+
+---
+
+## 2. งานที่ต้องตั้ง — 2 งาน
+
+### งานที่ 1 · ปิดกะให้คนที่ลืมเช็คเอาท์
+
+| ช่อง | ค่า |
+|---|---|
+| Title | `AMGO — ปิดกะอัตโนมัติ` |
+| URL | `https://โดเมนของคุณ/api/cron/auto-checkout` |
+| Schedule | Every day at **23:59** |
+| Timezone | `Asia/Bangkok` |
+| Request method | `GET` |
+| Header | `Authorization: Bearer <CRON_SECRET>` |
+| Treat as success | HTTP `200` |
+
+**ทำอะไร:** หากะที่เปิดค้างเกิน 12 ชั่วโมง แล้วปิดให้
+
+⚠️ **ไม่เดาชั่วโมงทำงานให้** — บันทึกเวลาปิดกะไว้ แต่ตั้งชั่วโมงเป็น 0
+แล้วติดสถานะ `needs_review` รอ HR ตัดสิน
+(ของเดิมเดาให้ ผลคือเฉลี่ย 15.4 ชม. สูงสุด 26.55 ชม. ไหลเข้าไปคิดค่าแรง)
+
+→ หลังตั้งงานนี้แล้ว **ต้องมีคนไล่เคลียร์รายการ `needs_review` เป็นประจำ**
+ตอนนี้ค้างอยู่ 203 รายการจากข้อมูลเก่า
+
+---
+
+### งานที่ 2 · ลบรูปที่เก่าเกิน 60 วัน
+
+| ช่อง | ค่า |
+|---|---|
+| Title | `AMGO — ลบรูปเก่า 60 วัน` |
+| URL | `https://โดเมนของคุณ/api/cron/cleanup-photos` |
+| Schedule | Every day at **03:30** |
+| Timezone | `Asia/Bangkok` |
+| Request method | `GET` |
+| Header | `Authorization: Bearer <CRON_SECRET>` |
+| Treat as success | HTTP `200` |
+
+**ทำอะไร:** ลบรูปเซลฟี่ตอนเช็คอิน + รูปหลักฐานส่งของ ที่เก่ากว่า 60 วัน
+ทีละ 300 แถวต่อตารางต่อรอบ (cron-job.org รอผลได้ 30 วินาที — เกินแล้วตัดสาย)
+
+ถ้ายังลบไม่หมด คำตอบจะมี `"done": false` และบอกจำนวนที่เหลือ
+วันถัดไปจะไล่เก็บต่อเอง ไม่ต้องทำอะไร
+
+> **ตอนนี้ยังไม่มีอะไรให้ลบ** — รูปทั้งหมดที่มี (เช็คอิน 3,897 · ส่งของ 3,463)
+> ยังเป็นลิงก์ของ Firebase ที่ย้ายมา ตัวไฟล์อยู่บน Firebase ซึ่งเราตกลงกันว่าไม่แตะ
+> งานนี้จะเริ่มมีผลกับรูปที่ถ่ายใหม่บน Supabase เท่านั้น
+>
+> 615.7 MB ที่ค้างบน Firebase ต้องลบมือทีเดียวตอนเลิกใช้ Firebase
+
+---
+
+## 3. ใส่ header ที่ cron-job.org ยังไง
+
+1. เปิดหน้าแก้ไข job → แท็บ **Advanced**
+2. หัวข้อ **Headers** กด **Add header**
+3. Key = `Authorization`  ·  Value = `Bearer <รหัสที่สุ่มไว้>`
+
+ถ้าเจอปัญหาแก้ `Authorization` ไม่ได้ ใช้ header ชื่ออื่นแทนได้:
+
+```
+x-cron-secret: <รหัส>
+```
+
+**ทางสุดท้ายจริง ๆ** ถ้าใส่ header ไม่ได้เลย ต่อท้าย URL ได้:
+
+```
+https://โดเมนของคุณ/api/cron/auto-checkout?secret=<รหัส>
+```
+
+⚠️ วิธีนี้รหัสจะติดอยู่ใน log ทั้งฝั่ง cron-job.org (เก็บประวัติการเรียกให้ดูย้อนหลัง)
+และฝั่ง server — เลี่ยงได้ควรเลี่ยง
+
+---
+
+## 4. ทดสอบก่อนตั้งจริง
+
+```bash
+# ปิดกะอัตโนมัติ
+curl -s -H "Authorization: Bearer $CRON_SECRET" \
+  https://โดเมนของคุณ/api/cron/auto-checkout | jq
+
+# ลบรูปเก่า
+curl -s -H "Authorization: Bearer $CRON_SECRET" \
+  https://โดเมนของคุณ/api/cron/cleanup-photos | jq
+```
+
+ควรได้ `{"success": true, ...}`
+ถ้าได้ `401 Unauthorized` แปลว่ารหัสไม่ตรงกัน หรือยังไม่ได้ตั้งฝั่ง server
+
+### ลบรูปย้อนหลังทีเดียวเยอะ ๆ
+
+ค่าปกติทำทีละ 300 แถว ถ้าอยากเร่งเก็บของค้างสั่งได้สูงสุด 2000:
+
+```bash
+curl -s -H "Authorization: Bearer $CRON_SECRET" \
+  "https://โดเมนของคุณ/api/cron/cleanup-photos?limit=2000" | jq
+```
+
+---
+
+## 5. ดูว่ารันไปแล้วเมื่อไหร่
+
+เก็บไว้ในตาราง `app_config`:
+
+```sql
+select key, value, note, updated_at
+from app_config
+where key = 'photo_cleanup_last_run';
+```
+
+ส่วนรายการที่ระบบปิดกะให้ ดูได้จาก:
+
+```sql
+select user_name, work_date, checkin_time, checkout_time
+from checkins
+where hours_status = 'needs_review'
+order by work_date desc;
+```
+
+---
+
+## หมายเหตุ
+
+- cron-job.org แผนฟรี: 50 job · เรียกถี่สุดทุก 1 นาที · รอผลลัพธ์ 30 วินาที
+- เปิด **Notification on failure** ไว้ด้วย จะได้รู้ตอนงานล้ม
+- ทั้งสอง endpoint รับทั้ง `GET` และ `POST` ผลเหมือนกัน
+- เรียกซ้ำได้ไม่เสียหาย (idempotent) — ปิดกะจะข้ามกะที่ถูกปิดไปแล้ว
+  ส่วนลบรูปก็จะไม่เจอแถวเดิมอีกเพราะล้างคอลัมน์ไปแล้ว

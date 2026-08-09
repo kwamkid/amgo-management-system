@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
-import { deleteAllData } from '@/lib/services/deleteService'
+import { PageHeader } from '@/components/shared'
 
 const CONFIRMATION_TEXT = 'DELETE ALL DATA'
 
@@ -61,7 +61,25 @@ export default function DeleteAllDataPage() {
   // Check if user is admin
   const isAdmin = userData?.role === 'admin'
 
+  // ⛔ ปุ่มนี้ถูกปิดไว้ตั้งแต่ย้ายมา Supabase
+  //
+  // ของเดิมมันลบ collection บน Firestore ซึ่งตอนนี้เป็นแค่ข้อมูลสำรอง
+  // กดแล้วจะไม่มีอะไรเกิดขึ้นกับระบบจริง แต่จะทำลายชุดสำรองทิ้ง
+  //
+  // ส่วนถ้าจะให้ลบข้อมูลจริงบน Supabase — ยังไม่ทำ เพราะข้อมูลตอนนี้
+  // เป็นของจริงแล้ว (เช็คอิน 82,290 ชม. · ใบลา 299 ใบ · จุดส่ง 3,479 จุด)
+  // เครื่องมือแบบนี้เขียนไว้ตอนฐานข้อมูลยังเป็นของทดสอบ
+  //
+  // ต้องการล้างข้อมูลจริงเมื่อไหร่ค่อยทำใหม่แบบเลือกเป็นตาราง ๆ พร้อมสำรองก่อน
   const handleDeleteAllData = async () => {
+    showToast(
+      'ปิดการใช้งานไว้ — ระบบย้ายมา Supabase แล้ว ปุ่มนี้ลบได้แค่ข้อมูลสำรองบน Firebase',
+      'error'
+    )
+    return
+  }
+
+  const handleDeleteAllDataLegacy = async () => {
     if (!isAdmin) {
       showToast('คุณไม่มีสิทธิ์ในการลบข้อมูล', 'error')
       return
@@ -90,7 +108,7 @@ export default function DeleteAllDataPage() {
       // Delete each collection
       for (const collection of DATA_COLLECTIONS) {
         try {
-          await deleteAllData(collection.collection)
+          throw new Error('ปิดการใช้งานแล้ว')
           setDeletedCollections(prev => [...prev, collection.collection])
           showToast(`ลบข้อมูล ${collection.name} สำเร็จ`, 'success')
         } catch (error) {
@@ -116,7 +134,7 @@ export default function DeleteAllDataPage() {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>ไม่มีสิทธิ์เข้าถึง</AlertTitle>
@@ -129,14 +147,12 @@ export default function DeleteAllDataPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">ลบข้อมูลทั้งหมด</h1>
-        <p className="text-gray-600 mt-1">
-          ลบข้อมูลทั้งหมดในระบบ ยกเว้นข้อมูลผู้ใช้
-        </p>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        title="ลบข้อมูลทั้งหมด"
+        description="ลบข้อมูลทั้งหมดในระบบ ยกเว้นข้อมูลผู้ใช้"
+        icon={Trash2}
+      />
 
       {/* Warning */}
       <Alert variant="error" className="border-2 border-red-600">

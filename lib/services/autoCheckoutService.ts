@@ -1,182 +1,114 @@
 // lib/services/autoCheckoutService.ts
-// Server-side auto-checkout service using Firebase Admin SDK
+//
+// ปิดกะให้คนที่ลืมเช็คเอาท์ — รันจาก cron วันละครั้ง
+// ทำงานฝั่ง server ด้วยสิทธิ์ที่ข้าม RLS (ไม่มีผู้ใช้ล็อกอินตอน cron ทำงาน)
+// ของเดิมที่ใช้ Firestore ลบทิ้งแล้ว — ย้อนดูได้ใน git history
+//
+// ── เปลี่ยนนโยบายจากของเดิม ────────────────────────────────────────────
+// ของเดิม "เดา" เวลาเลิกงานให้ (ใช้เวลาปิดกะ หรือ 18:00 หรือ +8 ชม.)
+// แล้วบันทึกเป็นชั่วโมงทำงานจริง
+//
+// ผลที่เกิดขึ้นจริงในข้อมูลที่ย้ายมา: แถวที่ระบบปิดให้เฉลี่ย 15.4 ชม.
+// สูงสุด 26.55 ชม. — ตัวเลขพวกนี้ไหลเข้าไปคิดค่าแรงโดยไม่มีใครทัก
+//
+// รอบนี้ปิดกะให้เหมือนเดิม (ไม่งั้นเช็คอินวันถัดไปไม่ได้) แต่
+//   · ชั่วโมง = 0
+//   · hours_status = 'needs_review'
+// ให้ HR มาตัดสินเอง — ชั่วโมงทำงานคือเงิน ระบบไม่ควรเดาแทนคน
 
-import { adminDb } from '@/lib/firebase/admin'
-import { CheckInRecord } from '@/types/checkin'
-import { calculateWorkingHours } from './workingHoursService'
-import { format } from 'date-fns'
-import { FieldValue } from 'firebase-admin/firestore'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-const COLLECTION_NAME = 'checkins'
+/** ลืมเช็คเอาท์เกินกี่ชั่วโมงถึงถือว่าลืมจริง (ไม่ใช่กะยาว) */
+const FORGOT_AFTER_HOURS = 12
 
-/**
- * Auto-checkout pending records (forgot to checkout)
- * Run this at 23:59 daily via cron job
- * Uses Firebase Admin SDK for server-side operations
- */
 export async function autoCheckoutPendingRecords(): Promise<{
   processed: number
   errors: string[]
 }> {
-  try {
-    const records: CheckInRecord[] = []
-    const errors: string[] = []
-    let processed = 0
+  const sb = createAdminClient()
+  const errors: string[] = []
 
-    // Check today and yesterday (for overnight shifts)
-    for (let i = 0; i < 2; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = format(date, 'yyyy-MM-dd')
+  const cutoff = new Date(Date.now() - FORGOT_AFTER_HOURS * 3_600_000)
 
-      const snapshot = await adminDb
-        .collection(COLLECTION_NAME)
-        .doc(dateStr)
-        .collection('records')
-        .where('status', '==', 'checked-in')
-        .get()
+  // ของเดิมวน query วันนี้+เมื่อวานทีละวันเพราะเอกสารซ้อนตามวันที่
+  // ตารางแบนหาได้ทีเดียวจากเวลาเช็คอิน
+  const { data: stale, error } = await sb
+    .from('checkins')
+    .select('id, user_id, user_name, checkin_time, shift_end_time')
+    .eq('status', 'checked-in')
+    .is('checkout_time', null)
+    .lt('checkin_time', cutoff.toISOString())
 
-      snapshot.docs.forEach(doc => {
-        const data = doc.data()
-        const checkinTime = data.checkinTime?.toDate() || new Date(data.checkinTime)
-        const hoursSinceCheckin = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
+  if (error) throw new Error(`หากะที่ค้างไม่สำเร็จ: ${error.message}`)
+  if (!stale?.length) return { processed: 0, errors }
 
-        // Auto-checkout if checked in for more than 12 hours
-        if (hoursSinceCheckin > 12) {
-          records.push({
-            id: doc.id,
-            ...data,
-            checkinTime,
-            checkoutTime: data.checkoutTime?.toDate(),
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate()
-          } as CheckInRecord)
-        }
-      })
-    }
+  console.log(`[ปิดกะอัตโนมัติ] เจอ ${stale.length} รายการ`)
 
-    console.log(`[Auto-Checkout] Found ${records.length} records to process`)
+  let processed = 0
 
-    // Process each record
-    for (const record of records) {
-      try {
-        const checkinTime = record.checkinTime instanceof Date
-          ? record.checkinTime
-          : new Date(record.checkinTime)
+  for (const rec of stale) {
+    try {
+      const checkinTime = new Date(rec.checkin_time!)
+      const checkoutTime = guessCheckoutTime(checkinTime, rec.shift_end_time)
 
-        // Determine default checkout time
-        let checkoutTime: Date
-
-        if (record.shiftEndTime) {
-          // Use shift end time
-          const [endHour, endMin] = record.shiftEndTime.split(':').map(Number)
-          checkoutTime = new Date(checkinTime)
-          checkoutTime.setHours(endHour, endMin, 0, 0)
-
-          // If shift end time is before checkin time, it's next day
-          if (checkoutTime < checkinTime) {
-            checkoutTime.setDate(checkoutTime.getDate() + 1)
-          }
-        } else {
-          // Default to 18:00 on check-in day
-          checkoutTime = new Date(checkinTime)
-          checkoutTime.setHours(18, 0, 0, 0)
-
-          // If 18:00 is before checkin time, use checkin time + 8 hours
-          if (checkoutTime < checkinTime) {
-            checkoutTime = new Date(checkinTime.getTime() + 8 * 60 * 60 * 1000)
-          }
-        }
-
-        // Get location for hours calculation
-        let location = null
-        if (record.primaryLocationId) {
-          const locationDoc = await adminDb
-            .collection('locations')
-            .doc(record.primaryLocationId)
-            .get()
-
-          if (locationDoc.exists) {
-            location = { id: locationDoc.id, ...locationDoc.data() } as any
-          }
-        }
-
-        // Calculate working hours
-        const hoursCalc = location
-          ? calculateWorkingHours(
-              checkinTime,
-              checkoutTime,
-              location,
-              record.selectedShift ? {
-                startTime: record.shiftStartTime!,
-                endTime: record.shiftEndTime!,
-                graceMinutes: 15
-              } : undefined,
-              false // Not approved by default
-            )
-          : {
-              regularHours: 0,
-              overtimeHours: 0,
-              totalHours: 0,
-              breakHours: 0,
-              isLate: record.isLate,
-              lateMinutes: record.lateMinutes,
-              isEarlyCheckout: false,
-              isOvernightShift: false
-            }
-
-        // Update record
-        const dateStr = format(checkinTime, 'yyyy-MM-dd')
-        const docRef = adminDb
-          .collection(COLLECTION_NAME)
-          .doc(dateStr)
-          .collection('records')
-          .doc(record.id!)
-
-        await docRef.update({
-          checkoutTime,
-
-          // Working hours
-          regularHours: hoursCalc.regularHours,
-          overtimeHours: hoursCalc.overtimeHours,
-          totalHours: hoursCalc.totalHours,
-          breakHours: hoursCalc.breakHours,
-
-          // Status
+      const { error: updErr } = await sb
+        .from('checkins')
+        .update({
+          checkout_time: checkoutTime.toISOString(),
           status: 'completed',
-          autoCheckout: true,
-          forgotCheckout: true,
-          isOvernightShift: hoursCalc.isOvernightShift,
+          auto_checkout: true,
+          forgot_checkout: true,
+          auto_checkout_at: new Date().toISOString(),
+          auto_checkout_note:
+            'ระบบปิดกะให้เพราะลืมเช็คเอาท์ — เวลาเลิกงานยังไม่ยืนยัน รอ HR ตรวจ',
 
-          // Auto checkout info
-          autoCheckoutAt: FieldValue.serverTimestamp(),
-          autoCheckoutNote: 'ระบบเช็คเอาท์อัตโนมัติ (ลืมเช็คเอาท์)',
-
-          // Edit history
-          editHistory: FieldValue.arrayUnion({
-            editedBy: 'system',
-            editedByName: 'Auto-Checkout System',
-            editedAt: new Date(),
-            field: 'checkoutTime',
-            oldValue: null,
-            newValue: checkoutTime,
-            reason: 'ระบบเช็คเอาท์อัตโนมัติเนื่องจากลืมเช็คเอาท์เกิน 12 ชั่วโมง'
-          }),
-
-          updatedAt: FieldValue.serverTimestamp()
+          // ตั้งใจไม่ใส่ชั่วโมง — ดูหมายเหตุหัวไฟล์
+          regular_hours: 0,
+          overtime_hours: 0,
+          break_hours: 0,
+          hours_status: 'needs_review',
         })
+        .eq('id', rec.id)
+        .eq('status', 'checked-in') // กันชนกับกรณีเขาเพิ่งกดเช็คเอาท์เอง
 
-        processed++
-        console.log(`[Auto-Checkout] ✓ Processed: ${record.userName} (${record.id})`)
-      } catch (error) {
-        console.error(`[Auto-Checkout] ✗ Error processing record ${record.id}:`, error)
-        errors.push(`${record.userName}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
+      if (updErr) throw new Error(updErr.message)
+
+      // ร่องรอยที่ HR เปิดดูได้ — audit_log เก็บให้อัตโนมัติอยู่แล้ว
+      await sb.from('checkin_edits').insert({
+        checkin_id: rec.id,
+        edited_at: new Date().toISOString(),
+        edited_by: null,
+        edited_by_name: 'ระบบปิดกะอัตโนมัติ',
+        field: 'checkoutTime',
+        old_value: null,
+        new_value: checkoutTime.toISOString(),
+        reason: `ลืมเช็คเอาท์เกิน ${FORGOT_AFTER_HOURS} ชั่วโมง`,
+      })
+
+      processed++
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'ไม่ทราบสาเหตุ'
+      console.error(`[ปิดกะอัตโนมัติ] ✗ ${rec.user_name}:`, msg)
+      errors.push(`${rec.user_name}: ${msg}`)
     }
-
-    return { processed, errors }
-  } catch (error) {
-    console.error('[Auto-Checkout] Fatal error:', error)
-    throw error
   }
+
+  return { processed, errors }
+}
+
+/**
+ * เวลาปิดกะที่บันทึกไว้ — เป็นแค่ค่าตั้งต้นให้ HR แก้ ไม่ได้เอาไปคิดชั่วโมง
+ */
+function guessCheckoutTime(checkinTime: Date, shiftEndTime: string | null): Date {
+  const out = new Date(checkinTime)
+
+  if (shiftEndTime) {
+    const [h, m] = shiftEndTime.split(':').map(Number)
+    out.setHours(h, m, 0, 0)
+    if (out <= checkinTime) out.setDate(out.getDate() + 1) // กะข้ามคืน
+    return out
+  }
+
+  out.setHours(18, 0, 0, 0)
+  return out > checkinTime ? out : new Date(checkinTime.getTime() + 8 * 3_600_000)
 }

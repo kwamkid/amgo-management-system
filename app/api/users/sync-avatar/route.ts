@@ -1,39 +1,29 @@
+// app/api/users/sync-avatar/route.ts
+//
+// ล้างรูปโปรไฟล์ที่เก็บไว้ เพื่อให้ดึงใหม่จาก LINE ตอนเข้าสู่ระบบครั้งถัดไป
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
-  try {
-    const { userId } = await request.json()
+  const me = await getCurrentUser()
+  if (!me) return NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 })
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
-    }
+  const { userId } = await request.json().catch(() => ({}))
+  if (!userId) return NextResponse.json({ error: 'ไม่ได้ระบุพนักงาน' }, { status: 400 })
 
-    // Verify caller is authenticated and has management role
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = await adminAuth.verifyIdToken(token)
-    const callerDoc = await adminDb.collection('users').doc(decoded.uid).get()
-    const callerRole = callerDoc.data()?.role
-
-    if (!['admin', 'hr', 'manager'].includes(callerRole)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    // Clear the stored photo URL so next LINE login refreshes it
-    await adminDb.collection('users').doc(userId).update({
-      linePictureUrl: '',
-      updatedAt: FieldValue.serverTimestamp(),
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('sync-avatar error:', error)
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 })
+  // ล้างรูปตัวเองได้เสมอ · ล้างของคนอื่นต้องเป็นระดับจัดการ
+  const canManage = ['admin', 'hr', 'manager'].includes(me.profile.role)
+  if (userId !== me.profile.id && !canManage) {
+    return NextResponse.json({ error: 'ไม่มีสิทธิ์' }, { status: 403 })
   }
+
+  const { error } = await createAdminClient()
+    .from('users')
+    .update({ line_picture_url: '' })
+    .eq('id', userId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
 }

@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PageHeader } from '@/components/shared'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { CheckInRecord } from '@/types/checkin'
@@ -104,7 +105,7 @@ export default function PendingCheckoutsPage() {
 
   if (!canManage) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
@@ -124,13 +125,11 @@ export default function PendingCheckoutsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">จัดการการเช็คเอาท์</h1>
-        <p className="text-gray-600 mt-1">
-          อนุมัติการเช็คเอาท์สำหรับพนักงานที่ลืมเช็คเอาท์หรือทำ OT
-        </p>
-      </div>
+      <PageHeader
+        title="จัดการการเช็คเอาท์"
+        description="อนุมัติการเช็คเอาท์สำหรับพนักงานที่ลืมเช็คเอาท์หรือทำ OT"
+        icon={Clock}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

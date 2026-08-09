@@ -1,15 +1,16 @@
 // components/layout/Navbar.tsx
+//
+// แถบบน 56px ตรึงไว้ — ดีไซน์ตามระบบ aoosocial
+// เมนูผู้ใช้ใช้ ActionMenu ตัวกลาง (portal ออกนอก overflow ได้ ปิดด้วย Esc)
 
 'use client'
 
-import { useState } from 'react'
-import { UserData } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { auth } from '@/lib/firebase'
-import { signOut } from 'firebase/auth'
-import { LogOut, ChevronDown } from 'lucide-react'
-import MobileMenuButton from './MobileMenuButton'
+import { Menu, ChevronDown } from 'lucide-react'
+import { signOutBoth } from '@/lib/auth/dual-session'
+import { UserData } from '@/hooks/useAuth'
 import UserAvatar from '@/components/shared/UserAvatar'
+import { ActionMenu } from '@/components/aoo'
 
 interface NavbarProps {
   userData?: UserData | null
@@ -17,93 +18,83 @@ interface NavbarProps {
   sidebarOpen?: boolean
 }
 
-export default function Navbar({ userData, onMenuClick, sidebarOpen = false }: NavbarProps) {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'ผู้ดูแลระบบ',
+  hr: 'ฝ่ายบุคคล',
+  manager: 'ผู้จัดการ',
+  driver: 'พนักงานขับรถ',
+  marketing: 'การตลาด',
+  employee: 'พนักงาน',
+}
+
+export default function Navbar({ userData, onMenuClick }: NavbarProps) {
   const router = useRouter()
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
+      await signOutBoth()
       router.push('/login')
+      router.refresh()
     } catch (error) {
       console.error('Logout error:', error)
     }
   }
 
-  const getRoleDisplay = (role?: string) => {
-    switch (role) {
-      case 'admin':
-        return 'ผู้ดูแลระบบ'
-      case 'hr':
-        return 'ฝ่ายบุคคล'
-      case 'manager':
-        return 'ผู้จัดการ'
-      case 'driver':
-        return 'พนักงานขับรถ'
-      default:
-        return 'พนักงาน'
-    }
-  }
+  const name = userData?.lineDisplayName || userData?.fullName || 'ผู้ใช้'
+  const role = ROLE_LABEL[userData?.role ?? 'employee'] ?? 'พนักงาน'
 
   return (
-    <nav className="h-16 bg-white border-b border-gray-200 px-4 lg:px-8">
-      <div className="h-full flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Mobile Menu Button */}
-          {onMenuClick && (
-            <MobileMenuButton
-              isOpen={sidebarOpen}
-              onClick={onMenuClick}
-            />
-          )}
-        </div>
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3 lg:px-6">
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          aria-label="เปิดเมนู"
+          data-button-fx="ghost"
+          className="-ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 lg:hidden"
+        >
+          <Menu size={20} strokeWidth={1.75} />
+        </button>
+      )}
 
-        {/* Mobile Logo - center */}
-        <div className="absolute left-1/2 -translate-x-1/2 lg:hidden">
-          <img src="/amgo-logo.svg" alt="AMGO Logo" className="h-[42px] w-auto" />
-        </div>
+      {/* โลโก้กลางจอเฉพาะมือถือ — บนเดสก์ท็อปโลโก้อยู่หัวเมนูข้างแล้ว */}
+      <img
+        src="/amgo-logo.svg"
+        alt="AMGO"
+        className="h-8 w-auto lg:hidden"
+      />
 
-        <div className="flex items-center gap-3">
-          {/* User Dropdown */}
-          <div className="relative">
+      <div className="ml-auto">
+        <ActionMenu
+          minWidth={200}
+          items={[
+            {
+              label: 'ออกจากระบบ',
+              icon: 'LogOut',
+              tone: 'danger',
+              onSelect: handleLogout,
+            },
+          ]}
+          trigger={({ onClick, open }) => (
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={onClick}
+              data-button-fx="ghost"
+              aria-expanded={open}
+              className="flex items-center gap-2.5 rounded-lg py-1.5 pl-1.5 pr-2"
             >
               <UserAvatar
                 name={userData?.fullName || userData?.lineDisplayName || '?'}
                 imageUrl={userData?.linePictureUrl}
                 size="sm"
               />
-              <div className="text-right">
-                <span className="text-sm font-medium text-gray-700">
-                  {userData?.lineDisplayName || userData?.fullName || 'User'}
-                </span>
-                <p className="text-xs text-gray-500">{getRoleDisplay(userData?.role)}</p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <span className="hidden text-left leading-tight sm:block">
+                <span className="block text-sm font-medium text-gray-800">{name}</span>
+                <span className="block text-xs text-gray-500">{role}</span>
+              </span>
+              <ChevronDown size={15} className="text-gray-400" />
             </button>
-
-            {dropdownOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setDropdownOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    ออกจากระบบ
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+          )}
+        />
       </div>
-    </nav>
+    </header>
   )
 }

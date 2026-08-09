@@ -73,7 +73,7 @@ export default function EditCampaignPage({
 
   if (error || !campaign) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>

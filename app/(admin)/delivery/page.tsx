@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -22,8 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import TechLoader from '@/components/shared/TechLoader'
-import { db } from '@/lib/firebase/client'
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore'
+import { getDeliveryPoints } from '@/lib/services/deliveryService'
 import {
   Select,
   SelectContent,
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SelectMenu } from '@/components/aoo'
 
 export default function DeliveryDashboardPage() {
   const router = useRouter()
@@ -57,37 +58,16 @@ export default function DeliveryDashboardPage() {
       try {
         setLoading(true)
         
-        // Get today's date
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const endOfDay = new Date(today)
-        endOfDay.setHours(23, 59, 59, 999)
-
-        // Build query based on view mode
-        let q = query(
-          collection(db, 'deliveryPoints'),
-          where('checkInTime', '>=', Timestamp.fromDate(today)),
-          where('checkInTime', '<=', Timestamp.fromDate(endOfDay)),
-          orderBy('checkInTime', 'desc')
+        // service คืนวันที่เป็น Date มาแล้ว และกรองคนขับให้ในคำสั่งเดียว
+        const today = new Date().toISOString().slice(0, 10)
+        const { points } = await getDeliveryPoints(
+          {
+            date: today,
+            driverId:
+              viewMode === 'mine' && userData.role === 'driver' ? userData.id : undefined,
+          },
+          500
         )
-
-        // Apply driver filter only if viewing "mine" and user is driver
-        if (viewMode === 'mine' && userData.role === 'driver') {
-          q = query(
-            collection(db, 'deliveryPoints'),
-            where('driverId', '==', userData.id),
-            where('checkInTime', '>=', Timestamp.fromDate(today)),
-            where('checkInTime', '<=', Timestamp.fromDate(endOfDay)),
-            orderBy('checkInTime', 'desc')
-          )
-        }
-
-        const snapshot = await getDocs(q)
-        const points = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          checkInTime: doc.data().checkInTime?.toDate()
-        }))
 
         setDeliveryPoints(points)
       } catch (error) {
@@ -120,45 +100,34 @@ export default function DeliveryDashboardPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">สรุปการส่งของวันนี้</h1>
-          <p className="text-gray-600 mt-1">
-            <Calendar className="w-4 h-4 inline mr-1" />
-            {new Date().toLocaleDateString('th-TH', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
-        </div>
-
-        {/* View Mode Selector - สำหรับ Driver */}
-        {userData?.role === 'driver' && (
-          <Select value={viewMode} onValueChange={(value: 'mine' | 'all') => setViewMode(value)}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mine">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>เฉพาะของฉัน</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="all">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>ทั้งหมด</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        title="สรุปการส่งของวันนี้"
+        description={new Date().toLocaleDateString('th-TH', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })}
+        icon={Truck}
+        actions={
+          // คนขับเลือกดูเฉพาะงานตัวเอง หรือของทุกคน
+          userData?.role === 'driver' ? (
+            <div className="w-44">
+              <SelectMenu
+                size="md"
+                value={viewMode}
+                searchThreshold={99}
+                onChange={(v) => v && setViewMode(v as 'mine' | 'all')}
+                options={[
+                  { value: 'mine', label: 'เฉพาะของฉัน' },
+                  { value: 'all', label: 'ทั้งหมด' },
+                ]}
+              />
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* Quick Action */}
       <Link href="/delivery/checkin">

@@ -1,385 +1,279 @@
 // components/layout/Sidebar.tsx
+//
+// เมนูข้าง — ดีไซน์ตามระบบ aoosocial
+//   · กว้าง 232px ตรึงซ้าย · จอแคบกว่า 1024px กลายเป็นลิ้นชักเลื่อนออกมา
+//   · เมนูที่กำลังอยู่ = พื้น coral-50 ตัวอักษร coral-700 ไอคอน coral-500
+//   · จัดกลุ่มด้วยหัวข้อตัวเล็กแทนที่จะไล่เรียงยาวเป็นพืด
 
 'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { 
-  LayoutDashboard, 
-  Users, 
-  MapPin, 
-  Calendar, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Users,
+  MapPin,
+  Calendar,
+  FileText,
   Settings,
   Clock,
-  Building,
   UserCog,
   CheckSquare,
   UserPlus,
   ChevronDown,
-  ChevronRight,
   Shield,
   Bell,
   MessageSquare,
-  TrendingUp,
-  Baby,
   Trash2,
   Truck,
   Camera,
   Map,
-  Home
+  Home,
+  Table2,
+  Database,
+  Palette,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
 interface NavItem {
   label: string
-  href?: string // Make href optional for parent items
+  href?: string
   icon: React.ReactNode
   roles?: string[]
   subItems?: NavItem[]
 }
 
-interface SidebarProps {
-  userData?: UserData | null
-  onNavigate?: () => void // Add callback for navigation
+interface NavSection {
+  title?: string
+  items: NavItem[]
 }
 
-const navItems: NavItem[] = [
+interface SidebarProps {
+  userData?: UserData | null
+  onNavigate?: () => void
+}
+
+const icon = (I: typeof Clock) => <I size={18} strokeWidth={1.75} />
+const subIcon = (I: typeof Clock) => <I size={16} strokeWidth={1.75} />
+
+const navSections: NavSection[] = [
   {
-    label: 'Dashboard',
-    href: '/dashboard',
-    icon: <LayoutDashboard className="w-5 h-5" />
+    items: [{ label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard) }],
   },
   {
-    label: 'เช็คอิน/เอาท์',
-    icon: <Clock className="w-5 h-5" />,
-    subItems: [
+    title: 'งานประจำวัน',
+    items: [
       {
         label: 'เช็คอิน/เอาท์',
-        href: '/checkin',
-        icon: <CheckSquare className="w-4 h-4" />
+        icon: icon(Clock),
+        subItems: [
+          { label: 'เช็คอิน/เอาท์', href: '/checkin', icon: subIcon(CheckSquare) },
+          { label: 'ประวัติการเช็คอิน', href: '/checkin/history', icon: subIcon(Calendar) },
+          { label: 'แผนที่เช็คอิน', href: '/checkin/map', icon: subIcon(Map), roles: ['admin'] },
+          { label: 'รอดำเนินการ', href: '/checkin/pending', icon: subIcon(Clock), roles: ['hr', 'admin'] },
+        ],
       },
       {
-        label: 'ประวัติการเช็คอิน',
-        href: '/checkin/history',
-        icon: <Calendar className="w-4 h-4" />
+        label: 'การลา',
+        icon: icon(Calendar),
+        subItems: [
+          { label: 'ข้อมูลการลา', href: '/leaves', icon: subIcon(Calendar) },
+          { label: 'ขอลา', href: '/leaves/request', icon: subIcon(UserPlus) },
+          { label: 'ประวัติการลา', href: '/leaves/history', icon: subIcon(Clock) },
+          { label: 'จัดการคำขอลา', href: '/leaves/management', icon: subIcon(UserCog), roles: ['hr', 'admin', 'manager'] },
+          { label: 'จัดการโควต้า', href: '/leaves/quota', icon: subIcon(Settings), roles: ['hr', 'admin'] },
+        ],
       },
       {
-        label: 'แผนที่เช็คอิน',
-        href: '/checkin/map',
-        icon: <Map className="w-4 h-4" />,
-        roles: ['admin']
+        label: 'Delivery Tracking',
+        icon: icon(Truck),
+        roles: ['driver', 'admin', 'hr'],
+        subItems: [
+          { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
+          { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
+          { label: 'แผนที่การส่ง', href: '/delivery/map', icon: subIcon(Map) },
+        ],
       },
-      {
-        label: 'รอดำเนินการ',
-        href: '/checkin/pending',
-        icon: <Clock className="w-4 h-4" />,
-        roles: ['hr', 'admin']
-      }
-    ]
+    ],
   },
   {
-    label: 'พนักงาน',
-    icon: <Users className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager'],
-    subItems: [
+    title: 'จัดการ',
+    items: [
       {
-        label: 'รายการพนักงาน',
-        href: '/employees',
-        icon: <Users className="w-4 h-4" />
+        label: 'พนักงาน',
+        icon: icon(Users),
+        roles: ['hr', 'admin', 'manager'],
+        subItems: [
+          { label: 'รายการพนักงาน', href: '/employees', icon: subIcon(Users) },
+          { label: 'แก้ไขหลายคนพร้อมกัน', href: '/employees/bulk', icon: subIcon(Table2), roles: ['hr', 'admin'] },
+          { label: 'เชิญพนักงานใหม่', href: '/employees/invite-links', icon: subIcon(UserPlus) },
+          { label: 'รออนุมัติ', href: '/employees/pending', icon: subIcon(Clock) },
+        ],
       },
-      {
-        label: 'เชิญพนักงานใหม่',
-        href: '/employees/invite-links',
-        icon: <UserPlus className="w-4 h-4" />
-      },
-      {
-        label: 'รออนุมัติ',
-        href: '/employees/pending',
-        icon: <Clock className="w-4 h-4" />
-      }
-    ]
+      { label: 'รายงาน', href: '/reports', icon: icon(FileText), roles: ['hr', 'admin', 'manager'] },
+    ],
   },
   {
-    label: 'การลา',
-    icon: <Calendar className="w-5 h-5" />,
-    subItems: [
+    title: 'ตั้งค่า',
+    items: [
       {
-        label: 'ข้อมูลการลา',
-        href: '/leaves',
-        icon: <Calendar className="w-4 h-4" />
+        label: 'ตั้งค่าระบบ',
+        icon: icon(Settings),
+        roles: ['hr', 'admin'],
+        subItems: [
+          { label: 'สถานที่ทำงาน', href: '/settings/locations', icon: subIcon(MapPin) },
+          { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
+          { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
+          { label: 'ประเภทการลา', href: '/settings/leave-types', icon: subIcon(FileText) },
+          { label: 'การแจ้งเตือน', href: '/settings/notifications', icon: subIcon(Bell) },
+          { label: 'ความปลอดภัย', href: '/settings/security', icon: subIcon(Shield), roles: ['admin'] },
+          { label: 'ลบข้อมูลทั้งหมด', href: '/settings/delete-data', icon: subIcon(Trash2), roles: ['admin'] },
+        ],
       },
       {
-        label: 'ขอลา',
-        href: '/leaves/request',
-        icon: <UserPlus className="w-4 h-4" />
+        label: 'สถานะย้ายระบบ',
+        href: '/migration',
+        icon: icon(Database),
+        roles: ['admin'],
       },
       {
-        label: 'ประวัติการลา',
-        href: '/leaves/history',
-        icon: <Clock className="w-4 h-4" />
+        label: 'คอมโพเนนต์กลาง',
+        href: '/design',
+        icon: icon(Palette),
+        roles: ['admin'],
       },
-      {
-        label: 'จัดการคำขอลา',
-        href: '/leaves/management',
-        icon: <UserCog className="w-4 h-4" />,
-        roles: ['hr', 'admin', 'manager']
-      },
-      {
-        label: 'จัดการโควต้า',
-        href: '/leaves/quota',
-        icon: <Settings className="w-4 h-4" />,
-        roles: ['hr', 'admin']
-      }
-    ]
+    ],
   },
-  // ปิดเมนู Influ Marketing ชั่วคราว - พนักงานยังไม่ใช้
-  // {
-  //   label: 'Influ Marketing',
-  //   href: '#',
-  //   icon: <TrendingUp className="w-5 h-5" />,
-  //   roles: ['hr', 'admin', 'manager', 'marketing'],
-  //   subItems: [
-  //     {
-  //       label: 'ข้อมูล Influencers',
-  //       href: '/influencers',
-  //       icon: <Baby className="w-4 h-4" />
-  //     },
-  //     {
-  //       label: 'Campaigns',
-  //       href: '/campaigns',
-  //       icon: <TrendingUp className="w-4 h-4" />
-  //     }
-  //   ]
-  // },
-  {
-    label: 'Delivery Tracking',
-    icon: <Truck className="w-5 h-5" />, // No href for parent
-    roles: ['driver', 'admin', 'hr'],
-    subItems: [
-      {
-        label: 'สรุปประจำวัน',
-        href: '/delivery',
-        icon: <Home className="w-4 h-4" />
-      },
-      {
-        label: 'เช็คอินจุดส่ง',
-        href: '/delivery/checkin',
-        icon: <Camera className="w-4 h-4" />
-      },
-      {
-        label: 'แผนที่การส่ง',
-        href: '/delivery/map',
-        icon: <Map className="w-4 h-4" />
-      }
-    ]
-  },
-  {
-    label: 'รายงาน',
-    href: '/reports',
-    icon: <FileText className="w-5 h-5" />,
-    roles: ['hr', 'admin', 'manager']
-  },
-  {
-    label: 'ตั้งค่า',
-    icon: <Settings className="w-5 h-5" />,
-    roles: ['hr', 'admin'],
-    subItems: [
-      {
-        label: 'สถานที่ทำงาน',
-        href: '/settings/locations',
-        icon: <MapPin className="w-4 h-4" />
-      },
-      {
-        label: 'Discord',
-        href: '/settings/discord',
-        icon: <MessageSquare className="w-4 h-4" />
-      },
-      {
-        label: 'วันหยุด',
-        href: '/settings/holidays',
-        icon: <Calendar className="w-4 h-4" />
-      },
-      {
-        label: 'ประเภทการลา',
-        href: '/settings/leave-types',
-        icon: <FileText className="w-4 h-4" />
-      },
-      {
-        label: 'การแจ้งเตือน',
-        href: '/settings/notifications',
-        icon: <Bell className="w-4 h-4" />
-      },
-      {
-        label: 'ความปลอดภัย',
-        href: '/settings/security',
-        icon: <Shield className="w-4 h-4" />,
-        roles: ['admin']
-      },
-      {
-        label: 'ลบข้อมูลทั้งหมด',
-        icon: <Trash2 className="w-4 h-4" />,
-        href: '/settings/delete-data',
-        roles: ['admin']
-      }
-    ]
-  }
 ]
 
 export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [expandedItems, setExpandedItems] = useState<string[]>([])
-  
+  const [expanded, setExpanded] = useState<string[]>([])
+
   const userRole = userData?.role || 'employee'
-  
-  // Auto-expand parent menu when a submenu is active
+  const allowed = (roles?: string[]) => !roles || roles.includes(userRole)
+
+  // กางเมนูแม่ให้เองเมื่อเข้าหน้าลูก — ไม่งั้นผู้ใช้ไม่รู้ว่าตัวเองอยู่ตรงไหน
   useEffect(() => {
-    const expanded: string[] = []
-    
-    navItems.forEach(item => {
-      if (item.subItems) {
-        // Check if current pathname exactly matches any subitem
-        const hasActiveSubItem = item.subItems.some(
-          subItem => pathname === subItem.href
-        )
-        if (hasActiveSubItem) {
-          expanded.push(item.label)
-        }
-      }
-    })
-    
-    setExpandedItems(expanded)
+    const open = navSections
+      .flatMap((s) => s.items)
+      .filter((item) => item.subItems?.some((sub) => pathname === sub.href))
+      .map((item) => item.label)
+    setExpanded((prev) => Array.from(new Set([...prev, ...open])))
   }, [pathname])
-  
-  const filteredNavItems = navItems.filter(item => {
-    if (!item.roles) return true
-    return item.roles.includes(userRole)
-  })
 
-  const toggleExpanded = (label: string) => {
-    setExpandedItems(prev => 
-      prev.includes(label) 
-        ? prev.filter(item => item !== label)
-        : [...prev, label]
-    )
-  }
-
-  const handleNavigation = (href: string) => {
+  const go = (href: string) => {
     router.push(href)
-    // Call onNavigate to close mobile sidebar
-    if (onNavigate) {
-      onNavigate()
-    }
+    onNavigate?.()
   }
 
-  const renderNavItem = (item: NavItem, isSubItem = false) => {
-    const hasSubItems = item.subItems && item.subItems.length > 0
-    const isExpanded = expandedItems.includes(item.label)
-    
-    // Check if this exact item is active
-    const isActive = item.href && pathname === item.href
-    
-    // Check if any subitem is active (for parent styling)
-    const hasActiveSubItem = item.subItems?.some(subItem => 
-      pathname === subItem.href
-    ) || false
-    
-    // Filter subitems based on role
-    const filteredSubItems = item.subItems?.filter(subItem => {
-      if (!subItem.roles) return true
-      return subItem.roles.includes(userRole)
-    })
+  const toggle = (label: string) =>
+    setExpanded((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    )
+
+  const renderItem = (item: NavItem) => {
+    const subs = item.subItems?.filter((s) => allowed(s.roles))
+    const hasSubs = !!subs?.length
+    const isOpen = expanded.includes(item.label)
+    const isActive = item.href === pathname
+    const childActive = subs?.some((s) => s.href === pathname) ?? false
+
+    if (!hasSubs) {
+      return (
+        <Link
+          key={item.href}
+          href={item.href!}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+            onNavigate?.()
+          }}
+          data-button-fx="ghost"
+          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm no-underline ${
+            isActive
+              ? 'bg-red-50 font-semibold text-red-700'
+              : 'font-medium text-gray-700'
+          }`}
+        >
+          <span className={isActive ? 'text-red-500' : 'text-gray-400'}>{item.icon}</span>
+          <span className="flex-1">{item.label}</span>
+        </Link>
+      )
+    }
 
     return (
-      <div key={item.href || item.label}>
-        {hasSubItems ? (
-          <>
-            <button
-              onClick={() => {
-                // If has href and subitems, navigate on first click then expand
-                if (item.href && !isExpanded) {
-                  handleNavigation(item.href)
-                }
-                toggleExpanded(item.label)
-              }}
-              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg transition-colors ${
-                hasActiveSubItem
-                  ? 'text-red-600 font-medium'
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {item.icon}
-                {item.label}
-              </div>
-              {isExpanded ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronRight className="w-4 h-4" />
-              )}
-            </button>
-            {isExpanded && filteredSubItems && (
-              <div className="mt-1 ml-4 space-y-1">
-                {filteredSubItems.map(subItem => {
-                  // Only exact match for subitems
-                  const isSubItemActive = pathname === subItem.href
-                  
-                  return (
-                    <button
-                      key={subItem.href}
-                      onClick={() => handleNavigation(subItem.href!)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
-                        isSubItemActive
-                          ? 'bg-red-50 text-red-600 font-medium'
-                          : 'hover:bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {subItem.icon}
-                      <span className="text-base">{subItem.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </>
-        ) : (
-          <button
-            onClick={() => handleNavigation(item.href!)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
-              isActive
-                ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-600 font-medium'
-                : 'hover:bg-gray-100 text-gray-700'
-            }`}
-          >
-            {item.icon}
-            <span className="text-base">{item.label}</span>
-          </button>
+      <div key={item.label}>
+        <button
+          onClick={() => toggle(item.label)}
+          data-button-fx="ghost"
+          aria-expanded={isOpen}
+          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm ${
+            childActive ? 'font-semibold text-red-700' : 'font-medium text-gray-700'
+          }`}
+        >
+          <span className={childActive ? 'text-red-500' : 'text-gray-400'}>{item.icon}</span>
+          <span className="flex-1 text-left">{item.label}</span>
+          <ChevronDown
+            size={15}
+            className={`text-gray-400 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="mt-0.5 ml-4 space-y-0.5 border-l border-gray-200 pl-3">
+            {subs!.map((sub) => {
+              const active = pathname === sub.href
+              return (
+                <Link
+                  key={sub.href}
+                  href={sub.href!}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                    onNavigate?.()
+                  }}
+                  data-button-fx="ghost"
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm no-underline ${
+                    active ? 'bg-red-50 font-semibold text-red-700' : 'text-gray-600'
+                  }`}
+                >
+                  <span className={active ? 'text-red-500' : 'text-gray-400'}>{sub.icon}</span>
+                  <span className="flex-1">{sub.label}</span>
+                </Link>
+              )
+            })}
+          </div>
         )}
       </div>
     )
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200">
-        <button
-          onClick={() => handleNavigation('/dashboard')}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        >
-          <img
-            src="/amgo-logo.svg"
-            alt="AMGO Logo"
-            className="h-10 w-auto"
-          />
-          <span className="text-base font-bold tracking-widest text-gray-700">AMGO HR</span>
-        </button>
-      </div>
+    <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-gray-200 bg-white">
+      <button
+        onClick={() => go('/dashboard')}
+        className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 px-4"
+      >
+        <img src="/amgo-logo.svg" alt="AMGO" className="h-7 w-auto" />
+        <span className="text-sm font-bold tracking-[0.12em] text-gray-700">AMGO HR</span>
+      </button>
 
-      <nav className="p-4 space-y-1">
-        {filteredNavItems.map(item => renderNavItem(item))}
+      <nav className="flex-1 space-y-5 overflow-y-auto p-3">
+        {navSections.map((section, i) => {
+          const items = section.items.filter((it) => allowed(it.roles))
+          if (!items.length) return null
+          return (
+            <div key={section.title ?? i} className="space-y-0.5">
+              {section.title && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  {section.title}
+                </p>
+              )}
+              {items.map(renderItem)}
+            </div>
+          )
+        })}
       </nav>
     </aside>
   )

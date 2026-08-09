@@ -145,7 +145,10 @@ export interface DailyCheckInSummary {
 
 // Check-in filters
 export interface CheckInFilters {
-  date?: string // YYYY-MM-DD
+  date?: string // YYYY-MM-DD — วันเดียว
+  /** ช่วงวันที่ — ทำได้หลังย้ายมา Postgres (Firestore เก็บซ้อนตามวัน จึงกรองข้ามวันไม่ได้) */
+  startDate?: string
+  endDate?: string
   userId?: string
   locationId?: string
   status?: 'all' | 'checked-in' | 'completed' | 'pending'

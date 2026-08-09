@@ -18,7 +18,6 @@ import {
 import { UserData } from '@/hooks/useAuth';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { auth } from '@/lib/firebase/client';
 
 interface EmployeeSectionProps {
   userData: UserData;
@@ -46,12 +45,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
     const fetchBirthdays = async () => {
       try {
         setLoading(true);
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-
-        const res = await fetch('/api/users/birthdays', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // session อยู่ใน cookie อยู่แล้ว ไม่ต้องแนบ token เอง
+        const res = await fetch('/api/users/birthdays');
         if (!res.ok) throw new Error('Failed to fetch birthdays');
 
         const { birthdays: allBirthdays } = await res.json();

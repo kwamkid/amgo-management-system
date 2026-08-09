@@ -2,11 +2,11 @@
 
 import { format, isValid } from 'date-fns';
 import { th, enUS } from 'date-fns/locale';
-import { Timestamp } from 'firebase/firestore';
 
 /**
  * Safely format date with fallback
- * Handles Date, string, number, Firestore Timestamp, and null/undefined
+ * รับได้ทั้ง Date · string · number · null
+ * (ยังรับรูปแบบ Timestamp ของ Firestore อยู่ เผื่อข้อมูลเก่าที่ค้างใน localStorage)
  */
 export function safeFormatDate(
   date: any,

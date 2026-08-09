@@ -1,220 +1,1747 @@
+/* =========================================================
+   AMGO — ระบบดีไซน์ (พอร์ตมาจาก aoosocial)
+
+   โทนอุ่น ไม่มีสีฟ้า · IBM Plex Sans Thai · รัศมีเงียบ ๆ · เงาอมอุ่น
+   แก้สี/ตัวอักษร/ระยะ ทั้งระบบได้ที่ไฟล์นี้ไฟล์เดียว
+   ========================================================= */
+
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-@layer base {
-  * {
-    font-family: var(--font-ibm-plex-sans-thai), "IBM Plex Sans Thai", system-ui,
-      sans-serif !important;
-  }
+/* ---- Fonts ---- */
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Light-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Light-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Regular-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Regular-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Medium-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Medium-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-SemiBold-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-SemiBold-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Bold-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Thai";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansThai-Bold-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
 
-  html {
-    color-scheme: light;
-    font-size: 16px;
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/IBMPlexMono-Regular-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/IBMPlexMono-Medium-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/IBMPlexMono-SemiBold-latin.woff2") format("woff2");
+}
+
+/* ---- Tokens ---- */
+:root {
+  /* Brand: warm "Aoo" coral, plum, sun, lime */
+  --brand-coral-50:  #FFF1EC;
+  --brand-coral-100: #FFE0D4;
+  --brand-coral-200: #FFC3AC;
+  --brand-coral-300: #FF9879;
+  --brand-coral-400: #FA6B45;
+  --brand-coral-500: #EF4A22;
+  --brand-coral-600: #D03812;
+  --brand-coral-700: #A82A0C;
+  --brand-coral-800: #7C1F08;
+  --brand-coral-900: #4A1305;
+
+  --brand-plum-50:   #FBF1F6;
+  --brand-plum-100:  #F4DCEA;
+  --brand-plum-200:  #E5B5D2;
+  --brand-plum-300:  #CE82B0;
+  --brand-plum-400:  #A8528A;
+  --brand-plum-500:  #7E3168;
+  --brand-plum-600:  #5F2350;
+  --brand-plum-700:  #43183A;
+  --brand-plum-800:  #2B0F25;
+  --brand-plum-900:  #170914;
+
+  /* Accents */
+  --sun-50:  #FFF8E1;
+  --sun-100: #FFEDB2;
+  --sun-300: #FFD64D;
+  --sun-500: #F5B400;
+  --sun-700: #8E6500;
+
+  --leaf-50:  #ECF8EF;
+  --leaf-100: #CFEDD7;
+  --leaf-300: #71CE89;
+  --leaf-500: #2BA85B;
+  --leaf-700: #146B36;
+
+  --ruby-50:  #FDECEC;
+  --ruby-100: #F9C9C9;
+  --ruby-300: #EC7A7A;
+  --ruby-500: #D8362F;
+  --ruby-700: #8A1812;
+
+  --grape-50:  #F3EEFA;
+  --grape-100: #DDCEF1;
+  --grape-300: #A98AE0;
+  --grape-500: #7A4ACF;
+  --grape-700: #4A2891;
+
+  /* Neutrals — warm-tinted greys */
+  --warm-0:   #FFFFFF;
+  --warm-50:  #FBF8F5;
+  --warm-100: #F4EFEA;
+  --warm-150: #ECE6DF;
+  --warm-200: #DDD5CB;
+  --warm-300: #C2B7A8;
+  --warm-400: #9C9082;
+  --warm-500: #7A6E60;
+  --warm-600: #5A4F43;
+  --warm-700: #3E3530;
+  --warm-800: #29221E;
+  --warm-900: #1A1411;
+
+  /* Platform colors */
+  --plat-facebook:  #1877F2;
+  --plat-instagram: #E1306C;
+  --plat-instagram-grad: linear-gradient(45deg,#F58529 0%,#DD2A7B 50%,#8134AF 100%);
+  --plat-tiktok-cyan:    #25F4EE;
+  --plat-tiktok-magenta: #FE2C55;
+  --plat-tiktok-ink:     #161823;
+  --plat-youtube:   #FF0000;
+
+  /* Semantic surfaces */
+  --bg-app:        var(--warm-50);
+  --bg-surface:    var(--warm-0);
+  --bg-sunken:     var(--warm-100);
+  --bg-inverse:    var(--warm-900);
+
+  --fg-1:          var(--warm-900);
+  --fg-2:          var(--warm-700);
+  --fg-3:          var(--warm-500);
+  --fg-4:          var(--warm-400);
+  --fg-on-brand:   var(--warm-0);
+  --fg-on-dark:    var(--warm-50);
+
+  --border-1:      var(--warm-150);
+  --border-2:      var(--warm-200);
+  --border-3:      var(--warm-300);
+  --border-brand:  var(--brand-coral-500);
+
+  --accent:        var(--brand-coral-500);
+  --accent-hover:  var(--brand-coral-600);
+  --accent-press:  var(--brand-coral-700);
+  --accent-soft:   var(--brand-coral-50);
+
+  /* Type */
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --fs-display: 60px;
+  --fs-h1:      44px;
+  --fs-h2:      32px;
+  --fs-h3:      22px;
+  --fs-h4:      18px;
+  --fs-body:    16px;
+  --fs-small:   14px;
+  --fs-meta:    13px;
+  --fs-micro:   12px;
+
+  --lh-tight:  1.15;
+  --lh-snug:   1.3;
+  --lh-normal: 1.5;
+  --lh-loose:  1.65;
+
+  --tracking-tight:  -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-caps:   0.08em;
+
+  /* Spacing scale (4px base) */
+  --s-0:  0;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-7:  32px;
+  --s-8:  40px;
+  --s-9:  56px;
+  --s-10: 72px;
+
+  /* Radius */
+  --r-xs:   4px;
+  --r-sm:   6px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-2xl:  24px;
+  --r-pill: 999px;
+
+  /* Shadows — warm-tinted */
+  --shadow-xs: 0 1px 0 rgba(58, 36, 22, 0.04);
+  --shadow-sm: 0 1px 2px rgba(58, 36, 22, 0.06), 0 1px 1px rgba(58, 36, 22, 0.04);
+  --shadow-md: 0 4px 10px rgba(58, 36, 22, 0.08), 0 2px 4px rgba(58, 36, 22, 0.05);
+  --shadow-lg: 0 12px 32px rgba(58, 36, 22, 0.12), 0 4px 8px rgba(58, 36, 22, 0.06);
+  --shadow-xl: 0 24px 60px rgba(58, 36, 22, 0.18), 0 8px 16px rgba(58, 36, 22, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.25);
+
+  /* Overlay scrim — used by loading overlays + light modals.
+     Light mode: warm ink at 35%. Dark mode override below. */
+  --overlay-scrim: rgba(26, 20, 17, 0.35);
+
+  /* Motion */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:   120ms;
+  --dur-med:    200ms;
+  --dur-slow:   320ms;
+}
+
+/* ---- Dark mode ---- */
+:root[data-theme="dark"],
+:root[data-theme="dark"] body { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+}
+
+:root[data-theme="dark"] {
+  /* Neutral near-black with subtle warm tint (just a hint, not brown).
+     Layered: app < surface (cards lift up) < sunken (input/select wells). */
+  --bg-app:        #0B0B0D;
+  --bg-surface:    #161618;
+  --bg-sunken:     #0F0F11;
+  --bg-inverse:    var(--warm-50);
+
+  --fg-1:          #F4F4F5;
+  --fg-2:          #C4C4C7;
+  --fg-3:          #8A8A8E;
+  --fg-4:          #5A5A5E;
+  --fg-on-brand:   #fff;
+  --fg-on-dark:    #F4F4F5;
+
+  --border-1:      rgba(255, 255, 255, 0.08);
+  --border-2:      rgba(255, 255, 255, 0.14);
+  --border-3:      rgba(255, 255, 255, 0.22);
+  --border-brand:  var(--brand-coral-400);
+
+  --accent:        var(--brand-coral-500);
+  --accent-hover:  var(--brand-coral-400);
+  --accent-press:  var(--brand-coral-300);
+  --accent-soft:   rgba(239, 74, 34, 0.18);
+
+  --brand-coral-50:  rgba(239, 74, 34, 0.14);
+  --brand-coral-100: rgba(239, 74, 34, 0.22);
+  --brand-coral-700: #FF9879;
+  --brand-coral-800: #FFB390;
+
+  --brand-plum-50:   rgba(126, 49, 104, 0.22);
+  --brand-plum-100:  rgba(126, 49, 104, 0.34);
+  --brand-plum-700:  #E5B5D2;
+
+  --sun-50:   rgba(245, 180, 0, 0.16);
+  --sun-100:  rgba(245, 180, 0, 0.24);
+  --sun-700:  #FFD64D;
+
+  --leaf-50:  rgba(43, 168, 91, 0.16);
+  --leaf-100: rgba(43, 168, 91, 0.26);
+  --leaf-700: #71CE89;
+
+  --ruby-50:  rgba(216, 54, 47, 0.16);
+  --ruby-100: rgba(216, 54, 47, 0.26);
+  --ruby-300: #F4A29F;
+  --ruby-700: #EC7A7A;
+
+  --grape-50:  rgba(122, 74, 207, 0.20);
+  --grape-100: rgba(122, 74, 207, 0.30);
+  --grape-700: #B59AE6;
+
+  /* Warm aliases now point to neutral so existing code that uses --warm-* still works. */
+  --warm-100: rgba(255, 255, 255, 0.05);
+  --warm-150: rgba(255, 255, 255, 0.09);
+  --warm-200: rgba(255, 255, 255, 0.14);
+  /* Hover-band token used by ghost icon buttons + nav items. In LIGHT this
+     was a true #29221E (warm dark brown). In DARK we'd rather lift the
+     surface a few percent, so we map it to a low-alpha white that reads as
+     "tile under hover" against bg-app (#0B0B0D) / bg-surface (#161618).
+     Without this override the button visually disappears on hover. */
+  --warm-800: rgba(255, 255, 255, 0.10);
+  --warm-700: #D4D4D6;
+
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.8), 0 8px 16px rgba(0, 0, 0, 0.5);
+  --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.40);
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+}
+
+/* Auto = follow OS preference */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg-app:        #0B0B0D;
+    --bg-surface:    #161618;
+    --bg-sunken:     #0F0F11;
+    --bg-inverse:    var(--warm-50);
+
+    --fg-1:          #F4F4F5;
+    --fg-2:          #C4C4C7;
+    --fg-3:          #8A8A8E;
+    --fg-4:          #5A5A5E;
+    --fg-on-dark:    #F4F4F5;
+
+    --border-1:      rgba(255, 255, 255, 0.08);
+    --border-2:      rgba(255, 255, 255, 0.14);
+    --border-3:      rgba(255, 255, 255, 0.22);
+
+    --accent-hover:  var(--brand-coral-400);
+    --accent-press:  var(--brand-coral-300);
+    --accent-soft:   rgba(239, 74, 34, 0.18);
+
+    --brand-coral-50:  rgba(239, 74, 34, 0.14);
+    --brand-coral-100: rgba(239, 74, 34, 0.22);
+    --brand-coral-700: #FF9879;
+
+    --brand-plum-50:   rgba(126, 49, 104, 0.22);
+    --brand-plum-100:  rgba(126, 49, 104, 0.34);
+    --brand-plum-700:  #E5B5D2;
+
+    --sun-50:   rgba(245, 180, 0, 0.16);
+    --sun-100:  rgba(245, 180, 0, 0.24);
+    --sun-700:  #FFD64D;
+
+    --leaf-50:  rgba(43, 168, 91, 0.16);
+    --leaf-100: rgba(43, 168, 91, 0.26);
+    --leaf-700: #71CE89;
+
+    --ruby-50:  rgba(216, 54, 47, 0.16);
+    --ruby-100: rgba(216, 54, 47, 0.26);
+    --ruby-300: #F4A29F;
+    --ruby-700: #EC7A7A;
+
+    --grape-50:  rgba(122, 74, 207, 0.20);
+    --grape-100: rgba(122, 74, 207, 0.30);
+    --grape-700: #B59AE6;
+
+    --warm-100: rgba(255, 255, 255, 0.05);
+    --warm-150: rgba(255, 255, 255, 0.09);
+    --warm-200: rgba(255, 255, 255, 0.14);
+    --warm-800: rgba(255, 255, 255, 0.10);
+    --warm-700: #D4D4D6;
+
+    --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.6);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.8), 0 8px 16px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.40);
+    --overlay-scrim: rgba(0, 0, 0, 0.6);
   }
 }
 
-@layer utilities {
-  /* Reverse spin animation */
-  @keyframes spin-reverse {
-    from {
-      transform: rotate(360deg);
-    }
-    to {
-      transform: rotate(0deg);
-    }
+/* ---- Base ---- */
+html, body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  color: var(--fg-1);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+@keyframes aooPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes aooSpinnerRotate { to { transform: rotate(360deg); } }
+@keyframes aooFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aooFadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* SideNav view swap (main ⇄ settings): directional slide keeps spatial
+   continuity — settings slides in from the right (going deeper), main from
+   the left (coming back). Paired with the ← back row in side-nav.tsx. */
+@keyframes aooNavSlideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes aooNavSlideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Utility: rotate any child svg/icon — used by buttons that turn into
+   loading spinners while a request is in flight (e.g. the ads "refresh"
+   IconButton). Reused via `<IconButton className="aoo-spin">`. */
+.aoo-spin > svg { animation: aooSpinnerRotate 0.9s linear infinite; }
+
+button { font-family: var(--font-sans); }
+input, textarea { font-family: var(--font-sans); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--warm-200); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--warm-300); background-clip: padding-box; border: 2px solid transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Semantic text styles */
+.t-display { font-size: var(--fs-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.t-h1      { font-size: var(--fs-h1); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
+.t-h2      { font-size: var(--fs-h2); font-weight: 600; line-height: var(--lh-snug); letter-spacing: -0.01em; }
+.t-h3      { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-snug); }
+.t-h4      { font-size: var(--fs-h4); font-weight: 600; line-height: var(--lh-snug); }
+.t-body    { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-normal); }
+.t-body-strong { font-size: var(--fs-body); font-weight: 600; line-height: var(--lh-normal); }
+.t-small   { font-size: var(--fs-small); font-weight: 400; line-height: var(--lh-normal); color: var(--fg-2); }
+.t-meta    { font-size: var(--fs-meta); font-weight: 500; line-height: var(--lh-normal); color: var(--fg-3); }
+.t-eyebrow { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--fg-3); }
+.t-mono    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.t-num     { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* Responsive grids — stack vertically below the named breakpoint. */
+/* Main-rail + side-rail layout (e.g. dashboard, post detail). */
+.grid-main-aside {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .grid-main-aside {
+    grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .animate-spin-reverse {
-    animation: spin-reverse 1.5s linear infinite;
-  }
-
-  /* Loading bar animation */
-  @keyframes loading-bar {
-    0% {
-      transform: translateX(-100%);
-    }
-    50% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  .animate-loading-bar {
-    animation: loading-bar 2s ease-in-out infinite;
-  }
-
-  /* Blink animation */
-  @keyframes blink {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.3;
-    }
-  }
-
-  .animate-blink {
-    animation: blink 1.5s ease-in-out infinite;
+/* Two equal columns that collapse on phones. */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 559px) {
+  .grid-2col {
+    grid-template-columns: 1fr;
   }
 }
 
-@layer base {
-  html {
-    font-family: var(--font-ibm-plex-sans-thai), system-ui, sans-serif;
+/* ==========================================================================
+ *  Interactive feedback — data attributes
+ *
+ *  Add `data-button-fx="<variant>"` to any inline-styled <button> / <a> to
+ *  get hover + active visual feedback without React state. Variants mirror
+ *  the <Button> component:
+ *    primary       — brand-coral filled (darkens on hover/press)
+ *    secondary     — outlined / surface (sunken tint on hover)
+ *    ghost         — transparent (warm-tint on hover)
+ *    danger        — ruby-filled (darkens on hover/press)
+ *    soft          — accent-soft pill (deepens on hover/press)
+ *    primary-leaf  — leaf-filled (publish CTA)
+ *
+ *  Add `data-tab-fx` to a tab button for a subtle hover lift on inactive
+ *  tabs. Active tabs (`aria-selected="true"`) are left alone so the active
+ *  indicator stays the source of truth.
+ *
+ *  Why data-attributes instead of `button { ... }`: a blanket button
+ *  selector would override the shared <Button> / <IconButton> components,
+ *  which already manage their own hover/press via React state. Opting in
+ *  per-button keeps the two systems from fighting.
+ *
+ *  All transitions use --dur-fast / --ease-out so they match the cadence of
+ *  the rest of the app. `:disabled` and `[aria-disabled="true"]` short-
+ *  circuit every effect so a disabled button never animates.
+ * ========================================================================== */
+
+[data-button-fx] {
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out);
+}
+
+/* Disabled = no effects, no pointer. */
+[data-button-fx]:disabled,
+[data-button-fx][aria-disabled="true"] {
+  cursor: not-allowed;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* CRITICAL: every interactive rule below uses !important because inline
+   `style={{ background: '...' }}` (CSSOM-level, specificity = 1000) would
+   otherwise win against any selector we put here. We're explicitly
+   designing for the case where an inline base color exists and we want to
+   nudge it on hover/press — declaring intent that the data attribute
+   ALWAYS wins for the hover/press state is the whole point. */
+
+/* Common press feel — every variant nudges 1px down. Override per variant
+   below if a particular look needs more. */
+[data-button-fx]:not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(1px) !important;
+}
+
+/* ---------- primary (brand-coral filled) ---------- */
+[data-button-fx="primary"]:not(:disabled):hover {
+  background: var(--accent-hover) !important;
+}
+[data-button-fx="primary"]:not(:disabled):active {
+  background: var(--accent-press) !important;
+}
+
+/* ---------- primary-leaf (success-green filled, for publish CTAs) ---------- */
+[data-button-fx="primary-leaf"]:not(:disabled):hover {
+  filter: brightness(0.92) !important;
+}
+[data-button-fx="primary-leaf"]:not(:disabled):active {
+  filter: brightness(0.85) !important;
+}
+
+/* ---------- secondary (outlined / surface) ---------- */
+[data-button-fx="secondary"]:not(:disabled):hover {
+  background: var(--warm-50) !important;
+  border-color: var(--border-3) !important;
+}
+[data-button-fx="secondary"]:not(:disabled):active {
+  background: var(--warm-100) !important;
+}
+:root[data-theme="dark"] [data-button-fx="secondary"]:not(:disabled):hover {
+  background: var(--warm-800) !important;
+}
+:root[data-theme="dark"] [data-button-fx="secondary"]:not(:disabled):active {
+  background: var(--warm-700) !important;
+}
+
+/* ---------- ghost (transparent until hover) ---------- */
+[data-button-fx="ghost"]:not(:disabled):hover {
+  background: var(--warm-100) !important;
+}
+[data-button-fx="ghost"]:not(:disabled):active {
+  background: var(--warm-150) !important;
+}
+:root[data-theme="dark"] [data-button-fx="ghost"]:not(:disabled):hover {
+  background: var(--warm-800) !important;
+}
+:root[data-theme="dark"] [data-button-fx="ghost"]:not(:disabled):active {
+  background: var(--warm-700) !important;
+}
+
+/* ---------- danger (ruby filled) ---------- */
+[data-button-fx="danger"]:not(:disabled):hover {
+  background: var(--ruby-700) !important;
+}
+[data-button-fx="danger"]:not(:disabled):active {
+  background: var(--ruby-700) !important;
+  filter: brightness(0.88) !important;
+}
+
+/* ---------- soft (accent-soft tint) ---------- */
+[data-button-fx="soft"]:not(:disabled):hover {
+  background: var(--brand-coral-100) !important;
+}
+[data-button-fx="soft"]:not(:disabled):active {
+  background: var(--brand-coral-200) !important;
+}
+
+/* ---------- overlay (dark pill floating on media) ----------
+   For action buttons sitting ON TOP of an image/video thumbnail (remove,
+   crop, thumbnail picker). A translucent dark pill with a white icon; on
+   hover it gets DARKER + more opaque (not lighter — a light hover would wash
+   the pill out against pale media and hide the white icon, which is exactly
+   the "icon กลืน bg" bug). Theme-independent on purpose: it floats over media,
+   not the page surface.
+
+   BASE + hover + active all live here (don't set `background` inline at the
+   call site, or the inline value wins and hover does nothing). The base is
+   deliberately fairly opaque (0.62) and hover jumps well past it (0.92) so the
+   change is clearly visible even on pale/orange media — a small gap reads as
+   "nothing happened on hover". */
+[data-button-fx="overlay"] {
+  background: rgba(26, 20, 17, 0.62);
+}
+[data-button-fx="overlay"]:not(:disabled):hover {
+  background: rgba(26, 20, 17, 0.92) !important;
+}
+[data-button-fx="overlay"]:not(:disabled):active {
+  background: rgba(26, 20, 17, 1) !important;
+}
+
+/* ==========================================================================
+ *  Card baseline — `.aoo-card` owns surface, border, radius, padding so
+ *  every <Card> instance picks them up from CSS instead of React inlining
+ *  4 longhand border-* declarations per node. Callers can still override
+ *  any of these via `style=` (escape hatch).
+ * ========================================================================== */
+
+.aoo-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+
+/* ==========================================================================
+ *  Card hover/press — opt-in via `data-card-fx` (Card with `hoverable` or
+ *  an `onClick` prop sets it automatically). Lifts the card on hover and
+ *  settles it (no shadow + accent border) on press. Non-interactive cards
+ *  are untouched.
+ * ========================================================================== */
+
+[data-card-fx] {
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+[data-card-fx]:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-2);
+  transform: translateY(-1px);
+}
+[data-card-fx]:active {
+  box-shadow: var(--shadow-xs);
+  border-color: var(--accent);
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+ *  Menu items in dropdowns (.aoo-menu-item)
+ *
+ *  Replaces the per-item `onMouseEnter / onMouseLeave` pattern that was
+ *  copy-pasted across top-nav menus. Add the class to any <button> inside
+ *  a dropdown panel and you get hover tint + a left accent bar on the
+ *  active item (mark with `aria-current="true"` or `[data-active]`).
+ *
+ *  The left bar is a `::before` so the menu item's padding doesn't shift
+ *  between active/inactive states.
+ * ========================================================================== */
+
+.aoo-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--fg-1);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.aoo-menu-item:hover {
+  background: var(--warm-100);
+}
+.aoo-menu-item:active {
+  background: var(--warm-150);
+}
+:root[data-theme="dark"] .aoo-menu-item:hover {
+  background: var(--warm-800);
+}
+:root[data-theme="dark"] .aoo-menu-item:active {
+  background: var(--warm-700);
+}
+
+/* Active item — accent left bar + tinted bg + accent text. Activate by
+   adding either aria-current="true" or data-active="" to the item. */
+.aoo-menu-item[aria-current="true"],
+.aoo-menu-item[data-active] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.aoo-menu-item[aria-current="true"]::before,
+.aoo-menu-item[data-active]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: var(--accent);
+}
+
+.aoo-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Danger variant for items like "Sign out" / "Delete account". */
+.aoo-menu-item.is-danger {
+  color: var(--ruby-700);
+}
+.aoo-menu-item.is-danger:hover {
+  background: var(--ruby-50);
+}
+.aoo-menu-item.is-danger:active {
+  background: var(--ruby-100);
+}
+
+/* ==========================================================================
+ *  Dropdown open animation — fade + slide down from the trigger
+ *
+ *  Drop the `aoo-dropdown` class on the panel root and it animates in on
+ *  mount. (We don't animate on unmount — the panel is removed immediately
+ *  to avoid the "phantom click" problem where a fading-out menu still
+ *  intercepts the next pointer event.)
+ * ========================================================================== */
+
+.aoo-dropdown {
+  animation: aooDropdownIn var(--dur-base, 180ms) var(--ease-out, ease-out);
+  transform-origin: top center;
+}
+@keyframes aooDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-body {
-  background: #ffffff;
-  color: #171717;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 1rem; /* 16px */
+/* ==========================================================================
+ *  Buttons — `.aoo-btn` system
+ *
+ *  Replaces the previous React-state + inline-style approach in
+ *  <Button> / <IconButton>. The component now just composes class names;
+ *  every visual decision (size, color, hover, press, disabled) lives in
+ *  CSS so DevTools shows a clean class list instead of 20 inline rules.
+ *
+ *  Compose like: <button class="aoo-btn aoo-btn--primary aoo-btn--md">.
+ *  Icon-only: add `aoo-btn--icon` (square geometry + paddingless).
+ *
+ *  Adding a new variant: copy a block below and only override what changes.
+ *  Adding a new size: extend the .aoo-btn--{sm,md,lg} blocks.
+ * ========================================================================== */
+
+.aoo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  border: 1px solid transparent;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-/* Force all labels to 16px */
-label {
-  font-size: 1rem !important;
+.aoo-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-/* เพิ่มใน app/globals.css หรือ styles/globals.css */
-
-/* ทำให้ทุก button มี cursor pointer */
-button:not(:disabled) {
-  cursor: pointer !important;
+.aoo-btn:disabled,
+.aoo-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
-/* สำหรับ shadcn/ui Button component */
-[role="button"]:not([aria-disabled="true"]) {
-  cursor: pointer !important;
+/* Press feel — every variant nudges 1px down on active. */
+.aoo-btn:not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(1px);
 }
 
-/* สำหรับ links ที่ styled เป็น button */
-a.inline-flex:not([aria-disabled="true"]) {
-  cursor: pointer !important;
+/* ---------- Sizes ---------- */
+.aoo-btn--sm {
+  height: 32px;
+  padding-inline: 12px;
+  font-size: 14px;
+  gap: 6px;
+}
+.aoo-btn--md {
+  height: 40px;
+  padding-inline: 16px;
+  font-size: 16px; /* = --fs-body, the regular/standard control size */
+  gap: 8px;
+}
+.aoo-btn--lg {
+  height: 48px;
+  padding-inline: 20px;
+  font-size: 18px;
+  gap: 10px;
 }
 
-/* สำหรับ elements ที่มี onClick */
-[onclick]:not(:disabled) {
-  cursor: pointer !important;
+/* ---------- Variants ---------- */
+.aoo-btn--primary {
+  background: var(--brand-coral-500);
+  color: var(--fg-on-brand);
+  border-color: transparent;
+}
+.aoo-btn--primary:not(:disabled):hover {
+  background: var(--brand-coral-600);
+}
+.aoo-btn--primary:not(:disabled):active {
+  background: var(--brand-coral-700);
 }
 
-/* Fix สำหรับ Select, Checkbox, Radio */
+/* RadioCardGroup — selected state highlight (accent border + soft fill).
+   Controlled usage sets data-selected (single source of truth); uncontrolled
+   (native form) uses :has() so the card with a checked radio lights up. The
+   :has() rule is scoped to NON-controlled groups — in a controlled group a
+   stale DOM :checked could otherwise keep the old card highlighted. */
+.aoo-radio-card[data-selected="true"],
+[data-controlled="true"] .aoo-radio-card[data-selected="true"],
+:not([data-controlled="true"]) > .aoo-radio-card:has(input[type="radio"]:checked) {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+}
+
+.aoo-btn--secondary {
+  background: var(--bg-surface);
+  color: var(--fg-1);
+  border-color: var(--border-2);
+}
+.aoo-btn--secondary:not(:disabled):hover {
+  background: var(--warm-50);
+  border-color: var(--border-3);
+}
+.aoo-btn--secondary:not(:disabled):active {
+  background: var(--warm-100);
+}
+:root[data-theme="dark"] .aoo-btn--secondary:not(:disabled):hover {
+  background: var(--warm-800);
+}
+:root[data-theme="dark"] .aoo-btn--secondary:not(:disabled):active {
+  background: var(--warm-700);
+}
+
+.aoo-btn--ghost {
+  background: transparent;
+  color: var(--fg-2);
+  border-color: transparent;
+}
+.aoo-btn--ghost:not(:disabled):hover {
+  background: var(--warm-100);
+}
+.aoo-btn--ghost:not(:disabled):active {
+  background: var(--warm-150);
+}
+:root[data-theme="dark"] .aoo-btn--ghost:not(:disabled):hover {
+  background: var(--warm-800);
+}
+:root[data-theme="dark"] .aoo-btn--ghost:not(:disabled):active {
+  background: var(--warm-700);
+}
+
+.aoo-btn--danger {
+  background: var(--ruby-500);
+  color: #fff;
+  border-color: transparent;
+}
+.aoo-btn--danger:not(:disabled):hover {
+  background: var(--ruby-700);
+}
+.aoo-btn--danger:not(:disabled):active {
+  background: var(--ruby-700);
+  filter: brightness(0.88);
+}
+
+.aoo-btn--soft {
+  background: var(--brand-coral-50);
+  color: var(--brand-coral-700);
+  border-color: transparent;
+}
+.aoo-btn--soft:not(:disabled):hover {
+  background: var(--brand-coral-100);
+}
+.aoo-btn--soft:not(:disabled):active {
+  background: var(--brand-coral-200);
+}
+
+/* ---------- Icon-only (used by IconButton component) ----------
+   Square button. The component sets a CSS variable `--icon-size` for the
+   bespoke width/height so callers can request any size without us needing
+   to add an .aoo-btn--icon-{sm,md,lg} class per size. */
+.aoo-btn--icon {
+  width: var(--icon-size, 32px);
+  height: var(--icon-size, 32px);
+  padding: 0;
+  border-radius: var(--r-md);
+}
+/* Icon-button tone "ghost" uses the same hover tints as .aoo-btn--ghost
+   (which it composes alongside). Tone "sunken" needs its own base bg. */
+.aoo-btn--icon-sunken {
+  background: var(--bg-sunken);
+  color: var(--fg-2);
+  border-color: transparent;
+}
+.aoo-btn--icon-sunken:not(:disabled):hover {
+  background: var(--warm-150);
+}
+.aoo-btn--icon-sunken:not(:disabled):active {
+  background: var(--warm-200);
+}
+
+/* ==========================================================================
+ *  Segmented tab strip — `.aoo-seg`
+ *
+ *  Sunken-bordered container for related tab/toggle buttons. Each button
+ *  inside should use `.aoo-seg-btn` (sets the geometry the strip expects)
+ *  and add `data-tab-fx` + `aria-selected` for hover/active visuals.
+ *
+ *  Used by: posts list status tabs, PostPreviewTabs, PostPreviewDeviceToggle,
+ *  ComposerTab, media-library Active/Deleted tabs, ads-tabs.
+ *
+ *  Compose like:
+ *    <div class="aoo-seg" role="tablist">
+ *      <button class="aoo-seg-btn" data-tab-fx aria-selected={isActive}>...</button>
+ *    </div>
+ *
+ *  Variants:
+ *    .aoo-seg--ghost — transparent container (no bg / border), used by
+ *                       toolbars where the strip sits in its own card.
+ * ========================================================================== */
+
+.aoo-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-md);
+}
+.aoo-seg--ghost {
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+}
+
+.aoo-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--fs-meta);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.aoo-seg-btn[aria-selected="true"] {
+  background: var(--bg-surface);
+  color: var(--fg-1);
+  box-shadow: var(--shadow-xs);
+}
+/* Icon-only variant — tighter padding so the chip stays roughly square. */
+.aoo-seg-btn--icon {
+  padding: 6px 9px;
+}
+
+/* Accent-tinted active state — used by toggles where the active option
+   needs to read as "selected" not just "active page". Pair with the
+   default `.aoo-seg`. */
+.aoo-seg-btn--accent[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+/* ==========================================================================
+ *  Typography & layout utilities
+ *
+ *  Tiny single-purpose classes for inline patterns that show up in many
+ *  places. They are intentionally NOT components — the call sites already
+ *  own their geometry, they just kept repeating the same 3-5 declarations.
+ * ========================================================================== */
+
+/* Multi-line truncation with an ellipsis. `-webkit-line-clamp` is the only
+ * widely-supported way to clamp wrapped text to N lines + "…". Pair with a
+ * parent that has a constrained width (or `min-width: 0` inside flex/grid) so
+ * the lines actually wrap before clamping. `pre-wrap` preserves the user's
+ * newlines + runs of spaces so a clamped caption keeps the shape it'll publish
+ * with. Add `word-break: break-word` at the call site if long unbroken strings
+ * (URLs) need to wrap. */
+.text-clamp-2,
+.text-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.text-clamp-2 { -webkit-line-clamp: 2; }
+.text-clamp-3 { -webkit-line-clamp: 3; }
+
+/* Hover-to-refresh affordance on the round profile picture in social-
+ * accounts cards. The button itself is invisible (no background/border);
+ * the overlay is the visible part — fades in on hover OR when the
+ * action is in flight (`data-loading="true"`). Disabled state hides
+ * the overlay entirely so non-admin viewers don't see a refresh icon
+ * they can't use. */
+.aoo-account-avatar-btn:hover:not(:disabled) .aoo-account-avatar-overlay,
+.aoo-account-avatar-btn:focus-visible:not(:disabled) .aoo-account-avatar-overlay,
+.aoo-account-avatar-overlay[data-loading="true"] {
+  opacity: 1 !important;
+}
+
+/* Display name in account cards turns accent-coloured on hover to
+ * signal "this is a link to the external platform page." */
+.aoo-account-name-link {
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.aoo-account-name-link:hover {
+  color: var(--accent) !important;
+}
+
+/* Grid for "connected account" cards (social-accounts, ads-accounts).
+ * Caps at 3 columns on wide screens so card width stays generous enough
+ * to show full @handles + Page names without truncation. Below ~900px it
+ * drops to 2 columns, and below ~600px to 1 column — matches the rest of
+ * the settings layout. `minmax(0, 1fr)` (not `1fr`) is load-bearing: it
+ * lets the cell shrink past its content's natural width, which is what
+ * lets `text-overflow: ellipsis` actually fire inside each card.
+ *
+ * Selector specificity intentionally raised via `div.aoo-accounts-grid`
+ * to win over any stray inline `display:grid` left from prior refactors
+ * and to make sure Next.js HMR picks it up cleanly. */
+div.aoo-accounts-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+@media (max-width: 900px) {
+  div.aoo-accounts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 600px) {
+  div.aoo-accounts-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Small-caps section heading. Use on a <div> or <span> above a list/card. */
+.t-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  line-height: 1.2;
+}
+
+/* Monospace text (filenames, ids, code-ish bits). */
+.t-mono {
+  font-family: var(--font-mono);
+}
+.t-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* For very long mono strings (URLs, paths) — let them wrap mid-word. */
+.t-mono-break {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+/* Sunken inset block: read-only info container. Used for token displays,
+   captured error messages, sample payloads, etc. */
+.aoo-inset {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+}
+
+/* Modal / form footer action row. */
+.aoo-actions-end {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+ *  Text links
+ *
+ *  Use .text-link on a <button> or <a> that should read as a "link in
+ *  running text" — color = accent, no chrome, hover deepens slightly.
+ *  Use .text-link-muted for the secondary version (e.g. "View all →" in
+ *  card headers) where the foreground is fg-3 and we just want hover.
+ *
+ *  Padding is intentionally minimal — these are inline, not buttons. If
+ *  you need real button geometry, use <Button variant="ghost" size="sm">.
+ * ========================================================================== */
+
+.text-link,
+.text-link-muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.text-link {
+  color: var(--accent);
+}
+.text-link:hover {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+.text-link:active {
+  background: var(--brand-coral-100);
+  color: var(--accent-press);
+}
+
+.text-link-muted {
+  color: var(--fg-3);
+}
+.text-link-muted:hover {
+  background: var(--warm-100);
+  color: var(--fg-1);
+}
+.text-link-muted:active {
+  background: var(--warm-150);
+}
+:root[data-theme="dark"] .text-link-muted:hover {
+  background: var(--warm-800);
+}
+:root[data-theme="dark"] .text-link-muted:active {
+  background: var(--warm-700);
+}
+
+.text-link:disabled,
+.text-link-muted:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- tabs ---------- */
+/* Only animate the inactive ones — active tabs own their look via aria-selected. */
+[data-tab-fx] {
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+[data-tab-fx]:not([aria-selected="true"]):not(:disabled):hover {
+  color: var(--fg-1) !important;
+  background: var(--warm-100) !important;
+}
+[data-tab-fx]:not([aria-selected="true"]):not(:disabled):active {
+  background: var(--warm-150) !important;
+}
+:root[data-theme="dark"]
+  [data-tab-fx]:not([aria-selected="true"]):not(:disabled):hover {
+  background: var(--warm-800) !important;
+}
+:root[data-theme="dark"]
+  [data-tab-fx]:not([aria-selected="true"]):not(:disabled):active {
+  background: var(--warm-700) !important;
+}
+
+/* ---------- media tile selection checkbox ---------- */
+/* Checkbox is invisible by default and reveals on hover (desktop) or
+   when the tile is selected. On touch devices the user can long-press —
+   for now we surface a fallback by leaving the checkbox visible whenever
+   any tile in the grid is selected (handled in the React layer via
+   selection mode). */
+.media-tile-checkbox {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.media-tile:hover .media-tile-checkbox,
+.media-tile-checkbox:focus-visible,
+.media-tile-checkbox[data-selected="true"] {
+  opacity: 1;
+}
+@media (hover: none) {
+  /* No hover on touch — always show the checkbox so users can tap it. */
+  .media-tile-checkbox {
+    opacity: 1;
+  }
+}
+
+/* ---------- theme toggle (top-nav) ----------
+ * Pill-shaped switch with a sliding knob. Hover lifts the brightness of the
+ * track + grows the knob a hair for tactile feedback. All visuals are driven
+ * by `data-theme-toggle="light|dark"`; the JSX never picks colors itself. */
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 56px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background var(--dur-med) var(--ease-out),
+    border-color var(--dur-med) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.theme-toggle[data-theme-toggle="light"] {
+  background: var(--warm-150);
+  border: 2px solid var(--border-2);
+}
+.theme-toggle[data-theme-toggle="light"]:hover {
+  background: var(--warm-200);
+  border-color: var(--border-3);
+}
+
+/* Dark-mode track uses hard-coded plum hex values because --brand-plum-700
+   is overridden to a light pink in dark mode (so card backgrounds and chip
+   tints can lift through the dark palette). We want the toggle pill itself
+   to stay the SAME "night sky" look in both modes — pale lavender track
+   with a dark moon — so token resolution would fight us. */
+.theme-toggle[data-theme-toggle="dark"] {
+  background: #E5B5D2;
+  border: 2px solid #CE82B0;
+}
+.theme-toggle[data-theme-toggle="dark"]:hover {
+  background: #DCA0C5;
+  border-color: #A8528A;
+}
+
+.theme-toggle:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Hint icons sit on the track itself (the side opposite the knob).
+   The visible one is the icon FOR THE OTHER MODE — clicking will switch
+   to that mode. */
+.theme-toggle-hint {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+.theme-toggle-hint--left { left: 7px; }
+.theme-toggle-hint--right { right: 7px; }
+
+/* Light mode: knob on left → show Moon hint on right. */
+.theme-toggle[data-theme-toggle="light"] .theme-toggle-hint--left {
+  opacity: 0;
+}
+.theme-toggle[data-theme-toggle="light"] .theme-toggle-hint--right {
+  opacity: 1;
+  color: var(--warm-500);
+}
+
+/* Dark mode: knob on right → show Sun hint on left.
+   IMPORTANT: in dark mode `--brand-plum-700` is overridden to a light pink
+   (#E5B5D2), so the track ends up pale — using any plum-100/300 token here
+   would BLEND INTO the track. Hard-code the deep plum from the LIGHT-mode
+   palette (#43183A / brand-plum-700 light) so the icon stays dark + crisp
+   against the pale-pink track. */
+.theme-toggle[data-theme-toggle="dark"] .theme-toggle-hint--left {
+  opacity: 1;
+  color: #43183A;
+}
+.theme-toggle[data-theme-toggle="dark"] .theme-toggle-hint--right {
+  opacity: 0;
+}
+
+.theme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition:
+    left var(--dur-med) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.theme-toggle[data-theme-toggle="light"] .theme-toggle-knob {
+  left: 2px;
+  color: var(--brand-coral-500);
+}
+.theme-toggle[data-theme-toggle="dark"] .theme-toggle-knob {
+  left: 28px;
+  /* Dark "moon" knob: dark surface with a pale-pink crescent so it reads
+     as a moon-against-night. Hard-coded hex for the same reason the track
+     is — we don't want token swaps to change the toggle's look across
+     light/dark mode. */
+  background: #1A1411;
+  color: #E5B5D2;
+}
+
+.theme-toggle:hover .theme-toggle-knob {
+  transform: scale(1.06);
+  box-shadow: var(--shadow-md);
+}
+.theme-toggle:active .theme-toggle-knob {
+  transform: scale(0.94);
+}
+
+/* ---------- account-filter row ----------
+ * Used inside the AccountFilter dropdown. Picks --warm-150 (which has a
+ * dark-mode override) so hover is visible in both themes. */
+.account-filter-row {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.account-filter-row:hover {
+  background: var(--warm-150);
+}
+
+/* ---------- ActionMenu trigger ----------
+ * The "…" IconButton that opens an ActionMenu portal. Lives inside hover-
+ * able rows (tables, list cards), so the default IconButton ghost hover
+ * (warm-100) blends right into the row's own hover background and the
+ * button reads as ambient chrome.
+ *
+ * Override with a slightly stronger tint + ring so the button visibly
+ * stands apart from the row hover, signalling that it is itself
+ * clickable. Same effect when the menu is open (so users keep visual
+ * anchor of which row's menu they just opened). */
+.aoo-action-trigger:not(:disabled):hover,
+.aoo-action-trigger.is-open {
+  background: var(--warm-200) !important;
+  box-shadow: inset 0 0 0 1px var(--border-2);
+}
+.aoo-action-trigger:not(:disabled):active {
+  background: var(--warm-300) !important;
+}
+:root[data-theme="dark"] .aoo-action-trigger:not(:disabled):hover,
+:root[data-theme="dark"] .aoo-action-trigger.is-open {
+  background: var(--warm-700) !important;
+  box-shadow: inset 0 0 0 1px var(--warm-600);
+}
+:root[data-theme="dark"] .aoo-action-trigger:not(:disabled):active {
+  background: var(--warm-600) !important;
+}
+
+/* ---------- action-menu item ----------
+ * Used by the ActionMenu portal. Hover and keyboard-focus both lift the
+ * row to --warm-150 (default) or --ruby-50 (danger tone). Active darkens
+ * further. */
+.action-menu-item {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.action-menu-item:not(:disabled):hover,
+.action-menu-item:not(:disabled):focus-visible {
+  background: var(--warm-150) !important;
+}
+.action-menu-item:not(:disabled):active {
+  background: var(--warm-200) !important;
+}
+.action-menu-item[data-tone="danger"]:not(:disabled):hover,
+.action-menu-item[data-tone="danger"]:not(:disabled):focus-visible {
+  background: var(--ruby-50) !important;
+}
+.action-menu-item[data-tone="danger"]:not(:disabled):active {
+  background: var(--ruby-100) !important;
+}
+
+/* ==========================================================================
+ *  สะพานเชื่อม Tailwind → โทเคนอุ่นของ aoosocial
+ *
+ *  แอปนี้มีคลาส Tailwind สีเดิมกระจายอยู่ ~2,300 จุด (gray 1101 · red 507 …)
+ *  แทนที่จะไล่แก้ทีละไฟล์ เรารีแมพจานสีของ Tailwind มาที่โทเคนอุ่นตรงนี้ที่เดียว
+ *  → ทุกหน้าที่เขียนไว้แล้วเปลี่ยนโทนตามทันที ไม่ต้องแตะโค้ด
+ *
+ *  กติกาการแมพ (ตามระบบดีไซน์ aoosocial):
+ *    gray/slate/zinc/neutral → warm    เทาอมโอเคอร์ ไม่ใช่เทาอมฟ้า
+ *    red/rose                → coral   สีแบรนด์ (ของเดิมใช้แดงเป็นสีหลักอยู่แล้ว)
+ *    orange/amber/yellow     → sun     เตือน / รอดำเนินการ
+ *    green/emerald/teal      → leaf    สำเร็จ
+ *    blue/indigo/violet/…    → grape   ข้อมูล — ระบบนี้ห้ามใช้สีฟ้า
+ *    pink                    → plum    สีรอง
+ * ========================================================================== */
+
+@theme {
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── เทาอุ่น ────────────────────────────────────────────── */
+  --color-gray-50: #fbf8f5;
+  --color-gray-100: #f4efea;
+  --color-gray-200: #ddd5cb;
+  --color-gray-300: #c2b7a8;
+  --color-gray-400: #9c9082;
+  --color-gray-500: #7a6e60;
+  --color-gray-600: #5a4f43;
+  --color-gray-700: #3e3530;
+  --color-gray-800: #29221e;
+  --color-gray-900: #1a1411;
+  --color-gray-950: #120d0b;
+
+  --color-slate-50: #fbf8f5;
+  --color-slate-100: #f4efea;
+  --color-slate-200: #ddd5cb;
+  --color-slate-300: #c2b7a8;
+  --color-slate-400: #9c9082;
+  --color-slate-500: #7a6e60;
+  --color-slate-600: #5a4f43;
+  --color-slate-700: #3e3530;
+  --color-slate-800: #29221e;
+  --color-slate-900: #1a1411;
+
+  --color-zinc-50: #fbf8f5;
+  --color-zinc-100: #f4efea;
+  --color-zinc-200: #ddd5cb;
+  --color-zinc-300: #c2b7a8;
+  --color-zinc-400: #9c9082;
+  --color-zinc-500: #7a6e60;
+  --color-zinc-600: #5a4f43;
+  --color-zinc-700: #3e3530;
+  --color-zinc-800: #29221e;
+  --color-zinc-900: #1a1411;
+
+  --color-neutral-50: #fbf8f5;
+  --color-neutral-100: #f4efea;
+  --color-neutral-200: #ddd5cb;
+  --color-neutral-300: #c2b7a8;
+  --color-neutral-400: #9c9082;
+  --color-neutral-500: #7a6e60;
+  --color-neutral-600: #5a4f43;
+  --color-neutral-700: #3e3530;
+  --color-neutral-800: #29221e;
+  --color-neutral-900: #1a1411;
+
+  /* ── coral = สีแบรนด์ (แทน red/rose) ────────────────────── */
+  --color-red-50: #fff1ec;
+  --color-red-100: #ffe0d4;
+  --color-red-200: #ffc3ac;
+  --color-red-300: #ff9879;
+  --color-red-400: #fa6b45;
+  --color-red-500: #ef4a22;
+  --color-red-600: #d03812;
+  --color-red-700: #a82a0c;
+  --color-red-800: #7c1f08;
+  --color-red-900: #4a1305;
+
+  --color-rose-50: #fff1ec;
+  --color-rose-100: #ffe0d4;
+  --color-rose-200: #ffc3ac;
+  --color-rose-300: #ff9879;
+  --color-rose-400: #fa6b45;
+  --color-rose-500: #ef4a22;
+  --color-rose-600: #d03812;
+  --color-rose-700: #a82a0c;
+  --color-rose-800: #7c1f08;
+  --color-rose-900: #4a1305;
+
+  /* ── sun = เตือน (แทน orange/amber/yellow) ──────────────── */
+  --color-orange-50: #fff8e1;
+  --color-orange-100: #ffedb2;
+  --color-orange-200: #ffe28a;
+  --color-orange-300: #ffd64d;
+  --color-orange-400: #fcc51f;
+  --color-orange-500: #f5b400;
+  --color-orange-600: #ce9700;
+  --color-orange-700: #8e6500;
+  --color-orange-800: #6a4c00;
+  --color-orange-900: #4a3500;
+
+  --color-amber-50: #fff8e1;
+  --color-amber-100: #ffedb2;
+  --color-amber-200: #ffe28a;
+  --color-amber-300: #ffd64d;
+  --color-amber-400: #fcc51f;
+  --color-amber-500: #f5b400;
+  --color-amber-600: #ce9700;
+  --color-amber-700: #8e6500;
+  --color-amber-800: #6a4c00;
+  --color-amber-900: #4a3500;
+
+  --color-yellow-50: #fff8e1;
+  --color-yellow-100: #ffedb2;
+  --color-yellow-200: #ffe28a;
+  --color-yellow-300: #ffd64d;
+  --color-yellow-400: #fcc51f;
+  --color-yellow-500: #f5b400;
+  --color-yellow-600: #ce9700;
+  --color-yellow-700: #8e6500;
+  --color-yellow-800: #6a4c00;
+  --color-yellow-900: #4a3500;
+
+  /* ── leaf = สำเร็จ (แทน green/emerald/teal) ─────────────── */
+  --color-green-50: #ecf8ef;
+  --color-green-100: #cfedd7;
+  --color-green-200: #a8e0b8;
+  --color-green-300: #71ce89;
+  --color-green-400: #47bb6d;
+  --color-green-500: #2ba85b;
+  --color-green-600: #1f8b49;
+  --color-green-700: #146b36;
+  --color-green-800: #0f5029;
+  --color-green-900: #0a361b;
+
+  --color-emerald-50: #ecf8ef;
+  --color-emerald-100: #cfedd7;
+  --color-emerald-200: #a8e0b8;
+  --color-emerald-300: #71ce89;
+  --color-emerald-400: #47bb6d;
+  --color-emerald-500: #2ba85b;
+  --color-emerald-600: #1f8b49;
+  --color-emerald-700: #146b36;
+  --color-emerald-800: #0f5029;
+  --color-emerald-900: #0a361b;
+
+  --color-teal-50: #ecf8ef;
+  --color-teal-100: #cfedd7;
+  --color-teal-200: #a8e0b8;
+  --color-teal-300: #71ce89;
+  --color-teal-400: #47bb6d;
+  --color-teal-500: #2ba85b;
+  --color-teal-600: #1f8b49;
+  --color-teal-700: #146b36;
+  --color-teal-800: #0f5029;
+  --color-teal-900: #0a361b;
+
+  /* ── grape = ข้อมูล (แทนสีฟ้าทั้งหมด — ระบบนี้ห้ามใช้ฟ้า) ── */
+  --color-blue-50: #f3eefa;
+  --color-blue-100: #ddcef1;
+  --color-blue-200: #c6b0e9;
+  --color-blue-300: #a98ae0;
+  --color-blue-400: #8f66d8;
+  --color-blue-500: #7a4acf;
+  --color-blue-600: #6036b0;
+  --color-blue-700: #4a2891;
+  --color-blue-800: #371d6d;
+  --color-blue-900: #26144a;
+
+  --color-indigo-50: #f3eefa;
+  --color-indigo-100: #ddcef1;
+  --color-indigo-200: #c6b0e9;
+  --color-indigo-300: #a98ae0;
+  --color-indigo-400: #8f66d8;
+  --color-indigo-500: #7a4acf;
+  --color-indigo-600: #6036b0;
+  --color-indigo-700: #4a2891;
+  --color-indigo-800: #371d6d;
+  --color-indigo-900: #26144a;
+
+  --color-violet-50: #f3eefa;
+  --color-violet-100: #ddcef1;
+  --color-violet-300: #a98ae0;
+  --color-violet-500: #7a4acf;
+  --color-violet-600: #6036b0;
+  --color-violet-700: #4a2891;
+
+  --color-purple-50: #f3eefa;
+  --color-purple-100: #ddcef1;
+  --color-purple-200: #c6b0e9;
+  --color-purple-300: #a98ae0;
+  --color-purple-400: #8f66d8;
+  --color-purple-500: #7a4acf;
+  --color-purple-600: #6036b0;
+  --color-purple-700: #4a2891;
+  --color-purple-800: #371d6d;
+  --color-purple-900: #26144a;
+
+  --color-cyan-50: #f3eefa;
+  --color-cyan-500: #7a4acf;
+  --color-cyan-600: #6036b0;
+  --color-cyan-700: #4a2891;
+
+  /* ── plum = สีรอง (แทน pink) ────────────────────────────── */
+  --color-pink-50: #fbf1f6;
+  --color-pink-100: #f4dcea;
+  --color-pink-200: #e5b5d2;
+  --color-pink-300: #ce82b0;
+  --color-pink-400: #a8528a;
+  --color-pink-500: #7e3168;
+  --color-pink-600: #5f2350;
+  --color-pink-700: #43183a;
+  --color-pink-800: #2b0f25;
+  --color-pink-900: #170914;
+
+  /* ── รัศมีเงียบ ๆ ตามระบบ: 8 เป็นค่าเริ่มต้น ───────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  /* ── เงาอมอุ่น ไม่ใช่เงาเทาอมฟ้า ────────────────────────── */
+  --shadow-xs: 0 1px 0 rgba(58, 36, 22, 0.04);
+  --shadow-sm: 0 1px 2px rgba(58, 36, 22, 0.06), 0 1px 1px rgba(58, 36, 22, 0.04);
+  --shadow-md: 0 4px 10px rgba(58, 36, 22, 0.08), 0 2px 4px rgba(58, 36, 22, 0.05);
+  --shadow-lg: 0 12px 32px rgba(58, 36, 22, 0.12), 0 4px 8px rgba(58, 36, 22, 0.06);
+  --shadow-xl: 0 24px 60px rgba(58, 36, 22, 0.18), 0 8px 16px rgba(58, 36, 22, 0.08);
+}
+
+/* ==========================================================================
+ *  ของเดิมในโปรเจกต์ที่ยังต้องใช้
+ * ========================================================================== */
+
+/* คลาส .ty-* ใช้อยู่หลายหน้า — ผูกเข้ากับสเกลใหม่ให้เปลี่ยนตามอัตโนมัติ */
+.ty-h1 { font-size: var(--fs-h2); font-weight: 700; line-height: var(--lh-snug); letter-spacing: -0.01em; }
+.ty-h2 { font-size: 28px; font-weight: 600; line-height: var(--lh-snug); }
+.ty-h3 { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-snug); }
+.ty-h4 { font-size: 20px; font-weight: 600; line-height: var(--lh-snug); }
+.ty-h5 { font-size: var(--fs-h4); font-weight: 600; line-height: var(--lh-snug); }
+
+.ty-body-lg { font-size: var(--fs-h4); font-weight: 400; line-height: var(--lh-loose); }
+.ty-body    { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-loose); }
+.ty-body-sm { font-size: var(--fs-small); font-weight: 400; line-height: var(--lh-normal); }
+
+.ty-label    { font-size: var(--fs-body); font-weight: 500; line-height: 1.4; }
+.ty-label-sm { font-size: var(--fs-small); font-weight: 500; line-height: 1.4; }
+
+.ty-caption { font-size: var(--fs-micro); font-weight: 400; line-height: 1.4; color: var(--fg-3); }
+
+.ty-nav        { font-size: var(--fs-body); font-weight: 400; line-height: 1; }
+.ty-nav-active { font-size: var(--fs-body); font-weight: 500; line-height: 1; }
+
+.ty-badge { font-size: var(--fs-micro); font-weight: 600; line-height: 1; letter-spacing: 0.025em; }
+
+/* เคอร์เซอร์ — ของเดิม แก้ปัญหา shadcn/Radix ไม่ขึ้นมือชี้ */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a.inline-flex:not([aria-disabled="true"]),
 [role="combobox"]:not([aria-disabled="true"]),
 [role="checkbox"]:not([aria-disabled="true"]),
 [role="radio"]:not([aria-disabled="true"]) {
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
-/* Disabled state */
 button:disabled,
 [aria-disabled="true"],
 .cursor-not-allowed {
   cursor: not-allowed !important;
 }
 
-/* Loading state */
-.cursor-wait {
-  cursor: wait !important;
+/* อนิเมชันเดิมที่หน้าอื่นเรียกใช้อยู่ */
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
 }
+.animate-spin-reverse { animation: spin-reverse 1.5s linear infinite; }
 
-/* Interactive elements */
-.cursor-pointer {
-  cursor: pointer !important;
+@keyframes loading-bar {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(0); }
+  100% { transform: translateX(100%); }
 }
+.animate-loading-bar { animation: loading-bar 2s ease-in-out infinite; }
 
-/* ==========================================================
-   TYPOGRAPHY SYSTEM
-   Base: 1rem = 16px (ตั้งที่ html)
-   แก้ font size ทั้งระบบที่นี่ที่เดียว
-   ========================================================== */
-
-@layer components {
-  /* --- Headings --- */
-  .ty-h1 {
-    font-size: 2rem;        /* 32px */
-    font-weight: 700;
-    line-height: 1.25;
-  }
-  .ty-h2 {
-    font-size: 1.75rem;     /* 28px */
-    font-weight: 700;
-    line-height: 1.3;
-  }
-  .ty-h3 {
-    font-size: 1.5rem;      /* 24px */
-    font-weight: 600;
-    line-height: 1.35;
-  }
-  .ty-h4 {
-    font-size: 1.25rem;     /* 20px */
-    font-weight: 600;
-    line-height: 1.4;
-  }
-  .ty-h5 {
-    font-size: 1.125rem;    /* 18px */
-    font-weight: 600;
-    line-height: 1.4;
-  }
-
-  /* --- Body --- */
-  .ty-body-lg {
-    font-size: 1.125rem;    /* 18px */
-    font-weight: 400;
-    line-height: 1.6;
-  }
-  .ty-body {
-    font-size: 1rem;        /* 16px — default */
-    font-weight: 400;
-    line-height: 1.6;
-  }
-  .ty-body-sm {
-    font-size: 0.875rem;    /* 14px */
-    font-weight: 400;
-    line-height: 1.5;
-  }
-
-  /* --- Label / UI Text --- */
-  .ty-label {
-    font-size: 1rem;        /* 16px */
-    font-weight: 500;
-    line-height: 1.4;
-  }
-  .ty-label-sm {
-    font-size: 0.875rem;    /* 14px */
-    font-weight: 500;
-    line-height: 1.4;
-  }
-
-  /* --- Caption / Helper --- */
-  .ty-caption {
-    font-size: 0.75rem;     /* 12px */
-    font-weight: 400;
-    line-height: 1.4;
-    color: #6b7280;         /* gray-500 */
-  }
-
-  /* --- Navigation --- */
-  .ty-nav {
-    font-size: 1rem;        /* 16px */
-    font-weight: 400;
-    line-height: 1;
-  }
-  .ty-nav-active {
-    font-size: 1rem;        /* 16px */
-    font-weight: 500;
-    line-height: 1;
-  }
-
-  /* --- Badge / Tag --- */
-  .ty-badge {
-    font-size: 0.75rem;     /* 12px */
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: 0.025em;
-  }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
 }
+.animate-blink { animation: blink 1.5s ease-in-out infinite; }

@@ -91,7 +91,7 @@ export default function FixClaimsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">แก้ไขปัญหาสิทธิ์การใช้งาน</h1>
 
       {/* Current User Info */}

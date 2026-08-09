@@ -17,6 +17,7 @@ import {
   Info,
   Loader2
 } from 'lucide-react'
+import { PageHeader } from '@/components/shared'
 
 export default function AutoCheckoutSettingsPage() {
   const { userData } = useAuth()
@@ -55,7 +56,7 @@ export default function AutoCheckoutSettingsPage() {
 
   if (!canManage) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
@@ -69,13 +70,11 @@ export default function AutoCheckoutSettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Auto-Checkout Settings</h1>
-        <p className="text-gray-600 mt-1">
-          ตั้งค่าและทดสอบระบบเช็คเอาท์อัตโนมัติ
-        </p>
-      </div>
+      <PageHeader
+        title="เช็คเอาท์อัตโนมัติ"
+        description="ตั้งค่าและทดสอบระบบปิดกะให้คนที่ลืมเช็คเอาท์"
+        icon={Clock}
+      />
 
       {/* Info Card */}
       <Card className="border-blue-200 bg-blue-50">

@@ -214,7 +214,7 @@ export default function CampaignDetailPage({
 
   if (error || !campaign) {
     return (
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl px-4">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -241,7 +241,7 @@ export default function CampaignDetailPage({
   const StatusIcon = status.icon
 
   return (
-    <div className="max-w-4xl mx-auto px-4 space-y-4 md:space-y-6 pb-8">
+    <div className="max-w-4xl px-4 space-y-4 md:space-y-6 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">

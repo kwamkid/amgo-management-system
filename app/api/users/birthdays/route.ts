@@ -1,50 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+// app/api/users/birthdays/route.ts
+//
+// วันเกิดพนักงาน สำหรับการ์ดบนหน้าแรก
+//
+// ยังเป็น route ฝั่ง server อยู่ (ไม่ให้เบราว์เซอร์ query ตรง) เพราะวันเกิด
+// เป็นข้อมูลส่วนตัว — ตรงนี้ส่งออกไปเฉพาะ วัน/เดือน ไม่ส่งปีเกิด
 
-export async function GET(request: NextRequest) {
-  try {
-    // Verify authentication
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/supabase/server'
 
-    const token = authHeader.replace('Bearer ', '')
-    await adminAuth.verifyIdToken(token)
+export async function GET() {
+  const me = await getCurrentUser()
+  if (!me) return NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 })
 
-    // Fetch active users with birthDate using Admin SDK (bypasses security rules)
-    const usersSnapshot = await adminDb
-      .collection('users')
-      .where('isActive', '==', true)
-      .get()
+  const { data, error } = await createAdminClient()
+    .from('users')
+    .select('id, full_name, line_display_name, line_picture_url, birth_date, role')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .not('birth_date', 'is', null)
 
-    const birthdays = usersSnapshot.docs
-      .filter(doc => doc.data().birthDate)
-      .map(doc => {
-        const data = doc.data()
-        // Convert Firestore Timestamp to ISO string
-        let birthDate: string
-        if (data.birthDate?.toDate) {
-          birthDate = data.birthDate.toDate().toISOString()
-        } else if (data.birthDate?.seconds) {
-          birthDate = new Date(data.birthDate.seconds * 1000).toISOString()
-        } else {
-          birthDate = new Date(data.birthDate).toISOString()
-        }
-
-        return {
-          id: doc.id,
-          fullName: data.fullName,
-          lineDisplayName: data.lineDisplayName,
-          linePictureUrl: data.linePictureUrl || null,
-          birthDate,
-          role: data.role,
-        }
-      })
-
-    return NextResponse.json({ birthdays })
-  } catch (error) {
-    console.error('Error fetching birthdays:', error)
-    return NextResponse.json({ error: 'Failed to fetch birthdays' }, { status: 500 })
+  if (error) {
+    console.error('ดึงวันเกิดไม่สำเร็จ:', error.message)
+    return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 })
   }
+
+  const birthdays = (data ?? []).map((u) => ({
+    id: u.id,
+    fullName: u.full_name,
+    lineDisplayName: u.line_display_name,
+    linePictureUrl: u.line_picture_url || null,
+    // ปีเกิดบอกอายุ — หน้าจอใช้แค่วัน/เดือน จึงตรึงปีไว้เป็นค่าเดียว
+    birthDate: `2000-${u.birth_date!.slice(5, 10)}T00:00:00.000Z`,
+    role: u.role,
+  }))
+
+  return NextResponse.json({ birthdays })
 }

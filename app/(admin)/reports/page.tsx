@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/shared'
 
 const reportMenuItems = [
   {
@@ -74,12 +75,12 @@ const reportMenuItems = [
 
 export default function ReportsPage() {
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">ศูนย์รายงาน</h1>
-        <p className="mt-2 text-gray-600">เลือกประเภทรายงานที่ต้องการดู</p>
-      </div>
+    <div>
+      <PageHeader
+        title="ศูนย์รายงาน"
+        description="เลือกประเภทรายงานที่ต้องการดู"
+        icon={FileText}
+      />
       
       {/* Report Menu Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

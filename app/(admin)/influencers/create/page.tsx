@@ -29,7 +29,7 @@ export default function CreateInfluencerPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl">
       <InfluencerForm
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}

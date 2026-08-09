@@ -3,6 +3,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { Button as AooButton } from '@/components/aoo'
+import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
 import { useLocations } from '@/hooks/useLocations'
@@ -112,35 +114,23 @@ export default function HolidaysPage() {
   
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            จัดการวันหยุด
-          </h1>
-          <p className="text-gray-600 mt-1">
-            กำหนดวันหยุดประจำปีและอัตรา OT
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setShowImportDialog(true)}
-            variant="outline"
-            className="cursor-pointer"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            นำเข้าวันหยุดราชการ
-          </Button>
-          <Button
-            onClick={() => router.push('/settings/holidays/create')}
-            className={`bg-gradient-to-r ${gradients.primary} cursor-pointer`}
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            เพิ่มวันหยุด
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="จัดการวันหยุด"
+        description="กำหนดวันหยุดประจำปีและอัตรา OT"
+        icon={Calendar}
+        actions={
+          <>
+            <AooButton variant="secondary" size="sm" icon="Download"
+              onClick={() => setShowImportDialog(true)}>
+              นำเข้าวันหยุดราชการ
+            </AooButton>
+            <AooButton size="sm" icon="Plus"
+              onClick={() => router.push('/settings/holidays/create')}>
+              เพิ่มวันหยุด
+            </AooButton>
+          </>
+        }
+      />
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

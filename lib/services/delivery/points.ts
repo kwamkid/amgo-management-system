@@ -1,0 +1,255 @@
+// lib/services/delivery/points.ts
+//
+// จุดส่งของ
+//
+// ── ต่างจากของเดิมตรงไหน ──────────────────────────────────────────────
+// สรุปเส้นทางรายวัน (จำนวนจุด/สำเร็จ/ไม่สำเร็จ) ไม่ต้องเขียนเองแล้ว
+// trigger delivery_points_recalc_route คิดจากจุดส่งจริงให้ทุกครั้ง
+//
+// ของเดิมบวก totalPoints เองแบบอ่าน-บวก-เขียน ผลคือตัวเลขเพี้ยน:
+// เจอเส้นทางค้าง 121 เส้นอ้างว่ามีจุดส่ง 966 จุดที่ไม่มีอยู่จริง
+// (ของจริง 3,479 จุด แต่ผลรวมบอก 4,445) — ล้างไปแล้วตอน migrate
+
+import { createClient } from '@/lib/supabase/client'
+import type {
+  DeliveryPoint,
+  DeliveryRoute,
+  CreateDeliveryPointData,
+  UpdateDeliveryPointData,
+  DeliveryFilters,
+  DeliveryPhoto,
+} from '@/types/delivery'
+import type { Database } from '@/types/database'
+import { uploadDeliveryPhoto, removeDeliveryPhotos } from './photos'
+
+type PointRow = Database['public']['Tables']['delivery_points']['Row']
+type RouteRow = Database['public']['Tables']['delivery_routes']['Row']
+
+const sb = () => createClient()
+
+function toPoint(r: PointRow): DeliveryPoint {
+  const photo: DeliveryPhoto | undefined = r.photo_url
+    ? {
+        id: r.id,
+        url: r.photo_url,
+        thumbnailUrl: r.photo_thumbnail_url ?? undefined,
+        originalSize: r.photo_original_size ?? 0,
+        compressedSize: r.photo_compressed_size ?? undefined,
+        width: r.photo_width ?? undefined,
+        height: r.photo_height ?? undefined,
+        uploadedAt: r.photo_uploaded_at ? new Date(r.photo_uploaded_at) : new Date(),
+        capturedAt: r.photo_captured_at ? new Date(r.photo_captured_at) : new Date(),
+      }
+    : undefined
+
+  return {
+    id: r.id,
+    driverId: r.driver_id,
+    driverName: r.driver_name,
+    checkInTime: r.check_in_time ? new Date(r.check_in_time) : new Date(),
+    lat: Number(r.lat),
+    lng: Number(r.lng),
+    address: r.address ?? undefined,
+    customerName: r.customer_name ?? undefined,
+    customerPhone: r.customer_phone ?? undefined,
+    orderNumber: r.order_number ?? undefined,
+    deliveryType: r.delivery_type as DeliveryPoint['deliveryType'],
+    deliveryStatus: r.delivery_status as DeliveryPoint['deliveryStatus'],
+    failureReason: r.failure_reason ?? undefined,
+    customerSignature: r.customer_signature ?? undefined,
+    photo,
+    photoUrl: r.photo_url ?? undefined,
+    note: r.note ?? undefined,
+    createdAt: r.created_at ? new Date(r.created_at) : undefined,
+    updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
+  }
+}
+
+function toRoute(r: RouteRow): DeliveryRoute {
+  return {
+    id: r.id,
+    driverId: r.driver_id,
+    driverName: r.driver_name,
+    date: r.route_date,
+    totalPoints: r.total_points,
+    completedPoints: r.completed_points,
+    failedPoints: r.failed_points,
+    totalDistance: r.total_distance ? Number(r.total_distance) : undefined,
+    totalDuration: r.total_duration ?? undefined,
+    startTime: r.start_time ? new Date(r.start_time) : undefined,
+    endTime: r.end_time ? new Date(r.end_time) : undefined,
+    status: r.status as DeliveryRoute['status'],
+    createdAt: r.created_at ? new Date(r.created_at) : undefined,
+    updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
+  }
+}
+
+/* ------------------------------------------------------------------ */
+export const createDeliveryPoint = async (
+  data: CreateDeliveryPointData,
+  driverId: string,
+  driverName: string
+): Promise<string> => {
+  const client = sb()
+
+  // แปลงพิกัดเป็นที่อยู่ — ล้มเหลวก็ยังบันทึกจุดส่งได้ แค่ไม่มีที่อยู่
+  let address = ''
+  try {
+    const { getAddressFromCoords } = await import('@/lib/utils/location')
+    address = (await getAddressFromCoords(data.lat, data.lng)) ?? ''
+  } catch (error) {
+    console.error('แปลงพิกัดเป็นที่อยู่ไม่สำเร็จ:', error)
+  }
+
+  const { data: row, error } = await client
+    .from('delivery_points')
+    .insert({
+      driver_id: driverId,
+      driver_name: driverName,
+      check_in_time: new Date().toISOString(),
+      lat: data.lat,
+      lng: data.lng,
+      address: address ?? '',
+      customer_name: data.customerName ?? null,
+      customer_phone: data.customerPhone ?? null,
+      order_number: data.orderNumber ?? null,
+      delivery_type: data.deliveryType,
+      delivery_status: 'pending',
+      note: data.note ?? '',
+    })
+    .select('id')
+    .single()
+
+  if (error) throw new Error(`บันทึกจุดส่งไม่สำเร็จ: ${error.message}`)
+
+  if (data.photoCaptureData) {
+    try {
+      const photo = await uploadDeliveryPhoto(data.photoCaptureData, driverId, row.id)
+      await client
+        .from('delivery_points')
+        .update({
+          photo_url: photo.url,
+          photo_thumbnail_url: photo.thumbnailUrl ?? null,
+          photo_width: photo.width ?? null,
+          photo_height: photo.height ?? null,
+          photo_original_size: photo.originalSize,
+          photo_compressed_size: photo.compressedSize ?? null,
+          photo_captured_at: photo.capturedAt.toISOString(),
+          photo_uploaded_at: photo.uploadedAt.toISOString(),
+        })
+        .eq('id', row.id)
+    } catch (error) {
+      // จุดส่งบันทึกไปแล้ว รูปพลาดไม่ควรทำให้ทั้งหมดล้ม
+      console.error('อัปโหลดรูปหลักฐานไม่สำเร็จ:', error)
+    }
+  }
+
+  return row.id
+}
+
+/* ------------------------------------------------------------------ */
+export const updateDeliveryPoint = async (
+  deliveryId: string,
+  data: UpdateDeliveryPointData
+): Promise<void> => {
+  const patch: Database['public']['Tables']['delivery_points']['Update'] = {}
+
+  if (data.deliveryStatus !== undefined) patch.delivery_status = data.deliveryStatus
+  if (data.failureReason !== undefined) patch.failure_reason = data.failureReason
+  if (data.customerSignature !== undefined) patch.customer_signature = data.customerSignature
+  if (data.note !== undefined) patch.note = data.note
+
+  if (!Object.keys(patch).length) return
+
+  const { error } = await sb().from('delivery_points').update(patch).eq('id', deliveryId)
+  if (error) throw new Error(`อัปเดตจุดส่งไม่สำเร็จ: ${error.message}`)
+}
+
+/* ------------------------------------------------------------------ *
+ *  รายการจุดส่ง
+ *
+ *  ของเดิมส่ง document snapshot ไปมาเพื่อแบ่งหน้า — ตีความ lastDoc
+ *  เป็นตัวเลข offset แทน ผู้เรียกไม่ต้องแก้
+ * ------------------------------------------------------------------ */
+export const getDeliveryPoints = async (
+  filters: DeliveryFilters,
+  pageSize = 20,
+  lastDoc?: number
+): Promise<{ points: DeliveryPoint[]; lastDoc: number; hasMore: boolean }> => {
+  const offset = typeof lastDoc === 'number' ? lastDoc : 0
+
+  let q = sb()
+    .from('delivery_points')
+    .select('*')
+    .order('check_in_time', { ascending: false })
+    .range(offset, offset + pageSize)
+
+  if (filters.driverId) q = q.eq('driver_id', filters.driverId)
+  if (filters.deliveryType) q = q.eq('delivery_type', filters.deliveryType)
+  if (filters.deliveryStatus) q = q.eq('delivery_status', filters.deliveryStatus)
+
+  if (filters.date) {
+    // filters.date เป็น YYYY-MM-DD ตามเวลาไทย — แปลงเป็นช่วงเวลาจริงก่อนเทียบ
+    const start = new Date(`${filters.date}T00:00:00+07:00`)
+    const end = new Date(`${filters.date}T23:59:59.999+07:00`)
+    q = q.gte('check_in_time', start.toISOString()).lte('check_in_time', end.toISOString())
+  }
+
+  const { data, error } = await q
+  if (error) throw new Error(`ดึงรายการจุดส่งไม่สำเร็จ: ${error.message}`)
+
+  const rows = (data ?? []) as PointRow[]
+  return {
+    points: rows.slice(0, pageSize).map(toPoint),
+    lastDoc: offset + pageSize,
+    hasMore: rows.length > pageSize,
+  }
+}
+
+export const getDeliveryPoint = async (deliveryId: string): Promise<DeliveryPoint | null> => {
+  const { data, error } = await sb()
+    .from('delivery_points')
+    .select('*')
+    .eq('id', deliveryId)
+    .maybeSingle()
+
+  if (error) throw new Error(`ดึงข้อมูลจุดส่งไม่สำเร็จ: ${error.message}`)
+  return data ? toPoint(data as PointRow) : null
+}
+
+/* ------------------------------------------------------------------ *
+ *  เส้นทางรายวัน — ฐานข้อมูลสรุปให้แล้ว แค่อ่าน
+ * ------------------------------------------------------------------ */
+export const getDeliveryRoutes = async (filters?: {
+  driverId?: string
+  from?: Date
+  to?: Date
+}): Promise<DeliveryRoute[]> => {
+  let q = sb().from('delivery_routes').select('*').order('route_date', { ascending: false })
+
+  if (filters?.driverId) q = q.eq('driver_id', filters.driverId)
+  if (filters?.from) q = q.gte('route_date', filters.from.toISOString().slice(0, 10))
+  if (filters?.to) q = q.lte('route_date', filters.to.toISOString().slice(0, 10))
+
+  const { data, error } = await q
+  if (error) throw new Error(`ดึงเส้นทางไม่สำเร็จ: ${error.message}`)
+  return ((data ?? []) as RouteRow[]).map(toRoute)
+}
+
+/* ------------------------------------------------------------------ */
+export const deleteDeliveryPoint = async (deliveryId: string): Promise<void> => {
+  const client = sb()
+
+  const { data: row } = await client
+    .from('delivery_points')
+    .select('photo_url, photo_thumbnail_url')
+    .eq('id', deliveryId)
+    .maybeSingle()
+
+  if (!row) throw new Error('ไม่พบจุดส่งนี้')
+
+  await removeDeliveryPhotos([row.photo_url, row.photo_thumbnail_url])
+
+  const { error } = await client.from('delivery_points').delete().eq('id', deliveryId)
+  if (error) throw new Error(`ลบจุดส่งไม่สำเร็จ: ${error.message}`)
+}

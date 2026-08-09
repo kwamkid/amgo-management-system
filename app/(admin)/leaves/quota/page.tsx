@@ -24,6 +24,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react'
+import { SelectMenu } from '@/components/aoo'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +33,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
-import { getQuotaForYear, updateQuota } from '@/lib/services/leaveService'
+import { getQuotasForYear, updateQuota } from '@/lib/services/leaveService'
 import Link from 'next/link'
 import {
   Popover,
@@ -56,6 +57,8 @@ import {
 } from "@/components/ui/select"
 import { Pagination } from '@/components/ui/pagination'
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
+import { PageHeader } from '@/components/shared'
+import { Button as AooButton } from '@/components/aoo'
 
 interface UserQuota {
   user: {
@@ -310,22 +313,21 @@ export default function LeaveQuotaManagementPage() {
   const fetchAllQuotas = async () => {
     setLoading(true)
     try {
-      const quotaPromises = users.map(async (user) => {
-        const quota = await getQuotaForYear(user.id!, year)
-        return {
+      // ของเดิมยิงทีละคน = จำนวนพนักงาน query ต่อการเปลี่ยนปี 1 ครั้ง
+      const quotas = await getQuotasForYear(users.map((u) => u.id!), year)
+
+      setUserQuotas(
+        users.map((user) => ({
           user: {
             id: user.id!,
             fullName: user.fullName,
             lineDisplayName: user.lineDisplayName,
             linePictureUrl: user.linePictureUrl,
-            role: user.role
+            role: user.role,
           },
-          quota
-        }
-      })
-      
-      const results = await Promise.all(quotaPromises)
-      setUserQuotas(results)
+          quota: quotas.get(user.id!) ?? null,
+        }))
+      )
     } catch (error) {
       showToast('ไม่สามารถโหลดข้อมูลโควต้าได้', 'error')
     } finally {
@@ -389,7 +391,7 @@ export default function LeaveQuotaManagementPage() {
 
   if (!canManage) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
@@ -453,36 +455,37 @@ export default function LeaveQuotaManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการโควต้าการลา</h1>
-          <p className="text-gray-600 mt-1">
-            กำหนดจำนวนวันลาสำหรับพนักงานแต่ละคน
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setShowCarryOverDialog(true)}
-            variant="outline"
-            className="border-red-200 text-red-600 hover:bg-red-50"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            ยกยอดโควต้าปีใหม่
-          </Button>
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="h-10 px-4 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-          >
-            {[-1, 0, 1].map(offset => {
-              const y = new Date().getFullYear() + offset
-              return <option key={y} value={y}>{y}</option>
-            })}
-          </select>
-        </div>
-      </div>
+      <PageHeader
+        title="จัดการโควต้าการลา"
+        description="กำหนดจำนวนวันลาสำหรับพนักงานแต่ละคน"
+        icon={Calendar}
+        backHref="/leaves"
+        actions={
+          <>
+            <AooButton
+              variant="secondary"
+              size="sm"
+              icon="RefreshCw"
+              onClick={() => setShowCarryOverDialog(true)}
+            >
+              ยกยอดโควต้าปีใหม่
+            </AooButton>
+            <div className="w-28">
+              <SelectMenu
+                size="md"
+                value={String(year)}
+                onChange={(v) => v && setYear(Number(v))}
+                searchThreshold={99}
+                options={[-1, 0, 1].map((offset) => {
+                  const y = new Date().getFullYear() + offset
+                  // แสดงเป็น พ.ศ. ตามที่คนไทยใช้ แต่เก็บเป็น ค.ศ.
+                  return { value: String(y), label: `${y + 543}` }
+                })}
+              />
+            </div>
+          </>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

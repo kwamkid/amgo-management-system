@@ -1,216 +1,101 @@
+// app/api/users/delete/route.ts
+//
+// ลบพนักงาน — ต้องทำฝั่ง server เพราะต้องแตะบัญชีใน auth ด้วย
+//
+// ⚠️ ของเดิมมีช่องโหว่: ถ้าตรวจ token ไม่ผ่าน มีคอมเมนต์ปิดการปฏิเสธไว้ว่า
+//    "For now, allow deletion without auth (you can change this)"
+//    แปลว่าใครก็ยิง DELETE เข้ามาลบพนักงานพร้อมเช็คอินและใบลาทั้งหมดได้
+//    รอบนี้ไม่มีทางลัดนั้น — ไม่ใช่ admin คือจบ
+//
+// อีกอย่างที่เปลี่ยน: ของเดิมลบเช็คอินกับใบลาทิ้งด้วย ซึ่งทำลายหลักฐาน
+// การจ่ายค่าแรงย้อนหลัง รอบนี้ลบเฉพาะบัญชี ถ้ามีประวัติผูกอยู่จะให้ปิดใช้งานแทน
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const { userId } = await request.json()
+  const me = await getCurrentUser()
+  if (!me) return NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 })
+  if (me.profile.role !== 'admin') {
+    return NextResponse.json({ error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 })
+  }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
+  const { userId } = await request.json().catch(() => ({}))
+  if (!userId) return NextResponse.json({ error: 'ไม่ได้ระบุพนักงาน' }, { status: 400 })
+  if (userId === me.profile.id) {
+    return NextResponse.json({ error: 'ลบบัญชีตัวเองไม่ได้' }, { status: 400 })
+  }
 
-    // Get current user from headers
-    const authHeader = request.headers.get('authorization')
-    let requestingUserId = null
-    let requestingUserRole = null
-    let requestingUserName = null
-    let requestingUserEmail = null
-    
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '')
-        const decodedToken = await adminAuth.verifyIdToken(token)
-        requestingUserId = decodedToken.uid
-        requestingUserRole = decodedToken.role || decodedToken.claims?.role
-        requestingUserName = decodedToken.name
-        requestingUserEmail = decodedToken.email
-        
-        // Check if user has admin role
-        if (requestingUserRole !== 'admin') {
-          // Double check from database
-          const adminDoc = await adminDb.collection('users').doc(decodedToken.uid).get()
-          const adminData = adminDoc.data()
-          if (!adminData || adminData.role !== 'admin') {
-            return NextResponse.json(
-              { error: 'Only admins can delete users' },
-              { status: 403 }
-            )
-          }
-        }
-        
-        // Prevent self-deletion
-        if (requestingUserId === userId) {
-          return NextResponse.json(
-            { error: 'Cannot delete your own account' },
-            { status: 400 }
-          )
-        }
-      } catch (tokenError) {
-        console.error('Token verification error:', tokenError)
-        // For now, allow deletion without auth (you can change this)
-        // return NextResponse.json(
-        //   { error: 'Unauthorized' },
-        //   { status: 401 }
-        // )
-      }
-    }
+  const admin = createAdminClient()
 
-    // Check if user exists
-    const userDoc = await adminDb.collection('users').doc(userId).get()
-    if (!userDoc.exists) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
+  const { data: target } = await admin
+    .from('users')
+    .select('id, full_name, line_display_name')
+    .eq('id', userId)
+    .maybeSingle()
 
-    const userData = userDoc.data()!
+  if (!target) return NextResponse.json({ error: 'ไม่พบพนักงาน' }, { status: 404 })
 
-    // Create a backup before deletion
-    await adminDb.collection('deleted_users').doc(userId).set({
-      ...userData,
-      deletedAt: FieldValue.serverTimestamp(),
-      deletedBy: requestingUserId || 'system',
-      deletedByName: requestingUserName || requestingUserEmail || 'System'
-    })
+  // มีประวัติผูกอยู่ไหม — ลบแล้วรายงานย้อนหลังจะหาย
+  const [{ count: checkins }, { count: leaves }] = await Promise.all([
+    admin.from('checkins').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+    admin.from('leave_requests').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+  ])
 
-    // Delete related data
-    const batch = adminDb.batch()
-
-    // 1. Delete user document
-    batch.delete(adminDb.collection('users').doc(userId))
-
-    // 2. Delete user's check-ins (optional - you might want to keep for records)
-    const checkinsQuery = await adminDb
-      .collectionGroup('records')
-      .where('userId', '==', userId)
-      .get()
-    
-    checkinsQuery.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
-
-    // 3. Delete user's leave requests (optional)
-    const leavesQuery = await adminDb
-      .collection('leaves')
-      .where('userId', '==', userId)
-      .get()
-    
-    leavesQuery.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
-
-    // Commit batch delete
-    await batch.commit()
-
-    // Delete from Firebase Auth
-    try {
-      await adminAuth.deleteUser(userId)
-    } catch (authError: any) {
-      console.error('Error deleting from Firebase Auth:', authError)
-      // Continue even if Auth deletion fails
-      if (authError.code !== 'auth/user-not-found') {
-        console.warn('User might still exist in Firebase Auth')
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'User deleted successfully',
-      deletedUser: {
-        id: userId,
-        name: userData.fullName || userData.lineDisplayName
-      }
-    })
-
-  } catch (error) {
-    console.error('Error deleting user:', error)
+  if ((checkins ?? 0) > 0 || (leaves ?? 0) > 0) {
     return NextResponse.json(
-      { error: 'Failed to delete user' },
-      { status: 500 }
+      {
+        error:
+          `ลบไม่ได้เพราะมีประวัติเช็คอิน ${checkins} รายการ · ใบลา ${leaves} ใบ ` +
+          `ผูกอยู่ — ให้เปลี่ยนสถานะเป็นลาออกแทน ข้อมูลย้อนหลังจะได้ไม่หาย`,
+        checkins,
+        leaves,
+      },
+      { status: 409 }
     )
   }
+
+  const { error: delErr } = await admin.from('users').delete().eq('id', userId)
+  if (delErr) {
+    return NextResponse.json({ error: `ลบไม่สำเร็จ: ${delErr.message}` }, { status: 500 })
+  }
+
+  const { error: authErr } = await admin.auth.admin.deleteUser(userId)
+  if (authErr) console.warn('ลบบัญชีใน auth ไม่สำเร็จ:', authErr.message)
+
+  return NextResponse.json({
+    success: true,
+    deletedUser: { id: userId, name: target.full_name || target.line_display_name },
+  })
 }
 
-// Soft delete (ปิดการใช้งานแต่เก็บข้อมูลไว้)
+/** ปิดใช้งาน / กู้คืน */
 export async function PATCH(request: NextRequest) {
-  try {
-    const { userId, action } = await request.json()
-
-    if (!userId || !action) {
-      return NextResponse.json(
-        { error: 'User ID and action are required' },
-        { status: 400 }
-      )
-    }
-
-    const userRef = adminDb.collection('users').doc(userId)
-    const userDoc = await userRef.get()
-
-    if (!userDoc.exists) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    if (action === 'soft-delete') {
-      // Soft delete
-      await userRef.update({
-        isActive: false,
-        isDeleted: true,
-        deletedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
-      })
-
-      // Update custom claims
-      await adminAuth.setCustomUserClaims(userId, {
-        role: userDoc.data()!.role,
-        isActive: false,
-        isDeleted: true
-      })
-
-      return NextResponse.json({ 
-        success: true,
-        message: 'User soft deleted successfully'
-      })
-
-    } else if (action === 'restore') {
-      // Restore from soft delete
-      await userRef.update({
-        isActive: true,
-        isDeleted: false,
-        restoredAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
-      })
-
-      // Update custom claims
-      await adminAuth.setCustomUserClaims(userId, {
-        role: userDoc.data()!.role,
-        isActive: true,
-        isDeleted: false
-      })
-
-      return NextResponse.json({ 
-        success: true,
-        message: 'User restored successfully'
-      })
-    }
-
-    return NextResponse.json(
-      { error: 'Invalid action' },
-      { status: 400 }
-    )
-
-  } catch (error) {
-    console.error('Error in soft delete/restore:', error)
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    )
+  const me = await getCurrentUser()
+  if (!me) return NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 })
+  if (!['admin', 'hr'].includes(me.profile.role)) {
+    return NextResponse.json({ error: 'ไม่มีสิทธิ์' }, { status: 403 })
   }
+
+  const { userId, action } = await request.json().catch(() => ({}))
+  if (!userId || !action) {
+    return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+
+  const patch =
+    action === 'soft-delete'
+      ? { is_active: false, deleted_at: new Date().toISOString(), deleted_by: me.profile.id }
+      : action === 'restore'
+        ? { is_active: true, deleted_at: null, deleted_by: null }
+        : null
+
+  if (!patch) return NextResponse.json({ error: 'คำสั่งไม่ถูกต้อง' }, { status: 400 })
+
+  const { error } = await admin.from('users').update(patch).eq('id', userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
 }

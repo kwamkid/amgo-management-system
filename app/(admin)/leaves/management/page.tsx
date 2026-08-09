@@ -41,9 +41,9 @@ import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
-import { db } from '@/lib/firebase/client'
+import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
+import { PageHeader } from '@/components/shared'
 
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
@@ -128,38 +128,13 @@ export default function LeaveManagementPage() {
   const fetchLeaveRequests = async () => {
     try {
       setFetching(true)
-      
-      // Fetch all data first for stats
-      const allQuery = query(
-        collection(db, 'leaves'),
-        orderBy('createdAt', 'desc')
-      )
-      
-      const allSnapshot = await getDocs(allQuery)
-      const allLeavesData = allSnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          // Ensure dates are properly formatted
-          startDate: data.startDate,
-          endDate: data.endDate,
-          createdAt: data.createdAt,
-          approvedAt: data.approvedAt,
-          updatedAt: data.updatedAt,
-          userAvatar: data.userAvatar || null
-        } as ExtendedLeaveRequest
-      })
-      
-      setAllLeaves(allLeavesData) // Set all leaves for stats
-      
-      // Then filter based on filter selection
-      if (filter === 'all') {
-        setLeaves(allLeavesData)
-      } else {
-        const filteredData = allLeavesData.filter(leave => leave.status === filter)
-        setLeaves(filteredData)
-      }
+
+      // ดึงทั้งหมดครั้งเดียวเพราะแถบสถิติด้านบนต้องนับทุกสถานะ
+      // แล้วค่อยกรองในหน่วยความจำ — ไม่ต้องยิงซ้ำตอนสลับแท็บ
+      const all = (await getLeaveRequests()) as ExtendedLeaveRequest[]
+
+      setAllLeaves(all)
+      setLeaves(filter === 'all' ? all : all.filter((leave) => leave.status === filter))
     } catch (error) {
       console.error('Error fetching leave requests:', error)
     } finally {
@@ -229,7 +204,7 @@ export default function LeaveManagementPage() {
 
   if (!canManage) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
@@ -254,15 +229,12 @@ export default function LeaveManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการคำขอลา</h1>
-          <p className="text-gray-600 mt-1">
-            อนุมัติและจัดการคำขอลาของพนักงาน
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="จัดการคำขอลา"
+        description="อนุมัติและจัดการคำขอลาของพนักงาน"
+        icon={Calendar}
+        backHref="/leaves"
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

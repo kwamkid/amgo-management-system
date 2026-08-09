@@ -27,8 +27,8 @@ import TechLoader from '@/components/shared/TechLoader'
 import ShiftSelector from './ShiftSelector'
 import CameraCapture from './CameraCapture'
 import { Shift } from '@/types/location'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage } from '@/lib/firebase/client'
+import { uploadImage } from '@/lib/supabase/storage'
+import StorageImage from '@/components/shared/StorageImage'
 
 // Dynamic import CheckInMap
 const CheckInMap = dynamic(
@@ -91,14 +91,11 @@ export default function CheckInButton() {
     return () => clearInterval(timer)
   }, [])
 
-  // Upload selfie blob to Firebase Storage
-  const uploadPhoto = async (blob: Blob): Promise<string> => {
-    const dateStr = format(new Date(), 'yyyy-MM-dd')
-    const timestamp = Date.now()
-    const storageRef = ref(storage, `checkin-photos/${userData!.id}/${dateStr}/${timestamp}.jpg`)
-    await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
-    return getDownloadURL(storageRef)
-  }
+  // อัปโหลดรูปเซลฟี่ขึ้น Supabase Storage
+  // คืนเป็น "path" ไม่ใช่ URL — bucket ไม่เปิดสาธารณะ ลิงก์ต้อง sign ตอนแสดงผล
+  // และมีอายุจำกัด (ของเดิมคืนลิงก์ที่ใครมีก็เปิดได้ตลอดกาล)
+  const uploadPhoto = (blob: Blob): Promise<string> =>
+    uploadImage('checkin-photos', userData!.id!, blob)
 
   // Working time counter
   const getWorkingTime = () => {
@@ -215,12 +212,13 @@ export default function CheckInButton() {
             </Badge>
           </div>
 
-          {/* Selfie photo (if available) */}
+          {/* รูปเซลฟี่ตอนเช็คอิน */}
           {currentCheckIn.checkinPhotoUrl && (
             <div className="flex justify-center mb-4">
-              <img
-                src={currentCheckIn.checkinPhotoUrl}
-                alt="selfie check-in"
+              <StorageImage
+                bucket="checkin-photos"
+                path={currentCheckIn.checkinPhotoUrl}
+                alt="รูปตอนเช็คอิน"
                 className="w-20 h-20 rounded-full object-cover border-2 border-teal-300 shadow"
               />
             </div>

@@ -8,41 +8,34 @@ import {
   WebhookChannel,
   EmbedColors 
 } from '@/types/discord'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
+import {
+  loadDiscordSettings,
+  type DiscordSettings,
+} from './settings'
 import { safeFormatDate, formatDateRange } from '@/lib/utils/date'
 
-// Helper function to get webhook URL from database settings
-async function getWebhookUrl(channel: WebhookChannel): Promise<string | null> {
-  try {
-    const settingsDoc = await getDoc(doc(db, 'settings', 'discord'))
-    
-    if (!settingsDoc.exists()) {
-      console.warn('Discord settings not found')
-      return null
-    }
-    
-    const settings = settingsDoc.data()
-    return settings.webhooks?.[channel] || null
-  } catch (error) {
-    console.error('Error getting webhook URL:', error)
-    return null
-  }
+// ของเดิมอ่านการตั้งค่าใหม่ทุกครั้งที่จะส่ง 1 ข้อความ (2 ครั้งจริง ๆ:
+// เช็คว่าเปิดไหม + หา URL) — แจ้งเตือนรัวๆ ตอนเช้าคือยิง query ซ้ำเป็นสิบ
+// เก็บไว้ในหน่วยความจำสั้น ๆ พอ ตั้งค่าไม่ได้เปลี่ยนบ่อย
+let cached: { at: number; settings: DiscordSettings } | null = null
+const CACHE_MS = 60_000
+
+async function settings(): Promise<DiscordSettings> {
+  if (cached && Date.now() - cached.at < CACHE_MS) return cached.settings
+  const loaded = await loadDiscordSettings(createClient())
+  cached = { at: Date.now(), settings: loaded }
+  return loaded
 }
 
-// Helper function to check if notification is enabled
+async function getWebhookUrl(channel: WebhookChannel): Promise<string | null> {
+  const s = await settings()
+  return s.webhooks[channel as keyof DiscordSettings['webhooks']] || null
+}
+
 async function isNotificationEnabled(type: string): Promise<boolean> {
-  try {
-    const settingsDoc = await getDoc(doc(db, 'settings', 'discord'))
-    
-    if (!settingsDoc.exists()) return false
-    
-    const settings = settingsDoc.data()
-    return settings.notifications?.[type] !== false // default true
-  } catch (error) {
-    console.error('Error checking notification settings:', error)
-    return false
-  }
+  const s = await settings()
+  return s.notifications[type as keyof DiscordSettings['notifications']] !== false
 }
 
 // Helper function to get leave type emoji and label

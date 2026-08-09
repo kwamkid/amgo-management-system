@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
-import { db } from '@/lib/firebase/client'
+import { PageHeader } from '@/components/shared'
+import { createClient } from '@/lib/supabase/client'
 import { restoreUser } from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
 import { 
@@ -46,33 +46,28 @@ export default function DeletedUsersPage() {
     try {
       setLoading(true)
 
-      // 1. Fetch permanently deleted users from deleted_users collection
-      const deletedQuery = query(
-        collection(db, 'deleted_users'),
-        orderBy('deletedAt', 'desc')
-      )
-      const deletedSnapshot = await getDocs(deletedQuery)
-      const deleted = deletedSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        deletedAt: doc.data().deletedAt?.toDate()
+      // Postgres ไม่มีตาราง deleted_users แยกแล้ว — คนที่ถูกลบคือแถวที่มี deleted_at
+      // (ของเดิมสำเนาไปไว้อีก collection ตอนลบถาวร ซึ่งทำให้ข้อมูลซ้ำสองที่
+      //  และการลบถาวรตอนนี้ถูกห้ามอยู่แล้วถ้ายังมีประวัติเช็คอิน/ใบลาผูกอยู่)
+      const { data, error } = await createClient()
+        .from('users')
+        .select('id, full_name, line_display_name, line_picture_url, role, phone, deleted_at')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+
+      if (error) throw error
+
+      const softDeleted = (data ?? []).map((u) => ({
+        id: u.id,
+        fullName: u.full_name,
+        lineDisplayName: u.line_display_name,
+        linePictureUrl: u.line_picture_url,
+        role: u.role,
+        phone: u.phone,
+        deletedAt: u.deleted_at ? new Date(u.deleted_at) : undefined,
       })) as DeletedUser[]
 
-      // 2. Fetch soft deleted users from users collection
-      const usersQuery = query(
-        collection(db, 'users'),
-        orderBy('updatedAt', 'desc')
-      )
-      const usersSnapshot = await getDocs(usersQuery)
-      const softDeleted = usersSnapshot.docs
-        .filter(doc => doc.data().isDeleted === true)
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          deletedAt: doc.data().deletedAt?.toDate() || doc.data().updatedAt?.toDate()
-        })) as DeletedUser[]
-
-      setDeletedUsers(deleted)
+      setDeletedUsers([])
       setSoftDeletedUsers(softDeleted)
     } catch (error) {
       console.error('Error fetching deleted users:', error)
@@ -112,19 +107,12 @@ export default function DeletedUsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/employees"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">พนักงานที่ถูกลบ</h1>
-          <p className="text-gray-600 mt-1">จัดการพนักงานที่ถูกลบหรือปิดการใช้งาน</p>
-        </div>
-      </div>
+      <PageHeader
+        title="พนักงานที่ถูกลบ"
+        description="จัดการพนักงานที่ถูกลบหรือปิดการใช้งาน"
+        icon={Trash2}
+        backHref="/employees"
+      />
 
       {/* Soft Deleted Users */}
       {softDeletedUsers.length > 0 && (

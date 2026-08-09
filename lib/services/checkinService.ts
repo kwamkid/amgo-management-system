@@ -1,677 +1,410 @@
 // lib/services/checkinService.ts
+//
+// เช็คอิน/เช็คเอาท์ บน Supabase
+// ของเดิมที่ใช้ Firestore ลบทิ้งแล้ว — ย้อนดูได้ใน git history
+//
+// คง signature ของทุกฟังก์ชันไว้เหมือนเดิม หน้าจอกับ hook จึงไม่ต้องแก้
+// เปลี่ยนแค่ import
+//
+// ── ต่างจากของเดิมตรงไหน ──────────────────────────────────────────────
+// Firestore เก็บซ้อนเป็น checkins/{วันที่}/records/{id} ทำให้ทุกฟังก์ชัน
+// ต้องรู้ "วันที่" ถึงจะหาเอกสารเจอ และ query ข้ามวันต้องวนทีละวัน
+// Postgres เก็บแบนมี work_date เป็นคอลัมน์ → หาโดย id อย่างเดียวพอ
+// พารามิเตอร์ dateStr ที่เหลืออยู่จึงไม่ได้ใช้ คงไว้เพื่อไม่ให้ผู้เรียกพัง
 
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import {
+import { createClient } from '@/lib/supabase/client'
+import type {
   CheckInRecord,
   CreateCheckInData,
   CheckOutData,
   CheckInFilters,
-  DailyCheckInSummary
+  DailyCheckInSummary,
 } from '@/types/checkin'
-import { format, startOfDay, endOfDay } from 'date-fns'
+import type { Database } from '@/types/database'
+import { format } from 'date-fns'
 import { calculateWorkingHours, needsOvertimeApproval } from './workingHoursService'
 import { getLocation } from './locationService'
 
-const COLLECTION_NAME = 'checkins'
+type Row = Database['public']['Tables']['checkins']['Row']
 
-/**
- * Force-close a stale check-in (e.g., overnight worker forgot to checkout)
- * No GPS required — used when starting a new day's check-in
- */
-export async function forceCheckOut(
-  recordId: string,
-  dateStr: string,
-  note: string
-): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, dateStr, 'records', recordId)
-  await updateDoc(docRef, {
-    checkoutTime: serverTimestamp(),
-    status: 'completed',
-    autoCheckout: true,
-    forgotCheckout: true,
-    autoCheckoutNote: note,
-    updatedAt: serverTimestamp()
-  })
+/** แปลงแถวจาก Postgres (snake_case) เป็นรูปแบบที่หน้าจอเดิมใช้ (camelCase) */
+function toRecord(r: Row): CheckInRecord {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    userName: r.user_name ?? '',
+    userAvatar: r.user_avatar ?? undefined,
+
+    checkinTime: r.checkin_time ? new Date(r.checkin_time) : new Date(),
+    checkinLat: Number(r.checkin_lat ?? 0),
+    checkinLng: Number(r.checkin_lng ?? 0),
+    checkinType: (r.checkin_type ?? 'onsite') as CheckInRecord['checkinType'],
+    checkinPhotoUrl: r.checkin_photo_url ?? undefined,
+
+    locationsInRange: r.locations_in_range ?? [],
+    primaryLocationId: r.primary_location_id,
+    primaryLocationName: r.primary_location_name ?? undefined,
+
+    selectedShift: r.shift_id ?? undefined,
+    selectedShiftName: r.shift_name ?? undefined,
+    shiftStartTime: r.shift_start_time ?? undefined,
+    shiftEndTime: r.shift_end_time ?? undefined,
+
+    checkoutTime: r.checkout_time ? new Date(r.checkout_time) : undefined,
+    checkoutLat: r.checkout_lat != null ? Number(r.checkout_lat) : undefined,
+    checkoutLng: r.checkout_lng != null ? Number(r.checkout_lng) : undefined,
+
+    regularHours: Number(r.regular_hours ?? 0),
+    overtimeHours: Number(r.overtime_hours ?? 0),
+    totalHours: Number(r.total_hours ?? 0),
+    breakHours: Number(r.break_hours ?? 0),
+
+    status: r.status as CheckInRecord['status'],
+    isOvernightShift: r.is_overnight_shift ?? undefined,
+    isLate: r.is_late ?? false,
+    lateMinutes: r.late_minutes ?? 0,
+    forgotCheckout: r.forgot_checkout ?? undefined,
+    autoCheckout: r.auto_checkout ?? undefined,
+    needsOvertimeApproval: r.needs_overtime_approval ?? undefined,
+
+    note: r.note ?? undefined,
+    createdAt: r.created_at ? new Date(r.created_at) : undefined,
+    updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
+  }
 }
 
-/**
- * Create a new check-in record
- */
+const sb = () => createClient()
+
+/* ------------------------------------------------------------------ *
+ *  ปิดกะที่ค้าง — ใช้ตอนคนลืมเช็คเอาท์แล้วมาเช็คอินวันใหม่
+ *  ไม่ต้องใช้ GPS
+ * ------------------------------------------------------------------ */
+export async function forceCheckOut(
+  recordId: string,
+  _dateStr: string, // ไม่ได้ใช้แล้ว — ตารางแบนหาโดย id ได้เลย
+  note: string
+): Promise<void> {
+  const { error } = await sb()
+    .from('checkins')
+    .update({
+      checkout_time: new Date().toISOString(),
+      status: 'completed',
+      auto_checkout: true,
+      forgot_checkout: true,
+      auto_checkout_note: note,
+      auto_checkout_at: new Date().toISOString(),
+    })
+    .eq('id', recordId)
+
+  if (error) throw new Error(`ปิดกะค้างไม่สำเร็จ: ${error.message}`)
+}
+
+/* ------------------------------------------------------------------ */
 export async function createCheckIn(
   data: CreateCheckInData & {
     locationsInRange: string[]
     primaryLocationId: string | null
     primaryLocationName?: string
     checkinType: 'onsite' | 'offsite' | 'wfh'
-    selectedShift?: any
+    selectedShift?: { id?: string; name?: string; startTime?: string; endTime?: string }
   }
 ): Promise<string> {
-  try {
-    const docData = {
-      userId: data.userId,
-      userName: data.userName,
-      userAvatar: data.userAvatar || null,
+  const now = new Date()
 
-      // Check-in info
-      checkinTime: serverTimestamp(),
-      checkinLat: data.lat,
-      checkinLng: data.lng,
-      checkinType: data.checkinType,
-      checkinPhotoUrl: data.checkinPhotoUrl || null,
-      
-      // Location info
-      locationsInRange: data.locationsInRange,
-      primaryLocationId: data.primaryLocationId,
-      primaryLocationName: data.primaryLocationName || null,
-      
-      // Shift info
-      selectedShift: data.selectedShift?.id || null,
-      selectedShiftName: data.selectedShift?.name || null,
-      shiftStartTime: data.selectedShift?.startTime || null,
-      shiftEndTime: data.selectedShift?.endTime || null,
-      
-      // Initial values
-      regularHours: 0,
-      overtimeHours: 0,
-      totalHours: 0,
-      breakHours: 0,
-      
-      // Status
-      status: 'checked-in' as const,
-      isLate: false,
-      lateMinutes: 0,
-      
-      // Notes
-      note: data.note || null,
-      
-      // Timestamps
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }
-    
-    // Create document with date-based path for better querying
-    const dateStr = format(new Date(), 'yyyy-MM-dd')
-    const collectionRef = collection(db, COLLECTION_NAME, dateStr, 'records')
-    const docRef = await addDoc(collectionRef, docData)
-    
-    return docRef.id
-  } catch (error) {
-    console.error('Error creating check-in:', error)
-    throw error
-  }
-}
+  const { data: row, error } = await sb()
+    .from('checkins')
+    .insert({
+      user_id: data.userId,
+      user_name: data.userName,
+      user_avatar: data.userAvatar,
 
-/**
- * Check out from current session
- */
-export async function checkOut(
-  userId: string,
-  checkoutData: CheckOutData
-): Promise<void> {
-  try {
-    // Find active check-in for user
-    const activeCheckIn = await getActiveCheckIn(userId)
-    
-    if (!activeCheckIn) {
-      throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
-    }
-    
-    // Get location data for hours calculation
-    let location = null
-    if (activeCheckIn.primaryLocationId) {
-      location = await getLocation(activeCheckIn.primaryLocationId)
-    }
-    
-    const checkinTime = activeCheckIn.checkinTime instanceof Timestamp 
-      ? activeCheckIn.checkinTime.toDate() 
-      : new Date(activeCheckIn.checkinTime)
-    const checkoutTime = new Date()
-    
-    // Calculate working hours
-    const hoursCalc = location 
-      ? calculateWorkingHours(
-          checkinTime,
-          checkoutTime,
-          location,
-          activeCheckIn.selectedShift ? {
-            startTime: activeCheckIn.shiftStartTime!,
-            endTime: activeCheckIn.shiftEndTime!,
-            graceMinutes: 15
-          } : undefined,
-          false // Not approved by default
-        )
-      : {
-          regularHours: 0,
-          overtimeHours: 0,
-          totalHours: 0,
-          breakHours: 0,
-          isLate: activeCheckIn.isLate,
-          lateMinutes: activeCheckIn.lateMinutes,
-          isEarlyCheckout: false,
-          isOvernightShift: false
-        }
-    
-    // Check if needs overtime approval
-    const needsApproval = location ? needsOvertimeApproval(checkoutTime, location, checkinTime) : false
-    
-    // Update record
-    const dateStr = format(checkinTime, 'yyyy-MM-dd')
-    const docRef = doc(db, COLLECTION_NAME, dateStr, 'records', activeCheckIn.id!)
-    
-    await updateDoc(docRef, {
-      checkoutTime: serverTimestamp(),
-      checkoutLat: checkoutData.lat ?? null,
-      checkoutLng: checkoutData.lng ?? null,
-      
-      // Working hours
-      regularHours: hoursCalc.regularHours,
-      overtimeHours: hoursCalc.overtimeHours,
-      totalHours: hoursCalc.totalHours,
-      breakHours: hoursCalc.breakHours,
-      
-      // Status
-      status: needsApproval ? 'pending' : 'completed',
-      isOvernightShift: hoursCalc.isOvernightShift,
-      needsOvertimeApproval: needsApproval,
-      
-      // Notes
-      checkoutNote: checkoutData.note || null,
-      
-      updatedAt: serverTimestamp()
+      work_date: format(now, 'yyyy-MM-dd'),
+      checkin_time: now.toISOString(),
+      checkin_lat: data.lat,
+      checkin_lng: data.lng,
+      checkin_type: data.checkinType,
+      checkin_photo_url: data.checkinPhotoUrl ?? null,
+
+      locations_in_range: data.locationsInRange,
+      primary_location_id: data.primaryLocationId,
+      primary_location_name: data.primaryLocationName ?? null,
+
+      shift_id: data.selectedShift?.id ?? null,
+      shift_name: data.selectedShift?.name ?? null,
+      shift_start_time: data.selectedShift?.startTime ?? null,
+      shift_end_time: data.selectedShift?.endTime ?? null,
+
+      regular_hours: 0,
+      overtime_hours: 0,
+      break_hours: 0,
+
+      status: 'checked-in',
+      is_late: false,
+      late_minutes: 0,
+      note: data.note ?? null,
     })
-  } catch (error) {
-    console.error('Error checking out:', error)
-    throw error
-  }
+    .select('id')
+    .single()
+
+  if (error) throw new Error(`เช็คอินไม่สำเร็จ: ${error.message}`)
+  return row.id
 }
 
-/**
- * Get active check-in for a user
- */
+/* ------------------------------------------------------------------ */
+export async function checkOut(userId: string, checkoutData: CheckOutData): Promise<void> {
+  const active = await getActiveCheckIn(userId)
+  if (!active) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
+
+  const location = active.primaryLocationId ? await getLocation(active.primaryLocationId) : null
+
+  const checkinTime = new Date(active.checkinTime)
+  const checkoutTime = new Date()
+
+  const calc = location
+    ? calculateWorkingHours(
+        checkinTime,
+        checkoutTime,
+        location,
+        active.selectedShift
+          ? {
+              startTime: active.shiftStartTime!,
+              endTime: active.shiftEndTime!,
+              graceMinutes: 15,
+            }
+          : undefined,
+        false
+      )
+    : {
+        regularHours: 0,
+        overtimeHours: 0,
+        totalHours: 0,
+        breakHours: 0,
+        isLate: active.isLate,
+        lateMinutes: active.lateMinutes,
+        isEarlyCheckout: false,
+        isOvernightShift: false,
+      }
+
+  const needsApproval = location
+    ? needsOvertimeApproval(checkoutTime, location, checkinTime)
+    : false
+
+  // total_hours เป็น generated column ใน Postgres (regular + overtime) — ห้ามเขียนเอง
+  const { error } = await sb()
+    .from('checkins')
+    .update({
+      checkout_time: checkoutTime.toISOString(),
+      checkout_lat: checkoutData.lat ?? null,
+      checkout_lng: checkoutData.lng ?? null,
+      regular_hours: calc.regularHours,
+      overtime_hours: calc.overtimeHours,
+      break_hours: calc.breakHours,
+      status: needsApproval ? 'pending' : 'completed',
+      is_overnight_shift: calc.isOvernightShift,
+      needs_overtime_approval: needsApproval,
+      checkout_note: checkoutData.note ?? null,
+      hours_status: 'original',
+    })
+    .eq('id', active.id!)
+
+  if (error) throw new Error(`เช็คเอาท์ไม่สำเร็จ: ${error.message}`)
+}
+
+/* ------------------------------------------------------------------ *
+ *  กะที่ยังเปิดอยู่
+ *
+ *  ของเดิมต้องยิง 2 query (วันนี้ + เมื่อวาน เผื่อกะข้ามคืน)
+ *  ตารางแบนหาได้ทีเดียว แค่มองย้อนไป 2 วัน
+ * ------------------------------------------------------------------ */
 export async function getActiveCheckIn(userId: string): Promise<CheckInRecord | null> {
-  try {
-    // Check today first
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const todayQuery = query(
-      collection(db, COLLECTION_NAME, today, 'records'),
-      where('userId', '==', userId),
-      where('status', '==', 'checked-in'),
-      limit(1)
-    )
-    
-    const todaySnapshot = await getDocs(todayQuery)
-    
-    if (!todaySnapshot.empty) {
-      const doc = todaySnapshot.docs[0]
-      return {
-        id: doc.id,
-        ...doc.data(),
-        checkinTime: doc.data().checkinTime?.toDate(),
-        checkoutTime: doc.data().checkoutTime?.toDate(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      } as CheckInRecord
-    }
-    
-    // Check yesterday for overnight shifts
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = format(yesterday, 'yyyy-MM-dd')
-    
-    const yesterdayQuery = query(
-      collection(db, COLLECTION_NAME, yesterdayStr, 'records'),
-      where('userId', '==', userId),
-      where('status', '==', 'checked-in'),
-      limit(1)
-    )
-    
-    const yesterdaySnapshot = await getDocs(yesterdayQuery)
-    
-    if (!yesterdaySnapshot.empty) {
-      const doc = yesterdaySnapshot.docs[0]
-      return {
-        id: doc.id,
-        ...doc.data(),
-        checkinTime: doc.data().checkinTime?.toDate(),
-        checkoutTime: doc.data().checkoutTime?.toDate(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      } as CheckInRecord
-    }
-    
-    return null
-  } catch (error) {
-    console.error('Error getting active check-in:', error)
-    throw error
-  }
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+
+  const { data, error } = await sb()
+    .from('checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'checked-in')
+    .is('checkout_time', null)
+    .gte('work_date', format(twoDaysAgo, 'yyyy-MM-dd'))
+    .order('checkin_time', { ascending: false })
+    .limit(1)
+
+  if (error) throw new Error(`ดึงกะที่เปิดอยู่ไม่สำเร็จ: ${error.message}`)
+  return data?.length ? toRecord(data[0]) : null
 }
 
-/**
- * Get check-in records with filters
- */
+/* ------------------------------------------------------------------ *
+ *  รายการเช็คอินตามตัวกรอง
+ *
+ *  ของเดิมส่ง lastDoc ของ Firestore ไปมาเพื่อแบ่งหน้า
+ *  Postgres ใช้ offset ตรง ๆ — คงชื่อพารามิเตอร์ไว้ให้ผู้เรียกไม่ต้องแก้
+ *  โดยตีความ lastDoc เป็นตัวเลข offset
+ * ------------------------------------------------------------------ */
 export async function getCheckInRecords(
   filters: CheckInFilters,
   pageSize = 20,
-  lastDoc?: any
-): Promise<{
-  records: CheckInRecord[]
-  lastDoc: any
-  hasMore: boolean
-}> {
-  try {
-    const dateStr = filters.date || format(new Date(), 'yyyy-MM-dd')
-    let q = query(collection(db, COLLECTION_NAME, dateStr, 'records'))
-    
-    // Apply filters
-    if (filters.userId) {
-      q = query(q, where('userId', '==', filters.userId))
-    }
-    if (filters.locationId) {
-      q = query(q, where('primaryLocationId', '==', filters.locationId))
-    }
-    if (filters.status && filters.status !== 'all') {
-      q = query(q, where('status', '==', filters.status))
-    }
-    if (filters.isLate !== undefined) {
-      q = query(q, where('isLate', '==', filters.isLate))
-    }
-    if (filters.hasOvertime !== undefined) {
-      q = query(q, where('overtimeHours', '>', 0))
-    }
-    
-    // Order and pagination
-    q = query(q, orderBy('checkinTime', 'desc'), limit(pageSize + 1))
-    
-    if (lastDoc) {
-      q = query(q, startAfter(lastDoc))
-    }
-    
-    const snapshot = await getDocs(q)
-    const records = snapshot.docs.slice(0, pageSize).map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      checkinTime: doc.data().checkinTime?.toDate(),
-      checkoutTime: doc.data().checkoutTime?.toDate(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate()
-    } as CheckInRecord))
-    
-    const hasMore = snapshot.docs.length > pageSize
-    const newLastDoc = snapshot.docs[pageSize - 1]
-    
-    return { records, lastDoc: newLastDoc, hasMore }
-  } catch (error) {
-    console.error('Error getting check-in records:', error)
-    throw error
+  lastDoc?: number
+): Promise<{ records: CheckInRecord[]; lastDoc: number; hasMore: boolean }> {
+  const offset = typeof lastDoc === 'number' ? lastDoc : 0
+
+  let q = sb()
+    .from('checkins')
+    .select('*')
+    .order('checkin_time', { ascending: false })
+    .range(offset, offset + pageSize) // ขอเกินมา 1 แถวเพื่อรู้ว่ายังมีต่อไหม
+
+  // ของเดิมบังคับดูทีละวันเพราะโครงสร้างซ้อน — ตอนนี้ช่วงวันที่ก็ได้
+  if (filters.date) q = q.eq('work_date', filters.date)
+  if (filters.startDate) q = q.gte('work_date', filters.startDate)
+  if (filters.endDate) q = q.lte('work_date', filters.endDate)
+  if (filters.userId) q = q.eq('user_id', filters.userId)
+  if (filters.locationId) q = q.eq('primary_location_id', filters.locationId)
+  if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
+  if (filters.isLate !== undefined) q = q.eq('is_late', filters.isLate)
+  if (filters.hasOvertime) q = q.gt('overtime_hours', 0)
+
+  const { data, error } = await q
+  if (error) throw new Error(`ดึงรายการเช็คอินไม่สำเร็จ: ${error.message}`)
+
+  const rows = data ?? []
+  const hasMore = rows.length > pageSize
+
+  return {
+    records: rows.slice(0, pageSize).map(toRecord),
+    lastDoc: offset + pageSize,
+    hasMore,
   }
 }
 
-/**
- * Get pending checkouts (forgot to checkout)
- */
+/* ------------------------------------------------------------------ *
+ *  คนที่ลืมเช็คเอาท์
+ *
+ *  ของเดิมวน query 7 วัน ทีละวัน = 7 รอบ · ตอนนี้ query เดียว
+ * ------------------------------------------------------------------ */
 export async function getPendingCheckouts(): Promise<CheckInRecord[]> {
-  try {
-    const records: CheckInRecord[] = []
-    
-    // Check last 7 days
-    for (let i = 0; i < 7; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = format(date, 'yyyy-MM-dd')
-      
-      const q = query(
-        collection(db, COLLECTION_NAME, dateStr, 'records'),
-        where('status', '==', 'checked-in')
-      )
-      
-      const snapshot = await getDocs(q)
-      
-      snapshot.docs.forEach(doc => {
-        const data = doc.data()
-        const checkinTime = data.checkinTime?.toDate() || new Date(data.checkinTime)
-        const hoursSinceCheckin = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
-        
-        // Only include if more than 12 hours since check-in
-        if (hoursSinceCheckin > 12) {
-          records.push({
-            id: doc.id,
-            ...data,
-            checkinTime,
-            checkoutTime: data.checkoutTime?.toDate(),
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate()
-          } as CheckInRecord)
-        }
-      })
-    }
-    
-    return records.sort((a, b) => 
-      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
-    )
-  } catch (error) {
-    console.error('Error getting pending checkouts:', error)
-    throw error
-  }
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const { data, error } = await sb()
+    .from('checkins')
+    .select('*')
+    .eq('status', 'checked-in')
+    .is('checkout_time', null)
+    .gte('work_date', format(weekAgo, 'yyyy-MM-dd'))
+    .order('checkin_time', { ascending: false })
+
+  if (error) throw new Error(`ดึงรายการที่ลืมเช็คเอาท์ไม่สำเร็จ: ${error.message}`)
+  return (data ?? []).map(toRecord)
 }
 
-/**
- * Manual checkout by HR/Admin
- */
+/* ------------------------------------------------------------------ *
+ *  HR ปิดกะให้พนักงาน — ต้องเก็บร่องรอยว่าใครแก้ เพราะกระทบค่าแรง
+ * ------------------------------------------------------------------ */
 export async function manualCheckout(
   recordId: string,
-  dateStr: string,
+  _dateStr: string,
   checkoutTime: Date,
   approvedBy: string,
   approvedByName: string,
   reason: string,
-  approveOvertime: boolean = false
+  approveOvertime = false
 ): Promise<void> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, dateStr, 'records', recordId)
-    const docSnap = await getDoc(docRef)
-    
-    if (!docSnap.exists()) {
-      throw new Error('ไม่พบข้อมูลการเช็คอิน')
-    }
-    
-    const record = docSnap.data() as CheckInRecord
-    const checkinTime = record.checkinTime instanceof Timestamp 
-      ? record.checkinTime.toDate() 
-      : new Date(record.checkinTime)
-    
-    // Get location for hours calculation
-    let location = null
-    if (record.primaryLocationId) {
-      location = await getLocation(record.primaryLocationId)
-    }
-    
-    // Calculate working hours
-    const hoursCalc = location 
-      ? calculateWorkingHours(
-          checkinTime,
-          checkoutTime,
-          location,
-          record.selectedShift ? {
-            startTime: record.shiftStartTime!,
-            endTime: record.shiftEndTime!,
-            graceMinutes: 15
-          } : undefined,
-          approveOvertime // Use approval status
-        )
-      : {
-          regularHours: 0,
-          overtimeHours: 0,
-          totalHours: 0,
-          breakHours: 0,
-          isLate: record.isLate,
-          lateMinutes: record.lateMinutes,
-          isEarlyCheckout: false,
-          isOvernightShift: false
-        }
-    
-    // Update record
-    await updateDoc(docRef, {
-      checkoutTime,
-      
-      // Working hours
-      regularHours: hoursCalc.regularHours,
-      overtimeHours: hoursCalc.overtimeHours,
-      totalHours: hoursCalc.totalHours,
-      breakHours: hoursCalc.breakHours,
-      
-      // Status
-      status: 'completed',
-      manualCheckout: true,
-      forgotCheckout: true,
-      isOvernightShift: hoursCalc.isOvernightShift,
-      overtimeApproved: approveOvertime,
-      
-      // Manual checkout info
-      manualCheckoutBy: approvedBy,
-      manualCheckoutByName: approvedByName,
-      manualCheckoutAt: serverTimestamp(),
-      manualNote: reason,
-      
-      // Edit history
-      editHistory: [...(record.editHistory || []), {
-        editedBy: approvedBy,
-        editedByName: approvedByName,
-        editedAt: new Date(),
-        field: 'checkoutTime',
-        oldValue: null,
-        newValue: checkoutTime,
-        reason
-      }],
-      
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error manual checkout:', error)
-    throw error
-  }
-}
+  const client = sb()
 
-/**
- * Auto-checkout pending records (forgot to checkout)
- * Run this at 23:59 daily via cron job
- */
-export async function autoCheckoutPendingRecords(): Promise<{
-  processed: number
-  errors: string[]
-}> {
-  try {
-    const records: CheckInRecord[] = []
-    const errors: string[] = []
-    let processed = 0
+  const { data: rec, error: getErr } = await client
+    .from('checkins')
+    .select('*')
+    .eq('id', recordId)
+    .single()
 
-    // Check today and yesterday (for overnight shifts)
-    for (let i = 0; i < 2; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = format(date, 'yyyy-MM-dd')
+  if (getErr || !rec) throw new Error('ไม่พบข้อมูลการเช็คอิน')
 
-      const q = query(
-        collection(db, COLLECTION_NAME, dateStr, 'records'),
-        where('status', '==', 'checked-in')
+  const location = rec.primary_location_id ? await getLocation(rec.primary_location_id) : null
+  const checkinTime = new Date(rec.checkin_time!)
+
+  const calc = location
+    ? calculateWorkingHours(
+        checkinTime,
+        checkoutTime,
+        location,
+        rec.shift_start_time && rec.shift_end_time
+          ? { startTime: rec.shift_start_time, endTime: rec.shift_end_time, graceMinutes: 15 }
+          : undefined,
+        approveOvertime // ไม่อนุมัติ = ชั่วโมงที่เกินเวลาปิดไม่ถูกนับเป็นโอที
       )
-
-      const snapshot = await getDocs(q)
-
-      snapshot.docs.forEach(doc => {
-        const data = doc.data()
-        const checkinTime = data.checkinTime?.toDate() || new Date(data.checkinTime)
-        const hoursSinceCheckin = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
-
-        // Auto-checkout if checked in for more than 12 hours
-        if (hoursSinceCheckin > 12) {
-          records.push({
-            id: doc.id,
-            ...data,
-            checkinTime,
-            checkoutTime: data.checkoutTime?.toDate(),
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate()
-          } as CheckInRecord)
-        }
-      })
-    }
-
-    // Process each record
-    for (const record of records) {
-      try {
-        const checkinTime = record.checkinTime instanceof Date
-          ? record.checkinTime
-          : new Date(record.checkinTime)
-
-        // Determine default checkout time
-        let checkoutTime: Date
-
-        if (record.shiftEndTime) {
-          // Use shift end time
-          const [endHour, endMin] = record.shiftEndTime.split(':').map(Number)
-          checkoutTime = new Date(checkinTime)
-          checkoutTime.setHours(endHour, endMin, 0, 0)
-
-          // If shift end time is before checkin time, it's next day
-          if (checkoutTime < checkinTime) {
-            checkoutTime.setDate(checkoutTime.getDate() + 1)
-          }
-        } else {
-          // Default to 18:00 on check-in day
-          checkoutTime = new Date(checkinTime)
-          checkoutTime.setHours(18, 0, 0, 0)
-
-          // If 18:00 is before checkin time, use checkin time + 8 hours
-          if (checkoutTime < checkinTime) {
-            checkoutTime = new Date(checkinTime.getTime() + 8 * 60 * 60 * 1000)
-          }
-        }
-
-        // Get location for hours calculation
-        let location = null
-        if (record.primaryLocationId) {
-          location = await getLocation(record.primaryLocationId)
-        }
-
-        // Calculate working hours
-        const hoursCalc = location
-          ? calculateWorkingHours(
-              checkinTime,
-              checkoutTime,
-              location,
-              record.selectedShift ? {
-                startTime: record.shiftStartTime!,
-                endTime: record.shiftEndTime!,
-                graceMinutes: 15
-              } : undefined,
-              false // Not approved by default
-            )
-          : {
-              regularHours: 0,
-              overtimeHours: 0,
-              totalHours: 0,
-              breakHours: 0,
-              isLate: record.isLate,
-              lateMinutes: record.lateMinutes,
-              isEarlyCheckout: false,
-              isOvernightShift: false
-            }
-
-        // Update record
-        const dateStr = format(checkinTime, 'yyyy-MM-dd')
-        const docRef = doc(db, COLLECTION_NAME, dateStr, 'records', record.id!)
-
-        await updateDoc(docRef, {
-          checkoutTime,
-
-          // Working hours
-          regularHours: hoursCalc.regularHours,
-          overtimeHours: hoursCalc.overtimeHours,
-          totalHours: hoursCalc.totalHours,
-          breakHours: hoursCalc.breakHours,
-
-          // Status
-          status: 'completed',
-          autoCheckout: true,
-          forgotCheckout: true,
-          isOvernightShift: hoursCalc.isOvernightShift,
-
-          // Auto checkout info
-          autoCheckoutAt: serverTimestamp(),
-          autoCheckoutNote: 'ระบบเช็คเอาท์อัตโนมัติ (ลืมเช็คเอาท์)',
-
-          // Edit history
-          editHistory: [...(record.editHistory || []), {
-            editedBy: 'system',
-            editedByName: 'Auto-Checkout System',
-            editedAt: new Date(),
-            field: 'checkoutTime',
-            oldValue: null,
-            newValue: checkoutTime,
-            reason: 'ระบบเช็คเอาท์อัตโนมัติเนื่องจากลืมเช็คเอาท์เกิน 12 ชั่วโมง'
-          }],
-
-          updatedAt: serverTimestamp()
-        })
-
-        processed++
-      } catch (error) {
-        console.error(`Error auto-checkout record ${record.id}:`, error)
-        errors.push(`${record.userName}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    : {
+        regularHours: 0,
+        overtimeHours: 0,
+        totalHours: 0,
+        breakHours: 0,
+        isOvernightShift: false,
       }
-    }
 
-    return { processed, errors }
-  } catch (error) {
-    console.error('Error auto-checkout pending records:', error)
-    throw error
-  }
+  const { error } = await client
+    .from('checkins')
+    .update({
+      checkout_time: checkoutTime.toISOString(),
+      regular_hours: calc.regularHours,
+      overtime_hours: calc.overtimeHours,
+      break_hours: calc.breakHours,
+      status: 'completed',
+      is_overnight_shift: calc.isOvernightShift,
+      forgot_checkout: true,
+      manual_checkout: true,
+      manual_checkout_by: approvedBy,
+      manual_checkout_at: new Date().toISOString(),
+      manual_note: reason,
+      overtime_approved: approveOvertime,
+      needs_overtime_approval: false,
+      hours_status: 'original',
+    })
+    .eq('id', recordId)
+
+  if (error) throw new Error(`ปิดกะไม่สำเร็จ: ${error.message}`)
+
+  // ร่องรอยที่ HR เปิดดูได้เอง — ส่วน audit_log เก็บให้อัตโนมัติอยู่แล้ว
+  await client.from('checkin_edits').insert({
+    checkin_id: recordId,
+    edited_at: new Date().toISOString(),
+    edited_by: approvedBy,
+    edited_by_name: approvedByName,
+    field: 'checkoutTime',
+    old_value: null,
+    new_value: checkoutTime.toISOString(),
+    reason,
+  })
 }
 
-/**
- * Get daily summary
- */
+/* ------------------------------------------------------------------ *
+ *  สรุปรายวัน
+ *
+ *  ของเดิมดึงทุกแถวของวันนั้นมานับใน JavaScript
+ *  ตอนนี้ให้ Postgres นับให้ — ส่งกลับแค่ตัวเลขสรุป
+ * ------------------------------------------------------------------ */
 export async function getDailySummary(date: Date = new Date()): Promise<DailyCheckInSummary> {
-  try {
-    const dateStr = format(date, 'yyyy-MM-dd')
-    
-    // Get all records for the date
-    const q = query(collection(db, COLLECTION_NAME, dateStr, 'records'))
-    const snapshot = await getDocs(q)
-    
-    const summary: DailyCheckInSummary = {
-      date: dateStr,
-      totalEmployees: 0, // This should come from users collection
-      checkedIn: 0,
-      checkedOut: 0,
-      late: 0,
-      absent: 0,
-      onLeave: 0,
-      working: 0,
-      overtime: 0
-    }
-    
-    snapshot.docs.forEach(doc => {
-      const data = doc.data()
-      
-      summary.checkedIn++
-      
-      if (data.status === 'completed' || data.status === 'pending') {
-        summary.checkedOut++
-      } else if (data.status === 'checked-in') {
-        summary.working++
-        
-        // Check if currently working overtime
-        const checkinTime = data.checkinTime?.toDate() || new Date(data.checkinTime)
-        const hoursWorked = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
-        if (hoursWorked > 8) {
-          summary.overtime++
-        }
-      }
-      
-      if (data.isLate) {
-        summary.late++
-      }
-    })
-    
-    return summary
-  } catch (error) {
-    console.error('Error getting daily summary:', error)
-    throw error
+  const dateStr = format(date, 'yyyy-MM-dd')
+
+  const { data, error } = await sb()
+    .from('checkins')
+    .select('user_id, status, is_late, overtime_hours, total_hours')
+    .eq('work_date', dateStr)
+
+  if (error) throw new Error(`ดึงสรุปรายวันไม่สำเร็จ: ${error.message}`)
+
+  const rows = data ?? []
+
+  return {
+    date: dateStr,
+    totalEmployees: new Set(rows.map((r) => r.user_id)).size,
+    checkedIn: rows.length,
+    checkedOut: rows.filter((r) => r.status === 'completed').length,
+    late: rows.filter((r) => r.is_late).length,
+    // absent/onLeave คำนวณจากตารางเวร ไม่ใช่จากตารางเช็คอิน
+    // ใช้ attendance_summary() แทน — ที่นี่คืน 0 ไว้ก่อนเพื่อไม่ให้ตัวเลขหลอก
+    absent: 0,
+    onLeave: 0,
+    working: rows.filter((r) => r.status === 'checked-in').length,
+    overtime: rows.filter((r) => Number(r.overtime_hours ?? 0) > 0).length,
   }
 }

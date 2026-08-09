@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Button as AooButton } from '@/components/aoo'
+import { PageHeader } from '@/components/shared'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import { InviteLink } from '@/types/invite'
 import { 
@@ -93,28 +95,19 @@ export default function InviteLinksPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-            จัดการ Invite Links
-          </h1>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">
-            สร้างลิงก์สำหรับเชิญพนักงานใหม่เข้าระบบ
-          </p>
-        </div>
-
-        <Button
-          asChild
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 self-end sm:self-auto"
-        >
+      <PageHeader
+        title="จัดการ Invite Links"
+        description="สร้างลิงก์สำหรับเชิญพนักงานใหม่เข้าระบบ"
+        icon={LinkIcon}
+        backHref="/employees"
+        actions={
           <Link href="/employees/invite-links/create">
-            <Plus className="w-5 h-5 mr-2" />
-            <span className="hidden sm:inline">สร้างลิงก์ใหม่</span>
-            <span className="sm:hidden">สร้างใหม่</span>
+            <AooButton size="sm" icon="Plus">
+              สร้างลิงก์ใหม่
+            </AooButton>
           </Link>
-        </Button>
-      </div>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

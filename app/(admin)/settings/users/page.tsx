@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
+import { PageHeader } from '@/components/shared'
+import { Button as AooButton } from '@/components/aoo'
 
 export default function UsersSettingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -34,20 +36,16 @@ export default function UsersSettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการผู้ใช้</h1>
-          <p className="text-gray-600 mt-1">
-            จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง
-          </p>
-        </div>
-        
-        <Button className={`bg-gradient-to-r ${gradients.primary}`}>
-          <UserPlus className="w-5 h-5 mr-2" />
-          เพิ่มผู้ใช้ใหม่
-        </Button>
-      </div>
+      <PageHeader
+        title="จัดการผู้ใช้"
+        description="จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง"
+        icon={Users}
+        actions={
+          <AooButton size="sm" icon="UserPlus">
+            เพิ่มผู้ใช้ใหม่
+          </AooButton>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

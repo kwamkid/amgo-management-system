@@ -1,35 +1,22 @@
 // hooks/useAuth.ts
+//
+// อ่าน session จาก Supabase แทน Firebase Auth
+//
+// ⚠️ รูปแบบ UserData ที่คืนออกไป "ต้องเหมือนเดิมทุกฟิลด์" เพราะมีหน้าจอ
+//    เรียกใช้อยู่หลายสิบจุด — ตัวนี้ทำหน้าที่แปลงชื่อคอลัมน์จาก snake_case
+//    ของ Postgres กลับเป็น camelCase ที่โค้ดเดิมคาดหวัง
+//    พอย้ายหน้าจอครบแล้วค่อยเลิกแปลงแล้วใช้ชื่อคอลัมน์ตรง ๆ
+
 'use client'
 
-import { useEffect, useState } from 'react'
-import { onAuthStateChanged, User } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase/client'
+import { useCallback, useEffect, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
+import { mapUser, type UserData } from '@/lib/services/user/mappers'
 
-export interface UserData {
-    id?: string
-    lineUserId: string
-    lineDisplayName: string
-    linePictureUrl: string
-    fullName: string
-    phone: string
-    birthDate?: string | Date
-    role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
-    permissionGroupId: string | null
-    allowedLocationIds?: string[]              // ✅ เพิ่ม
-    allowCheckInOutsideLocation?: boolean      // ✅ เพิ่ม
-    allowWorkFromHome?: boolean                // ✅ เพิ่ม
-    inviteLinkId?: string                     // ✅ เพิ่ม
-    inviteLinkCode?: string                   // ✅ เพิ่ม
-    isActive: boolean
-    needsApproval: boolean                    // ✅ เพิ่ม
-    registeredAt: Date
-    createdAt: Date
-    updatedAt?: Date                          // ✅ เพิ่ม
-    approvedAt?: Date                         // ✅ เพิ่ม
-    approvedBy?: string                       // ✅ เพิ่ม
-    lastLoginAt?: Date                        // ✅ เพิ่ม
-}
+// การแปลงแถว users → UserData ย้ายไปอยู่ที่ lib/services/user/mappers.ts แล้ว
+// เพราะ userService ต้องใช้ตัวเดียวกัน — เดิมแปลงคนละที่แล้วไม่ตรงกัน
+export type { UserData }
 
 interface AuthState {
   user: User | null
@@ -39,74 +26,80 @@ interface AuthState {
 }
 
 export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>({
+  const [state, setState] = useState<AuthState>({
     user: null,
     userData: null,
     loading: true,
-    error: null
+    error: null,
   })
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          // Get user data from Firestore
-          const userDoc = await getDoc(doc(db, 'users', user.uid))
-          
-          if (userDoc.exists()) {
-            const data = userDoc.data() as UserData
-            
-            // Check if user is active
-            if (!data.isActive) {
-              setAuthState({
-                user: null,
-                userData: null,
-                loading: false,
-                error: 'บัญชีของคุณยังไม่ได้รับการอนุมัติ'
-              })
-              // Sign out inactive user
-              await auth.signOut()
-            } else {
-              setAuthState({
-                user,
-                userData: {
-                    ...data,
-                    id: user.uid // เพิ่มบรรทัดนี้
-                },
-                loading: false,
-                error: null
-                })
-            }
-          } else {
-            setAuthState({
-              user: null,
-              userData: null,
-              loading: false,
-              error: 'ไม่พบข้อมูลผู้ใช้'
-            })
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error)
-          setAuthState({
-            user: null,
-            userData: null,
-            loading: false,
-            error: 'เกิดข้อผิดพลาดในการดึงข้อมูล'
-          })
-        }
-      } else {
-        // No user logged in
-        setAuthState({
-          user: null,
-          userData: null,
-          loading: false,
-          error: null
-        })
-      }
-    })
+  const load = useCallback(async (authUser: User | null) => {
+    if (!authUser) {
+      setState({ user: null, userData: null, loading: false, error: null })
+      return
+    }
 
-    return () => unsubscribe()
+    const sb = createClient()
+    const [{ data: row, error }, { data: locs }] = await Promise.all([
+      sb.from('users').select('*').eq('id', authUser.id).maybeSingle(),
+      sb.from('user_allowed_locations').select('location_id').eq('user_id', authUser.id),
+    ])
+
+    if (error) {
+      console.error('ดึงข้อมูลผู้ใช้ไม่สำเร็จ:', error.message)
+      setState({
+        user: null,
+        userData: null,
+        loading: false,
+        error: 'เกิดข้อผิดพลาดในการดึงข้อมูล',
+      })
+      return
+    }
+
+    if (!row || row.deleted_at) {
+      setState({ user: null, userData: null, loading: false, error: 'ไม่พบข้อมูลผู้ใช้' })
+      return
+    }
+
+    if (!row.is_active) {
+      const ended = ['resigned', 'terminated', 'retired'].includes(row.employment_status)
+      setState({
+        user: null,
+        userData: null,
+        loading: false,
+        error: ended ? 'บัญชีนี้สิ้นสุดการเป็นพนักงานแล้ว' : 'บัญชีของคุณยังไม่ได้รับการอนุมัติ',
+      })
+      await sb.auth.signOut()
+      return
+    }
+
+    setState({
+      user: authUser,
+      userData: mapUser(row, (locs ?? []).map((l) => l.location_id)),
+      loading: false,
+      error: null,
+    })
   }, [])
 
-  return authState
+  useEffect(() => {
+    const sb = createClient()
+    let alive = true
+
+    sb.auth.getUser().then(({ data }) => {
+      if (alive) load(data.user)
+    })
+
+    const {
+      data: { subscription },
+    } = sb.auth.onAuthStateChange((_event, session) => {
+      if (alive) load(session?.user ?? null)
+    })
+
+    return () => {
+      alive = false
+      subscription.unsubscribe()
+    }
+  }, [load])
+
+  return state
 }

@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PageHeader } from '@/components/shared'
 import { useAuth } from '@/hooks/useAuth'
 import { CheckInRecord } from '@/types/checkin'
 import { getCheckInRecords } from '@/lib/services/checkinService'
@@ -52,56 +53,44 @@ export default function CheckInHistoryPage() {
       const startDate = startOfMonth(new Date(year, month - 1))
       const endDate = endOfMonth(new Date(year, month - 1))
       
-      const allRecords: CheckInRecord[] = []
-      
-      // Fetch data for each day of the month
-      const dailyRecords = new Map<string, CheckInRecord[]>()
+      // ทั้งเดือน query เดียว
+      // (ของเดิมวนยิงทีละวัน = 28-31 query ต่อการเปิดหน้า 1 ครั้ง
+      //  เพราะ Firestore เก็บซ้อนเป็น checkins/{วันที่}/records จึงข้ามวันไม่ได้)
+      const { records } = await getCheckInRecords(
+        {
+          startDate: format(startDate, 'yyyy-MM-dd'),
+          endDate: format(endDate, 'yyyy-MM-dd'),
+          userId: userData!.id,
+        },
+        1000
+      )
+
+      // สรุปยอด — จัดกลุ่มตามวันเพื่อนับ "จำนวนวัน" ไม่ใช่ "จำนวนแถว"
+      // (คนหนึ่งเช็คอินได้หลายรอบต่อวัน ข้อมูลจริงสูงสุด 4)
+      const dayKeys = new Set<string>()
+      const lateDays = new Set<string>()
       let totalHours = 0
       let totalOT = 0
-      let lateDays = new Set<string>()
-      
-      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-        const dateStr = format(date, 'yyyy-MM-dd')
-        const { records } = await getCheckInRecords({
-          date: dateStr,
-          userId: userData!.id
-        })
-        
-        if (records.length > 0) {
-          dailyRecords.set(dateStr, records)
-          
-          // Calculate totals for the day
-          let dayHours = 0
-          let dayOT = 0
-          let dayIsLate = false
-          
-          records.forEach(record => {
-            dayHours += record.totalHours || 0
-            dayOT += record.overtimeHours || 0
-            if (record.isLate) dayIsLate = true
-          })
-          
-          totalHours += dayHours
-          totalOT += dayOT
-          if (dayIsLate) lateDays.add(dateStr)
-        }
+
+      for (const r of records) {
+        const key = format(new Date(r.checkinTime), 'yyyy-MM-dd')
+        dayKeys.add(key)
+        totalHours += r.totalHours || 0
+        totalOT += r.overtimeHours || 0
+        if (r.isLate) lateDays.add(key)
       }
-      
-      // Flatten records for display
-      const flatRecords: CheckInRecord[] = []
-      dailyRecords.forEach(records => {
-        flatRecords.push(...records)
-      })
-      
-      setRecords(flatRecords.sort((a, b) => 
-        new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
-      ))
-      
+
+      setRecords(
+        [...records].sort(
+          (a, b) => new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+        )
+      )
+
       setStats({
-        totalDays: dailyRecords.size, // Count unique days, not total records
+        totalDays: dayKeys.size,
         totalHours: Math.round(totalHours * 10) / 10,
         totalOT: Math.round(totalOT * 10) / 10,
-        lateDays: lateDays.size // Count unique late days
+        lateDays: lateDays.size,
       })
     } catch (error) {
       console.error('Error fetching monthly data:', error)
@@ -121,21 +110,12 @@ export default function CheckInHistoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/checkin"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">ประวัติการเช็คอิน</h1>
-            <p className="text-gray-600 mt-1">ดูประวัติการเข้า-ออกงานย้อนหลัง</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="ประวัติการเช็คอิน"
+        description="ดูประวัติการเข้า-ออกงานย้อนหลัง"
+        icon={Clock}
+        backHref="/checkin"
+      />
 
       {/* Month Selector */}
       <Card className="border-0 shadow-md">

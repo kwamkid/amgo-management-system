@@ -1,352 +1,270 @@
 // lib/services/holidayService.ts
+//
+// วันหยุด บน Supabase
+// ของเดิมที่ใช้ Firestore ลบทิ้งแล้ว — ย้อนดูได้ใน git history
+//
+// ── ต่างจากของเดิมตรงไหน ──────────────────────────────────────────────
+// 1. เก็บ holiday_date เป็น date ไม่ใช่ timestamp — เดิมต้องคำนวณ
+//    "ต้นวัน/ท้ายวัน" ทุกครั้งที่เช็คว่าวันนี้เป็นวันหยุดไหม
+// 2. ห้ามซ้ำวันด้วย unique constraint ที่ฐานข้อมูล เดิมต้อง query เช็คก่อน
+//    ทุกครั้งตอนนำเข้าวันหยุดราชการ (แข่งกันก็ยังซ้ำได้)
 
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { 
-  Holiday, 
-  HolidayFormData, 
+import { createClient } from '@/lib/supabase/client'
+import type {
+  Holiday,
+  HolidayFormData,
   HolidayFilters,
   PublicHolidayImport,
-  DEFAULT_OT_RATES
 } from '@/types/holiday'
-import { format, startOfYear, endOfYear, getYear } from 'date-fns'
+import { DEFAULT_OT_RATES } from '@/types/holiday'
+import type { Database } from '@/types/database'
+import { format } from 'date-fns'
 
-const COLLECTION_NAME = 'holidays'
+type HolidayRow = Database['public']['Tables']['holidays']['Row']
 
-/**
- * Create a new holiday
- */
+const sb = () => createClient()
+const ymd = (d: Date | string) =>
+  typeof d === 'string' ? d.slice(0, 10) : format(d, 'yyyy-MM-dd')
+
+function toHoliday(r: HolidayRow): Holiday {
+  return {
+    id: r.id,
+    name: r.name,
+    // เก็บเป็น date ล้วน ไม่มีเวลา — บวกเวลาเที่ยงกันเพี้ยนข้ามวันจาก timezone
+    date: new Date(`${r.holiday_date}T12:00:00`),
+    type: r.holiday_type as Holiday['type'],
+    isWorkingDay: r.is_working_day,
+    overtimeRates: (r.overtime_rates ?? DEFAULT_OT_RATES) as Holiday['overtimeRates'],
+    applicableLocationIds: r.applicable_location_ids ?? [],
+    applicableRoles: r.applicable_roles ?? [],
+    description: r.description || undefined,
+    recurring: r.recurring,
+    recurringDay: r.recurring_day ?? undefined,
+    recurringMonth: r.recurring_month ?? undefined,
+    isActive: r.is_active,
+    createdAt: new Date(r.created_at),
+    createdBy: r.created_by ?? undefined,
+    updatedAt: new Date(r.updated_at),
+    updatedBy: r.updated_by ?? undefined,
+  }
+}
+
+function toColumns(data: Partial<HolidayFormData>) {
+  const patch: Record<string, unknown> = {}
+
+  if (data.name !== undefined) patch.name = data.name
+  if (data.date !== undefined) patch.holiday_date = ymd(data.date)
+  if (data.type !== undefined) patch.holiday_type = data.type
+  if (data.isWorkingDay !== undefined) patch.is_working_day = data.isWorkingDay
+  if (data.overtimeRates !== undefined) patch.overtime_rates = data.overtimeRates
+  if (data.applicableLocationIds !== undefined)
+    patch.applicable_location_ids = data.applicableLocationIds
+  if (data.applicableRoles !== undefined) patch.applicable_roles = data.applicableRoles
+  if (data.description !== undefined) patch.description = data.description ?? ''
+  if (data.recurring !== undefined) patch.recurring = data.recurring
+  if (data.recurringDay !== undefined) patch.recurring_day = data.recurringDay
+  if (data.recurringMonth !== undefined) patch.recurring_month = data.recurringMonth
+
+  return patch
+}
+
+/* ------------------------------------------------------------------ */
 export async function createHoliday(
   data: HolidayFormData,
   userId: string
 ): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...data,
-      date: new Date(data.date),
-      overtimeRates: data.overtimeRates || DEFAULT_OT_RATES,
-      isActive: true,
-      createdAt: serverTimestamp(),
-      createdBy: userId,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    })
-    
-    return docRef.id
-  } catch (error) {
-    console.error('Error creating holiday:', error)
-    throw new Error('ไม่สามารถสร้างวันหยุดได้')
+  const { data: row, error } = await sb()
+    .from('holidays')
+    .insert({
+      ...toColumns(data),
+      overtime_rates: data.overtimeRates ?? DEFAULT_OT_RATES,
+      is_active: true,
+      created_by: userId,
+      updated_by: userId,
+    } as never)
+    .select('id')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') throw new Error('วันที่นี้มีวันหยุดอยู่แล้ว')
+    throw new Error(`สร้างวันหยุดไม่สำเร็จ: ${error.message}`)
   }
+  return row.id
 }
 
-/**
- * Update holiday
- */
 export async function updateHoliday(
   holidayId: string,
   data: Partial<HolidayFormData>,
   userId: string
 ): Promise<void> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, holidayId)
-    
-    const updateData: any = {
-      ...data,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    }
-    
-    if (data.date) {
-      updateData.date = new Date(data.date)
-    }
-    
-    await updateDoc(docRef, updateData)
-  } catch (error) {
-    console.error('Error updating holiday:', error)
-    throw new Error('ไม่สามารถอัพเดทวันหยุดได้')
+  const { error } = await sb()
+    .from('holidays')
+    .update({ ...toColumns(data), updated_by: userId } as never)
+    .eq('id', holidayId)
+
+  if (error) {
+    if (error.code === '23505') throw new Error('วันที่นี้มีวันหยุดอยู่แล้ว')
+    throw new Error(`แก้ไขวันหยุดไม่สำเร็จ: ${error.message}`)
   }
 }
 
-/**
- * Delete holiday (soft delete)
- */
+/** ลบจริง — วันหยุดไม่มีใครอ้างถึงด้วย foreign key */
 export async function deleteHoliday(holidayId: string): Promise<void> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, holidayId)
-    await updateDoc(docRef, {
-      isActive: false,
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error deleting holiday:', error)
-    throw new Error('ไม่สามารถลบวันหยุดได้')
-  }
+  const { error } = await sb().from('holidays').delete().eq('id', holidayId)
+  if (error) throw new Error(`ลบวันหยุดไม่สำเร็จ: ${error.message}`)
 }
 
-/**
- * Get holidays with filters
- */
+/* ------------------------------------------------------------------ */
 export async function getHolidays(filters?: HolidayFilters): Promise<Holiday[]> {
-  try {
-    let q = query(collection(db, COLLECTION_NAME))
-    
-    // Filter by year
-    if (filters?.year) {
-      const yearStart = startOfYear(new Date(filters.year, 0, 1))
-      const yearEnd = endOfYear(new Date(filters.year, 11, 31))
-      
-      q = query(
-        q,
-        where('date', '>=', yearStart),
-        where('date', '<=', yearEnd)
-      )
-    }
-    
-    // Filter by type
-    if (filters?.type) {
-      q = query(q, where('type', '==', filters.type))
-    }
-    
-    // Filter by active status
-    if (filters?.isActive !== undefined) {
-      q = query(q, where('isActive', '==', filters.isActive))
-    }
-    
-    // Order by date
-    q = query(q, orderBy('date', 'asc'))
-    
-    const snapshot = await getDocs(q)
-    const holidays: Holiday[] = []
-    
-    snapshot.forEach(doc => {
-      const data = doc.data()
-      holidays.push({
-        id: doc.id,
-        ...data,
-        date: data.date?.toDate ? data.date.toDate() : new Date(data.date),
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : undefined,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined
-      } as Holiday)
-    })
-    
-    // Filter by location if specified
-    if (filters?.locationId) {
-      return holidays.filter(holiday => 
-        !holiday.applicableLocationIds || 
-        holiday.applicableLocationIds.length === 0 ||
-        holiday.applicableLocationIds.includes(filters.locationId!)
-      )
-    }
-    
-    return holidays
-  } catch (error) {
-    console.error('Error getting holidays:', error)
-    throw new Error('ไม่สามารถดึงข้อมูลวันหยุดได้')
+  let q = sb().from('holidays').select('*').order('holiday_date')
+
+  if (filters?.year) {
+    q = q.gte('holiday_date', `${filters.year}-01-01`).lte('holiday_date', `${filters.year}-12-31`)
   }
+  if (filters?.type) q = q.eq('holiday_type', filters.type)
+  if (filters?.isActive !== undefined) q = q.eq('is_active', filters.isActive)
+
+  const { data, error } = await q
+  if (error) throw new Error(`ดึงรายการวันหยุดไม่สำเร็จ: ${error.message}`)
+
+  let rows = (data ?? []).map(toHoliday)
+
+  // กรองตามสาขา/ตำแหน่งทำในโค้ด — เป็น array ที่ "ว่าง = ใช้ทุกที่"
+  // ซึ่งเขียนเป็นเงื่อนไข SQL แล้วอ่านยากกว่าที่ได้
+  if (filters?.locationId) {
+    rows = rows.filter(
+      (h) => !h.applicableLocationIds?.length || h.applicableLocationIds.includes(filters.locationId!)
+    )
+  }
+
+  return rows
 }
 
-/**
- * Get single holiday
- */
 export async function getHoliday(holidayId: string): Promise<Holiday | null> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, holidayId)
-    const docSnap = await getDoc(docRef)
-    
-    if (!docSnap.exists()) {
-      return null
-    }
-    
-    const data = docSnap.data()
-    return {
-      id: docSnap.id,
-      ...data,
-      date: data.date?.toDate ? data.date.toDate() : new Date(data.date),
-      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : undefined,
-      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined
-    } as Holiday
-  } catch (error) {
-    console.error('Error getting holiday:', error)
-    throw new Error('ไม่สามารถดึงข้อมูลวันหยุดได้')
-  }
+  const { data, error } = await sb()
+    .from('holidays')
+    .select('*')
+    .eq('id', holidayId)
+    .maybeSingle()
+
+  if (error) throw new Error(`ดึงข้อมูลวันหยุดไม่สำเร็จ: ${error.message}`)
+  return data ? toHoliday(data) : null
 }
 
-/**
- * Check if a date is holiday
- */
+/* ------------------------------------------------------------------ *
+ *  วันนี้เป็นวันหยุดไหม
+ *
+ *  ของเดิมต้องสร้างช่วงเวลา 00:00:00 → 23:59:59 มาเทียบ เพราะเก็บเป็น
+ *  timestamp — คอลัมน์เป็น date แล้วเทียบตรง ๆ ได้
+ * ------------------------------------------------------------------ */
 export async function isHoliday(
   date: Date,
   locationId?: string,
   role?: string
 ): Promise<{ isHoliday: boolean; holiday?: Holiday }> {
-  try {
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const dateStart = new Date(dateStr)
-    const dateEnd = new Date(dateStr)
-    dateEnd.setHours(23, 59, 59, 999)
-    
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('date', '>=', dateStart),
-      where('date', '<=', dateEnd),
-      where('isActive', '==', true)
-    )
-    
-    const snapshot = await getDocs(q)
-    
-    if (snapshot.empty) {
-      return { isHoliday: false }
-    }
-    
-    // Check each holiday for location and role applicability
-    for (const doc of snapshot.docs) {
-      const holiday = {
-        id: doc.id,
-        ...doc.data()
-      } as Holiday
-      
-      // Check location
-      if (holiday.applicableLocationIds && 
-          holiday.applicableLocationIds.length > 0 && 
-          locationId &&
-          !holiday.applicableLocationIds.includes(locationId)) {
-        continue
-      }
-      
-      // Check role
-      if (holiday.applicableRoles && 
-          holiday.applicableRoles.length > 0 && 
-          role &&
-          !holiday.applicableRoles.includes(role)) {
-        continue
-      }
-      
-      // This holiday applies
-      return { 
-        isHoliday: true, 
-        holiday: {
-          ...holiday,
-          date: holiday.date instanceof Timestamp ? holiday.date.toDate() : holiday.date
-        }
-      }
-    }
-    
-    return { isHoliday: false }
-  } catch (error) {
-    console.error('Error checking holiday:', error)
+  const { data, error } = await sb()
+    .from('holidays')
+    .select('*')
+    .eq('holiday_date', ymd(date))
+    .eq('is_active', true)
+
+  if (error) {
+    console.error('ตรวจวันหยุดไม่สำเร็จ:', error.message)
     return { isHoliday: false }
   }
+
+  for (const row of data ?? []) {
+    const holiday = toHoliday(row)
+
+    const locOk =
+      !holiday.applicableLocationIds?.length ||
+      !locationId ||
+      holiday.applicableLocationIds.includes(locationId)
+
+    const roleOk =
+      !holiday.applicableRoles?.length || !role || holiday.applicableRoles.includes(role)
+
+    if (locOk && roleOk) return { isHoliday: true, holiday }
+  }
+
+  return { isHoliday: false }
 }
 
-/**
- * Import public holidays
- */
+/* ------------------------------------------------------------------ *
+ *  นำเข้าวันหยุดราชการ
+ *
+ *  ของเดิมยิง isHoliday() เช็คทีละวันก่อนสร้าง = 2 query ต่อวันหยุด 1 วัน
+ *  ตอนนี้ยัดทีเดียวแล้วให้ unique constraint กันซ้ำ
+ * ------------------------------------------------------------------ */
 export async function importPublicHolidays(
   holidays: PublicHolidayImport[],
   year: number,
   userId: string
 ): Promise<{ success: number; failed: number }> {
-  let success = 0
-  let failed = 0
-  
-  for (const holiday of holidays) {
-    try {
-      // Check if holiday already exists
-      const dateToCheck = new Date(holiday.date)
-      const existing = await isHoliday(dateToCheck)
-      
-      if (!existing.isHoliday) {
-        await createHoliday({
-          name: holiday.name,
-          date: holiday.date,
-          type: 'public',
-          isWorkingDay: false,
-          overtimeRates: DEFAULT_OT_RATES,
-          applicableLocationIds: [], // All locations
-          applicableRoles: [], // All roles
-          description: `วันหยุดราชการประจำปี ${year}`,
-          recurring: false
-        }, userId)
-        
-        success++
-      }
-    } catch (error) {
-      console.error(`Failed to import holiday: ${holiday.name}`, error)
-      failed++
-    }
-  }
-  
-  return { success, failed }
+  if (!holidays.length) return { success: 0, failed: 0 }
+
+  const { data, error } = await sb()
+    .from('holidays')
+    .upsert(
+      holidays.map((h) => ({
+        name: h.name,
+        holiday_date: ymd(h.date),
+        holiday_type: 'public',
+        is_working_day: false,
+        overtime_rates: DEFAULT_OT_RATES,
+        description: `วันหยุดราชการประจำปี ${year}`,
+        is_active: true,
+        created_by: userId,
+        updated_by: userId,
+      })) as never,
+      { onConflict: 'holiday_date', ignoreDuplicates: true }
+    )
+    .select('id')
+
+  if (error) throw new Error(`นำเข้าวันหยุดไม่สำเร็จ: ${error.message}`)
+
+  const success = data?.length ?? 0
+  return { success, failed: holidays.length - success }
 }
 
-/**
- * Get holidays for date range (for reports)
- */
+/* ------------------------------------------------------------------ */
 export async function getHolidaysInRange(
   startDate: Date,
   endDate: Date,
   locationId?: string
 ): Promise<Map<string, Holiday>> {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('date', '>=', startDate),
-      where('date', '<=', endDate),
-      where('isActive', '==', true),
-      orderBy('date', 'asc')
-    )
-    
-    const snapshot = await getDocs(q)
-    const holidayMap = new Map<string, Holiday>()
-    
-    snapshot.forEach(doc => {
-      const data = doc.data()
-      const holiday: Holiday = {
-        id: doc.id,
-        ...data,
-        date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
-      } as Holiday
-      
-      // Check location applicability
-      if (!locationId || 
-          !holiday.applicableLocationIds || 
-          holiday.applicableLocationIds.length === 0 ||
-          holiday.applicableLocationIds.includes(locationId)) {
-        
-        const dateKey = format(holiday.date as Date, 'yyyy-MM-dd')
-        holidayMap.set(dateKey, holiday)
-      }
-    })
-    
-    return holidayMap
-  } catch (error) {
-    console.error('Error getting holidays in range:', error)
+  const { data, error } = await sb()
+    .from('holidays')
+    .select('*')
+    .gte('holiday_date', ymd(startDate))
+    .lte('holiday_date', ymd(endDate))
+    .eq('is_active', true)
+    .order('holiday_date')
+
+  if (error) {
+    console.error('ดึงวันหยุดในช่วงไม่สำเร็จ:', error.message)
     return new Map()
   }
+
+  const out = new Map<string, Holiday>()
+  for (const row of data ?? []) {
+    const holiday = toHoliday(row)
+    const applies =
+      !locationId ||
+      !holiday.applicableLocationIds?.length ||
+      holiday.applicableLocationIds.includes(locationId)
+
+    if (applies) out.set(row.holiday_date, holiday)
+  }
+  return out
 }
 
-/**
- * Calculate OT rate for a specific role on a holiday
- */
+/* ------------------------------------------------------------------ */
 export function getHolidayOTRate(holiday: Holiday, role: string): number {
-  if (!holiday.overtimeRates) {
-    return DEFAULT_OT_RATES[role as keyof typeof DEFAULT_OT_RATES] || 1.5
-  }
-  
-  return holiday.overtimeRates[role as keyof typeof holiday.overtimeRates] || 
-         DEFAULT_OT_RATES[role as keyof typeof DEFAULT_OT_RATES] || 
-         1.5
+  const rates = holiday.overtimeRates
+  return (
+    rates?.[role as keyof typeof rates] ??
+    DEFAULT_OT_RATES[role as keyof typeof DEFAULT_OT_RATES] ??
+    1.5
+  )
 }

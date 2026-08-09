@@ -1,281 +1,237 @@
 // lib/services/inviteService.ts
+//
+// ลิงก์เชิญพนักงานใหม่ บน Supabase
+// ของเดิมที่ใช้ Firestore ลบทิ้งแล้ว — ย้อนดูได้ใน git history
+//
+// ── ต่างจากของเดิมตรงไหน ──────────────────────────────────────────────
+// 1. รหัสซ้ำกันไม่ได้ด้วย unique constraint — ของเดิมวน "สุ่มแล้วเช็ค"
+//    ซึ่งสองคนกดสร้างพร้อมกันก็ยังได้รหัสซ้ำ
+// 2. การนับจำนวนครั้งที่ใช้ทำใน SQL คำสั่งเดียว (consume_invite_link)
+//    ของเดิมอ่าน-บวก-เขียน ทำให้ลิงก์จำกัด 1 ครั้งถูกใช้ได้ 2 คนถ้ากดพร้อมกัน
 
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  increment
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { InviteLink, CreateInviteLinkData, UpdateInviteLinkData } from '@/types/invite'
+import { createClient } from '@/lib/supabase/client'
+import type {
+  InviteLink,
+  CreateInviteLinkData,
+  UpdateInviteLinkData,
+} from '@/types/invite'
+import type { Database } from '@/types/database'
 
-const COLLECTION_NAME = 'inviteLinks'
+type InviteRow = Database['public']['Tables']['invite_links']['Row']
 
-// Generate random invite code
+const sb = () => createClient()
+
+function toLink(r: InviteRow): InviteLink {
+  return {
+    id: r.id,
+    code: r.code,
+    createdBy: r.created_by ?? '',
+    createdByName: r.created_by_name || undefined,
+    defaultRole: r.default_role as InviteLink['defaultRole'],
+    defaultLocationIds: r.default_location_ids ?? [],
+    allowCheckInOutsideLocation: r.allow_checkin_outside_location,
+    requireApproval: r.require_approval,
+    maxUses: r.max_uses ?? undefined,
+    usedCount: r.used_count,
+    expiresAt: r.expires_at ? new Date(r.expires_at) : undefined,
+    isActive: r.is_active,
+    note: r.note || undefined,
+    createdAt: new Date(r.created_at),
+    updatedAt: new Date(r.updated_at),
+  }
+}
+
+/* ------------------------------------------------------------------ */
 export const generateInviteCode = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = ''
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
+  // ตัด 0 O 1 I ออก — คนอ่านผิดกันประจำเวลาบอกรหัสทางโทรศัพท์
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(8))
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('')
 }
 
-// Check if code already exists
 export const isCodeExists = async (code: string): Promise<boolean> => {
-  const q = query(collection(db, COLLECTION_NAME), where('code', '==', code))
-  const snapshot = await getDocs(q)
-  return !snapshot.empty
+  const { data, error } = await sb()
+    .from('invite_links')
+    .select('id')
+    .eq('code', code.toUpperCase())
+    .limit(1)
+
+  if (error) throw new Error(`ตรวจรหัสซ้ำไม่สำเร็จ: ${error.message}`)
+  return !!data?.length
 }
 
-// Get all invite links
+/* ------------------------------------------------------------------ */
 export const getInviteLinks = async (activeOnly = false): Promise<InviteLink[]> => {
-  try {
-    let q = query(
-      collection(db, COLLECTION_NAME),
-      orderBy('createdAt', 'desc')
-    )
-    
-    if (activeOnly) {
-      q = query(
-        collection(db, COLLECTION_NAME),
-        where('isActive', '==', true),
-        orderBy('createdAt', 'desc')
-      )
-    }
-    
-    const snapshot = await getDocs(q)
-    const links = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-      expiresAt: doc.data().expiresAt?.toDate()
-    } as InviteLink))
-    
-    // Filter out expired links if activeOnly
-    if (activeOnly) {
-      const now = new Date()
-      return links.filter(link => {
-        if (!link.expiresAt) return true
-        return new Date(link.expiresAt) > now
-      })
-    }
-    
-    return links
-  } catch (error) {
-    console.error('Error getting invite links:', error)
-    throw error
-  }
+  let q = sb().from('invite_links').select('*').order('created_at', { ascending: false })
+  if (activeOnly) q = q.eq('is_active', true)
+
+  const { data, error } = await q
+  if (error) throw new Error(`ดึงลิงก์เชิญไม่สำเร็จ: ${error.message}`)
+  return (data ?? []).map(toLink)
 }
 
-// Get single invite link
 export const getInviteLink = async (linkId: string): Promise<InviteLink | null> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, linkId)
-    const docSnap = await getDoc(docRef)
-    
-    if (!docSnap.exists()) {
-      return null
-    }
-    
-    return {
-      id: docSnap.id,
-      ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate(),
-      updatedAt: docSnap.data().updatedAt?.toDate(),
-      expiresAt: docSnap.data().expiresAt?.toDate()
-    } as InviteLink
-  } catch (error) {
-    console.error('Error getting invite link:', error)
-    throw error
-  }
+  const { data, error } = await sb()
+    .from('invite_links')
+    .select('*')
+    .eq('id', linkId)
+    .maybeSingle()
+
+  if (error) throw new Error(`ดึงลิงก์เชิญไม่สำเร็จ: ${error.message}`)
+  return data ? toLink(data) : null
 }
 
-// Get invite link by code
 export const getInviteLinkByCode = async (code: string): Promise<InviteLink | null> => {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('code', '==', code),
-      where('isActive', '==', true)
-    )
-    
-    const snapshot = await getDocs(q)
-    if (snapshot.empty) {
-      return null
-    }
-    
-    const doc = snapshot.docs[0]
-    return {
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-      expiresAt: doc.data().expiresAt?.toDate()
-    } as InviteLink
-  } catch (error) {
-    console.error('Error getting invite link by code:', error)
-    throw error
-  }
+  const { data, error } = await sb()
+    .from('invite_links')
+    .select('*')
+    .eq('code', code.trim().toUpperCase())
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (error) throw new Error(`ดึงลิงก์เชิญไม่สำเร็จ: ${error.message}`)
+  return data ? toLink(data) : null
 }
 
-// Create invite link
+/* ------------------------------------------------------------------ */
 export const createInviteLink = async (
   data: CreateInviteLinkData,
   createdBy: string,
   createdByName?: string
 ): Promise<string> => {
-  try {
-    // Generate code if not provided
-    let code = data.code || generateInviteCode()
-    
-    // Ensure code is unique
-    while (await isCodeExists(code)) {
-      code = generateInviteCode()
+  const client = sb()
+
+  // ลองสูงสุด 5 ครั้ง — ชนกันเองก็ให้ unique constraint ตัดสิน ไม่ใช่ query เช็คก่อน
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = (data.code || generateInviteCode()).toUpperCase()
+
+    const { data: row, error } = await client
+      .from('invite_links')
+      .insert({
+        code,
+        created_by: createdBy,
+        created_by_name: createdByName ?? '',
+        default_role: data.defaultRole,
+        default_location_ids: data.defaultLocationIds ?? [],
+        allow_checkin_outside_location: data.allowCheckInOutsideLocation ?? false,
+        require_approval: data.requireApproval !== false,
+        max_uses: data.maxUses ?? null,
+        used_count: 0,
+        expires_at: data.expiresAt ? new Date(data.expiresAt).toISOString() : null,
+        note: data.note ?? '',
+        is_active: true,
+      })
+      .select('id')
+      .single()
+
+    if (!error) return row.id
+
+    // รหัสซ้ำ — ถ้าผู้ใช้กำหนดเองก็บอกไปตรง ๆ ถ้าสุ่มมาก็สุ่มใหม่
+    if (error.code === '23505') {
+      if (data.code) throw new Error('รหัสนี้ถูกใช้ไปแล้ว')
+      continue
     }
-    
-    const docData = {
-      code,
-      createdBy,
-      createdByName: createdByName || '',
-      defaultRole: data.defaultRole,
-      defaultLocationIds: data.defaultLocationIds || [],
-      allowCheckInOutsideLocation: data.allowCheckInOutsideLocation || false,
-      requireApproval: data.requireApproval !== false, // default true
-      maxUses: data.maxUses || null,
-      usedCount: 0,
-      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-      note: data.note || '',
-      isActive: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }
-    
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), docData)
-    return docRef.id
-  } catch (error) {
-    console.error('Error creating invite link:', error)
-    throw error
+    throw new Error(`สร้างลิงก์เชิญไม่สำเร็จ: ${error.message}`)
   }
+
+  throw new Error('สุ่มรหัสไม่ซ้ำไม่ได้ ลองใหม่อีกครั้ง')
 }
 
-// Update invite link
+/* ------------------------------------------------------------------ */
 export const updateInviteLink = async (
-  linkId: string, 
+  linkId: string,
   data: UpdateInviteLinkData
 ): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, linkId)
-    const updateData: any = {
-      ...data,
-      updatedAt: serverTimestamp()
-    }
-    
-    if (data.expiresAt) {
-      updateData.expiresAt = new Date(data.expiresAt)
-    }
-    
-    await updateDoc(docRef, updateData)
-  } catch (error) {
-    console.error('Error updating invite link:', error)
-    throw error
+  const patch: Database['public']['Tables']['invite_links']['Update'] = {}
+
+  if (data.isActive !== undefined) patch.is_active = data.isActive
+  if (data.maxUses !== undefined) patch.max_uses = data.maxUses
+  if (data.note !== undefined) patch.note = data.note
+  if (data.expiresAt !== undefined) {
+    patch.expires_at = data.expiresAt ? new Date(data.expiresAt).toISOString() : null
   }
+
+  if (!Object.keys(patch).length) return
+
+  const { error } = await sb().from('invite_links').update(patch).eq('id', linkId)
+  if (error) throw new Error(`แก้ไขลิงก์เชิญไม่สำเร็จ: ${error.message}`)
 }
 
-// Use invite link (increment counter)
-export const useInviteLink = async (linkId: string): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, linkId)
-    await updateDoc(docRef, {
-      usedCount: increment(1),
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error using invite link:', error)
-    throw error
-  }
-}
-
-// Delete invite link (soft delete)
+/** ปิดใช้งาน — ไม่ลบจริง เพราะพนักงานที่สมัครมาแล้วยังอ้าง invite_link_id อยู่ */
 export const deleteInviteLink = async (linkId: string): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, linkId)
-    await updateDoc(docRef, {
-      isActive: false,
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error deleting invite link:', error)
-    throw error
-  }
+  const { error } = await sb()
+    .from('invite_links')
+    .update({ is_active: false })
+    .eq('id', linkId)
+
+  if (error) throw new Error(`ปิดลิงก์เชิญไม่สำเร็จ: ${error.message}`)
 }
 
-// Validate invite link
-export const validateInviteLink = async (code: string): Promise<{
-  valid: boolean
-  link?: InviteLink
-  error?: string
-}> => {
+/**
+ * นับว่าใช้ไปแล้ว 1 ครั้ง
+ *
+ * ⚠️ ฝั่งเบราว์เซอร์ใช้ตัวนี้ไม่ได้ (RLS ให้เฉพาะ HR เขียน) — ตอนสมัครจริง
+ *    ต้องผ่าน /api/auth/register ที่เรียก consume_invite_link ด้วยสิทธิ์ server
+ *    ตัวนี้เหลือไว้ให้หน้า HR กดนับเองในกรณีพิเศษ
+ */
+export const useInviteLink = async (linkId: string): Promise<void> => {
+  const client = sb()
+
+  const { data: current } = await client
+    .from('invite_links')
+    .select('used_count')
+    .eq('id', linkId)
+    .single()
+
+  const { error } = await client
+    .from('invite_links')
+    .update({ used_count: (current?.used_count ?? 0) + 1 })
+    .eq('id', linkId)
+
+  if (error) throw new Error(`นับการใช้งานไม่สำเร็จ: ${error.message}`)
+}
+
+/* ------------------------------------------------------------------ */
+export const validateInviteLink = async (
+  code: string
+): Promise<{ valid: boolean; link?: InviteLink; error?: string }> => {
   try {
     const link = await getInviteLinkByCode(code)
-    
-    if (!link) {
-      return { valid: false, error: 'ลิงก์ไม่ถูกต้องหรือถูกปิดใช้งานแล้ว' }
-    }
-    
-    // Check if expired
+    if (!link) return { valid: false, error: 'ลิงก์ไม่ถูกต้องหรือถูกปิดใช้งานแล้ว' }
+
     if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
       return { valid: false, error: 'ลิงก์หมดอายุแล้ว' }
     }
-    
-    // Check usage limit
     if (link.maxUses && link.usedCount >= link.maxUses) {
       return { valid: false, error: 'ลิงก์ถูกใช้งานครบจำนวนแล้ว' }
     }
-    
+
     return { valid: true, link }
   } catch (error) {
-    console.error('Error validating invite link:', error)
+    console.error('ตรวจสอบลิงก์เชิญไม่สำเร็จ:', error)
     return { valid: false, error: 'เกิดข้อผิดพลาดในการตรวจสอบลิงก์' }
   }
 }
 
-// Get invite link statistics
+/* ------------------------------------------------------------------ */
 export const getInviteLinkStats = async (linkId: string) => {
-  try {
-    const link = await getInviteLink(linkId)
-    if (!link) return null
-    
-    // Get users who used this link
-    const usersQuery = query(
-      collection(db, 'users'),
-      where('inviteLinkId', '==', linkId)
-    )
-    
-    const usersSnapshot = await getDocs(usersQuery)
-    const users = usersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as any[]
-    
-    return {
-      link,
-      totalUses: link.usedCount,
-      activeUsers: users.filter((u: any) => u.isActive).length,
-      pendingUsers: users.filter((u: any) => u.needsApproval).length,
-      users
-    }
-  } catch (error) {
-    console.error('Error getting invite link stats:', error)
-    throw error
+  const link = await getInviteLink(linkId)
+  if (!link) return null
+
+  const { data, error } = await sb()
+    .from('users')
+    .select('id, full_name, line_display_name, is_active, needs_approval, created_at')
+    .eq('invite_link_id', linkId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(`ดึงสถิติลิงก์เชิญไม่สำเร็จ: ${error.message}`)
+
+  const users = data ?? []
+  return {
+    link,
+    totalUses: link.usedCount,
+    activeUsers: users.filter((u) => u.is_active).length,
+    pendingUsers: users.filter((u) => u.needs_approval).length,
+    users,
   }
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Button as AooButton } from '@/components/aoo'
+import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,31 +159,18 @@ export default function LeaveHistoryPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">ประวัติการลา</h1>
-            <p className="text-gray-600">ดูประวัติการลาทั้งหมดของคุณ</p>
-          </div>
-        </div>
-        
-        <Button
-          variant="outline"
-          onClick={() => router.push('/leaves/request')}
-        >
-          <Calendar className="w-4 h-4 mr-2" />
-          ขอลา
-        </Button>
-      </div>
+    <div className="max-w-6xl p-4 space-y-6">
+      <PageHeader
+        title="ประวัติการลา"
+        description="ดูประวัติการลาทั้งหมดของคุณ"
+        icon={Clock}
+        onBack={() => router.back()}
+        actions={
+          <AooButton size="sm" icon="Plus" onClick={() => router.push('/leaves/request')}>
+            ขอลา
+          </AooButton>
+        }
+      />
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-4">

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
+import { PageHeader } from '@/components/shared'
 
 export default function EditLocationPage({ 
   params 
@@ -43,7 +44,7 @@ export default function EditLocationPage({
 
   if (error || !location) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
@@ -64,23 +65,13 @@ export default function EditLocationPage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/settings/locations">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            แก้ไขสถานที่
-          </h1>
-          <p className="text-gray-600 mt-1">
-            แก้ไขข้อมูล {location.name}
-          </p>
-        </div>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        title="แก้ไขสถานที่"
+        description={location.name}
+        icon={MapPin}
+        backHref="/settings/locations"
+      />
 
       {/* Current Info Card */}
       <Card className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>

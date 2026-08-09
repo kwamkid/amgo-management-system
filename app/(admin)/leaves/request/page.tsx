@@ -10,6 +10,7 @@ import { useLeave } from '@/hooks/useLeave';
 import { useAuth } from '@/hooks/useAuth';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/shared'
 
 export default function LeaveRequestPage() {
   const router = useRouter();
@@ -56,25 +57,12 @@ export default function LeaveRequestPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header - เหมือนหน้าอื่นๆ */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">ขอลา</h1>
-          <p className="text-gray-600 mt-1">
-            กรอกแบบฟอร์มเพื่อขอลา
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/leaves')}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            กลับ
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="ขอลา"
+        description="กรอกแบบฟอร์มเพื่อขอลา"
+        icon={Calendar}
+        backHref="/leaves"
+      />
 
       {/* Leave Balance - แนวนอน */}
       {quota && (

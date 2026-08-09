@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, LogIn, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/shared'
+import { Button as AooButton } from '@/components/aoo'
 
 export default function DashboardPage() {
   const { userData, loading, error } = useAuth();
@@ -39,40 +41,31 @@ export default function DashboardPage() {
   const isManagement = ['manager', 'hr', 'admin'].includes(userData.role);
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            สวัสดี, {userData.lineDisplayName || userData.fullName || 'ผู้ใช้'} 👋
-          </h1>
-          <p className="text-gray-600 text-base mt-1">
-            {userData.role === 'admin' ? 'ผู้ดูแลระบบ' :
-             userData.role === 'hr' ? 'ฝ่ายบุคคล' :
-             userData.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน'}
-          </p>
-        </div>
-
-        {/* Check-in Button */}
-        {currentCheckIn ? (
-          <Button
-            variant="outline"
-            className="border-green-400 text-green-700 hover:bg-green-50 shrink-0"
-            onClick={() => router.push('/checkin')}
-          >
-            <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-            เช็คอินแล้ว {new Date(currentCheckIn.checkinTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-          </Button>
-        ) : (
-          <Button
-            className="bg-slate-700 hover:bg-slate-800 text-white shrink-0"
-            onClick={() => router.push('/checkin')}
-          >
-            <LogIn className="w-4 h-4 mr-2" />
-            เช็คอิน
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={`สวัสดี ${userData.lineDisplayName || userData.fullName || 'ผู้ใช้'}`}
+        description={
+          userData.role === 'admin' ? 'ผู้ดูแลระบบ'
+          : userData.role === 'hr' ? 'ฝ่ายบุคคล'
+          : userData.role === 'manager' ? 'ผู้จัดการ'
+          : 'พนักงาน'
+        }
+        actions={
+          currentCheckIn ? (
+            <AooButton variant="secondary" icon="CheckCircle2" onClick={() => router.push('/checkin')}>
+              เช็คอินแล้ว{' '}
+              {new Date(currentCheckIn.checkinTime).toLocaleTimeString('th-TH', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </AooButton>
+          ) : (
+            <AooButton icon="Clock" onClick={() => router.push('/checkin')}>
+              เช็คอิน
+            </AooButton>
+          )
+        }
+      />
 
       {/* Tabs */}
       <Tabs defaultValue="birthday">

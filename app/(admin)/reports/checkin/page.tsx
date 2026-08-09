@@ -19,6 +19,8 @@ import TechLoader from '@/components/shared/TechLoader'
 import ReportFilters from '@/components/reports/ReportFilters'
 import ReportResults from '@/components/reports/ReportResults'
 import { useLocations } from '@/hooks/useLocations'
+import { PageHeader } from '@/components/shared'
+import { ActionMenu } from '@/components/aoo'
 
 function downloadCSV(rows: (string | number)[][], filename: string) {
   const csv = rows
@@ -183,41 +185,30 @@ export default function CheckInReportPage() {
   if (!userData) return <TechLoader />
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">รายงานการเข้างาน</h1>
-          <p className="mt-1 text-sm text-gray-500">ตรวจสอบและ Export รายงานเวลาเข้า-ออกของพนักงาน</p>
-        </div>
-
-        {reportData.length > 0 && (
-          <div className="flex flex-wrap gap-2 justify-end">
-            {/* Excel exports */}
-            <Button onClick={() => handleExport('payroll')} disabled={exporting} size="sm" className="bg-gradient-to-r from-purple-500 to-pink-600">
-              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-              เงินเดือน (XLS)
-            </Button>
-            <Button onClick={() => handleExport('daily')} disabled={exporting} size="sm" className="bg-gradient-to-r from-green-500 to-emerald-600">
-              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-              รายวัน (XLS)
-            </Button>
-            <Button onClick={() => handleExport('byEmployee')} disabled={exporting} size="sm" className="bg-gradient-to-r from-blue-500 to-indigo-600">
-              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-              รายคน (XLS)
-            </Button>
-            {/* CSV exports */}
-            <Button onClick={() => handleExportCSV('daily')} disabled={exporting} size="sm" variant="outline">
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              รายวัน (CSV)
-            </Button>
-            <Button onClick={() => handleExportCSV('byEmployee')} disabled={exporting} size="sm" variant="outline">
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              รายคน (CSV)
-            </Button>
-          </div>
-        )}
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="รายงานการเข้างาน"
+        description="ตรวจสอบและ Export รายงานเวลาเข้า-ออกของพนักงาน"
+        icon={FileSpreadsheet}
+        backHref="/reports"
+        actions={
+          // ปุ่ม export ทั้งหมดยุบเป็นเมนูเดียว — เดิมเรียง 5 ปุ่มเต็มแถว
+          reportData.length > 0 ? (
+            <ActionMenu
+              minWidth={220}
+              triggerIcon="Download"
+              items={[
+                { label: 'เงินเดือน (Excel)', icon: 'FileSpreadsheet', onSelect: () => handleExport('payroll') },
+                { label: 'รายวัน (Excel)', icon: 'FileSpreadsheet', onSelect: () => handleExport('daily') },
+                { label: 'รายคน (Excel)', icon: 'FileSpreadsheet', onSelect: () => handleExport('byEmployee') },
+                { kind: 'divider' },
+                { label: 'รายวัน (CSV)', icon: 'Download', onSelect: () => handleExportCSV('daily') },
+                { label: 'รายคน (CSV)', icon: 'Download', onSelect: () => handleExportCSV('byEmployee') },
+              ]}
+            />
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
       <ReportFilters

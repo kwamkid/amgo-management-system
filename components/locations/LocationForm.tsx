@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TimeRangePicker } from '@/components/aoo'
 import { Location, LocationFormData, WorkingHours, Shift } from '@/types/location'
 import { MapPin, Clock, Calendar, Plus, Trash2, Save, X, Building } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -340,23 +341,18 @@ export default function LocationForm({
                   />
                   
                   {!hours.isClosed && (
-                    <>
-                      <Input
-                        type="time"
-                        value={hours.open}
-                        onChange={(e) => handleWorkingHoursChange(key, 'open', e.target.value)}
-                        className="w-32"
+                    <div className="flex-1 max-w-md">
+                      <TimeRangePicker
+                        start={hours.open}
+                        end={hours.close}
                         disabled={isLoading}
+                        size="sm"
+                        onChange={({ start, end }) => {
+                          if (start) handleWorkingHoursChange(key, 'open', start)
+                          if (end) handleWorkingHoursChange(key, 'close', end)
+                        }}
                       />
-                      <span className="text-gray-500">ถึง</span>
-                      <Input
-                        type="time"
-                        value={hours.close}
-                        onChange={(e) => handleWorkingHoursChange(key, 'close', e.target.value)}
-                        className="w-32"
-                        disabled={isLoading}
-                      />
-                    </>
+                    </div>
                   )}
                   
                   {hours.isClosed && (
@@ -418,23 +414,18 @@ export default function LocationForm({
                       disabled={isLoading}
                     />
                     
-                    <Input
-                      type="time"
-                      value={shift.startTime}
-                      onChange={(e) => handleShiftChange(index, 'startTime', e.target.value)}
-                      className="w-32"
-                      disabled={isLoading}
-                    />
-                    
-                    <span className="text-gray-500">-</span>
-                    
-                    <Input
-                      type="time"
-                      value={shift.endTime}
-                      onChange={(e) => handleShiftChange(index, 'endTime', e.target.value)}
-                      className="w-32"
-                      disabled={isLoading}
-                    />
+                    <div className="min-w-[280px] flex-1">
+                      <TimeRangePicker
+                        start={shift.startTime}
+                        end={shift.endTime}
+                        disabled={isLoading}
+                        size="sm"
+                        onChange={({ start, end }) => {
+                          if (start) handleShiftChange(index, 'startTime', start)
+                          if (end) handleShiftChange(index, 'endTime', end)
+                        }}
+                      />
+                    </div>
                     
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-gray-500">±</span>

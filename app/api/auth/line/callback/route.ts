@@ -1,165 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'
-import axios from 'axios'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { adminAuth } from '@/lib/firebase/admin'
+import {
+  createSessionToken,
+  emailForLine,
+  ensureAuthUser,
+  fetchLineProfile,
+} from '@/lib/supabase/line-auth'
 
+/**
+ * ออก custom token ของ Firebase ควบไปด้วยระหว่างช่วงย้ายระบบ
+ * หน้าเก่ายังอ่าน Firestore ซึ่ง rules บังคับว่าต้องมี session
+ * 🗑️ ลบทิ้งเมื่อย้าย service ครบ (ดู lib/auth/dual-session.ts)
+ */
+async function legacyFirebaseToken(lineUserId: string, role: string) {
+  try {
+    return await adminAuth.createCustomToken(lineUserId, { lineUserId, role })
+  } catch (e) {
+    console.warn('ออก Firebase token ไม่ได้ หน้าเก่าอาจโหลดข้อมูลไม่ขึ้น:', e)
+    return null
+  }
+}
+
+/**
+ * LINE Login callback → Supabase session
+ *
+ * ของเดิมออก Firebase custom token ตัวนี้เปลี่ยนมาออก token_hash ของ Supabase
+ * แล้วให้หน้า /auth/verify แลกเป็น session (เก็บใน cookie ฝั่ง client)
+ */
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const code = searchParams.get('code')
-  const error = searchParams.get('error')
-  const state = searchParams.get('state')
-
+  const params = request.nextUrl.searchParams
+  const code = params.get('code')
+  const error = params.get('error')
+  const state = params.get('state')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 
-  // Handle user denial
-  if (error) {
-    return NextResponse.redirect(new URL('/login?error=access_denied', appUrl))
-  }
-
-  if (!code) {
-    return NextResponse.redirect(new URL('/login?error=no_code', appUrl))
-  }
+  if (error) return NextResponse.redirect(new URL('/login?error=access_denied', appUrl))
+  if (!code) return NextResponse.redirect(new URL('/login?error=no_code', appUrl))
 
   try {
-    // Exchange code for access token
-    const tokenResponse = await axios.post(
-      'https://api.line.me/oauth2/v2.1/token',
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/line/callback`,
-        client_id: process.env.NEXT_PUBLIC_LINE_CHANNEL_ID!,
-        client_secret: process.env.LINE_CHANNEL_SECRET!,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    )
+    const profile = await fetchLineProfile(code)
+    const sb = createAdminClient()
 
-    const { access_token } = tokenResponse.data
+    const { data: user } = await sb
+      .from('users')
+      .select('id, role, is_active, employment_status, deleted_at, full_name')
+      .eq('line_user_id', profile.userId)
+      .maybeSingle()
 
-    // Get user profile from LINE
-    const profileResponse = await axios.get('https://api.line.me/v2/profile', {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    })
+    /* ── ยังไม่มีในระบบ ──────────────────────────────────────────── */
+    if (!user) {
+      // คนแรกของระบบได้เป็น admin อัตโนมัติ (ตอนตั้งระบบใหม่)
+      const { count } = await sb.from('users').select('id', { count: 'exact', head: true })
 
-    const { userId, displayName, pictureUrl } = profileResponse.data
-
-    // Check if this is the first user in the system
-    const usersSnapshot = await adminDb.collection('users').limit(1).get()
-    const isFirstUser = usersSnapshot.empty
-
-    // Check if user exists in Firestore
-    const userDoc = await adminDb.collection('users').doc(userId).get()
-
-    if (!userDoc.exists) {
-      // New user registration
-      if (isFirstUser) {
-        // First user becomes Super Admin automatically
-        console.log('🎉 Creating first user as Super Admin:', displayName)
-        
-        await adminDb.collection('users').doc(userId).set({
-          lineUserId: userId,
-          lineDisplayName: displayName,
-          linePictureUrl: pictureUrl || '',
-          fullName: displayName,
-          phone: '',
-          birthDate: null,
+      if (!count) {
+        const uid = await ensureAuthUser(profile, 'admin')
+        await sb.from('users').insert({
+          id: uid,
+          line_user_id: profile.userId,
+          line_display_name: profile.displayName,
+          line_picture_url: profile.pictureUrl,
+          full_name: profile.displayName,
           role: 'admin',
-          permissionGroupId: 'super_admin',
-          isActive: true,
-          registeredAt: FieldValue.serverTimestamp(),
-          createdAt: FieldValue.serverTimestamp()
+          employment_status: 'active',
+          needs_approval: false,
         })
-
-        // Create Firebase custom token for admin
-        const customToken = await adminAuth.createCustomToken(userId, {
-          lineUserId: userId,
-          role: 'admin',
-        })
-
-        // Redirect to auth verify page
+        const hash = await createSessionToken(uid, emailForLine(profile.userId))
+        const fb = await legacyFirebaseToken(profile.userId, 'admin')
         return NextResponse.redirect(
-          new URL(`/auth/verify?token=${customToken}&firstLogin=true`, appUrl)
+          new URL(
+            `/auth/verify?token_hash=${hash}&firstLogin=true${fb ? `&fb=${fb}` : ''}`,
+            appUrl
+          )
         )
-      } else {
-        // Regular new user - redirect to registration
-        const params = new URLSearchParams({
-          lineUserId: userId,
-          lineDisplayName: displayName,
-          ...(pictureUrl && { linePictureUrl: pictureUrl })
-        })
+      }
 
-        // Check for invite code in cookies or state
-        const cookies = request.headers.get('cookie') || ''
-        let inviteCode = null
+      // คนทั่วไป → ไปหน้าสมัคร พร้อมโค้ดเชิญถ้ามี
+      const q = new URLSearchParams({
+        lineUserId: profile.userId,
+        lineDisplayName: profile.displayName,
+        ...(profile.pictureUrl && { linePictureUrl: profile.pictureUrl }),
+      })
 
-        // Try to get from cookies
-        const inviteMatch = cookies.match(/invite_code=([^;]+)/)
-        if (inviteMatch) {
-          inviteCode = inviteMatch[1]
-        }
-
-        // If not in cookies, try sessionStorage data passed via state
-        if (!inviteCode && state) {
+      const inviteCode =
+        request.headers.get('cookie')?.match(/invite_code=([^;]+)/)?.[1] ??
+        (() => {
           try {
-            const stateData = JSON.parse(decodeURIComponent(state))
-            inviteCode = stateData.inviteCode
-          } catch (e) {
-            // State might not be JSON, ignore
+            return state ? JSON.parse(decodeURIComponent(state)).inviteCode : null
+          } catch {
+            return null
           }
-        }
+        })()
 
-        if (inviteCode) {
-          params.append('invite', inviteCode)
-        }
-
-        return NextResponse.redirect(
-          new URL(`/register?${params.toString()}`, appUrl)
-        )
-      }
+      if (inviteCode) q.append('invite', inviteCode)
+      return NextResponse.redirect(new URL(`/register?${q}`, appUrl))
     }
 
-    // Existing user - check if active
-    const userData = userDoc.data()!
-
-    if (!userData.isActive) {
-      return NextResponse.redirect(
-        new URL('/login?error=account_inactive', appUrl)
-      )
+    /* ── มีอยู่แล้ว ──────────────────────────────────────────────── */
+    if (user.deleted_at) {
+      return NextResponse.redirect(new URL('/login?error=account_deleted', appUrl))
+    }
+    if (!user.is_active) {
+      // แยกข้อความ "ลาออกแล้ว" กับ "รออนุมัติ" ให้ผู้ใช้รู้ว่าต้องทำอะไรต่อ
+      const reason = ['resigned', 'terminated', 'retired'].includes(user.employment_status)
+        ? 'account_ended'
+        : 'account_inactive'
+      return NextResponse.redirect(new URL(`/login?error=${reason}`, appUrl))
     }
 
-    // Update profile picture and display name every login
-    await adminDb.collection('users').doc(userId).update({
-      linePictureUrl: pictureUrl || userData.linePictureUrl || '',
-      lineDisplayName: displayName,
-      lastLoginAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp()
-    })
+    // อัปเดตรูป/ชื่อจาก LINE ทุกครั้งที่ล็อกอิน
+    await sb
+      .from('users')
+      .update({
+        line_display_name: profile.displayName,
+        line_picture_url: profile.pictureUrl,
+        last_login_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
 
-    // Create Firebase custom token
-    const customToken = await adminAuth.createCustomToken(userId, {
-      lineUserId: userId,
-      role: userData.role || 'employee',
-    })
+    await ensureAuthUser(profile, user.role)
+    const hash = await createSessionToken(user.id, emailForLine(profile.userId))
+    const fb = await legacyFirebaseToken(profile.userId, user.role)
 
-    // Redirect to auth verify page
     return NextResponse.redirect(
-      new URL(`/auth/verify?token=${customToken}`, appUrl)
+      new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}`, appUrl)
     )
-
-  } catch (error) {
-    console.error('LINE callback error:', error)
-
-    if (axios.isAxiosError(error)) {
-      console.error('Response data:', error.response?.data)
-      console.error('Response status:', error.response?.status)
-    }
-
+  } catch (err) {
+    console.error('LINE callback error:', err)
     return NextResponse.redirect(new URL('/login?error=auth_failed', appUrl))
   }
 }

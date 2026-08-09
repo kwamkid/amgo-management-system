@@ -1,15 +1,10 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import { LoadingProvider } from '@/lib/contexts/LoadingContext'
 import './globals.css'
 
-const ibmPlexSansThai = IBM_Plex_Sans_Thai({
-  subsets: ['thai', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-ibm-plex-sans-thai',
-  display: 'swap',
-})
+// ฟอนต์โหลดจาก /public/fonts เอง (ดูที่ globals.css) ไม่ผ่าน Google Fonts แล้ว
+// ได้ครบกว่าเดิม: มีน้ำหนัก Light 300 และ IBM Plex Mono สำหรับตัวเลขในตาราง
 
 export const metadata: Metadata = {
   title: {
@@ -30,8 +25,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="th" className={ibmPlexSansThai.variable} suppressHydrationWarning>
-      <body className={ibmPlexSansThai.className} suppressHydrationWarning>
+    // โทเคนรองรับโหมดมืดครบแล้ว แต่ยังล็อกสว่างไว้ก่อน
+    // เพราะหน้าเก่ายังใช้ bg-white / text-gray-900 ตรง ๆ อยู่หลายจุด
+    <html lang="th" data-theme="light" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <LoadingProvider>
           {children}
         </LoadingProvider>

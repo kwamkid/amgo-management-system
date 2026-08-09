@@ -2,37 +2,22 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { autoCheckoutPendingRecords } from '@/lib/services/autoCheckoutService'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 /**
- * Auto-Checkout Cron Job
+ * ปิดกะให้คนที่ลืมเช็คเอาท์
  *
- * This endpoint should be called daily at 23:59 to automatically
- * checkout employees who forgot to checkout.
+ * ตั้งเวลาเรียกที่ cron-job.org — ดู docs/cron.md
+ *   ทุกวัน 23:59 น. (เวลาไทย) · ส่ง Authorization: Bearer <CRON_SECRET>
  *
- * Setup with:
- * - Vercel Cron Jobs
- * - GitHub Actions
- * - External cron service (like cron-job.org)
- *
- * Add to vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/auto-checkout",
- *     "schedule": "59 23 * * *"
- *   }]
- * }
+ * ชั่วโมงทำงานจะถูกตั้งเป็น 0 + hours_status = 'needs_review' ไม่ได้เดาให้
+ * เพราะชั่วโมงคือเงิน — ดูเหตุผลเต็มใน lib/services/autoCheckoutService.ts
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret to prevent unauthorized access
-    // Skip authentication in development mode for easy testing
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (!isDevelopment && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (!isAuthorizedCron(request)) {
       return NextResponse.json(
-        { error: 'Unauthorized', hint: 'Include Authorization header with Bearer token' },
+        { error: 'Unauthorized', hint: 'ต้องส่ง Authorization: Bearer <CRON_SECRET>' },
         { status: 401 }
       )
     }

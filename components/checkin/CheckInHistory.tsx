@@ -50,31 +50,22 @@ export default function CheckInHistory({
       setLoading(true)
       setError(null)
       
-      // Get records for the last 7 days
-      const results: CheckInRecord[] = []
+      // ย้อนหลัง 7 วัน — query เดียวจบ
+      // (ของเดิมวนยิงทีละวัน 7 รอบ เพราะ Firestore เก็บซ้อนตามวัน)
       const today = new Date()
-      
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        const dateStr = format(date, 'yyyy-MM-dd')
-        
-        const { records: dayRecords } = await getCheckInRecords(
-          {
-            date: dateStr,
-            userId: userData!.id
-          },
-          limit
-        )
-        
-        results.push(...dayRecords)
-        
-        if (results.length >= limit) {
-          break
-        }
-      }
-      
-      setRecords(results.slice(0, limit))
+      const weekAgo = new Date(today)
+      weekAgo.setDate(weekAgo.getDate() - 6)
+
+      const { records: results } = await getCheckInRecords(
+        {
+          startDate: format(weekAgo, 'yyyy-MM-dd'),
+          endDate: format(today, 'yyyy-MM-dd'),
+          userId: userData!.id,
+        },
+        limit
+      )
+
+      setRecords(results)
     } catch (err) {
       console.error('Error fetching history:', err)
       setError('ไม่สามารถโหลดประวัติได้')

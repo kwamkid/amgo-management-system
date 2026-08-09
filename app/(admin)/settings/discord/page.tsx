@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TimePicker } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { 
@@ -23,8 +24,13 @@ import {
   Loader2,
   TrendingUp
 } from 'lucide-react'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
+import {
+  loadDiscordSettings,
+  saveDiscordSettings,
+  DEFAULT_DISCORD_SETTINGS,
+  type DiscordSettings,
+} from '@/lib/discord/settings'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,48 +40,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
+import { PageHeader } from '@/components/shared'
 
-interface DiscordSettings {
-  webhooks: {
-    checkIn: string
-    leave: string
-    hr: string
-    alerts: string
-    campaign: string // เพิ่ม campaign
-  }
-  notifications: {
-    checkIn: boolean
-    checkOut: boolean
-    late: boolean
-    absent: boolean
-    leaveRequest: boolean
-    overtime: boolean
-    dailySummary: boolean
-    campaignUpdates: boolean // เพิ่ม campaign notifications
-  }
-  dailySummaryTime: string
-}
-
-const defaultSettings: DiscordSettings = {
-  webhooks: {
-    checkIn: '',
-    leave: '',
-    hr: '',
-    alerts: '',
-    campaign: '' // เพิ่ม default
-  },
-  notifications: {
-    checkIn: true,
-    checkOut: true,
-    late: true,
-    absent: true,
-    leaveRequest: true,
-    overtime: true,
-    dailySummary: true,
-    campaignUpdates: true // เพิ่ม default
-  },
-  dailySummaryTime: '18:00'
-}
+// ชนิดกับค่าเริ่มต้นย้ายไปอยู่ที่ lib/discord/settings.ts แล้ว
+// ตัวส่งข้อความใช้ชุดเดียวกัน — เดิมประกาศคนละที่แล้วไม่ตรงกัน
+const defaultSettings = DEFAULT_DISCORD_SETTINGS
 
 export default function DiscordSettingsPage() {
   const { userData } = useAuth()
@@ -95,22 +64,10 @@ export default function DiscordSettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const docRef = doc(db, 'settings', 'discord')
-      const docSnap = await getDoc(docRef)
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data() as DiscordSettings
-        // Ensure campaign fields exist
-        if (!data.webhooks.campaign) {
-          data.webhooks.campaign = ''
-        }
-        if (data.notifications.campaignUpdates === undefined) {
-          data.notifications.campaignUpdates = true
-        }
-        setSettings(data)
-      }
+      // เติมคีย์ที่ขาดให้ครบตั้งแต่ใน loadDiscordSettings แล้ว
+      setSettings(await loadDiscordSettings(createClient()))
     } catch (error) {
-      console.error('Error loading settings:', error)
+      console.error('โหลดการตั้งค่า Discord ไม่สำเร็จ:', error)
       showToast('ไม่สามารถโหลดการตั้งค่าได้', 'error')
     } finally {
       setLoading(false)
@@ -123,15 +80,10 @@ export default function DiscordSettingsPage() {
     try {
       setSaving(true)
       
-      await setDoc(doc(db, 'settings', 'discord'), {
-        ...settings,
-        updatedAt: serverTimestamp(),
-        updatedBy: userData?.id
-      })
-      
+      await saveDiscordSettings(createClient(), settings)
       showToast('บันทึกการตั้งค่าสำเร็จ', 'success')
     } catch (error) {
-      console.error('Error saving settings:', error)
+      console.error('บันทึกการตั้งค่า Discord ไม่สำเร็จ:', error)
       showToast('ไม่สามารถบันทึกการตั้งค่าได้', 'error')
     } finally {
       setSaving(false)
@@ -185,13 +137,11 @@ export default function DiscordSettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">ตั้งค่า Discord</h1>
-        <p className="text-gray-600 mt-1">
-          จัดการการแจ้งเตือนผ่าน Discord Webhook
-        </p>
-      </div>
+      <PageHeader
+        title="ตั้งค่า Discord"
+        description="จัดการการแจ้งเตือนผ่าน Discord Webhook"
+        icon={MessageSquare}
+      />
 
       {/* Permission Warning */}
       {!canEdit && (
@@ -562,16 +512,14 @@ export default function DiscordSettingsPage() {
           {settings.notifications.dailySummary && (
             <div className="mt-4 pt-4 border-t">
               <Label>เวลาส่งสรุปประจำวัน</Label>
-              <Input
-                type="time"
-                value={settings.dailySummaryTime}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  dailySummaryTime: e.target.value
-                })}
-                className="w-32 mt-1"
-                disabled={!canEdit}
-              />
+              <div className="mt-1 w-40">
+                <TimePicker
+                  value={settings.dailySummaryTime}
+                  step={15}
+                  disabled={!canEdit}
+                  onChange={(v) => setSettings({ ...settings, dailySummaryTime: v })}
+                />
+              </div>
             </div>
           )}
         </CardContent>

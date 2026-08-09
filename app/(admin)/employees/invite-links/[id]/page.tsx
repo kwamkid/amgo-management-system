@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/useToast'
 import { User as UserType } from '@/types/user'
+import { PageHeader } from '@/components/shared'
 
 export default function InviteLinkDetailPage({ 
   params 
@@ -113,7 +114,7 @@ export default function InviteLinkDetailPage({
 
   if (error || !inviteLink) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -140,31 +141,16 @@ export default function InviteLinkDetailPage({
   const linkedUsers = users.filter(user => user.inviteLinkId === id)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="hover:bg-gray-100"
-          >
-            <Link href="/employees/invite-links">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Invite Link: {inviteLink.code}
-            </h1>
-            <p className="text-gray-600 mt-1 text-base">
-              สร้างโดย {inviteLink.createdByName} เมื่อ {new Date(inviteLink.createdAt!).toLocaleDateString('th-TH')}
-            </p>
-          </div>
-        </div>
-        {getStatusBadge()}
-      </div>
+    <div className="max-w-6xl space-y-6">
+      <PageHeader
+        title={`Invite Link: ${inviteLink.code}`}
+        description={`สร้างโดย ${inviteLink.createdByName} เมื่อ ${new Date(
+          inviteLink.createdAt!
+        ).toLocaleDateString('th-TH')}`}
+        icon={LinkIcon}
+        backHref="/employees/invite-links"
+        actions={getStatusBadge()}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

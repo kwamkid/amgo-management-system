@@ -113,7 +113,7 @@ export default function InfluencerDetailPage({
 
   if (error || !influencer) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -137,7 +137,7 @@ export default function InfluencerDetailPage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

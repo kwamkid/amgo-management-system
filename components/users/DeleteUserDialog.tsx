@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { User } from '@/types/user'
 import { deleteUser, softDeleteUser } from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
-import { auth } from '@/lib/firebase/client'
 import {
   AlertDialog,
   AlertDialogAction,

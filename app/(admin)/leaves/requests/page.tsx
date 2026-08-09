@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,7 @@ import { useLeave } from '@/hooks/useLeave';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { getLeaveRequests } from '@/lib/services/leaveService';
 import { LeaveRequest } from '@/types/leave';
 
 export default function LeaveRequestsPage() {
@@ -46,23 +46,9 @@ export default function LeaveRequestsPage() {
   const fetchLeaveRequests = async () => {
     try {
       setFetching(true);
-      let q = query(
-        collection(db, 'leaves'),
-        orderBy('createdAt', 'desc')
+      setLeaves(
+        await getLeaveRequests(filter === 'all' ? undefined : { status: filter })
       );
-
-      // Filter by status if not 'all'
-      if (filter !== 'all') {
-        q = query(q, where('status', '==', filter));
-      }
-
-      const snapshot = await getDocs(q);
-      const leavesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as LeaveRequest));
-
-      setLeaves(leavesData);
     } catch (error) {
       console.error('Error fetching leave requests:', error);
     } finally {
@@ -112,23 +98,13 @@ export default function LeaveRequestsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">จัดการคำขอลา</h1>
-            <p className="text-gray-600">อนุมัติหรือปฏิเสธคำขอลาของพนักงาน</p>
-          </div>
-        </div>
-      </div>
+    <div className="max-w-6xl p-4 space-y-6">
+      <PageHeader
+        title="จัดการคำขอลา"
+        description="อนุมัติหรือปฏิเสธคำขอลาของพนักงาน"
+        icon={Calendar}
+        onBack={() => router.back()}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">

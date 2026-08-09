@@ -10,6 +10,7 @@ import { ArrowLeft, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { gradients } from '@/lib/theme/colors'
+import { PageHeader } from '@/components/shared'
 
 export default function CreateHolidayPage() {
   const router = useRouter()
@@ -28,23 +29,13 @@ export default function CreateHolidayPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/settings/holidays">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">
-            เพิ่มวันหยุด
-          </h1>
-          <p className="text-gray-600 mt-1">
-            กำหนดวันหยุดและอัตรา OT
-          </p>
-        </div>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        title="เพิ่มวันหยุด"
+        description="กำหนดวันหยุดและอัตรา OT"
+        icon={Calendar}
+        backHref="/settings/holidays"
+      />
 
       {/* Form */}
       <HolidayForm

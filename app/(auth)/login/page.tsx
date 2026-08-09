@@ -2,13 +2,12 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { signInBoth } from '@/lib/auth/dual-session'
 import { useLoading } from '@/lib/contexts/LoadingContext'
 import Image from 'next/image'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase/client'
 
 // แยก Component ที่ใช้ useSearchParams
 function LoginForm() {
@@ -41,9 +40,10 @@ function LoginForm() {
       setDevLoading(true)
       const res = await fetch('/api/auth/dev-login', { method: 'POST' })
       if (!res.ok) throw new Error('Dev login failed')
-      const { token } = await res.json()
-      await signInWithCustomToken(auth, token)
+      const { tokenHash, firebaseToken } = await res.json()
+      await signInBoth({ tokenHash, firebaseToken })
       router.push('/dashboard')
+      router.refresh()
     } catch (err) {
       setError('Dev login ล้มเหลว ลองใหม่อีกครั้ง')
       console.error(err)

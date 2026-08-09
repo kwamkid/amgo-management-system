@@ -40,7 +40,7 @@ export default function EditInfluencerPage({
 
   if (error || !influencer) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl">
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -64,7 +64,7 @@ export default function EditInfluencerPage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl">
       <InfluencerForm
         influencer={influencer}
         onSubmit={handleSubmit}

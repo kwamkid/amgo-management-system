@@ -1,88 +1,71 @@
+// app/api/users/update-claims/route.ts
+//
+// ซิงก์ role จากตาราง users ลง app_metadata ของบัญชี auth
+//
+// ปกติไม่ต้องเรียกแล้ว — trigger users_sync_role_claim ทำให้อัตโนมัติทุกครั้ง
+// ที่ role เปลี่ยน  เก็บ route นี้ไว้เป็นปุ่มซ่อมมือ เผื่อ claim หลุดจากกัน
+// (หน้า /settings/fix-claims เรียกใช้)
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/supabase/server'
 
-export async function POST(request: NextRequest) {
-  try {
-    const { userId } = await request.json()
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // Get user data from Firestore
-    const userDoc = await adminDb.collection('users').doc(userId).get()
-    
-    if (!userDoc.exists) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    const userData = userDoc.data()!
-
-    // Update custom claims
-    await adminAuth.setCustomUserClaims(userId, {
-      role: userData.role,
-      isActive: userData.isActive,
-    })
-
-    console.log(`Updated claims for user ${userId}:`, {
-      role: userData.role,
-      isActive: userData.isActive
-    })
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Custom claims updated successfully',
-      claims: {
-        role: userData.role,
-        isActive: userData.isActive
-      }
-    })
-
-  } catch (error) {
-    console.error('Error updating custom claims:', error)
-    return NextResponse.json(
-      { error: 'Failed to update custom claims' },
-      { status: 500 }
-    )
+async function requireAdmin() {
+  const me = await getCurrentUser()
+  if (!me) return { error: NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 }) }
+  if (me.profile.role !== 'admin') {
+    return { error: NextResponse.json({ error: 'เฉพาะผู้ดูแลระบบ' }, { status: 403 }) }
   }
+  return { me }
 }
 
-// Batch update all users' claims (for fixing existing users)
-export async function PUT(request: NextRequest) {
-  try {
-    const usersSnapshot = await adminDb.collection('users').get()
-    const updatePromises: Promise<void>[] = []
+/** ซ่อมทีละคน */
+export async function POST(request: NextRequest) {
+  const gate = await requireAdmin()
+  if (gate.error) return gate.error
 
-    usersSnapshot.forEach((doc) => {
-      const userData = doc.data()
-      const userId = doc.id
+  const { userId } = await request.json().catch(() => ({}))
+  if (!userId) return NextResponse.json({ error: 'ไม่ได้ระบุพนักงาน' }, { status: 400 })
 
-      updatePromises.push(
-        adminAuth.setCustomUserClaims(userId, {
-          role: userData.role || 'employee',
-          isActive: userData.isActive || false,
-        })
-      )
+  const admin = createAdminClient()
+
+  const { data: user } = await admin
+    .from('users')
+    .select('role, is_active')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (!user) return NextResponse.json({ error: 'ไม่พบพนักงาน' }, { status: 404 })
+
+  // ⚠️ ต้องเป็น app_metadata เท่านั้น — user_metadata ผู้ใช้แก้เองได้
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: { role: user.role },
+  })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true, claims: { role: user.role } })
+}
+
+/** ซ่อมทั้งบริษัท */
+export async function PUT() {
+  const gate = await requireAdmin()
+  if (gate.error) return gate.error
+
+  const admin = createAdminClient()
+
+  const { data: users, error } = await admin.from('users').select('id, role')
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  let updated = 0
+  const failed: string[] = []
+
+  for (const u of users ?? []) {
+    const { error: e } = await admin.auth.admin.updateUserById(u.id, {
+      app_metadata: { role: u.role },
     })
-
-    await Promise.all(updatePromises)
-
-    return NextResponse.json({ 
-      success: true,
-      message: `Updated claims for ${updatePromises.length} users`
-    })
-
-  } catch (error) {
-    console.error('Error batch updating custom claims:', error)
-    return NextResponse.json(
-      { error: 'Failed to batch update custom claims' },
-      { status: 500 }
-    )
+    if (e) failed.push(`${u.id}: ${e.message}`)
+    else updated++
   }
+
+  return NextResponse.json({ success: true, updated, failed })
 }

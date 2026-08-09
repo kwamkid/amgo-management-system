@@ -3,17 +3,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { 
-  MapPin, 
-  Users, 
-  Calendar, 
-  Bell, 
-  Shield, 
-  Building,
-  Clock,
-  FileText
-} from 'lucide-react'
+import { Bell, Building, Calendar, Clock, FileText, MapPin, Settings, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
+import { PageHeader } from '@/components/shared'
 
 const settingsMenu = [
   {
@@ -71,13 +63,11 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">ตั้งค่าระบบ</h1>
-        <p className="text-gray-600 mt-1 text-base">
-          จัดการการตั้งค่าต่างๆ ของระบบ HR
-        </p>
-      </div>
+      <PageHeader
+        title="ตั้งค่าระบบ"
+        description="จัดการการตั้งค่าต่างๆ ของระบบ HR"
+        icon={Settings}
+      />
 
       {/* Settings Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

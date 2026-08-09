@@ -19,6 +19,11 @@ function getAvatarColor(name: string): string {
 
 interface UserAvatarProps {
   name: string
+  /**
+   * ส่ง userId มาแทน imageUrl ได้เลย — จะดึงผ่าน /api/avatar/{id}
+   * ซึ่งเก็บสำเนารูปไว้ที่เรา ไม่พึ่งลิงก์ LINE ที่มีวันหมดอายุ
+   */
+  userId?: string | null
   imageUrl?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
@@ -36,6 +41,7 @@ const sizeClasses = {
 
 export default function UserAvatar({
   name,
+  userId,
   imageUrl,
   size = 'md',
   className,
@@ -43,6 +49,9 @@ export default function UserAvatar({
   showSyncHint = false,
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false)
+
+  // มี userId ให้ใช้ทางของเราก่อนเสมอ ลิงก์ LINE ตรง ๆ เป็นทางสำรอง
+  const src = userId ? `/api/avatar/${userId}` : imageUrl
   const initial = (name || '?').charAt(0).toUpperCase()
   const colorClass = getAvatarColor(name || '')
   const sizeClass = sizeClasses[size]
@@ -59,11 +68,11 @@ export default function UserAvatar({
     className
   )
 
-  if (imageUrl && !imgError) {
+  if (src && !imgError) {
     return (
       <div className={cn(base, 'bg-gray-100 group')} onClick={handleClick}>
         <img
-          src={imageUrl}
+          src={src}
           alt={name}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}

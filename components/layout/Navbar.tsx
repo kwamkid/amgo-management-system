@@ -82,6 +82,7 @@ export default function Navbar({ userData, onMenuClick }: NavbarProps) {
               className="flex items-center gap-2.5 rounded-lg py-1.5 pl-1.5 pr-2"
             >
               <UserAvatar
+                userId={userData?.id}
                 name={userData?.fullName || userData?.lineDisplayName || '?'}
                 imageUrl={userData?.linePictureUrl}
                 size="sm"

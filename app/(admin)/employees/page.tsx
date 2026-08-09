@@ -109,6 +109,7 @@ export default function EmployeesPage() {
       cell: (u) => (
         <UserCell
           name={u.fullName}
+          userId={u.id}
           imageUrl={u.linePictureUrl}
           subtitle={u.lineDisplayName}
           size="md"

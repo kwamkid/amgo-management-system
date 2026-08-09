@@ -8,6 +8,7 @@
 
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MessageSquare, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/aoo'
@@ -24,7 +25,16 @@ const ERRORS: Record<string, string> = {
   unknown: 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ ลองใหม่อีกครั้ง',
 }
 
+// useSearchParams ต้องอยู่ใน Suspense ไม่งั้น Next สร้างหน้าล่วงหน้าไม่ได้
 export default function LinkDiscordPage() {
+  return (
+    <Suspense>
+      <LinkDiscord />
+    </Suspense>
+  )
+}
+
+function LinkDiscord() {
   const params = useSearchParams()
   const error = params.get('error')
 

@@ -9,12 +9,15 @@ import StatusBadge from './StatusBadge'
  */
 export default function UserCell({
   name,
+  userId,
   imageUrl,
   subtitle,
   role,
   size = 'sm',
 }: {
   name: string
+  /** ส่งมาแล้วรูปจะดึงผ่าน /api/avatar/{id} ที่ไม่มีวันหมดอายุ */
+  userId?: string | null
   imageUrl?: string | null
   /** บรรทัดล่าง เช่น หน่วยงาน ตำแหน่ง */
   subtitle?: string | null
@@ -24,7 +27,7 @@ export default function UserCell({
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <UserAvatar name={name} imageUrl={imageUrl ?? undefined} size={size} />
+      <UserAvatar name={name} userId={userId} imageUrl={imageUrl ?? undefined} size={size} />
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="truncate font-medium text-gray-900">{name}</span>

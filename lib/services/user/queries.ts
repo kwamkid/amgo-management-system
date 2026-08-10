@@ -75,6 +75,7 @@ export async function getUsers(
     .from('users')
     .select('*')
     .is('deleted_at', null)
+    .eq('is_system', false) // Dev Admin / Super Admin ไม่ใช่พนักงาน
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize) // ขอเกิน 1 แถวเพื่อรู้ว่ายังมีต่อไหม
 
@@ -127,6 +128,7 @@ export async function searchUsers(searchTerm: string): Promise<User[]> {
     .from('users')
     .select('*')
     .is('deleted_at', null)
+    .eq('is_system', false)
     .eq('is_active', true)
     .or(filter)
     .order('full_name')
@@ -169,6 +171,7 @@ export async function getPendingUsers(): Promise<User[]> {
     .select('*')
     .eq('needs_approval', true)
     .is('deleted_at', null)
+    .eq('is_system', false)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`ดึงรายชื่อรออนุมัติไม่สำเร็จ: ${error.message}`)
@@ -188,6 +191,7 @@ export async function getUserStatistics() {
     .from('users')
     .select('role, is_active, needs_approval')
     .is('deleted_at', null)
+    .eq('is_system', false)
 
   if (error) throw new Error(`ดึงสถิติพนักงานไม่สำเร็จ: ${error.message}`)
 

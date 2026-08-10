@@ -71,7 +71,9 @@ export function Spinner({
     <span className={className} style={wrapper} role="status" aria-live="polite">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/assets/logo/logo.svg"
+        // โลโก้ของโปรเจกต์นี้อยู่ที่ /amgo-logo.svg — ตอนก๊อปคอมโพเนนต์มา
+        // ยังชี้ไปพาธของ aoosocial อยู่ ทำให้ยิง 404 ทุกครั้งที่ขึ้นตัวหมุน
+        src="/amgo-logo.svg"
         alt=""
         style={glyph}
         draggable={false}

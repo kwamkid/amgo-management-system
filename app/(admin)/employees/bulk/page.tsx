@@ -14,8 +14,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase, getCurrentUser } from '@/lib/supabase/server'
 import BulkEditTable, { type Person, type Unit } from './BulkEditTable'
-import { PageHeader } from '@/components/shared'
-import { Table2 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +40,7 @@ export default async function BulkEditPage() {
         'id, full_name, role, business_unit_id, employment_type, employment_status, start_date, start_date_verified, end_date, days_per_week, payroll_cycle'
       )
       .is('deleted_at', null)
+      .eq('is_system', false)
       .order('full_name'),
     sb
       .from('business_units')
@@ -85,15 +84,10 @@ export default async function BulkEditPage() {
   }))
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="ใส่ข้อมูลพนักงานหลายคน"
-        description="ติ๊กเลือกหลายคนแล้วตั้งค่าทีเดียว · แถวสีส้มคือที่แก้แล้วยังไม่บันทึก"
-        icon={Table2}
-        backHref="/employees"
-      />
-
-      <BulkEditTable people={people} units={units} />
-    </div>
+    // ⚠️ PageHeader ต้องถูกเรียกจากฝั่ง client — ไอคอนของ lucide เป็นฟังก์ชัน
+    //    ส่งข้ามจาก server component ไม่ได้ (Next โยน "Functions cannot be
+    //    passed directly to Client Components") หน้านี้จึงให้ BulkEditTable
+    //    ซึ่งเป็น client component เป็นคนวางหัวข้อเอง
+    <BulkEditTable people={people} units={units} />
   )
 }

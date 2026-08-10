@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     .from('users')
     .select('id, full_name, line_display_name, discord_user_id, birth_date')
     .eq('is_active', true)
+    .eq('is_system', false)
     .eq('employment_status', 'active')
     .is('deleted_at', null)
     .not('birth_date', 'is', null)

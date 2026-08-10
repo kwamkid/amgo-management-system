@@ -16,7 +16,7 @@ import {
   Phone,
   Table2,
 } from 'lucide-react'
-import { Button, ActionMenu, Pagination } from '@/components/aoo'
+import { Button, ActionMenu } from '@/components/aoo'
 import {
   PageHeader,
   StatCard,
@@ -26,6 +26,7 @@ import {
   UserCell,
   FilterBar,
   FilterSelect,
+  TableFooter,
   TechLoader,
   type Column,
 } from '@/components/shared'
@@ -252,15 +253,13 @@ export default function EmployeesPage() {
         emptyBody={search ? `ไม่มีผลลัพธ์สำหรับ "${search}"` : undefined}
       />
 
-      {filtered.length > PER_PAGE && (
-        <div className="mt-4">
-          <Pagination
-            currentPage={page}
-            pageCount={Math.ceil(filtered.length / PER_PAGE)}
-            onPageChange={setPage}
-          />
-        </div>
-      )}
+      <TableFooter
+        page={page}
+        pageSize={PER_PAGE}
+        total={filtered.length}
+        onPageChange={setPage}
+        unit="คน"
+      />
 
       <EndEmploymentDialog
         user={toEnd}

@@ -31,6 +31,7 @@ export async function GET() {
     .from('users')
     .select('id, full_name, line_display_name, birth_date, role')
     .eq('is_active', true)
+    .eq('is_system', false)
     .is('deleted_at', null)
     .not('birth_date', 'is', null)
 

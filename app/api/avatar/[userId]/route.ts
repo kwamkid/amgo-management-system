@@ -23,6 +23,16 @@ const BUCKET = 'avatars'
 /** เก็บในเบราว์เซอร์ได้ 1 วัน — รูปโปรไฟล์ไม่ได้เปลี่ยนบ่อย */
 const CACHE = 'private, max-age=86400'
 
+/**
+ * คนที่ไม่มีรูปก็ต้อง cache ผลว่า "ไม่มี" ด้วย
+ * ไม่งั้นเบราว์เซอร์ยิงซ้ำทุกครั้งที่โหลดหน้า — ในหน้ารายชื่อ 46 คน
+ * ที่รูปเสีย 6 คน กลายเป็นยิงเปล่า 6 ครั้งต่อการเปิดหน้า 1 ครั้ง
+ * ตั้งสั้นหน่อย (1 ชม.) เผื่อเจ้าตัวล็อกอินใหม่แล้วรูปกลับมา
+ */
+const MISS_CACHE = 'private, max-age=3600'
+const notFound = () =>
+  new NextResponse(null, { status: 404, headers: { 'Cache-Control': MISS_CACHE } })
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
@@ -40,7 +50,7 @@ export async function GET(
     .eq('id', userId)
     .maybeSingle()
 
-  if (!user) return new NextResponse(null, { status: 404 })
+  if (!user) return notFound()
 
   // 1) มีสำเนาของเราแล้ว — เสิร์ฟเลย
   if (user.photo_url) {
@@ -56,11 +66,11 @@ export async function GET(
 
   // 2) ยังไม่มีสำเนา — ดึงจาก LINE แล้วเก็บไว้
   const source = user.line_picture_url
-  if (!source || !source.startsWith('http')) return new NextResponse(null, { status: 404 })
+  if (!source || !source.startsWith('http')) return notFound()
 
   try {
     const res = await fetch(source)
-    if (!res.ok) return new NextResponse(null, { status: 404 })
+    if (!res.ok) return notFound()
 
     const buf = Buffer.from(await res.arrayBuffer())
     const contentType = res.headers.get('content-type') ?? 'image/jpeg'
@@ -79,6 +89,6 @@ export async function GET(
     })
   } catch (err) {
     console.warn(`ดึงรูปจาก LINE ไม่สำเร็จ (${userId}):`, err)
-    return new NextResponse(null, { status: 404 })
+    return notFound()
   }
 }

@@ -2357,6 +2357,7 @@ export type Database = {
           invite_link_code: string | null
           invite_link_id: string | null
           is_active: boolean
+          is_system: boolean
           last_login_at: string | null
           line_display_name: string
           line_picture_url: string
@@ -2399,6 +2400,7 @@ export type Database = {
           invite_link_code?: string | null
           invite_link_id?: string | null
           is_active?: boolean
+          is_system?: boolean
           last_login_at?: string | null
           line_display_name?: string
           line_picture_url?: string
@@ -2441,6 +2443,7 @@ export type Database = {
           invite_link_code?: string | null
           invite_link_id?: string | null
           is_active?: boolean
+          is_system?: boolean
           last_login_at?: string | null
           line_display_name?: string
           line_picture_url?: string
@@ -2591,6 +2594,34 @@ export type Database = {
           employment_type: string
           full_name: string
           total_hours: number
+        }[]
+      }
+      attendance_report: {
+        Args: {
+          p_from: string
+          p_limit?: number
+          p_location_id?: string
+          p_offset?: number
+          p_only_present?: boolean
+          p_to: string
+          p_user_ids?: string[]
+        }
+        Returns: {
+          checkin_type: string
+          first_in: string
+          full_name: string
+          holiday_name: string
+          is_late: boolean
+          is_working_holiday: boolean
+          last_out: string
+          late_minutes: number
+          leave_type: string
+          location_name: string
+          status: string
+          total_count: number
+          total_hours: number
+          user_id: string
+          work_date: string
         }[]
       }
       attendance_summary: {

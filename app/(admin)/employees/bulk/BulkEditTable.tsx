@@ -5,6 +5,8 @@ import { Check, ClipboardPaste, Search, Undo2 } from 'lucide-react'
 import { Button, Pill, EmptyState, useToast, SelectMenu } from '@/components/aoo'
 import { saveBulk } from './actions'
 import { isEnded, type BulkRow, type EmploymentStatus } from './types'
+import { PageHeader } from '@/components/shared'
+import { Table2 } from 'lucide-react'
 
 export type Unit = {
   id: string
@@ -333,6 +335,13 @@ export default function BulkEditTable({ people, units }: Props) {
 
   return (
     <div className="space-y-4" onPaste={onPaste}>
+      <PageHeader
+        title="ใส่ข้อมูลพนักงานหลายคน"
+        description="ติ๊กเลือกหลายคนแล้วตั้งค่าทีเดียว · แถวสีส้มคือที่แก้แล้วยังไม่บันทึก"
+        icon={Table2}
+        backHref="/employees"
+      />
+
       {/* ── ยังขาดอะไร ──────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
         <Pill tone="neutral">ทำงานอยู่ {current.length} คน</Pill>

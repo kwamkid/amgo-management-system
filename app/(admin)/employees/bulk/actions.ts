@@ -51,9 +51,15 @@ export async function saveBulk(rows: BulkRow[]): Promise<SaveResult> {
     .select('user_id, base_salary, effective_from')
     .order('effective_from', { ascending: false })
 
-  const latestSalary = new Map<string, number>()
+  // เก็บวันที่มีผลของแถวล่าสุดด้วย — เวลาแก้ต้องทับ "แถวที่หน้าจอโชว์อยู่"
+  const latestSalary = new Map<string, { amount: number; effectiveFrom: string }>()
   for (const c of current ?? []) {
-    if (!latestSalary.has(c.user_id)) latestSalary.set(c.user_id, Number(c.base_salary))
+    if (!latestSalary.has(c.user_id)) {
+      latestSalary.set(c.user_id, {
+        amount: Number(c.base_salary),
+        effectiveFrom: c.effective_from,
+      })
+    }
   }
 
   for (const r of rows) {
@@ -108,11 +114,17 @@ export async function saveBulk(rows: BulkRow[]): Promise<SaveResult> {
     //    ตารางมี unique(user_id, effective_from) พอ HR แก้ตัวเลขผิดแล้วกด
     //    บันทึกซ้ำในวันเดียวกัน insert จะชนแถวเดิมแล้วทั้งใบขึ้นว่า "มีปัญหา"
     //    ทั้งที่ช่องอื่นบันทึกไปแล้ว — ดูเหมือนบันทึกไม่ได้ทั้งหน้า (เจอจริง)
-    if (r.base_salary !== null && r.base_salary !== latestSalary.get(r.id)) {
+    const prev = latestSalary.get(r.id)
+    if (r.base_salary !== null && r.base_salary !== prev?.amount) {
+      // ⚠️ ต้องทับ "แถวล่าสุด" ไม่ใช่เขียนลงวันเริ่มงาน
+      //    เคยเขียนลง start_date แล้วแพ้แถวที่วันที่ใหม่กว่า — HR แก้เลขไปแล้ว
+      //    แต่หน้าจอยังโชว์ค่าเก่า อ่านเหมือนแก้ไม่ได้ (เจอจริง)
+      //    ส่วน "ขึ้นเงินเดือน" แบบเก็บประวัติ ทำที่หน้าพนักงานรายคน
       const { error: cErr } = await sb.from('user_compensation').upsert(
         {
           user_id: r.id,
-          effective_from: r.start_date ?? new Date().toISOString().slice(0, 10),
+          effective_from:
+            prev?.effectiveFrom ?? r.start_date ?? new Date().toISOString().slice(0, 10),
           base_salary: r.base_salary,
           pay_type: r.employment_type,
           note: `บันทึกโดย ${me.profile.full_name}`,

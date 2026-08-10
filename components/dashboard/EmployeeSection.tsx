@@ -213,7 +213,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                           {dayBirthdays.slice(0, 3).map((user, i) => (
                             <img
                               key={user.id}
-                              src={user.linePictureUrl || '/avatar-placeholder.png'}
+                              src={`/api/avatar/${user.id}`}
                               alt={user.fullName}
                               className="w-6 h-6 rounded-full border-2 border-white"
                               title={user.fullName}
@@ -239,10 +239,10 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
             </div>
 
             {/* Birthday count for month */}
-            {birthdays.length > 0 && (
+            {monthBirthdays.length > 0 && (
               <div className="mt-4 pt-4 border-t text-center">
                 <p className="text-sm text-gray-600">
-                  วันเกิดในเดือนนี้ทั้งหมด {birthdays.length} คน
+                  วันเกิดในเดือนนี้ทั้งหมด {monthBirthdays.length} คน
                 </p>
               </div>
             )}
@@ -274,7 +274,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                     return (
                       <div key={user.id} className="flex items-center gap-3 p-3 bg-white rounded-lg">
                         <img
-                          src={user.linePictureUrl || '/avatar-placeholder.png'}
+                          src={`/api/avatar/${user.id}`}
                           alt={user.fullName}
                           className="w-12 h-12 rounded-full"
                         />
@@ -312,7 +312,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           </Card>
 
           {/* All Birthdays in Month */}
-          {birthdays.length > 0 && (
+          {monthBirthdays.length > 0 && (
             <Card className="border-0 shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg font-medium flex items-center gap-2">
@@ -322,10 +322,10 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {birthdays.map(user => (
+                  {monthBirthdays.map(user => (
                     <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg">
                       <img
-                        src={user.linePictureUrl || '/avatar-placeholder.png'}
+                        src={`/api/avatar/${user.id}`}
                         alt={user.fullName}
                         className="w-8 h-8 rounded-full"
                       />
@@ -359,7 +359,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
               return (
                 <div key={user.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg">
                   <img
-                    src={user.linePictureUrl || '/avatar-placeholder.png'}
+                    src={`/api/avatar/${user.id}`}
                     alt={user.fullName}
                     className="w-16 h-16 rounded-full border-2 border-white shadow-md"
                   />

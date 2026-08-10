@@ -68,6 +68,12 @@ export default function Navbar({ userData, onMenuClick }: NavbarProps) {
           minWidth={200}
           items={[
             {
+              label: 'โปรไฟล์ของฉัน',
+              icon: 'User',
+              onSelect: () => router.push('/profile'),
+            },
+            { kind: 'divider' },
+            {
               label: 'ออกจากระบบ',
               icon: 'LogOut',
               tone: 'danger',

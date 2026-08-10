@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { createOAuthState } from '@/lib/discord/oauth-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,8 +22,9 @@ export async function GET() {
   const me = await getCurrentUser()
   if (!me) return NextResponse.redirect(new URL('/login', appUrl))
 
-  // กัน CSRF — ค่าสุ่มที่ต้องตรงกันตอนกลับมา
-  const state = crypto.randomUUID()
+  // กัน CSRF — state เซ็นชื่อไว้ในตัว ไม่ต้องฝาก cookie ให้เบราว์เซอร์ส่งกลับ
+  // (ของเดิมใช้ cookie แล้วเจอ bad_state เพราะขากลับเป็นการข้ามเว็บ)
+  const state = createOAuthState(me.profile.id)
 
   const authorize = new URL('https://discord.com/api/oauth2/authorize')
   authorize.searchParams.set('client_id', clientId)
@@ -33,13 +35,5 @@ export async function GET() {
   authorize.searchParams.set('state', state)
   authorize.searchParams.set('prompt', 'consent')
 
-  const res = NextResponse.redirect(authorize)
-  res.cookies.set('discord_oauth_state', state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 600, // 10 นาที
-    path: '/',
-  })
-  return res
+  return NextResponse.redirect(authorize)
 }

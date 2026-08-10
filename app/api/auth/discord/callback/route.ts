@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/supabase/server'
+import { verifyOAuthState } from '@/lib/discord/oauth-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,14 +19,16 @@ export async function GET(request: NextRequest) {
 
   const code = request.nextUrl.searchParams.get('code')
   const state = request.nextUrl.searchParams.get('state')
-  const cookieState = request.cookies.get('discord_oauth_state')?.value
 
   if (request.nextUrl.searchParams.get('error')) return fail('denied')
   if (!code) return fail('no_code')
-  if (!state || state !== cookieState) return fail('bad_state')
 
   const me = await getCurrentUser()
   if (!me) return NextResponse.redirect(new URL('/login', appUrl))
+
+  // state ต้องเป็นของที่เราออกให้ "คนที่กำลังล็อกอินอยู่" เท่านั้น
+  const check = verifyOAuthState(state, me.profile.id)
+  if (!check.ok) return fail(check.reason === 'expired' ? 'expired' : 'bad_state')
 
   const clientId = process.env.DISCORD_CLIENT_ID
   const clientSecret = process.env.DISCORD_CLIENT_SECRET
@@ -76,9 +79,7 @@ export async function GET(request: NextRequest) {
 
     if (error) return fail('save_failed')
 
-    const res = NextResponse.redirect(new URL('/dashboard?discord=linked', appUrl))
-    res.cookies.delete('discord_oauth_state')
-    return res
+    return NextResponse.redirect(new URL('/dashboard?discord=linked', appUrl))
   } catch (err) {
     console.error('ผูก Discord ไม่สำเร็จ:', err)
     return fail('unknown')

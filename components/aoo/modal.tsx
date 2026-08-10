@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { X } from "lucide-react";
+import { Z } from './z-layers'
 
 export interface ModalProps {
   /** Whether the modal is rendered. */
@@ -151,7 +152,7 @@ const scrimStyle: CSSProperties = {
   // 12px on phones (more usable real estate); the panel never exceeds maxWidth
   // so on a desktop you'll still see consistent breathing room around it.
   padding: "clamp(12px, 3vw, 24px)",
-  zIndex: 200,
+  zIndex: Z.modal,
   animation: "aooModalFade var(--dur-med) var(--ease-out)",
 };
 

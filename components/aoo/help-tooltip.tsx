@@ -9,6 +9,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Z } from './z-layers'
 
 /* ========================================================================== */
 /*  <HelpTooltip/> — hover-triggered rich tooltip                              */
@@ -185,7 +186,7 @@ export function HelpTooltip({
                     color: "#fff",
                     borderRadius: "var(--r-sm)",
                     boxShadow: "var(--shadow-md)",
-                    zIndex: 100,
+                    zIndex: Z.tooltip,
                     fontSize: 12,
                     fontWeight: 500,
                     fontFamily: "var(--font-sans)",
@@ -206,7 +207,7 @@ export function HelpTooltip({
                     border: "1px solid var(--border-2)",
                     borderRadius: "var(--r-md)",
                     boxShadow: "var(--shadow-lg)",
-                    zIndex: 100,
+                    zIndex: Z.tooltip,
                     fontSize: 13,
                     fontWeight: 400,
                     color: "var(--fg-1)",

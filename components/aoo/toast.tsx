@@ -11,6 +11,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { CheckCircle2, AlertCircle, Info, type LucideProps } from "lucide-react";
+import { Z } from './z-layers'
 
 /* ------------------------------------------------------------------ */
 /*  Toast — single bubble. The shared layer is the Provider/Stack     */
@@ -68,7 +69,7 @@ export function Toast({
     fontSize: "var(--fs-small)",
     fontWeight: 500,
     boxShadow: "var(--shadow-lg)",
-    zIndex: 9999,
+    zIndex: Z.toast,
     transition: `opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out)`,
     ...styleProp,
   };
@@ -161,7 +162,7 @@ function ToastStack({ toasts }: { toasts: ToastItem[] }) {
         flexDirection: "column-reverse",
         alignItems: "flex-end",
         gap: 8,
-        zIndex: 9999,
+        zIndex: Z.toast,
         pointerEvents: "none",
       }}
     >

@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { IconButton, LucideIcon, type IconButtonProps } from "./button";
+import { Z } from './z-layers'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -192,7 +193,7 @@ export function ActionMenu({
               borderRadius: "var(--r-md)",
               boxShadow: "var(--shadow-lg)",
               padding: 4,
-              zIndex: 300,
+              zIndex: Z.dropdownInModal,
               display: "flex",
               flexDirection: "column",
               gap: 2,

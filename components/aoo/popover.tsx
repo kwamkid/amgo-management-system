@@ -10,6 +10,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Z } from './z-layers'
 
 /* ========================================================================== */
 /*  <Popover/> — shared floating menu primitive                                */
@@ -87,7 +88,7 @@ export function Popover({
   padding = 4,
   ariaLabel,
   style,
-  zIndex = 300,
+  zIndex = Z.dropdownInModal,
 }: PopoverProps) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);

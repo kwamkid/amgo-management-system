@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Z } from './z-layers'
 
 const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
@@ -107,7 +108,7 @@ export function DatePicker({
       {open && pos &&
         createPortal(
           <div
-            style={{ position: "fixed", top: pos.top, left: pos.left, width: 300, zIndex: 70 }}
+            style={{ position: "fixed", top: pos.top, left: pos.left, width: 300, zIndex: Z.dropdownInModal }}
             className="rounded-xl border border-gray-200 bg-white p-3 shadow-lg"
             onMouseDown={(e) => e.stopPropagation()}
           >

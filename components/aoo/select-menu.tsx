@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search } from 'lucide-react'
+import { Z } from './z-layers'
 
 /**
  * Dropdown ของเราเอง — ไม่ใช่ <select> ของ OS
@@ -288,7 +289,7 @@ export function SelectMenu({
               borderRadius: 'var(--r-lg)',
               boxShadow: 'var(--shadow-lg)',
               padding: 4,
-              zIndex: 9999,
+              zIndex: Z.dropdownInModal,
               animation: 'aooFadeInUp var(--dur-med) var(--ease-out)',
             }}
           >

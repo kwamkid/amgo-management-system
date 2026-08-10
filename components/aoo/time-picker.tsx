@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, Clock } from 'lucide-react'
+import { Z } from './z-layers'
 
 /**
  * เลือกเวลา / ช่วงเวลา
@@ -187,7 +188,7 @@ export function TimePicker({
               borderRadius: 'var(--r-lg)',
               boxShadow: 'var(--shadow-lg)',
               padding: 4,
-              zIndex: 9999,
+              zIndex: Z.dropdownInModal,
             }}
           >
             {options.map((opt) => {

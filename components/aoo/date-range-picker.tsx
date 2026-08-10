@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
+import { Z } from './z-layers'
 
 /**
  * `<DateRangePicker>` — calendar-based custom date range selector.
@@ -203,7 +204,7 @@ export function DateRangePicker({
         position: "fixed",
         top: pos?.top ?? -9999,
         left: pos?.left ?? -9999,
-        zIndex: 1000,
+        zIndex: Z.dropdownInModal,
         background: "var(--bg-surface)",
         border: "1px solid var(--border-1)",
         borderRadius: "var(--r-md)",

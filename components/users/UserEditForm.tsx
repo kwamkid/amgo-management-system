@@ -95,6 +95,7 @@ export default function UserEditForm({
     jobFunctionId: user.jobFunctionId ?? null,
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
+    requiresCheckin: user.requiresCheckin ?? true,
     isActive: user.isActive
   })
 
@@ -129,7 +130,12 @@ export default function UserEditForm({
     
     // เงื่อนไขนี้อยู่คนละแท็บกับปุ่มบันทึก — ต้องพาไปให้เห็นด้วย
     // ไม่งั้นขึ้น alert แล้วผู้ใช้หาไม่เจอว่าต้องแก้ตรงไหน
-    if (formData.allowedLocationIds?.length === 0 && !formData.allowCheckInOutsideLocation) {
+    // (คนที่ไม่ต้องเช็คอิน ไม่ต้องมีสาขา)
+    if (
+      (formData.requiresCheckin ?? true) &&
+      formData.allowedLocationIds?.length === 0 &&
+      !formData.allowCheckInOutsideLocation
+    ) {
       setTab('location')
       alert('กรุณาเลือกสาขาที่อนุญาตหรืออนุญาตให้เช็คอินนอกสถานที่')
       return
@@ -361,42 +367,74 @@ export default function UserEditForm({
         {user.id && <PayCard userId={user.id} editable />}
       </div>
 
-      {/* ── แท็บ 3 · สถานที่เช็คอิน ─────────────────────────── */}
+      {/* ── แท็บ 3 · สถานที่เช็คอิน ─────────────────────────── *
+       * ไล่ตอบทีละคำถาม: ต้องเช็คอินไหม → ถ้าต้อง ค่อยเลือกสาขา
+       * และตอบว่านอกสถานที่ได้ไหม — ไม่ต้องเช็คอินก็ไม่มีอะไรให้ตั้งต่อ */}
       <div hidden={tab !== 'location'}>
         <Card className="border-0 shadow-md">
           <CardContent className="space-y-4 pt-6">
-            <div>
-              <Label>สาขาที่อนุญาตให้เช็คอิน</Label>
-              <LocationMultiSelect
-                selectedLocationIds={formData.allowedLocationIds || []}
-                onChange={(locationIds) =>
-                  setFormData({ ...formData, allowedLocationIds: locationIds })
-                }
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
+            <div className="flex items-center space-x-3">
               <Checkbox
-                id="allowCheckInOutsideLocation"
-                checked={formData.allowCheckInOutsideLocation}
+                id="requiresCheckin"
+                checked={formData.requiresCheckin ?? true}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, allowCheckInOutsideLocation: checked as boolean })
+                  setFormData({ ...formData, requiresCheckin: checked as boolean })
                 }
                 disabled={isLoading}
               />
               <div className="space-y-1">
-                <Label
-                  htmlFor="allowCheckInOutsideLocation"
-                  className="text-base font-normal cursor-pointer"
-                >
-                  เช็คอินนอกสถานที่ได้
+                <Label htmlFor="requiresCheckin" className="text-base font-medium cursor-pointer">
+                  ต้องเช็คอิน
                 </Label>
                 <p className="text-sm text-gray-500">
-                  เช็คอินจากที่ไหนก็ได้ ไม่ต้องอยู่ในรัศมีสาขา — รายงานจะระบุว่าเช็คอินนอกสถานที่
+                  {(formData.requiresCheckin ?? true)
+                    ? 'ต้องเช็คอินทุกวันทำงาน — ไม่เช็คอินจะถูกนับว่าขาดงานในรายงาน'
+                    : 'ไม่ต้องเช็คอิน — รายงานจะไม่นับขาดงานให้คนนี้'}
                 </p>
               </div>
             </div>
+
+            {(formData.requiresCheckin ?? true) && (
+              <>
+                <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
+                  <Checkbox
+                    id="allowCheckInOutsideLocation"
+                    checked={formData.allowCheckInOutsideLocation}
+                    onCheckedChange={(checked) =>
+                      setFormData({
+                        ...formData,
+                        allowCheckInOutsideLocation: checked as boolean,
+                      })
+                    }
+                    disabled={isLoading}
+                  />
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="allowCheckInOutsideLocation"
+                      className="text-base font-normal cursor-pointer"
+                    >
+                      เช็คอินนอกสถานที่ได้
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      เช็คอินจากที่ไหนก็ได้ ไม่ต้องอยู่ในรัศมีสาขา — รายงานจะระบุว่าเช็คอินนอกสถานที่
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <Label>สาขาที่อนุญาตให้เช็คอิน</Label>
+                  <div className="mt-1">
+                    <LocationMultiSelect
+                      selectedLocationIds={formData.allowedLocationIds || []}
+                      onChange={(locationIds) =>
+                        setFormData({ ...formData, allowedLocationIds: locationIds })
+                      }
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -26,6 +26,7 @@ export interface User {
   companyId?: string | null
   jobFunctionId?: string | null
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
+  requiresCheckin?: boolean | null // false = ไม่ต้องเช็คอิน รายงานไม่นับขาดงาน · null = ตามตำแหน่ง
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
   

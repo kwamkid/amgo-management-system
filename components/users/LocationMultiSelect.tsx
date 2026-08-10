@@ -81,15 +81,16 @@ export default function LocationMultiSelect({
         </label>
       </div>
 
-      {/* Location List */}
-      <div className="grid gap-3 md:grid-cols-2">
+      {/* รายชื่อสาขา — แถวเดียวไล่ลงมา อ่านเป็นรายการง่ายกว่าตาราง 2 คอลัมน์
+          ที่อยู่ย่อเหลือบรรทัดเดียว (ชื่อสาขาคือสิ่งที่ใช้ตัดสินใจ ไม่ใช่ที่อยู่เต็ม) */}
+      <div className="divide-y divide-gray-100">
         {locations.map((location) => {
           const isSelected = selectedLocationIds.includes(location.id!)
           return (
             <div
               key={location.id}
-              className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                isSelected ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'
+              className={`flex items-center gap-3 px-2 py-2.5 transition-colors ${
+                isSelected ? 'bg-red-50' : 'hover:bg-gray-50'
               }`}
             >
               <input
@@ -98,24 +99,25 @@ export default function LocationMultiSelect({
                 checked={isSelected}
                 onChange={() => toggleLocation(location.id!)}
                 disabled={disabled}
-                className="w-5 h-5 rounded text-red-600 focus:ring-red-500 mt-0.5"
+                className="w-5 h-5 shrink-0 rounded text-red-600 focus:ring-red-500"
               />
-              <label 
+              <label
                 htmlFor={`location-${location.id}`}
-                className="flex-1 cursor-pointer select-none"
+                className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2"
               >
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-gray-900">{location.name}</p>
-                    <p className="text-sm text-gray-600 mt-0.5">{location.address}</p>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-                      <span>{location.shifts.length} กะ</span>
-                      <span>รัศมี {location.radius}ม.</span>
-                    </div>
-                  </div>
-                </div>
+                <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-gray-900">
+                    {location.name}
+                  </span>
+                  <span className="block truncate text-xs text-gray-500">
+                    {location.address}
+                  </span>
+                </span>
               </label>
+              <span className="shrink-0 text-xs tabular-nums text-gray-400">
+                {location.shifts.length} กะ · {location.radius}ม.
+              </span>
             </div>
           )
         })}

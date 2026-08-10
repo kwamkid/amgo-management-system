@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/useToast'
 import { PageHeader, StatusBadge } from '@/components/shared'
 import UserAvatar from '@/components/shared/UserAvatar'
 import { Button } from '@/components/aoo'
-import { User as UserIcon, MessageSquare, RefreshCw, Check } from 'lucide-react'
+import { User as UserIcon, RefreshCw, Check } from 'lucide-react'
+import { DiscordIcon } from '@/components/icons/DiscordIcon'
 import TechLoader from '@/components/shared/TechLoader'
 
 const EMPLOYMENT_TYPE: Record<string, string> = {
@@ -130,15 +131,17 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between py-2.5">
               <span className="text-sm text-gray-500">Discord</span>
               {discordLinked ? (
-                <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
-                  <Check size={14} />
+                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                  <DiscordIcon size={14} className="text-[#5865F2]" />
                   {userData.discordUsername || 'เชื่อมต่อแล้ว'}
+                  <Check size={14} className="text-green-600" />
                 </span>
               ) : (
-                <a href="/api/auth/discord/start">
-                  <Button variant="secondary" size="sm">
-                    <MessageSquare size={14} /> เชื่อมต่อ Discord
-                  </Button>
+                <a
+                  href="/api/auth/discord/start"
+                  className="flex h-8 items-center gap-1.5 rounded-lg bg-[#5865F2] px-3 text-sm font-medium text-white transition-colors hover:bg-[#4752C4]"
+                >
+                  <DiscordIcon size={14} /> เชื่อมต่อ Discord
                 </a>
               )}
             </div>

@@ -21,7 +21,10 @@ export interface User {
   birthDate?: Date | string
   
   // Work Info
+  // ⚠️ role ไม่ได้ตั้งเองแล้ว — ฐานข้อมูลเซ็ตให้ตามตำแหน่ง (jobFunctionId)
   role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
+  companyId?: string | null
+  jobFunctionId?: string | null
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home

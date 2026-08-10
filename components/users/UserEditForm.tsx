@@ -13,10 +13,11 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { User, UpdateUserData } from '@/types/user'
 import { toDate } from '@/lib/utils/date'
 import LocationMultiSelect from './LocationMultiSelect'
+import { createClient } from '@/lib/supabase/client'
 import PayCard from './PayCard'
 import { TabBar, TabItem } from '@/components/aoo'
 import { Phone, Calendar, Save, X } from 'lucide-react'
@@ -32,6 +33,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+const ROLE_TH: Record<string, string> = {
+  admin: 'ผู้ดูแลระบบ — แก้ได้ทุกคน',
+  hr: 'ฝ่ายบุคคล — แก้ได้ทุกคน (ยกเว้นผู้ดูแลระบบ)',
+  manager: 'ผู้จัดการ',
+  employee: 'พนักงาน',
+  driver: 'เห็นงานส่งของ',
+  marketing: 'การตลาด (เห็นเมนู influencer)',
+}
 
 interface UserEditFormProps {
   user: User
@@ -60,12 +70,29 @@ export default function UserEditForm({
 
   const [tab, setTab] = useState<'info' | 'pay' | 'location'>('info')
 
+  // ตัวเลือกบริษัทกับตำแหน่ง — ตำแหน่งเป็นตัวกำหนดสิทธิ์ ตารางงาน รอบจ่ายเงิน
+  const [companies, setCompanies] = useState<{ id: string; code: string; name_th: string }[]>([])
+  const [functions, setFunctions] = useState<
+    { id: string; name_th: string; default_role: string | null }[]
+  >([])
+
+  useEffect(() => {
+    const sb = createClient()
+    sb.from('companies').select('id, code, name_th').order('code')
+      .then(({ data }) => setCompanies(data ?? []))
+    sb.from('job_functions').select('id, name_th, default_role').eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => setFunctions(data ?? []))
+  }, [])
+
   const [formData, setFormData] = useState<UpdateUserData>({
     fullName: user.fullName,
     nickname: user.nickname || '',
     phone: user.phone || '',
     birthDate: formatDateForInput(user.birthDate), // This is already a string
-    role: user.role,
+    // ⚠️ ไม่มี role — สิทธิ์มากับตำแหน่ง trigger ที่ฐานข้อมูลเซ็ตให้เอง
+    companyId: user.companyId ?? null,
+    jobFunctionId: user.jobFunctionId ?? null,
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
     isActive: user.isActive
@@ -243,28 +270,60 @@ export default function UserEditForm({
 
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg">สิทธิ์และสถานะ</CardTitle>
+          <CardTitle className="text-lg">ตำแหน่งและสถานะ</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="role">สิทธิ์การใช้งาน</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value as User['role'] })}
-                disabled={isLoading}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                <SelectItem value="employee">พนักงาน</SelectItem>
-                <SelectItem value="manager">ผู้จัดการ</SelectItem>
-                <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
-                <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
-                <SelectItem value="driver">พนักงานขับรถ</SelectItem>
-              </SelectContent>
-              </Select>
+            {/* ตำแหน่งเดียวจบ — สิทธิ์ ตารางงาน รอบจ่ายเงิน ตามตำแหน่งอัตโนมัติ */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="company">บริษัท</Label>
+                <Select
+                  value={formData.companyId ?? ''}
+                  onValueChange={(v) => setFormData({ ...formData, companyId: v || null })}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="company">
+                    <SelectValue placeholder="— ยังไม่ระบุ —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code} · {c.name_th}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="jobFunction">ตำแหน่ง</Label>
+                <Select
+                  value={formData.jobFunctionId ?? ''}
+                  onValueChange={(v) => setFormData({ ...formData, jobFunctionId: v || null })}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="jobFunction">
+                    <SelectValue placeholder="— ยังไม่ระบุ —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {functions.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.name_th}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(() => {
+                  const picked = functions.find((f) => f.id === formData.jobFunctionId)
+                  return picked?.default_role ? (
+                    <p className="mt-1 text-xs text-gray-500">
+                      ตำแหน่งนี้ได้สิทธิ์ &ldquo;{ROLE_TH[picked.default_role] ?? picked.default_role}&rdquo;
+                      และตารางงานของตำแหน่งอัตโนมัติ
+                    </p>
+                  ) : null
+                })()}
+              </div>
             </div>
 
             <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">

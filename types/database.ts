@@ -1120,6 +1120,7 @@ export type Database = {
           coverage_days_per_week: number | null
           created_at: string
           default_days_per_week: number | null
+          default_role: string | null
           id: string
           is_active: boolean
           name_th: string
@@ -1134,6 +1135,7 @@ export type Database = {
           coverage_days_per_week?: number | null
           created_at?: string
           default_days_per_week?: number | null
+          default_role?: string | null
           id?: string
           is_active?: boolean
           name_th: string
@@ -1148,6 +1150,7 @@ export type Database = {
           coverage_days_per_week?: number | null
           created_at?: string
           default_days_per_week?: number | null
+          default_role?: string | null
           id?: string
           is_active?: boolean
           name_th?: string

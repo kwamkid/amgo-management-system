@@ -1,0 +1,10 @@
+-- ตำแหน่งเดียวจบ — เลือกตำแหน่งแล้วสิทธิ์ตามมาเอง
+-- (ไฟล์นี้คือบันทึกของ migration ที่รันบนของจริงแล้ว — เนื้อหาเต็มดูจากระบบ)
+-- สรุป:
+--   1. job_functions.default_role — สิทธิ์ที่มากับตำแหน่ง
+--   2. ปรับรายการตำแหน่ง: hr · manager · แอดมิน(office) · callcenter ·
+--      โลจิสติกส์(warehouse+driver) · การตลาด · กราฟิก · PC(shop) · brand manager
+--   3. trigger users_derive_role — ตั้งตำแหน่งแล้ว role ตามอัตโนมัติ
+--      (ชื่อจงใจเรียงก่อน users_guard_self_edit — derive ก่อน guard ดันกลับ)
+--   4. users_sync_role_claim ฟัง job_function_id ด้วย — กัน JWT ค้าง
+--   5. HR แก้/ลบแถวของ admin ไม่ได้ (กัน HR ปลดคนคุมระบบ)

@@ -626,25 +626,31 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
           code: string
           created_at: string
           id: string
           is_active: boolean
           name_th: string
+          registration_no: string | null
         }
         Insert: {
+          address?: string | null
           code: string
           created_at?: string
           id?: string
           is_active?: boolean
           name_th: string
+          registration_no?: string | null
         }
         Update: {
+          address?: string | null
           code?: string
           created_at?: string
           id?: string
           is_active?: boolean
           name_th?: string
+          registration_no?: string | null
         }
         Relationships: []
       }
@@ -2441,6 +2447,7 @@ export type Database = {
           phone: string
           photo_url: string | null
           primary_location_id: string | null
+          probation_end_date: string | null
           registered_at: string
           requires_checkin: boolean | null
           role: string
@@ -2489,6 +2496,7 @@ export type Database = {
           phone?: string
           photo_url?: string | null
           primary_location_id?: string | null
+          probation_end_date?: string | null
           registered_at?: string
           requires_checkin?: boolean | null
           role?: string
@@ -2537,6 +2545,7 @@ export type Database = {
           phone?: string
           photo_url?: string | null
           primary_location_id?: string | null
+          probation_end_date?: string | null
           registered_at?: string
           requires_checkin?: boolean | null
           role?: string

@@ -27,6 +27,9 @@ export interface User {
   jobFunctionId?: string | null
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   requiresCheckin?: boolean | null // false = ไม่ต้องเช็คอิน รายงานไม่นับขาดงาน · null = ตามตำแหน่ง
+  employmentStatus?: string        // active | probation | resigned | terminated | retired
+  employmentType?: string          // monthly (รายเดือน) | daily (รายวัน)
+  probationEndDate?: string | null // วันพ้นทดลองงาน — ใช้ลงวันที่เงินเดือนหลังโปร + สัญญา
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
   

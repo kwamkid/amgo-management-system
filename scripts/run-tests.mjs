@@ -68,12 +68,18 @@ for (const suite of SUITES) {
   process.stdout.write(`  ${suite.title.padEnd(28, '·')} `)
   const r = await run(suite)
   results.push(r)
+  // ผ่าน 0 โดยไม่มีอะไรตก = สคริปต์ล่มก่อนถึงบทสรุป (เช่น sign-in โดน rate limit)
+  // ห้ามขึ้น ✅ — เคยหลอกว่าเขียวทั้งที่ไม่ได้ตรวจสักข้อ
+  const crashed = !r.skipped && r.passed === 0 && r.failed === 0
+  if (crashed) r.failed = 1
   console.log(
     r.skipped
       ? 'ข้าม (ยังไม่ได้เปิดเซิร์ฟเวอร์)'
-      : r.failed
-        ? `❌ ผ่าน ${r.passed} · ไม่ผ่าน ${r.failed}`
-        : `✅ ผ่าน ${r.passed}`
+      : crashed
+        ? '💥 ล่มก่อนจบ — รันเดี่ยวเพื่อดูสาเหตุ'
+        : r.failed
+          ? `❌ ผ่าน ${r.passed} · ไม่ผ่าน ${r.failed}`
+          : `✅ ผ่าน ${r.passed}`
   )
 }
 

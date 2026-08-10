@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import TodoZone from '@/components/dashboard/TodoZone';
 import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
+import ProbationZone from '@/components/dashboard/ProbationZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -49,6 +50,9 @@ export default function DashboardPage() {
 
       {/* HR/admin เห็นเพิ่มว่าต้องไปตามใครบ้าง */}
       <TeamTodoZone />
+
+      {/* แอดมินเห็นว่าใครยังทดลองงาน ใกล้ถึงวันตัดสินหรือยัง */}
+      <ProbationZone />
 
       <PageHeader
         // ทักด้วยชื่อเล่น ไม่ใช่ชื่อ LINE ที่เจ้าตัวตั้งเอง

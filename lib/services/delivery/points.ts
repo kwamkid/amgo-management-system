@@ -20,19 +20,22 @@ import type {
   DeliveryPhoto,
 } from '@/types/delivery'
 import type { Database } from '@/types/database'
-import { uploadDeliveryPhoto, removeDeliveryPhotos } from './photos'
+import { uploadDeliveryPhoto, removeDeliveryPhotos, getDeliveryPhotoUrls } from './photos'
 
 type PointRow = Database['public']['Tables']['delivery_points']['Row']
 type RouteRow = Database['public']['Tables']['delivery_routes']['Row']
 
 const sb = () => createClient()
 
-function toPoint(r: PointRow): DeliveryPoint {
-  const photo: DeliveryPhoto | undefined = r.photo_url
+// photoUrls: path → signed URL — ฐานข้อมูลเก็บ path ใน storage ไม่ใช่ลิงก์
+// ถ้าสร้างลิงก์ไม่ได้ (ไฟล์หาย/หมดสิทธิ์) ถือว่าไม่มีรูป ดีกว่าส่ง path ไปให้ <img> แตก
+function toPoint(r: PointRow, photoUrls: Map<string, string>): DeliveryPoint {
+  const url = r.photo_url ? photoUrls.get(r.photo_url) : undefined
+  const photo: DeliveryPhoto | undefined = url
     ? {
         id: r.id,
-        url: r.photo_url,
-        thumbnailUrl: r.photo_thumbnail_url ?? undefined,
+        url,
+        thumbnailUrl: (r.photo_thumbnail_url && photoUrls.get(r.photo_thumbnail_url)) || undefined,
         originalSize: r.photo_original_size ?? 0,
         compressedSize: r.photo_compressed_size ?? undefined,
         width: r.photo_width ?? undefined,
@@ -58,7 +61,7 @@ function toPoint(r: PointRow): DeliveryPoint {
     failureReason: r.failure_reason ?? undefined,
     customerSignature: r.customer_signature ?? undefined,
     photo,
-    photoUrl: r.photo_url ?? undefined,
+    photoUrl: url,
     note: r.note ?? undefined,
     createdAt: r.created_at ? new Date(r.created_at) : undefined,
     updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,

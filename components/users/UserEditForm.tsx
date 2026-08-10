@@ -13,7 +13,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { User, UpdateUserData } from '@/types/user'
 import { toDate } from '@/lib/utils/date'
 import LocationMultiSelect from './LocationMultiSelect'
@@ -96,8 +96,17 @@ export default function UserEditForm({
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
     requiresCheckin: user.requiresCheckin ?? true,
+    employmentStatus: user.employmentStatus ?? 'active',
+    employmentType: user.employmentType ?? 'monthly',
+    probationEndDate: user.probationEndDate ?? '',
     isActive: user.isActive
   })
+
+  const onProbation = formData.employmentStatus === 'probation'
+
+  // PayCard จัดฉากการแก้ไว้ แล้วฝากฟังก์ชันเขียนจริงมาที่นี่ —
+  // ทั้งหน้าบันทึกด้วยปุ่มเดียวท้ายฟอร์ม ไม่มีของบางส่วนหลุดไปก่อน
+  const payFlushRef = useRef<(() => Promise<string[]>) | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,6 +136,13 @@ export default function UserEditForm({
       alert('กรุณาระบุวันเกิด')
       return
     }
+
+    // สัญญาทดลองงานกับเงินเดือนหลังพ้นโปร ต้องรู้ว่าโปรจบเมื่อไหร่
+    if (formData.employmentStatus === 'probation' && !formData.probationEndDate) {
+      setTab('info')
+      alert('กรุณาระบุวันพ้นทดลองงาน')
+      return
+    }
     
     // เงื่อนไขนี้อยู่คนละแท็บกับปุ่มบันทึก — ต้องพาไปให้เห็นด้วย
     // ไม่งั้นขึ้น alert แล้วผู้ใช้หาไม่เจอว่าต้องแก้ตรงไหน
@@ -144,9 +160,21 @@ export default function UserEditForm({
     // Format birthDate as ISO string for Firebase
     const dataToSubmit = {
       ...formData,
-      birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString() : undefined
+      birthDate: formData.birthDate ? new Date(formData.birthDate).toISOString() : undefined,
+      probationEndDate:
+        formData.employmentStatus === 'probation' ? formData.probationEndDate || null : null,
     }
     
+    // ค่าตอบแทนที่จัดฉากไว้ เขียนตอนนี้ — พังข้อไหนหยุดทั้งหน้า ไม่พาไปต่อ
+    if (payFlushRef.current) {
+      const payErrors = await payFlushRef.current()
+      if (payErrors.length) {
+        setTab('pay')
+        alert(`ค่าตอบแทนบันทึกไม่ผ่าน:\n${payErrors.join('\n')}`)
+        return
+      }
+    }
+
     await onSubmit(dataToSubmit)
   }
 
@@ -332,6 +360,64 @@ export default function UserEditForm({
               </div>
             </div>
 
+            {/* ทดลองงานหรือผ่านแล้ว — ส่วนการออกจากงานใช้ปุ่มในหน้ารายชื่อ */}
+            <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+              <div>
+                <Label htmlFor="employmentStatus">สถานะการจ้าง</Label>
+                <Select
+                  value={formData.employmentStatus ?? 'active'}
+                  onValueChange={(v) => setFormData({ ...formData, employmentStatus: v })}
+                  disabled={isLoading || ['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '')}
+                >
+                  <SelectTrigger id="employmentStatus">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="probation">ทดลองงาน</SelectItem>
+                    <SelectItem value="active">พนักงานประจำ (ผ่านทดลองงาน)</SelectItem>
+                    {['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') && (
+                      <SelectItem value={formData.employmentStatus!}>สิ้นสุดการเป็นพนักงานแล้ว</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="employmentType">ประเภทการจ้าง</Label>
+                <Select
+                  value={(formData.employmentType as string) ?? 'monthly'}
+                  onValueChange={(v) => setFormData({ ...formData, employmentType: v })}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="employmentType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">รายเดือน</SelectItem>
+                    <SelectItem value="daily">รายวัน</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {onProbation && (
+                <div>
+                  <Label htmlFor="probationEndDate">วันพ้นทดลองงาน *</Label>
+                  <Input
+                    id="probationEndDate"
+                    type="date"
+                    value={(formData.probationEndDate as string) || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, probationEndDate: e.target.value })
+                    }
+                    disabled={isLoading}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    ใช้ลงวันที่เงินเดือนหลังพ้นโปร (แท็บเงินเดือน) และพิมพ์ในสัญญาทดลองงาน
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
             <Checkbox
               id="isActive"
@@ -360,11 +446,15 @@ export default function UserEditForm({
       </Card>
       </div>
 
-      {/* ── แท็บ 2 · เงินเดือน ──────────────────────────────── *
-       * PayCard บันทึกเองทันที ไม่ผ่านปุ่มบันทึกด้านล่าง
-       * เพราะเงินเดือนเก็บเป็นประวัติตามวันที่มีผล คนละจังหวะกับข้อมูลอื่น */}
+      {/* ── แท็บ 2 · เงินเดือน ──────────────────────────────── */}
       <div hidden={tab !== 'pay'}>
-        {user.id && <PayCard userId={user.id} editable />}
+        {user.id && (
+          <PayCard
+            userId={user.id}
+            editable
+            registerFlush={(fn) => (payFlushRef.current = fn)}
+          />
+        )}
       </div>
 
       {/* ── แท็บ 3 · สถานที่เช็คอิน ─────────────────────────── *
@@ -441,11 +531,7 @@ export default function UserEditForm({
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3">
-        {tab === 'pay' && (
-          <p className="mr-auto text-sm text-gray-500">
-            เงินเดือนกับรายได้พิเศษบันทึกแยกในกล่องด้านบน ไม่ต้องกดปุ่มนี้
-          </p>
-        )}
+
         <Button
           type="button"
           onClick={onCancel}

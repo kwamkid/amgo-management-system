@@ -49,6 +49,8 @@ export interface UserData {
   employmentType: 'monthly' | 'daily' | null
   startDate: Date | null
   endDate: Date | null
+  /** วันพ้นทดลองงาน — เงินเดือนหลังโปรลงวันที่นี้ */
+  probationEndDate: string | null
   companyId: string | null
   jobFunctionId: string | null
   requiresCheckin: boolean | null
@@ -98,6 +100,7 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     employmentType: (row.employment_type as 'monthly' | 'daily' | null) ?? null,
     startDate: toDate(row.start_date),
     endDate: toDate(row.end_date),
+    probationEndDate: row.probation_end_date,
     companyId: row.company_id,
     jobFunctionId: row.job_function_id,
     requiresCheckin: row.requires_checkin,

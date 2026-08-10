@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatusBadge } from '@/components/shared'
 
 export default function EditUserPage({ 
   params 
@@ -120,6 +120,10 @@ export default function EditUserPage({
         backHref="/employees"
         actions={
           // กดที่รูปเพื่อดึงรูปโปรไฟล์ล่าสุดจาก LINE มาใหม่
+          <div className="flex items-center gap-3">
+            {(user as { employmentStatus?: string }).employmentStatus === 'probation' && (
+              <StatusBadge status="probation" />
+            )}
           <div className="relative">
             <UserAvatar
               name={user.fullName}
@@ -137,6 +141,7 @@ export default function EditUserPage({
                 <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
               </div>
             )}
+          </div>
           </div>
         }
       />

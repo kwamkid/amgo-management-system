@@ -215,6 +215,14 @@ export default function EmployeesPage() {
       cell: (u) => (
         <ActionMenu
           items={[
+            {
+              label: 'ดูสรุป + ไทม์ไลน์',
+              icon: 'History',
+              onSelect: () => {
+                setNavigating(true)
+                router.push(`/employees/${u.id}`)
+              },
+            },
             { label: 'แก้ไขข้อมูล', icon: 'Pencil', onSelect: () => handleEdit(u.id!) },
             { kind: 'divider' },
             // คนที่ออกไปแล้วเห็นปุ่มกลับกัน — กดผิดหรือกลับมาทำงานใหม่ก็แก้ได้

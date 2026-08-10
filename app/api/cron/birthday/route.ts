@@ -100,8 +100,12 @@ export async function GET(request: NextRequest) {
 
   for (const u of birthdayPeople) {
     const name = u.full_name || u.line_display_name
+
     // ผูก Discord ไว้แล้วก็ mention ให้เจ้าตัวเห็น ไม่ได้ผูกก็เอ่ยชื่อเฉย ๆ
-    const who = u.discord_user_id ? `<@${u.discord_user_id}>` : `**${name}**`
+    // id ที่ขึ้นต้น "dev:" เป็นของปลอมจากตอนพัฒนา — mention ไปก็ไม่มีตัวตน
+    const realDiscordId =
+      u.discord_user_id && !u.discord_user_id.startsWith('dev:') ? u.discord_user_id : null
+    const who = realDiscordId ? `<@${realDiscordId}>` : `**${name}**`
 
     const body = {
       embeds: [
@@ -112,9 +116,7 @@ export async function GET(request: NextRequest) {
         },
       ],
       // mention ให้เด้งจริง ต้องอนุญาตไว้ ไม่งั้น Discord แสดงเป็นข้อความเฉย ๆ
-      allowed_mentions: u.discord_user_id
-        ? { users: [u.discord_user_id] }
-        : { parse: [] },
+      allowed_mentions: realDiscordId ? { users: [realDiscordId] } : { parse: [] },
     }
 
     try {

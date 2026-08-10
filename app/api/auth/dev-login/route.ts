@@ -59,7 +59,17 @@ export async function POST() {
     await sb.auth.admin.updateUserById(user.id, {
       app_metadata: { line_user_id: DEV_LINE_ID, role: 'admin' },
     })
-    await sb.from('users').update({ role: 'admin', employment_status: 'active' }).eq('id', user.id)
+    // ผูก Discord แบบหลอกให้เลย — บัญชีสำหรับพัฒนาไม่ต้องไปกด OAuth จริง
+    // ("dev:" เป็นสัญลักษณ์ว่าไม่ใช่บัญชีจริง ตัวส่งแจ้งเตือนจะไม่ mention)
+    await sb
+      .from('users')
+      .update({
+        role: 'admin',
+        employment_status: 'active',
+        discord_user_id: `dev:${user.id}`,
+        discord_username: 'Dev Admin (ไม่ใช่บัญชีจริง)',
+      })
+      .eq('id', user.id)
 
     const tokenHash = await createSessionToken(user.id, email)
 

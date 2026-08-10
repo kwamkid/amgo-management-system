@@ -11,7 +11,7 @@
 
 'use client'
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertTriangle, LogOut } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -51,6 +51,17 @@ function LinkDiscord() {
   useEffect(() => {
     if (!loading && !userData) router.replace('/login')
   }, [loading, userData, router])
+
+  // ตอนพัฒนาไม่ต้องกด OAuth จริงทุกครั้งที่ล้างฐานข้อมูล
+  const [devLinking, setDevLinking] = useState(false)
+  const isDev = process.env.NODE_ENV === 'development'
+
+  const devLink = async () => {
+    setDevLinking(true)
+    const res = await fetch('/api/auth/discord/dev-link', { method: 'POST' })
+    if (res.ok) window.location.href = '/dashboard'
+    else setDevLinking(false)
+  }
 
   const signOut = async () => {
     await createClient().auth.signOut()
@@ -116,6 +127,16 @@ function LinkDiscord() {
         <p className="mt-4 text-center text-xs text-gray-500">
           ระบบขอแค่ชื่อและรหัสบัญชีของคุณ ไม่สามารถอ่านข้อความหรือโพสต์แทนคุณได้
         </p>
+
+        {isDev && (
+          <button
+            onClick={devLink}
+            disabled={devLinking}
+            className="mt-3 w-full rounded-lg border border-dashed border-gray-300 py-2 text-xs text-gray-500 hover:bg-gray-50"
+          >
+            {devLinking ? 'กำลังผูก...' : 'ผูกแบบทดสอบ (เฉพาะตอนพัฒนา)'}
+          </button>
+        )}
 
         <button
           onClick={signOut}

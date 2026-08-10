@@ -64,6 +64,7 @@ import { Pagination } from '@/components/ui/pagination'
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
 import { PageHeader } from '@/components/shared'
 import { Button as AooButton } from '@/components/aoo'
+import UserAvatar from '@/components/shared/UserAvatar'
 
 interface UserQuota {
   user: {
@@ -654,17 +655,7 @@ export default function LeaveQuotaManagementPage() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      {user.linePictureUrl ? (
-                        <img
-                          src={user.linePictureUrl}
-                          alt={user.fullName}
-                          className="w-10 h-10 rounded-full"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-gray-500" />
-                        </div>
-                      )}
+                      <UserAvatar name={user.fullName} userId={user.id} size="md" />
                       <div>
                         <p className="font-medium">{user.fullName}</p>
                         <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>

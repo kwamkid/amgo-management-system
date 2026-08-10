@@ -27,6 +27,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import UserAvatar from '@/components/shared/UserAvatar'
 
 export default function PendingUsersPage() {
   const { pendingUsers, loading, refetch } = usePendingUsers()
@@ -112,17 +113,7 @@ export default function PendingUsersPage() {
               {/* Card Header - User Info */}
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-start gap-4">
-                  {user.linePictureUrl ? (
-                    <img
-                      src={user.linePictureUrl}
-                      alt={user.fullName}
-                      className="w-16 h-16 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-8 h-8 text-gray-500" />
-                    </div>
-                  )}
+                  <UserAvatar name={user.fullName} userId={user.id} size="xl" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-lg">{user.fullName}</h3>
                     <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
@@ -231,17 +222,7 @@ export default function PendingUsersPage() {
               {/* User Info */}
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  {selectedUser.linePictureUrl ? (
-                    <img
-                      src={selectedUser.linePictureUrl}
-                      alt={selectedUser.fullName}
-                      className="w-20 h-20 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-10 h-10 text-gray-500" />
-                    </div>
-                  )}
+                  <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
                   <div>
                     <h4 className="font-semibold text-lg">{selectedUser.fullName}</h4>
                     <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>

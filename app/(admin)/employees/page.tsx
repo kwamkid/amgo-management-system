@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useUsers, useUserStatistics } from '@/hooks/useUsers'
 import { User } from '@/types/user'
 import DeleteUserDialog from '@/components/users/DeleteUserDialog'
+import EndEmploymentDialog from '@/components/users/EndEmploymentDialog'
 import {
   Users,
   CheckCircle,
@@ -39,8 +40,8 @@ const ROLE_OPTIONS = [
 ]
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'ใช้งาน' },
-  { value: 'inactive', label: 'ระงับ' },
+  { value: 'active', label: 'ยังทำงานอยู่' },
+  { value: 'inactive', label: 'สิ้นสุดแล้ว' },
 ]
 
 const PER_PAGE = 20
@@ -56,7 +57,10 @@ export default function EmployeesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [toDelete, setToDelete] = useState<User | null>(null)
 
-  const { users, loading, deactivateUser, refetch, searchUsers } = useUsers({
+  const [endOpen, setEndOpen] = useState(false)
+  const [toEnd, setToEnd] = useState<User | null>(null)
+
+  const { users, loading, refetch, searchUsers } = useUsers({
     pageSize: 500,
     role: role || undefined,
     isActive: status === null ? undefined : status === 'active',
@@ -95,10 +99,9 @@ export default function EmployeesPage() {
     router.push(`/employees/${userId}/edit`)
   }
 
-  const handleDeactivate = async (user: User) => {
-    if (confirm(`ต้องการระงับการใช้งานของ ${user.fullName} ใช่หรือไม่?`)) {
-      await deactivateUser(user.id!)
-    }
+  const handleEndEmployment = (user: User) => {
+    setToEnd(user)
+    setEndOpen(true)
   }
 
   const columns: Column<User>[] = [
@@ -142,7 +145,8 @@ export default function EmployeesPage() {
     {
       key: 'status',
       header: 'สถานะ',
-      cell: (u) => <StatusBadge status={u.isActive ? 'active' : 'terminated'} label={u.isActive ? 'ใช้งาน' : 'ระงับ'} />,
+      // แสดงสถานะจริง (ทดลองงาน/ลาออก/เลิกจ้าง/เกษียณ) ไม่ใช่แค่เปิด-ปิดการใช้งาน
+      cell: (u) => <StatusBadge status={(u as { employmentStatus?: string }).employmentStatus ?? (u.isActive ? 'active' : 'resigned')} />,
     },
     {
       key: 'joined',
@@ -172,10 +176,10 @@ export default function EmployeesPage() {
             { label: 'แก้ไขข้อมูล', icon: 'Pencil', onSelect: () => handleEdit(u.id!) },
             { kind: 'divider' },
             {
-              label: 'ระงับการใช้งาน',
+              label: 'สิ้นสุดการเป็นพนักงาน',
               icon: 'UserX',
               disabled: !u.isActive,
-              onSelect: () => handleDeactivate(u),
+              onSelect: () => handleEndEmployment(u),
             },
             {
               label: 'ลบพนักงาน',
@@ -227,7 +231,7 @@ export default function EmployeesPage() {
         <StatCard label="ทั้งหมด" value={statistics.total} unit="คน" icon={Users} />
         <StatCard label="ใช้งาน" value={statistics.active} unit="คน" icon={CheckCircle} tone="success" />
         <StatCard label="รออนุมัติ" value={statistics.pending} unit="คน" icon={Clock} tone="warning" />
-        <StatCard label="ระงับ" value={statistics.inactive} unit="คน" icon={XCircle} tone="danger" />
+        <StatCard label="สิ้นสุดแล้ว" value={statistics.inactive} unit="คน" icon={XCircle} tone="danger" />
       </StatGrid>
 
       <FilterBar
@@ -257,6 +261,16 @@ export default function EmployeesPage() {
           />
         </div>
       )}
+
+      <EndEmploymentDialog
+        user={toEnd}
+        open={endOpen}
+        onOpenChange={setEndOpen}
+        onSuccess={() => {
+          setToEnd(null)
+          refetch()
+        }}
+      />
 
       <DeleteUserDialog
         user={toDelete}

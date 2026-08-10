@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { safeFormatDate } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
+import UserAvatar from '@/components/shared/UserAvatar'
 
 interface AttendanceSectionProps {
   userData: UserData;
@@ -258,11 +259,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                         onClick={() => router.push(`/employees/${user.id}`)}
                       >
                         <div className="flex items-center gap-3">
-                          <img
-                            src={user.linePictureUrl || '/avatar-placeholder.png'}
-                            alt={user.fullName}
-                            className="w-10 h-10 rounded-full"
-                          />
+                          <UserAvatar name={user.fullName} userId={user.id} size="md" />
                           <div>
                             <p className="font-medium">{user.fullName}</p>
                             <div className="flex items-center gap-2 mt-1">
@@ -316,11 +313,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                     onClick={() => router.push(`/employees/${user.id}`)}
                   >
                     <div className="flex items-center gap-3">
-                      <img
-                        src={user.linePictureUrl || '/avatar-placeholder.png'}
-                        alt={user.fullName}
-                        className="w-10 h-10 rounded-full"
-                      />
+                      <UserAvatar name={user.fullName} userId={user.id} size="md" />
                       <div>
                         <p className="font-medium">{user.fullName}</p>
                         <p className="text-sm text-gray-600">

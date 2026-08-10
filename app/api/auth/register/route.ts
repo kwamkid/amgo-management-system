@@ -1,77 +1,141 @@
+// app/api/auth/register/route.ts
+//
+// สมัครเป็นพนักงาน — ปลายทางเดียวที่สร้างแถวใน users ได้จากคนนอก
+//
+// ── ของเดิมเขียนลง Firestore ───────────────────────────────────────────
+// ตอนย้ายระบบ ไฟล์นี้ถูกข้ามไป คนที่สมัครใหม่จึงไปโผล่ใน Firestore
+// ซึ่งไม่มีใครอ่านแล้ว = สมัครเสร็จแล้วล็อกอินไม่ได้ และไม่มีใครเห็นในระบบ
+//
+// ── ที่เปลี่ยน ─────────────────────────────────────────────────────────
+// 1. เขียนลง Supabase (users + user_allowed_locations)
+// 2. ตัวตน LINE มาจาก "ตั๋วที่เซ็นแล้ว" ไม่ใช่ค่าที่เบราว์เซอร์ส่งมาเฉย ๆ
+//    ของเดิมยิง POST เองแล้วใส่ lineUserId ของใครก็ได้
+// 3. นับโควตาลิงก์เชิญด้วย consume_invite_link — ตรวจกับบวกในคำสั่งเดียว
+//    ของเดิมอ่านมาบวกใน JS สองคนกดพร้อมกันแล้วนับหาย ลิงก์ 1 ครั้งใช้ได้ 2 คน
+// 4. บังคับชื่อจริง + ชื่อเล่น ตั้งแต่ตอนสมัคร ไม่ให้ชื่อ LINE หลุดเข้าระบบอีก
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
-import { FieldValue } from 'firebase-admin/firestore'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureAuthUser } from '@/lib/supabase/line-auth'
+import { verifyRegisterTicket } from '@/lib/supabase/register-ticket'
+
+const bad = (message: string, status = 400) => NextResponse.json({ error: message }, { status })
 
 export async function POST(request: NextRequest) {
   try {
-    const { userData, inviteLinkId } = await request.json()
+    const body = await request.json()
+    const form = body.userData ?? {}
 
-    console.log('Registration data received:', {
-      lineUserId: userData.lineUserId,
-      role: userData.role,
-      inviteLinkId,
-      defaultLocationIds: userData.allowedLocationIds
-    })
+    /* ── 1. ตัวตนจาก LINE ─────────────────────────────────────────── */
+    const ticket = verifyRegisterTicket(body.ticket)
+    if (!ticket.ok) {
+      return bad(
+        ticket.reason === 'expired'
+          ? 'หน้าสมัครเปิดค้างไว้นานเกินไป กรุณาเข้าสู่ระบบด้วย LINE ใหม่อีกครั้ง'
+          : 'ข้อมูลการยืนยันตัวตนไม่ถูกต้อง กรุณาเข้าสู่ระบบด้วย LINE ใหม่อีกครั้ง',
+        401
+      )
+    }
+    const profile = ticket.profile
 
-    if (!userData.lineUserId) {
-      return NextResponse.json(
-        { error: 'Line User ID is required' },
-        { status: 400 }
+    /* ── 2. ตรวจข้อมูลที่กรอก ─────────────────────────────────────── */
+    const fullName = String(form.fullName ?? '').trim().replace(/\s+/g, ' ')
+    const nickname = String(form.nickname ?? '').trim().replace(/\s+/g, ' ')
+    const phone = String(form.phone ?? '').trim()
+    const birthDate = String(form.birthDate ?? '').trim()
+
+    if (fullName.split(' ').length < 2) return bad('กรุณากรอกทั้งชื่อและนามสกุล')
+    if (!nickname) return bad('กรุณากรอกชื่อเล่น')
+    if (!/^0\d{9}$/.test(phone)) return bad('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (0xxxxxxxxx)')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return bad('กรุณาระบุวันเกิด')
+
+    const sb = createAdminClient()
+
+    /* ── 3. สมัครซ้ำ ──────────────────────────────────────────────── */
+    const { data: existing } = await sb
+      .from('users')
+      .select('id, deleted_at')
+      .eq('line_user_id', profile.userId)
+      .maybeSingle()
+
+    if (existing) {
+      return bad(
+        existing.deleted_at
+          ? 'บัญชีนี้ถูกลบไปแล้ว กรุณาติดต่อฝ่ายบุคคล'
+          : 'บัญชีนี้สมัครไว้แล้ว กรุณาเข้าสู่ระบบ',
+        409
       )
     }
 
-    // 1. สร้างหรืออัพเดท Firebase Auth user
-    let authUser
-    try {
-      // ตรวจสอบว่ามี user อยู่แล้วหรือไม่
-      authUser = await adminAuth.getUser(userData.lineUserId)
-    } catch (error) {
-      // ถ้าไม่มี user ให้สร้างใหม่
-      authUser = await adminAuth.createUser({
-        uid: userData.lineUserId,
-        displayName: userData.lineDisplayName,
-        photoURL: userData.linePictureUrl,
-      })
+    /* ── 4. ลิงก์เชิญ — ตรวจ+นับในคำสั่งเดียว ─────────────────────── */
+    let invite: {
+      id: string
+      default_role: string
+      default_location_ids: string[]
+      allow_checkin_outside_location: boolean
+      require_approval: boolean
+    } | null = null
+
+    const inviteCode = String(body.inviteCode ?? '').trim()
+    if (inviteCode) {
+      const { data, error } = await sb.rpc('consume_invite_link', { p_code: inviteCode })
+      if (error) {
+        console.error('consume_invite_link ล้มเหลว:', error.message)
+        return bad('ตรวจสอบลิงก์เชิญไม่สำเร็จ', 500)
+      }
+      // ไม่คืนแถว = ลิงก์หมดอายุ / ครบโควตา / ถูกปิด
+      if (!data?.length) return bad('ลิงก์เชิญใช้ไม่ได้แล้ว กรุณาขอลิงก์ใหม่จากฝ่ายบุคคล')
+      invite = data[0]
     }
 
-    // 2. Set custom claims
-    await adminAuth.setCustomUserClaims(userData.lineUserId, {
-      role: userData.role,
-      isActive: userData.isActive,
+    const role = invite?.default_role ?? 'employee'
+    // ไม่มีลิงก์เชิญ = ต้องให้ HR อนุมัติก่อนเสมอ
+    const needsApproval = invite ? invite.require_approval !== false : true
+
+    /* ── 5. สร้างบัญชี ────────────────────────────────────────────── */
+    const uid = await ensureAuthUser(profile, role)
+
+    const { error: insErr } = await sb.from('users').insert({
+      id: uid,
+      line_user_id: profile.userId,
+      line_display_name: profile.displayName,
+      line_picture_url: profile.pictureUrl ?? '',
+      full_name: fullName,
+      nickname,
+      name_verified: true, // เจ้าตัวกรอกเอง ไม่ใช่ชื่อ LINE ที่ลากมา
+      phone,
+      birth_date: birthDate,
+      role,
+      employment_status: 'active',
+      is_active: !needsApproval,
+      needs_approval: needsApproval,
+      allow_checkin_outside_location: invite?.allow_checkin_outside_location ?? false,
+      invite_link_id: invite?.id ?? null,
+      invite_link_code: inviteCode || null,
     })
 
-    // 3. สร้าง user document ใน Firestore
-    const userRef = adminDb.collection('users').doc(userData.lineUserId)
-    await userRef.set({
-      ...userData,
-      registeredAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    })
-
-    // 4. อัพเดท invite link usage count
-    if (inviteLinkId) {
-      const inviteLinkRef = adminDb.collection('inviteLinks').doc(inviteLinkId)
-      await inviteLinkRef.update({
-        usedCount: FieldValue.increment(1),
-        updatedAt: FieldValue.serverTimestamp(),
-      })
+    if (insErr) {
+      console.error('สร้างพนักงานไม่สำเร็จ:', insErr.message)
+      return bad('สมัครไม่สำเร็จ กรุณาลองใหม่', 500)
     }
 
-    // 5. สร้าง custom token สำหรับ sign in
-    const customToken = await adminAuth.createCustomToken(userData.lineUserId)
+    /* ── 6. สาขาที่เช็คอินได้ตามลิงก์เชิญ ─────────────────────────── */
+    const locationIds = invite?.default_location_ids ?? []
+    if (locationIds.length) {
+      const { error: locErr } = await sb
+        .from('user_allowed_locations')
+        .insert(locationIds.map((location_id) => ({ user_id: uid, location_id })))
+      // สาขาผูกไม่ติดไม่ควรทำให้การสมัครล้มทั้งใบ — HR แก้ทีหลังได้
+      if (locErr) console.warn('ผูกสาขาให้พนักงานใหม่ไม่สำเร็จ:', locErr.message)
+    }
 
     return NextResponse.json({
       success: true,
-      customToken,
-      message: 'ลงทะเบียนสำเร็จ'
+      needsApproval,
+      message: needsApproval ? 'สมัครสำเร็จ รอฝ่ายบุคคลอนุมัติ' : 'สมัครสำเร็จ',
     })
-
-  } catch (error) {
-    console.error('Registration error:', error)
-    return NextResponse.json(
-      { error: 'การลงทะเบียนล้มเหลว' },
-      { status: 500 }
-    )
+  } catch (err) {
+    console.error('Registration error:', err)
+    return bad('การลงทะเบียนล้มเหลว', 500)
   }
 }

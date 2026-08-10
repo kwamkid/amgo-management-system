@@ -18,6 +18,14 @@ export interface UserData {
   lineDisplayName: string
   linePictureUrl: string
   fullName: string
+  /** ชื่อเล่น — ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร ที่ทำงานเรียกกันด้วยชื่อนี้ */
+  nickname: string
+  /** "ชื่อจริง (ชื่อเล่น)" — ฐานข้อมูลคำนวณให้ ใช้ตอนแสดงผลแทนการต่อสตริงเอง */
+  displayName: string
+  /** false = ยังเป็นชื่อ LINE ที่ลากมาจากระบบเก่า ยังไม่มีใครยืนยัน */
+  nameVerified: boolean
+  /** บัญชีระบบ (Dev Admin / Super Admin) — ไม่ใช่พนักงาน ไม่ต้องกรอกอะไร */
+  isSystem: boolean
   phone: string
   birthDate?: string | Date
   role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver' | 'marketing'
@@ -41,7 +49,8 @@ export interface UserData {
   employmentType: 'monthly' | 'daily' | null
   startDate: Date | null
   endDate: Date | null
-  businessUnitId: string | null
+  companyId: string | null
+  jobFunctionId: string | null
   requiresCheckin: boolean | null
   wfhEligible: boolean
 
@@ -63,6 +72,10 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     lineDisplayName: row.line_display_name ?? '',
     linePictureUrl: row.line_picture_url ?? '',
     fullName: row.full_name,
+    nickname: row.nickname ?? '',
+    displayName: row.display_name || row.full_name,
+    nameVerified: row.name_verified ?? false,
+    isSystem: row.is_system ?? false,
     phone: row.phone ?? '',
     birthDate: row.birth_date ?? undefined,
     role: row.role as UserData['role'],
@@ -85,7 +98,8 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     employmentType: (row.employment_type as 'monthly' | 'daily' | null) ?? null,
     startDate: toDate(row.start_date),
     endDate: toDate(row.end_date),
-    businessUnitId: row.business_unit_id,
+    companyId: row.company_id,
+    jobFunctionId: row.job_function_id,
     requiresCheckin: row.requires_checkin,
     wfhEligible: row.wfh_eligible ?? false,
 

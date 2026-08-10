@@ -8,23 +8,31 @@ import { isEnded, type BulkRow, type EmploymentStatus } from './types'
 import { PageHeader } from '@/components/shared'
 import { Table2 } from 'lucide-react'
 
-export type Unit = {
+export type Company = {
+  id: string
+  code: string
+  name: string
+}
+
+/** หน้าที่ — เป็นตัวกำหนดตารางเวรกับรอบจ่ายเงิน (แทนหน่วยงานรายสาขาแบบเดิม) */
+export type JobFunction = {
   id: string
   name: string
-  company: string
   payroll_cycle: string | null
   default_days_per_week: number | null
 }
 
 export type Person = BulkRow & {
-  full_name: string
+  /** ชื่อที่ LINE ส่งมา — ใช้เป็นหลักยึดว่ากำลังกรอกให้ใคร แก้ไม่ได้ */
+  line_display_name: string
   role: string
 }
 
-type Props = { people: Person[]; units: Unit[] }
+type Props = { people: Person[]; companies: Company[]; functions: JobFunction[] }
 
 const CYCLES = [
   { value: 'c28', label: 'วันที่ 28' },
+  { value: 'c30', label: 'วันที่ 30' },
   { value: 'c4', label: 'วันที่ 4' },
 ]
 
@@ -66,11 +74,13 @@ const baht = new Intl.NumberFormat('th-TH')
 
 type ColKey = keyof Pick<
   Person,
+  | 'full_name'
+  | 'nickname'
   | 'employment_status'
-  | 'business_unit_id'
+  | 'company_id'
+  | 'job_function_id'
   | 'employment_type'
   | 'start_date'
-  | 'end_date'
   | 'days_per_week'
   | 'base_salary'
   | 'payroll_cycle'
@@ -82,10 +92,29 @@ type Column = {
   width: number
   align?: 'right' | 'center'
   /** แปลงข้อความที่วางมาเป็นค่าจริง — คืน undefined ถ้าอ่านไม่ออก (ข้ามช่องนั้น) */
-  parse: (raw: string, ctx: { units: Unit[] }) => Partial<Person> | undefined
+  parse: (
+    raw: string,
+    ctx: { companies: Company[]; functions: JobFunction[] }
+  ) => Partial<Person> | undefined
 }
 
 const COLUMNS: Column[] = [
+  {
+    key: 'full_name',
+    header: 'ชื่อ-นามสกุลจริง',
+    width: 230,
+    // กรอกชื่อ = ยืนยันไปในตัว ไม่ต้องมีปุ่มแยก
+    parse: (raw) => {
+      const v = raw.trim().replace(/\s+/g, ' ')
+      return v ? { full_name: v, name_verified: true } : undefined
+    },
+  },
+  {
+    key: 'nickname',
+    header: 'ชื่อเล่น',
+    width: 130,
+    parse: (raw) => ({ nickname: raw.trim().replace(/\s+/g, ' ') || null }),
+  },
   {
     key: 'employment_status',
     header: 'สถานะ',
@@ -97,16 +126,27 @@ const COLUMNS: Column[] = [
     },
   },
   {
-    key: 'business_unit_id',
-    header: 'หน่วยงาน',
-    width: 190,
-    parse: (raw, { units }) => {
+    key: 'company_id',
+    header: 'บริษัท',
+    width: 120,
+    parse: (raw, { companies }) => {
       const q = raw.trim().toLowerCase()
-      if (!q) return { business_unit_id: null }
-      const hit = units.find(
-        (u) => u.name.toLowerCase() === q || `${u.company} · ${u.name}`.toLowerCase() === q
+      if (!q) return { company_id: null }
+      const hit = companies.find(
+        (c) => c.code.toLowerCase() === q || c.name.toLowerCase() === q
       )
-      return hit ? { business_unit_id: hit.id } : undefined
+      return hit ? { company_id: hit.id } : undefined
+    },
+  },
+  {
+    key: 'job_function_id',
+    header: 'หน้าที่',
+    width: 170,
+    parse: (raw, { functions }) => {
+      const q = raw.trim().toLowerCase()
+      if (!q) return { job_function_id: null }
+      const hit = functions.find((f) => f.name.toLowerCase() === q)
+      return hit ? { job_function_id: hit.id } : undefined
     },
   },
   {
@@ -127,16 +167,6 @@ const COLUMNS: Column[] = [
     parse: (raw) => {
       const val = parseDate(raw)
       return val ? { start_date: val, start_date_verified: true } : undefined
-    },
-  },
-  {
-    key: 'end_date',
-    header: 'วันสุดท้าย',
-    width: 150,
-    parse: (raw) => {
-      if (!raw.trim()) return { end_date: null }
-      const val = parseDate(raw)
-      return val ? { end_date: val } : undefined
     },
   },
   {
@@ -168,14 +198,16 @@ const COLUMNS: Column[] = [
     parse: (raw) => {
       const q = raw.trim()
       if (!q) return { payroll_cycle: null }
-      if (q === '28' || q.includes('28')) return { payroll_cycle: 'c28' }
-      if (q === '4' || q.includes('4')) return { payroll_cycle: 'c4' }
+      // เทียบ 28 กับ 30 ก่อน 4 — ไม่งั้น "วันที่ 4" ไปชนกับ "24" ที่ไม่มีจริง
+      if (q.includes('28')) return { payroll_cycle: 'c28' }
+      if (q.includes('30')) return { payroll_cycle: 'c30' }
+      if (q === '4' || q.includes('ที่ 4')) return { payroll_cycle: 'c4' }
       return undefined
     },
   },
 ]
 
-export default function BulkEditTable({ people, units }: Props) {
+export default function BulkEditTable({ people, companies, functions }: Props) {
   const [rows, setRows] = useState<Person[]>(people)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [focus, setFocus] = useState<{ r: number; c: number } | null>(null)
@@ -205,27 +237,30 @@ export default function BulkEditTable({ people, units }: Props) {
       if (!q) return true
       return (
         r.full_name.toLowerCase().includes(q) ||
-        (units.find((u) => u.id === r.business_unit_id)?.name.toLowerCase().includes(q) ?? false)
+        (r.nickname ?? '').toLowerCase().includes(q) ||
+        r.line_display_name.toLowerCase().includes(q) ||
+        (companies.find((c) => c.id === r.company_id)?.code.toLowerCase().includes(q) ?? false) ||
+        (functions.find((f) => f.id === r.job_function_id)?.name.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [rows, filter, units, showEnded])
+  }, [rows, filter, companies, functions, showEnded])
 
   const patch = useCallback((ids: Set<string> | string, changes: Partial<Person>) => {
     const idSet = typeof ids === 'string' ? new Set([ids]) : ids
     setRows((prev) => prev.map((r) => (idSet.has(r.id) ? { ...r, ...changes } : r)))
   }, [])
 
-  /** เลือกหน่วยงานแล้วเติมวัน/สัปดาห์ให้ตามค่าของหน่วยงาน ไม่ต้องกรอกซ้ำ */
-  const applyUnit = useCallback(
-    (ids: Set<string> | string, unitId: string | null) => {
-      const unit = units.find((u) => u.id === unitId)
+  /** เลือกหน้าที่แล้วเติมวัน/สัปดาห์ให้ตามค่าของหน้าที่ ไม่ต้องกรอกซ้ำ */
+  const applyFunction = useCallback(
+    (ids: Set<string> | string, functionId: string | null) => {
+      const fn = functions.find((f) => f.id === functionId)
       patch(ids, {
-        business_unit_id: unitId,
-        payroll_cycle: null,
-        days_per_week: unit?.default_days_per_week ?? null,
+        job_function_id: functionId,
+        payroll_cycle: null, // ใช้ของหน้าที่ ถ้าคนนี้ไม่ได้ต่างจากเพื่อน
+        days_per_week: fn?.default_days_per_week ?? null,
       })
     },
-    [units, patch]
+    [functions, patch]
   )
 
   /* ---- คีย์บอร์ด: เดินช่องเหมือน spreadsheet ---------------------- */
@@ -274,7 +309,7 @@ export default function BulkEditTable({ people, units }: Props) {
         line.forEach((raw, dc) => {
           const col = COLUMNS[focus.c + dc]
           if (!col) return
-          const parsed = col.parse(raw, { units })
+          const parsed = col.parse(raw, { companies, functions })
           if (parsed === undefined) {
             skipped++
             return
@@ -301,7 +336,11 @@ export default function BulkEditTable({ people, units }: Props) {
       const res = await saveBulk(
         dirty.map((r) => ({
           id: r.id,
-          business_unit_id: r.business_unit_id,
+          full_name: r.full_name,
+          nickname: r.nickname,
+          name_verified: r.name_verified,
+          company_id: r.company_id,
+          job_function_id: r.job_function_id,
           employment_type: r.employment_type,
           employment_status: r.employment_status,
           start_date: r.start_date,
@@ -327,9 +366,14 @@ export default function BulkEditTable({ people, units }: Props) {
   // นับเฉพาะคนที่ยังทำงานอยู่ — คนที่ออกไปแล้วไม่ต้องมีเงินเดือน/หน่วยงาน
   const current = rows.filter((r) => !isEnded(r.employment_status))
   const endedCount = rows.length - current.length
-  const noUnit = current.filter((r) => !r.business_unit_id).length
+  const noRealName = current.filter((r) => !r.name_verified).length
+  const noNickname = current.filter((r) => !r.nickname?.trim()).length
+  const noCompany = current.filter((r) => !r.company_id).length
+  const noFunction = current.filter((r) => !r.job_function_id).length
   const noSalary = current.filter((r) => r.base_salary === null).length
   const noStart = current.filter((r) => !r.start_date_verified).length
+  // วันสุดท้ายไม่มีช่องให้กรอกในหน้านี้แล้ว — หน้านี้มีไว้กรอกคนที่ยังทำงานอยู่
+  // ถ้ามีแถวไหนตกค้าง ให้ไปแก้ที่ปุ่ม "สิ้นสุดการเป็นพนักงาน" ในหน้ารายชื่อ
   const missingEndDate = rows.filter((r) => isEnded(r.employment_status) && !r.end_date).length
   const totalSalary = current.reduce((s, r) => s + (r.base_salary ?? 0), 0)
 
@@ -352,10 +396,15 @@ export default function BulkEditTable({ people, units }: Props) {
             </Pill>
           </button>
         )}
-        <Chip label="ยังไม่ได้จัดหน่วยงาน" n={noUnit} />
+        <Chip label="ยังเป็นชื่อ LINE" n={noRealName} />
+        <Chip label="ยังไม่มีชื่อเล่น" n={noNickname} />
+        <Chip label="ยังไม่ได้ระบุบริษัท" n={noCompany} />
+        <Chip label="ยังไม่ได้ระบุหน้าที่" n={noFunction} />
         <Chip label="ยังไม่มีเงินเดือน" n={noSalary} />
         <Chip label="วันเริ่มงานยังไม่ยืนยัน" n={noStart} />
-        {missingEndDate > 0 && <Chip label="ออกแล้วแต่ไม่มีวันสุดท้าย" n={missingEndDate} />}
+        {missingEndDate > 0 && (
+          <Chip label="ออกแล้วแต่ไม่มีวันสุดท้าย (แก้ที่หน้ารายชื่อ)" n={missingEndDate} />
+        )}
         <span className="ml-auto text-sm text-gray-500">
           รวมเงินเดือนที่กรอกแล้ว{' '}
           <span className="font-mono font-semibold tabular-nums text-gray-800">
@@ -372,20 +421,31 @@ export default function BulkEditTable({ people, units }: Props) {
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="ค้นหาชื่อ / หน่วยงาน"
+            placeholder="ค้นหาชื่อ / ชื่อเล่น / บริษัท / หน้าที่"
             className="h-8 w-52 rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-2 text-sm outline-none focus:border-red-400 focus:bg-white"
           />
         </div>
 
         <Pill tone={selected.size ? 'accent' : 'neutral'}>เลือกไว้ {selected.size} คน</Pill>
 
-        <div className="w-44">
+        <div className="w-36">
           <SelectMenu
             disabled={!selected.size}
             value={null}
-            placeholder="→ ตั้งหน่วยงาน"
-            options={units.map((u) => ({ value: u.id, label: u.name, hint: u.company }))}
-            onChange={(v) => v && applyUnit(selected, v)}
+            placeholder="→ ตั้งบริษัท"
+            options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name }))}
+            searchThreshold={99}
+            onChange={(v) => v && patch(selected, { company_id: v })}
+          />
+        </div>
+        <div className="w-40">
+          <SelectMenu
+            disabled={!selected.size}
+            value={null}
+            placeholder="→ ตั้งหน้าที่"
+            options={functions.map((f) => ({ value: f.id, label: f.name }))}
+            searchThreshold={99}
+            onChange={(v) => v && applyFunction(selected, v)}
           />
         </div>
         <div className="w-36">
@@ -471,8 +531,8 @@ export default function BulkEditTable({ people, units }: Props) {
                     }
                   />
                 </th>
-                <th className="sticky left-9 z-10 min-w-[190px] border-b border-r border-gray-200 bg-gray-50 px-3 py-2 text-left font-medium text-gray-600">
-                  ชื่อ
+                <th className="sticky left-9 z-10 min-w-[170px] border-b border-r border-gray-200 bg-gray-50 px-3 py-2 text-left font-medium text-gray-600">
+                  ชื่อใน LINE
                 </th>
                 {COLUMNS.map((col) => (
                   <th
@@ -489,7 +549,7 @@ export default function BulkEditTable({ people, units }: Props) {
             </thead>
             <tbody>
               {visible.map((row, r) => {
-                const unit = units.find((u) => u.id === row.business_unit_id)
+                const fn = functions.find((f) => f.id === row.job_function_id)
                 const isDirty = dirtyIds.has(row.id)
                 const isSel = selected.has(row.id)
                 const rowBg = isDirty ? 'bg-orange-50' : isSel ? 'bg-red-50/40' : 'bg-white'
@@ -509,8 +569,9 @@ export default function BulkEditTable({ people, units }: Props) {
                         }
                       />
                     </td>
+                    {/* ชื่อ LINE เป็นหลักยึดว่ากำลังกรอกให้ใคร — ชื่อจริงอยู่ในช่องที่แก้ได้ */}
                     <td className={`sticky left-9 z-10 border-r border-gray-200 px-3 py-1 ${rowBg}`}>
-                      <div className="truncate font-medium text-gray-900">{row.full_name}</div>
+                      <div className="truncate text-gray-700">{row.line_display_name}</div>
                       <div className="text-xs text-gray-400">{row.role}</div>
                     </td>
 
@@ -519,14 +580,16 @@ export default function BulkEditTable({ people, units }: Props) {
                         key={col.key}
                         col={col}
                         row={row}
-                        unit={unit}
-                        units={units}
+                        fn={fn}
+                        companies={companies}
+                        functions={functions}
                         innerRef={setCellRef(r, c)}
                         onKeyDown={(e) => onCellKeyDown(e, r, c)}
                         onFocus={() => setFocus({ r, c })}
                         onChange={(changes) =>
-                          col.key === 'business_unit_id'
-                            ? applyUnit(row.id, (changes.business_unit_id as string | null) ?? null)
+                          // เลือกหน้าที่แล้วเติมวัน/สัปดาห์ให้ด้วย ไม่ต้องกรอกซ้ำ
+                          col.key === 'job_function_id'
+                            ? applyFunction(row.id, (changes.job_function_id as string | null) ?? null)
                             : patch(row.id, changes)
                         }
                       />
@@ -557,8 +620,9 @@ export default function BulkEditTable({ people, units }: Props) {
 function Cell({
   col,
   row,
-  unit,
-  units,
+  fn,
+  companies,
+  functions,
   innerRef,
   onChange,
   onKeyDown,
@@ -566,8 +630,10 @@ function Cell({
 }: {
   col: Column
   row: Person
-  unit?: Unit
-  units: Unit[]
+  /** หน้าที่ของแถวนี้ — ใช้โชว์ค่าปริยายในช่องที่ปล่อยว่างไว้ */
+  fn?: JobFunction
+  companies: Company[]
+  functions: JobFunction[]
   innerRef: (el: HTMLElement | null) => void
   onChange: (changes: Partial<Person>) => void
   onKeyDown: (e: React.KeyboardEvent) => void
@@ -586,6 +652,43 @@ function Cell({
   }
 
   switch (col.key) {
+    // ชื่อจริงกับชื่อเล่นเป็นสองช่องที่ "ว่างแล้วต้องเห็นชัด" — ชื่อ LINE
+    // อ่านแล้วไม่รู้ว่าใคร รายงานทั้งระบบเลยอ่านไม่ออกตามไปด้วย
+    case 'full_name':
+      return (
+        <td className="px-2 py-1">
+          <input
+            {...inputShared}
+            type="text"
+            value={row.full_name}
+            placeholder="ชื่อ นามสกุล"
+            onChange={(e) => onChange({ full_name: e.target.value, name_verified: true })}
+            title={row.name_verified ? undefined : 'ยังเป็นชื่อ LINE ไม่ใช่ชื่อจริง'}
+            className={`${base} ${
+              row.name_verified
+                ? 'border-transparent'
+                : 'border-orange-300 bg-orange-50 text-orange-800'
+            }`}
+          />
+        </td>
+      )
+
+    case 'nickname':
+      return (
+        <td className="px-2 py-1">
+          <input
+            {...inputShared}
+            type="text"
+            value={row.nickname ?? ''}
+            placeholder="เช่น แตน"
+            onChange={(e) => onChange({ nickname: e.target.value || null })}
+            className={`${base} ${
+              row.nickname?.trim() ? 'border-transparent' : 'border-orange-300 bg-orange-50'
+            }`}
+          />
+        </td>
+      )
+
     case 'employment_status':
       return (
         <td className="px-2 py-1">
@@ -607,17 +710,34 @@ function Cell({
         </td>
       )
 
-    case 'business_unit_id':
+    case 'company_id':
       return (
         <td className="px-2 py-1">
           <SelectMenu
             {...menuShared}
-            value={row.business_unit_id}
-            invalid={!row.business_unit_id}
-            placeholder="— ยังไม่ได้จัด —"
-            clearable="— ยังไม่ได้จัด —"
-            options={units.map((u) => ({ value: u.id, label: u.name, hint: u.company }))}
-            onChange={(v) => onChange({ business_unit_id: v })}
+            value={row.company_id}
+            invalid={!row.company_id}
+            placeholder="— ยังไม่ระบุ —"
+            clearable="— ยังไม่ระบุ —"
+            searchThreshold={99}
+            options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name }))}
+            onChange={(v) => onChange({ company_id: v })}
+          />
+        </td>
+      )
+
+    case 'job_function_id':
+      return (
+        <td className="px-2 py-1">
+          <SelectMenu
+            {...menuShared}
+            value={row.job_function_id}
+            invalid={!row.job_function_id}
+            placeholder="— ยังไม่ระบุ —"
+            clearable="— ยังไม่ระบุ —"
+            searchThreshold={99}
+            options={functions.map((f) => ({ value: f.id, label: f.name }))}
+            onChange={(v) => onChange({ job_function_id: v })}
           />
         </td>
       )
@@ -655,28 +775,6 @@ function Cell({
         </td>
       )
 
-    case 'end_date': {
-      const ended = isEnded(row.employment_status)
-      return (
-        <td className="px-2 py-1">
-          <input
-            {...inputShared}
-            type="date"
-            disabled={!ended}
-            value={row.end_date ?? ''}
-            onChange={(e) => onChange({ end_date: e.target.value || null })}
-            title={ended ? 'วันสุดท้ายที่ทำงาน' : 'ใช้ได้เมื่อสถานะเป็นออกแล้วเท่านั้น'}
-            className={`${base} ${
-              !ended
-                ? 'border-transparent text-gray-300'
-                : row.end_date
-                  ? 'border-transparent'
-                  : 'border-red-300 bg-red-50'
-            }`}
-          />
-        </td>
-      )
-    }
 
     case 'days_per_week':
       return (
@@ -687,7 +785,7 @@ function Cell({
             min={1}
             max={7}
             value={row.days_per_week ?? ''}
-            placeholder={unit?.default_days_per_week ? String(unit.default_days_per_week) : ''}
+            placeholder={fn?.default_days_per_week ? String(fn.default_days_per_week) : ''}
             onChange={(e) =>
               onChange({ days_per_week: e.target.value ? Number(e.target.value) : null })
             }
@@ -724,11 +822,11 @@ function Cell({
             options={CYCLES}
             searchThreshold={99}
             placeholder={
-              unit?.payroll_cycle
-                ? `ตามหน่วยงาน (${CYCLES.find((c) => c.value === unit.payroll_cycle)?.label})`
-                : 'ตามหน่วยงาน'
+              fn?.payroll_cycle
+                ? `ตามหน้าที่ (${CYCLES.find((c) => c.value === fn.payroll_cycle)?.label})`
+                : 'ตามหน้าที่'
             }
-            clearable="ตามหน่วยงาน"
+            clearable="ตามหน้าที่"
             onChange={(v) => onChange({ payroll_cycle: v })}
           />
         </td>

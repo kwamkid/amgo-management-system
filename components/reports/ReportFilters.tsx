@@ -74,6 +74,7 @@ export default function ReportFilters({
       setFilteredUsers(
         users.filter(u =>
           u.fullName.toLowerCase().includes(searchLower) ||
+          u.nickname?.toLowerCase().includes(searchLower) ||
           u.phone?.includes(searchLower) ||
           u.lineDisplayName?.toLowerCase().includes(searchLower)
         )
@@ -267,7 +268,7 @@ export default function ReportFilters({
                         className="flex cursor-pointer items-center justify-between px-4 py-2 text-sm hover:bg-gray-100"
                       >
                         <div>
-                          <p className="font-medium">{user.fullName}</p>
+                          <p className="font-medium">{user.displayName || user.fullName}</p>
                           {user.phone && <p className="text-xs text-gray-500">{user.phone}</p>}
                         </div>
                         {selectedUsers.includes(user.id!) && (
@@ -312,7 +313,7 @@ export default function ReportFilters({
                     className="cursor-pointer hover:bg-gray-200 flex items-center gap-1 h-5 px-2 text-xs"
                     onClick={() => removeSelectedUser(userId)}
                   >
-                    {user.fullName}
+                    {user.nickname || user.fullName}
                     <X className="w-2.5 h-2.5" />
                   </Badge>
                 ) : null

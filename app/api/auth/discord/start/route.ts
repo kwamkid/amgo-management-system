@@ -16,7 +16,7 @@ export async function GET() {
   const clientId = process.env.DISCORD_CLIENT_ID
 
   if (!clientId) {
-    return NextResponse.redirect(new URL('/link-discord?error=not_configured', appUrl))
+    return NextResponse.redirect(new URL('/setup?error=not_configured', appUrl))
   }
 
   const me = await getCurrentUser()

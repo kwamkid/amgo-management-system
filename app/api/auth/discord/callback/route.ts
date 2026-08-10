@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
   const fail = (reason: string) =>
-    NextResponse.redirect(new URL(`/link-discord?error=${reason}`, appUrl))
+    NextResponse.redirect(new URL(`/setup?error=${reason}`, appUrl))
 
   const code = request.nextUrl.searchParams.get('code')
   const state = request.nextUrl.searchParams.get('state')
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     if (error) return fail('save_failed')
 
-    return NextResponse.redirect(new URL('/dashboard?discord=linked', appUrl))
+    return NextResponse.redirect(new URL('/setup?discord=linked', appUrl))
   } catch (err) {
     console.error('ผูก Discord ไม่สำเร็จ:', err)
     return fail('unknown')

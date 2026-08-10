@@ -3,8 +3,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { InviteLink } from '@/types/invite'
-import { auth } from '@/lib/firebase/client'
-import { signInWithCustomToken } from 'firebase/auth'
 import Image from 'next/image'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -27,9 +25,11 @@ function RegisterForm() {
     lineDisplayName: '',
     linePictureUrl: '',
     fullName: '',
+    nickname: '',
     phone: '',
     birthDate: ''
   })
+  const [ticket, setTicket] = useState('')
   const [inviteLink, setInviteLink] = useState<InviteLink | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -41,9 +41,11 @@ function RegisterForm() {
       const lineUserId = searchParams.get('lineUserId')
       const lineDisplayName = searchParams.get('lineDisplayName')
       const linePictureUrl = searchParams.get('linePictureUrl')
+      // ตั๋วที่ LINE callback เซ็นมา — server เชื่อเฉพาะค่านี้ ไม่เชื่อ 3 ตัวข้างบน
+      const registerTicket = searchParams.get('ticket')
       let inviteCode = searchParams.get('invite')
 
-      if (!lineUserId) {
+      if (!lineUserId || !registerTicket) {
         setError('ไม่พบข้อมูล LINE')
         setTimeout(() => {
           router.push('/login')
@@ -76,12 +78,15 @@ function RegisterForm() {
         }
       }
 
+      setTicket(registerTicket)
       setFormData(prev => ({
         ...prev,
         lineUserId: lineUserId,
         lineDisplayName: lineDisplayName || '',
         linePictureUrl: linePictureUrl || '',
-        fullName: lineDisplayName || '' // ใช้ displayName เป็นค่าเริ่มต้น
+        // ⚠️ ห้ามเติมชื่อ LINE ให้เป็นค่าเริ่มต้นของชื่อจริง
+        //    ของเดิมทำแบบนั้น คนก็กดผ่านไปเลย สุดท้ายในระบบมีพนักงานชื่อ
+        //    "🌨️🌈🌻" กับ "koโก koโก" อยู่ 13 คน เปิดรายงานมาแล้วไม่รู้ว่าใคร
       }))
       setLoading(false)
     }
@@ -106,11 +111,21 @@ function RegisterForm() {
         throw new Error('ไม่พบข้อมูล LINE User ID')
       }
 
+      // ชื่อจริงต้องมีทั้งชื่อและนามสกุล — กันคนกรอกชื่อเล่นซ้ำลงมา
+      if (formData.fullName.trim().split(/\s+/).length < 2) {
+        throw new Error('กรุณากรอกทั้งชื่อและนามสกุล')
+      }
+      if (!formData.nickname.trim()) {
+        throw new Error('กรุณากรอกชื่อเล่น')
+      }
+
       const userData = {
         lineUserId: formData.lineUserId,
         lineDisplayName: formData.lineDisplayName,
         linePictureUrl: formData.linePictureUrl,
-        fullName: formData.fullName,
+        fullName: formData.fullName.trim().replace(/\s+/g, ' '),
+        nickname: formData.nickname.trim(),
+        nameVerified: true,
         phone: formData.phone,
         birthDate: formData.birthDate,
         role: inviteLink?.defaultRole || 'employee',
@@ -132,7 +147,10 @@ function RegisterForm() {
         },
         body: JSON.stringify({
           userData,
-          inviteLinkId: inviteLink?.id
+          ticket,
+          // ส่งเป็นโค้ด ไม่ใช่ id — server เรียก consume_invite_link ซึ่งตรวจ
+          // เงื่อนไขกับนับโควตาในคำสั่งเดียว กันสองคนกดพร้อมกันแล้วนับหาย
+          inviteCode: inviteLink?.code
         })
       })
 
@@ -140,11 +158,6 @@ function RegisterForm() {
 
       if (!response.ok) {
         throw new Error(data.error || 'การลงทะเบียนล้มเหลว')
-      }
-      
-      // Sign in ด้วย custom token ถ้ามี
-      if (data.customToken) {
-        await signInWithCustomToken(auth, data.customToken)
       }
 
       // Clear sessionStorage
@@ -254,6 +267,26 @@ function RegisterForm() {
           required
           className="mt-1"
         />
+        <p className="text-xs text-gray-500 mt-1">
+          ชื่อจริงตามบัตรประชาชน ใช้กับเอกสารและรายงานของบริษัท
+        </p>
+      </div>
+
+      {/* Nickname */}
+      <div>
+        <Label htmlFor="nickname">
+          ชื่อเล่น <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          id="nickname"
+          type="text"
+          value={formData.nickname}
+          onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+          placeholder="เช่น แตน"
+          required
+          className="mt-1"
+        />
+        <p className="text-xs text-gray-500 mt-1">ชื่อที่ให้เพื่อนร่วมงานเรียก</p>
       </div>
 
       {/* Phone */}

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   // ── ใครเกิดวันนี้ ───────────────────────────────────────────────────
   const { data: users, error } = await sb
     .from('users')
-    .select('id, full_name, line_display_name, discord_user_id, birth_date')
+    .select('id, full_name, nickname, display_name, line_display_name, discord_user_id, birth_date')
     .eq('is_active', true)
     .eq('is_system', false)
     .eq('employment_status', 'active')
@@ -100,7 +100,8 @@ export async function GET(request: NextRequest) {
   const failed: string[] = []
 
   for (const u of birthdayPeople) {
-    const name = u.full_name || u.line_display_name
+    // อวยพรกันด้วยชื่อเล่น ไม่ใช่ "นางสาวอนงค์ สุขพลอย" — ในห้องแชททักกันแบบนี้
+    const name = u.nickname?.trim() || u.full_name || u.line_display_name
 
     // ผูก Discord ไว้แล้วก็ mention ให้เจ้าตัวเห็น ไม่ได้ผูกก็เอ่ยชื่อเฉย ๆ
     // id ที่ขึ้นต้น "dev:" เป็นของปลอมจากตอนพัฒนา — mention ไปก็ไม่มีตัวตน

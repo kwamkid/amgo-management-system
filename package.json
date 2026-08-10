@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "types:gen": "supabase gen types typescript --project-id odcrsmhutabsqhozpfhl > types/database.ts",
-    "db:push": "supabase db push --project-ref odcrsmhutabsqhozpfhl"
+    "db:push": "supabase db push --project-ref odcrsmhutabsqhozpfhl",
+    "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-thai": "^5.2.6",

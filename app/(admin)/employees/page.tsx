@@ -16,7 +16,9 @@ import {
   Phone,
   Table2,
 } from 'lucide-react'
-import { Button, ActionMenu } from '@/components/aoo'
+import { Button, ActionMenu, useConfirm } from '@/components/aoo'
+import { useToast } from '@/hooks/useToast'
+import { reactivateUser } from '@/lib/services/userService'
 import {
   PageHeader,
   StatCard,
@@ -54,6 +56,14 @@ export default function EmployeesPage() {
   const [status, setStatus] = useState<string | null>('active')
   const [page, setPage] = useState(1)
   const [navigating, setNavigating] = useState(false)
+  const { confirm, dialog } = useConfirm()
+  const { showToast } = useToast()
+
+  /** ออกไปแล้ว = ลาออก · เลิกจ้าง · เกษียณ */
+  const isEnded = (u: User) =>
+    ['resigned', 'terminated', 'retired'].includes(
+      (u as { employmentStatus?: string }).employmentStatus ?? ''
+    )
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [toDelete, setToDelete] = useState<User | null>(null)
@@ -84,6 +94,7 @@ export default function EmployeesPage() {
     return users.filter(
       (u) =>
         u.fullName?.toLowerCase().includes(q) ||
+        u.nickname?.toLowerCase().includes(q) ||
         u.lineDisplayName?.toLowerCase().includes(q) ||
         u.phone?.includes(q) ||
         u.discordUsername?.toLowerCase().includes(q)
@@ -105,19 +116,49 @@ export default function EmployeesPage() {
     setEndOpen(true)
   }
 
+  const handleReactivate = async (user: User) => {
+    const ok = await confirm({
+      title: `ให้ ${user.displayName || user.fullName} กลับมาทำงาน?`,
+      description:
+        'สถานะจะกลับเป็น "ทำงานอยู่" · ล้างวันสุดท้ายที่ทำงานทิ้ง · เข้าใช้งานระบบได้ตามปกติ',
+      confirmLabel: 'ให้กลับมาทำงาน',
+      tone: 'primary',
+    })
+    if (!ok) return
+
+    try {
+      await reactivateUser(user.id!)
+      showToast(`${user.displayName || user.fullName} กลับมาเป็นพนักงานแล้ว`, 'success')
+      refetch()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    }
+  }
+
   const columns: Column<User>[] = [
     {
       key: 'user',
       header: 'พนักงาน',
-      width: 220,
+      width: 260,
       cell: (u) => (
-        <UserCell
-          name={u.fullName}
-          userId={u.id}
-          imageUrl={u.linePictureUrl}
-          subtitle={u.lineDisplayName}
-          size="md"
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <UserCell
+            // ชื่อจริง (ชื่อเล่น) — ชื่อ LINE ย้ายไปบรรทัดล่างเพราะดูไม่ออกว่าใคร
+            name={u.displayName || u.fullName}
+            userId={u.id}
+            imageUrl={u.linePictureUrl}
+            subtitle={u.lineDisplayName}
+            size="md"
+          />
+          {u.nameVerified === false && (
+            <span
+              title="ชื่อนี้ยังเป็นชื่อจาก LINE ยังไม่มีใครกรอกชื่อจริง"
+              className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-orange-700"
+            >
+              ยังไม่มีชื่อจริง
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -176,12 +217,22 @@ export default function EmployeesPage() {
           items={[
             { label: 'แก้ไขข้อมูล', icon: 'Pencil', onSelect: () => handleEdit(u.id!) },
             { kind: 'divider' },
-            {
-              label: 'สิ้นสุดการเป็นพนักงาน',
-              icon: 'UserX',
-              disabled: !u.isActive,
-              onSelect: () => handleEndEmployment(u),
-            },
+            // คนที่ออกไปแล้วเห็นปุ่มกลับกัน — กดผิดหรือกลับมาทำงานใหม่ก็แก้ได้
+            ...(isEnded(u)
+              ? [
+                  {
+                    label: 'ให้กลับมาทำงาน',
+                    icon: 'UserCheck' as const,
+                    onSelect: () => handleReactivate(u),
+                  },
+                ]
+              : [
+                  {
+                    label: 'สิ้นสุดการเป็นพนักงาน',
+                    icon: 'UserX' as const,
+                    onSelect: () => handleEndEmployment(u),
+                  },
+                ]),
             {
               label: 'ลบพนักงาน',
               icon: 'Trash2',
@@ -201,6 +252,7 @@ export default function EmployeesPage() {
 
   return (
     <>
+      {dialog}
       <PageHeader
         title="จัดการพนักงาน"
         description="จัดการข้อมูลและสิทธิ์การใช้งานของพนักงาน"
@@ -238,7 +290,7 @@ export default function EmployeesPage() {
       <FilterBar
         search={search}
         onSearch={setSearch}
-        placeholder="ค้นหาชื่อ เบอร์โทร LINE"
+        placeholder="ค้นหาชื่อ ชื่อเล่น เบอร์โทร LINE"
       >
         <FilterSelect label="สิทธิ์" value={role} options={ROLE_OPTIONS} onChange={setRole} />
         <FilterSelect label="สถานะ" value={status} options={STATUS_OPTIONS} onChange={setStatus} />

@@ -81,7 +81,7 @@ export const useLeave = () => {
 
       const leaveId = await leaveService.createLeaveRequest({
         userId: userData.id,
-        userName: userData.lineDisplayName || userData.fullName,
+        userName: userData.displayName || userData.fullName,
         userEmail: userData.id,
         userAvatar: userData.linePictureUrl,
         type,
@@ -107,7 +107,7 @@ export const useLeave = () => {
       await notify(() =>
         DiscordNotificationService.notifyLeaveRequest(
           userData.id!,
-          userData.lineDisplayName || userData.fullName,
+          userData.displayName || userData.fullName,
           LEAVE_TYPE_LABELS[type],
           startDate,
           endDate,
@@ -144,7 +144,7 @@ export const useLeave = () => {
             LEAVE_TYPE_LABELS[leave.type],
             leave.startDate,
             leave.endDate,
-            userData.lineDisplayName || userData.fullName,
+            userData.displayName || userData.fullName,
             leave.userAvatar
           )
         )
@@ -176,7 +176,7 @@ export const useLeave = () => {
             LEAVE_TYPE_LABELS[leave.type],
             leave.startDate,
             leave.endDate,
-            userData.lineDisplayName || userData.fullName,
+            userData.displayName || userData.fullName,
             reason,
             leave.userAvatar
           )

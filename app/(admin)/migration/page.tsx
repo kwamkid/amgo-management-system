@@ -28,10 +28,16 @@ const TABLES = [
   'delivery_routes',
   'delivery_points',
   'companies',
-  'business_units',
+  'job_functions',
 ] as const
 
 const DAY_NAMES = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
+const CYCLE_LABEL: Record<string, string> = {
+  c28: 'วันที่ 28',
+  c4: 'วันที่ 4',
+  eom: 'สิ้นเดือน',
+}
 
 export default async function MigrationStatusPage() {
   // หน้านี้อ่านข้อมูลด้วย secret key ซึ่งข้าม RLS ได้ทั้งหมด
@@ -48,12 +54,12 @@ export default async function MigrationStatusPage() {
       })
     ),
     sb
-      .from('business_units')
+      .from('job_functions')
       .select(
-        'id, name, unit_type, schedule_type, coverage_days_per_week, default_days_per_week, payroll_cycle, companies(code), locations(name)'
+        'id, name_th, schedule_type, coverage_days_per_week, default_days_per_week, payroll_cycle'
       )
-      .order('name'),
-    sb.from('business_unit_work_days').select('business_unit_id, day_of_week, work_mode'),
+      .order('sort_order'),
+    sb.from('job_function_work_days').select('job_function_id, day_of_week, work_mode'),
     sb.rpc('attendance_period_summary', {
       p_from: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
       p_to: new Date().toISOString().slice(0, 10),
@@ -63,9 +69,9 @@ export default async function MigrationStatusPage() {
 
   const daysByUnit = new Map<string, { day: number; mode: string }[]>()
   for (const d of workDays.data ?? []) {
-    const list = daysByUnit.get(d.business_unit_id) ?? []
+    const list = daysByUnit.get(d.job_function_id) ?? []
     list.push({ day: d.day_of_week, mode: d.work_mode })
-    daysByUnit.set(d.business_unit_id, list)
+    daysByUnit.set(d.job_function_id, list)
   }
 
   const scheduleText = (unitId: string, scheduleType: string, perPerson: number | null) => {
@@ -80,7 +86,7 @@ export default async function MigrationStatusPage() {
   const summary = (hours.data ?? []) as {
     full_name: string
     company_code: string | null
-    business_unit: string | null
+    business_unit: string | null // ชื่อหน้าที่ (RPC ยังคงชื่อคอลัมน์เดิม)
     days_worked: number
     days_expected: number
     days_leave: number
@@ -175,9 +181,9 @@ export default async function MigrationStatusPage() {
         </section>
       )}
 
-      {/* ── หน่วยงาน ─────────────────────────────────────────── */}
+      {/* ── หน้าที่ ───────────────────────────────────────────── */}
       <section>
-        <h2 className="mb-1 text-lg font-semibold text-gray-900">3. หน่วยงานและตารางงาน</h2>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">3. หน้าที่และตารางงาน</h2>
         <p className="mb-3 text-sm text-gray-500">
           &ldquo;เปิด&rdquo; = ไซต์ต้องมีคนกี่วัน/สัปดาห์ · &ldquo;คนทำ&rdquo; = คนหนึ่งคนทำกี่วัน (ตั้งรายคนทับได้)
         </p>
@@ -185,9 +191,7 @@ export default async function MigrationStatusPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="px-4 py-2 font-medium">บริษัท</th>
-                <th className="px-4 py-2 font-medium">หน่วยงาน</th>
-                <th className="px-4 py-2 font-medium">สถานที่</th>
+                <th className="px-4 py-2 font-medium">หน้าที่</th>
                 <th className="px-4 py-2 font-medium">ตารางงาน</th>
                 <th className="px-4 py-2 text-center font-medium">เปิด</th>
                 <th className="px-4 py-2 text-center font-medium">คนทำ</th>
@@ -196,23 +200,9 @@ export default async function MigrationStatusPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(units.data ?? []).map((u) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const co = (u as any).companies?.code as string | undefined
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const loc = (u as any).locations?.name as string | undefined
                 return (
                   <tr key={u.id}>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                          co === 'AGD' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'
-                        }`}
-                      >
-                        {co}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 font-medium text-gray-900">{u.name}</td>
-                    <td className="px-4 py-2 text-gray-500">{loc ?? '—'}</td>
+                    <td className="px-4 py-2 font-medium text-gray-900">{u.name_th}</td>
                     <td className="px-4 py-2 text-gray-700">
                       {scheduleText(u.id, u.schedule_type, u.default_days_per_week)}
                     </td>
@@ -223,7 +213,7 @@ export default async function MigrationStatusPage() {
                       {u.default_days_per_week ?? '—'}
                     </td>
                     <td className="px-4 py-2 text-center font-mono text-xs">
-                      {u.payroll_cycle === 'c28' ? 'วันที่ 28' : 'วันที่ 4'}
+                      {CYCLE_LABEL[u.payroll_cycle ?? ''] ?? '—'}
                     </td>
                   </tr>
                 )
@@ -244,7 +234,7 @@ export default async function MigrationStatusPage() {
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
                 <th className="px-4 py-2 font-medium">ชื่อ</th>
-                <th className="px-4 py-2 font-medium">หน่วยงาน</th>
+                <th className="px-4 py-2 font-medium">หน้าที่</th>
                 <th className="px-4 py-2 text-right font-medium">มาทำงาน</th>
                 <th className="px-4 py-2 text-right font-medium">ควรมา</th>
                 <th className="px-4 py-2 text-right font-medium">ลา</th>

@@ -7,6 +7,7 @@ import {
   ensureAuthUser,
   fetchLineProfile,
 } from '@/lib/supabase/line-auth'
+import { createRegisterTicket } from '@/lib/supabase/register-ticket'
 
 /**
  * ออก custom token ของ Firebase ควบไปด้วยระหว่างช่วงย้ายระบบ
@@ -44,7 +45,9 @@ export async function GET(request: NextRequest) {
 
     const { data: user } = await sb
       .from('users')
-      .select('id, role, is_active, employment_status, deleted_at, full_name, discord_user_id')
+      .select(
+        'id, role, is_active, employment_status, deleted_at, full_name, nickname, name_verified, discord_user_id, is_system'
+      )
       .eq('line_user_id', profile.userId)
       .maybeSingle()
 
@@ -76,7 +79,11 @@ export async function GET(request: NextRequest) {
       }
 
       // คนทั่วไป → ไปหน้าสมัคร พร้อมโค้ดเชิญถ้ามี
+      //
+      // ticket คือหลักฐานว่า "เพิ่งยืนยันกับ LINE มาจริง" — /api/auth/register
+      // เชื่อเฉพาะค่าในตั๋วนี้ ส่วน 3 ตัวข้างล่างมีไว้ให้หน้าจอโชว์เฉย ๆ
       const q = new URLSearchParams({
+        ticket: createRegisterTicket(profile),
         lineUserId: profile.userId,
         lineDisplayName: profile.displayName,
         ...(profile.pictureUrl && { linePictureUrl: profile.pictureUrl }),
@@ -122,12 +129,16 @@ export async function GET(request: NextRequest) {
     const hash = await createSessionToken(user.id, emailForLine(profile.userId))
     const fb = await legacyFirebaseToken(profile.userId, user.role)
 
-    // กติกาบริษัท: ต้องมีทั้ง LINE และ Discord — ยังไม่ผูกก็พาไปผูกก่อน
+    // ยังทำสิ่งที่ต้องทำก่อนใช้งานไม่ครบ ก็พาไปหน้ารายการก่อน
+    // (ชื่อจริง+ชื่อเล่น · Discord — ดู lib/todo/tasks.ts)
     //
-    // แต่บังคับได้ต่อเมื่อตั้ง DISCORD_CLIENT_ID ไว้แล้วเท่านั้น
+    // เรื่อง Discord บังคับได้ต่อเมื่อตั้ง DISCORD_CLIENT_ID ไว้แล้วเท่านั้น
     // ไม่งั้นจะพาคนไปหน้าที่กดเชื่อมต่อไม่ได้ = ล็อกทุกคนออกจากระบบ
     const discordReady = !!process.env.DISCORD_CLIENT_ID
-    const next = user.discord_user_id || !discordReady ? '' : '&next=/link-discord'
+    const nameDone = user.name_verified && !!user.nickname?.trim()
+    const discordDone = !!user.discord_user_id || !discordReady
+    // บัญชีระบบไม่ใช่คน ไม่มีชื่อเล่นและไม่มี Discord ให้ผูก
+    const next = user.is_system || (nameDone && discordDone) ? '' : '&next=/setup'
 
     return NextResponse.redirect(
       new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}${next}`, appUrl)

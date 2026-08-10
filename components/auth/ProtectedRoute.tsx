@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { needsSetup } from '@/lib/todo/tasks'
 import TechLoader from '@/components/shared/TechLoader'
 
 interface ProtectedRouteProps {
@@ -39,12 +40,12 @@ export default function ProtectedRoute({
         return
       }
 
-      // กติกาบริษัท: ต้องมีทั้ง LINE และ Discord
+      // ยังทำ "สิ่งที่ต้องทำก่อนใช้งาน" ไม่ครบ (ชื่อจริง+ชื่อเล่น · Discord)
       //
       // เช็คตรงนี้ ไม่ใช่แค่ตอนล็อกอิน — คนที่ล็อกอินค้างไว้ก่อนหน้าจะไม่เคย
       // ผ่านหน้า callback เลย ถ้าเช็คแค่ตอนล็อกอินก็ไม่มีวันโดนถาม
-      if (userData && !userData.discordUserId) {
-        router.push('/link-discord')
+      if (userData && needsSetup(userData)) {
+        router.replace('/setup')
         return
       }
     }

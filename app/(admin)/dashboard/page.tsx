@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCheckIn } from '@/hooks/useCheckIn';
 import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
+import TodoZone from '@/components/dashboard/TodoZone';
+import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -42,8 +44,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ — ไม่มีอะไรค้างก็ไม่ขึ้น */}
+      <TodoZone />
+
+      {/* HR/admin เห็นเพิ่มว่าต้องไปตามใครบ้าง */}
+      <TeamTodoZone />
+
       <PageHeader
-        title={`สวัสดี ${userData.lineDisplayName || userData.fullName || 'ผู้ใช้'}`}
+        // ทักด้วยชื่อเล่น ไม่ใช่ชื่อ LINE ที่เจ้าตัวตั้งเอง
+        title={`สวัสดี ${userData.nickname || userData.fullName || 'ผู้ใช้'}`}
         description={
           userData.role === 'admin' ? 'ผู้ดูแลระบบ'
           : userData.role === 'hr' ? 'ฝ่ายบุคคล'

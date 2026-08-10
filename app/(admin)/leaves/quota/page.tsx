@@ -349,7 +349,8 @@ export default function LeaveQuotaManagementPage() {
         users.map((user) => ({
           user: {
             id: user.id!,
-            fullName: user.fullName,
+            // "ชื่อจริง (ชื่อเล่น)" — ชื่อ LINE อ่านแล้วไม่รู้ว่าโควต้าของใคร
+            fullName: user.displayName || user.fullName,
             lineDisplayName: user.lineDisplayName,
             linePictureUrl: user.linePictureUrl,
             role: user.role,

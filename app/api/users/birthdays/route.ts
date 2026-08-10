@@ -29,7 +29,7 @@ export async function GET() {
 
   const { data, error } = await createAdminClient()
     .from('users')
-    .select('id, full_name, line_display_name, birth_date, role')
+    .select('id, full_name, nickname, display_name, line_display_name, birth_date, role')
     .eq('is_active', true)
     .eq('is_system', false)
     .is('deleted_at', null)
@@ -42,7 +42,9 @@ export async function GET() {
 
   const birthdays = (data ?? []).map((u) => ({
     id: u.id,
-    fullName: u.full_name,
+    // ปฏิทินโชว์ชื่อเดียว — เอา "ชื่อจริง (ชื่อเล่น)" ไป ชื่อ LINE อ่านแล้วไม่รู้ว่าใคร
+    fullName: u.display_name || u.full_name,
+    nickname: u.nickname ?? '',
     lineDisplayName: u.line_display_name,
     // ตรึงปีไว้ค่าเดียว — ส่งออกแค่วันกับเดือน
     birthDate: `2000-${u.birth_date!.slice(5, 10)}T00:00:00.000Z`,

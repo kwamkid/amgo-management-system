@@ -13,7 +13,11 @@
 
 import { redirect } from 'next/navigation'
 import { createServerSupabase, getCurrentUser } from '@/lib/supabase/server'
-import BulkEditTable, { type Person, type Unit } from './BulkEditTable'
+import BulkEditTable, {
+  type Company,
+  type JobFunction,
+  type Person,
+} from './BulkEditTable'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,20 +37,21 @@ export default async function BulkEditPage() {
   // ใช้ session ของ HR — RLS กรองให้เอง ไม่ต้องใช้ secret key
   const sb = await createServerSupabase()
 
-  const [usersRes, unitsRes, compRes] = await Promise.all([
+  const [usersRes, companiesRes, functionsRes, compRes] = await Promise.all([
     sb
       .from('users')
       .select(
-        'id, full_name, role, business_unit_id, employment_type, employment_status, start_date, start_date_verified, end_date, days_per_week, payroll_cycle'
+        'id, full_name, nickname, name_verified, line_display_name, role, company_id, job_function_id, employment_type, employment_status, start_date, start_date_verified, end_date, days_per_week, payroll_cycle'
       )
       .is('deleted_at', null)
       .eq('is_system', false)
       .order('full_name'),
+    sb.from('companies').select('id, code, name_th').order('code'),
     sb
-      .from('business_units')
-      .select('id, name, payroll_cycle, default_days_per_week, companies(code)')
+      .from('job_functions')
+      .select('id, name_th, payroll_cycle, default_days_per_week')
       .eq('is_active', true)
-      .order('name'),
+      .order('sort_order'),
     sb
       .from('user_compensation')
       .select('user_id, base_salary, effective_from')
@@ -59,20 +64,28 @@ export default async function BulkEditPage() {
     if (!salary.has(c.user_id)) salary.set(c.user_id, Number(c.base_salary))
   }
 
-  const units: Unit[] = (unitsRes.data ?? []).map((u) => ({
-    id: u.id,
-    name: u.name,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    company: ((u as any).companies?.code as string) ?? '',
-    payroll_cycle: u.payroll_cycle,
-    default_days_per_week: u.default_days_per_week,
+  const companies: Company[] = (companiesRes.data ?? []).map((c) => ({
+    id: c.id,
+    code: c.code,
+    name: c.name_th,
+  }))
+
+  const functions: JobFunction[] = (functionsRes.data ?? []).map((f) => ({
+    id: f.id,
+    name: f.name_th,
+    payroll_cycle: f.payroll_cycle,
+    default_days_per_week: f.default_days_per_week,
   }))
 
   const people: Person[] = (usersRes.data ?? []).map((u) => ({
     id: u.id,
     full_name: u.full_name,
+    nickname: u.nickname,
+    name_verified: u.name_verified,
+    line_display_name: u.line_display_name,
     role: u.role,
-    business_unit_id: u.business_unit_id,
+    company_id: u.company_id,
+    job_function_id: u.job_function_id,
     employment_type: (u.employment_type as 'monthly' | 'daily') ?? 'monthly',
     employment_status: (u.employment_status as Person['employment_status']) ?? 'active',
     start_date: u.start_date,
@@ -88,6 +101,6 @@ export default async function BulkEditPage() {
     //    ส่งข้ามจาก server component ไม่ได้ (Next โยน "Functions cannot be
     //    passed directly to Client Components") หน้านี้จึงให้ BulkEditTable
     //    ซึ่งเป็น client component เป็นคนวางหัวข้อเอง
-    <BulkEditTable people={people} units={units} />
+    <BulkEditTable people={people} companies={companies} functions={functions} />
   )
 }

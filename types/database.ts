@@ -155,102 +155,6 @@ export type Database = {
         }
         Relationships: []
       }
-      business_unit_work_days: {
-        Row: {
-          business_unit_id: string
-          day_of_week: number
-          work_mode: string
-        }
-        Insert: {
-          business_unit_id: string
-          day_of_week: number
-          work_mode: string
-        }
-        Update: {
-          business_unit_id?: string
-          day_of_week?: number
-          work_mode?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "business_unit_work_days_business_unit_id_fkey"
-            columns: ["business_unit_id"]
-            isOneToOne: false
-            referencedRelation: "business_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      business_units: {
-        Row: {
-          company_id: string
-          coverage_days_per_week: number | null
-          created_at: string
-          default_days_per_week: number | null
-          id: string
-          is_active: boolean
-          location_id: string | null
-          name: string
-          payroll_cycle: string | null
-          schedule_type: string
-          standard_hours_per_day: number
-          unit_type: string
-          updated_at: string
-        }
-        Insert: {
-          company_id: string
-          coverage_days_per_week?: number | null
-          created_at?: string
-          default_days_per_week?: number | null
-          id?: string
-          is_active?: boolean
-          location_id?: string | null
-          name: string
-          payroll_cycle?: string | null
-          schedule_type?: string
-          standard_hours_per_day?: number
-          unit_type?: string
-          updated_at?: string
-        }
-        Update: {
-          company_id?: string
-          coverage_days_per_week?: number | null
-          created_at?: string
-          default_days_per_week?: number | null
-          id?: string
-          is_active?: boolean
-          location_id?: string | null
-          name?: string
-          payroll_cycle?: string | null
-          schedule_type?: string
-          standard_hours_per_day?: number
-          unit_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "business_units_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "business_units_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "business_units_payroll_cycle_fkey"
-            columns: ["payroll_cycle"]
-            isOneToOne: false
-            referencedRelation: "payroll_cycles"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
       campaign_brands: {
         Row: {
           brand_id: string
@@ -1184,6 +1088,85 @@ export type Database = {
           },
         ]
       }
+      job_function_work_days: {
+        Row: {
+          day_of_week: number
+          job_function_id: string
+          work_mode: string
+        }
+        Insert: {
+          day_of_week: number
+          job_function_id: string
+          work_mode: string
+        }
+        Update: {
+          day_of_week?: number
+          job_function_id?: string
+          work_mode?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_function_work_days_job_function_id_fkey"
+            columns: ["job_function_id"]
+            isOneToOne: false
+            referencedRelation: "job_functions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_functions: {
+        Row: {
+          code: string
+          coverage_days_per_week: number | null
+          created_at: string
+          default_days_per_week: number | null
+          id: string
+          is_active: boolean
+          name_th: string
+          payroll_cycle: string | null
+          schedule_type: string
+          sort_order: number
+          standard_hours_per_day: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          coverage_days_per_week?: number | null
+          created_at?: string
+          default_days_per_week?: number | null
+          id?: string
+          is_active?: boolean
+          name_th: string
+          payroll_cycle?: string | null
+          schedule_type?: string
+          sort_order?: number
+          standard_hours_per_day?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          coverage_days_per_week?: number | null
+          created_at?: string
+          default_days_per_week?: number | null
+          id?: string
+          is_active?: boolean
+          name_th?: string
+          payroll_cycle?: string | null
+          schedule_type?: string
+          sort_order?: number
+          standard_hours_per_day?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_functions_payroll_cycle_fkey"
+            columns: ["payroll_cycle"]
+            isOneToOne: false
+            referencedRelation: "payroll_cycles"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       leave_days: {
         Row: {
           counts_toward_quota: boolean
@@ -1725,24 +1708,27 @@ export type Database = {
           code: string
           is_active: boolean
           name_th: string
-          note: string
+          note: string | null
           pay_day: number
+          pays_at_period_end: boolean
           period_start_day: number
         }
         Insert: {
           code: string
           is_active?: boolean
           name_th: string
-          note?: string
+          note?: string | null
           pay_day: number
+          pays_at_period_end?: boolean
           period_start_day: number
         }
         Update: {
           code?: string
           is_active?: boolean
           name_th?: string
-          note?: string
+          note?: string | null
           pay_day?: number
+          pays_at_period_end?: boolean
           period_start_day?: number
         }
         Relationships: []
@@ -2194,6 +2180,80 @@ export type Database = {
           },
         ]
       }
+      user_pay_items: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          frequency: string
+          id: string
+          kind: string
+          label: string
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          frequency?: string
+          id?: string
+          kind?: string
+          label: string
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          frequency?: string
+          id?: string
+          kind?: string
+          label?: string
+          note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pay_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_pay_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_pay_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_pay_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           can_read_all: boolean
@@ -2338,6 +2398,7 @@ export type Database = {
           approved_by: string | null
           birth_date: string | null
           business_unit_id: string | null
+          company_id: string | null
           created_at: string
           days_per_week: number | null
           deleted_at: string | null
@@ -2345,6 +2406,7 @@ export type Database = {
           deleted_by_name: string | null
           discord_user_id: string | null
           discord_username: string | null
+          display_name: string | null
           employment_status: string
           employment_type: string
           end_date: string | null
@@ -2358,11 +2420,14 @@ export type Database = {
           invite_link_id: string | null
           is_active: boolean
           is_system: boolean
+          job_function_id: string | null
           last_login_at: string | null
           line_display_name: string
           line_picture_url: string
           line_user_id: string
+          name_verified: boolean
           needs_approval: boolean
+          nickname: string | null
           payroll_cycle: string | null
           phone: string
           photo_url: string | null
@@ -2381,6 +2446,7 @@ export type Database = {
           approved_by?: string | null
           birth_date?: string | null
           business_unit_id?: string | null
+          company_id?: string | null
           created_at?: string
           days_per_week?: number | null
           deleted_at?: string | null
@@ -2388,6 +2454,7 @@ export type Database = {
           deleted_by_name?: string | null
           discord_user_id?: string | null
           discord_username?: string | null
+          display_name?: string | null
           employment_status?: string
           employment_type?: string
           end_date?: string | null
@@ -2401,11 +2468,14 @@ export type Database = {
           invite_link_id?: string | null
           is_active?: boolean
           is_system?: boolean
+          job_function_id?: string | null
           last_login_at?: string | null
           line_display_name?: string
           line_picture_url?: string
           line_user_id: string
+          name_verified?: boolean
           needs_approval?: boolean
+          nickname?: string | null
           payroll_cycle?: string | null
           phone?: string
           photo_url?: string | null
@@ -2424,6 +2494,7 @@ export type Database = {
           approved_by?: string | null
           birth_date?: string | null
           business_unit_id?: string | null
+          company_id?: string | null
           created_at?: string
           days_per_week?: number | null
           deleted_at?: string | null
@@ -2431,6 +2502,7 @@ export type Database = {
           deleted_by_name?: string | null
           discord_user_id?: string | null
           discord_username?: string | null
+          display_name?: string | null
           employment_status?: string
           employment_type?: string
           end_date?: string | null
@@ -2444,11 +2516,14 @@ export type Database = {
           invite_link_id?: string | null
           is_active?: boolean
           is_system?: boolean
+          job_function_id?: string | null
           last_login_at?: string | null
           line_display_name?: string
           line_picture_url?: string
           line_user_id?: string
+          name_verified?: boolean
           needs_approval?: boolean
+          nickname?: string | null
           payroll_cycle?: string | null
           phone?: string
           photo_url?: string | null
@@ -2477,10 +2552,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "users_business_unit_id_fkey"
-            columns: ["business_unit_id"]
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: "business_units"
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
@@ -2505,6 +2580,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "users_job_function_id_fkey"
+            columns: ["job_function_id"]
+            isOneToOne: false
+            referencedRelation: "job_functions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "users_payroll_cycle_fkey"
             columns: ["payroll_cycle"]
             isOneToOne: false
@@ -2524,7 +2606,6 @@ export type Database = {
     Views: {
       employee_directory: {
         Row: {
-          business_unit: string | null
           company_code: string | null
           company_name: string | null
           days_per_week: number | null
@@ -2535,8 +2616,10 @@ export type Database = {
           full_name: string | null
           id: string | null
           is_active: boolean | null
+          job_function: string | null
           location_name: string | null
           months_of_service: number | null
+          nickname: string | null
           requires_checkin: boolean | null
           role: string | null
           role_th: string | null
@@ -2646,6 +2729,10 @@ export type Database = {
         Returns: boolean
       }
       can_view_all: { Args: never; Returns: boolean }
+      clamp_day: {
+        Args: { p_day: number; p_month_start: string }
+        Returns: string
+      }
       consume_invite_link: {
         Args: { p_code: string }
         Returns: {
@@ -2678,6 +2765,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       months_of_service: { Args: { p_start: string }; Returns: number }
+      pay_items_total: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: number
+      }
       payroll_period: {
         Args: { p_cycle: string; p_pay_month: string }
         Returns: {

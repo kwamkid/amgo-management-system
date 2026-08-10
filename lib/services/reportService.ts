@@ -11,7 +11,7 @@
 //
 //    ตอนนี้ใช้ attendance_summary() ที่รู้ตารางเวรจริงของแต่ละคน
 //    (location_work_schedules · user_work_schedules · schedule_exceptions
-//     · business_unit_work_days) และรู้ช่วงเวลาที่ยังเป็นพนักงานอยู่ด้วย
+//     · job_function_work_days) และรู้ช่วงเวลาที่ยังเป็นพนักงานอยู่ด้วย
 //
 // 2. ของเดิมยิง 1 query ต่อ 1 วัน — รายงานทั้งเดือน = 31 query
 //    แล้วดึงพนักงานทั้งบริษัทมากรองในเบราว์เซอร์อีกที

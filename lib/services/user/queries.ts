@@ -26,7 +26,7 @@ async function locationsFor(userIds: string[]) {
 }
 
 /** ช่องที่ยอมให้ค้นหา — ตรงกับที่หน้าจัดการพนักงานบอกผู้ใช้ */
-const SEARCH_COLUMNS = ['full_name', 'line_display_name', 'phone', 'discord_username']
+const SEARCH_COLUMNS = ['full_name', 'nickname', 'line_display_name', 'phone', 'discord_username']
 
 /**
  * ตัวคั่นของ .or() คือ ",", "(", ")" — ถ้าคำค้นมีอักขระพวกนี้ตัวกรองจะเพี้ยน

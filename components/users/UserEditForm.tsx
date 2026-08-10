@@ -55,6 +55,7 @@ export default function UserEditForm({
 
   const [formData, setFormData] = useState<UpdateUserData>({
     fullName: user.fullName,
+    nickname: user.nickname || '',
     phone: user.phone || '',
     birthDate: formatDateForInput(user.birthDate), // This is already a string
     role: user.role,
@@ -69,6 +70,12 @@ export default function UserEditForm({
     // Validate
     if (!formData.fullName?.trim()) {
       alert('กรุณากรอกชื่อ-นามสกุล')
+      return
+    }
+
+    // ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร — รายงานทุกใบเลยอ่านไม่ออกตามไปด้วย
+    if (!formData.nickname?.trim()) {
+      alert('กรุณากรอกชื่อเล่น')
       return
     }
 
@@ -152,11 +159,33 @@ export default function UserEditForm({
                 type="text"
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                placeholder="ชื่อ นามสกุล"
                 required
                 disabled={isLoading}
               />
+              {user.nameVerified === false && (
+                <p className="mt-1 text-xs text-orange-700">
+                  ตอนนี้ยังเป็นชื่อจาก LINE — กรุณาแก้เป็นชื่อจริง
+                </p>
+              )}
             </div>
-            
+
+            <div>
+              <Label htmlFor="nickname">ชื่อเล่น *</Label>
+              <Input
+                id="nickname"
+                type="text"
+                value={formData.nickname}
+                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                placeholder="เช่น แตน"
+                required
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                ใช้แสดงในรายงานและปฏิทินวันเกิด — ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="phone">เบอร์โทรศัพท์ *</Label>
               <div className="relative">

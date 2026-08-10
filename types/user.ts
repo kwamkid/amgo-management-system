@@ -14,6 +14,9 @@ export interface User {
   
   // Personal Info
   fullName: string
+  nickname?: string        // ชื่อเล่น — ที่ทำงานเรียกกันด้วยชื่อนี้
+  displayName?: string     // "ชื่อจริง (ชื่อเล่น)" — ฐานข้อมูลคำนวณให้ แก้ตรง ๆ ไม่ได้
+  nameVerified?: boolean   // false = ยังเป็นชื่อ LINE ที่ลากมาจากระบบเก่า
   phone?: string
   birthDate?: Date | string
   

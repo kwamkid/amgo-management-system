@@ -64,10 +64,20 @@ export async function saveBulk(rows: BulkRow[]): Promise<SaveResult> {
       continue
     }
 
+    // full_name เป็น NOT NULL — ปล่อยว่างไปจะโดนฐานข้อมูลด่าเป็นภาษาอังกฤษ
+    if (!r.full_name?.trim()) {
+      errors.push(`${label(r.id)}: ชื่อ-นามสกุลว่างไม่ได้`)
+      continue
+    }
+
     const { data: touched, error } = await sb
       .from('users')
       .update({
-        business_unit_id: r.business_unit_id,
+        full_name: r.full_name.trim().replace(/\s+/g, ' '),
+        nickname: r.nickname?.trim() || null,
+        name_verified: r.name_verified,
+        company_id: r.company_id,
+        job_function_id: r.job_function_id,
         employment_type: r.employment_type,
         employment_status: r.employment_status,
         start_date: r.start_date,

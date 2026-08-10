@@ -18,7 +18,13 @@ export const isEnded = (s: EmploymentStatus) => ENDED_STATUSES.includes(s)
 
 export type BulkRow = {
   id: string
-  business_unit_id: string | null
+  full_name: string
+  nickname: string | null
+  name_verified: boolean
+  /** บริษัทที่สังกัด — ใช้แยกเมนูและสิทธิ์ ไม่เกี่ยวกับตารางงาน */
+  company_id: string | null
+  /** หน้าที่ — เป็นตัวกำหนดตารางเวรและรอบจ่ายเงิน */
+  job_function_id: string | null
   employment_type: 'monthly' | 'daily'
   employment_status: EmploymentStatus
   start_date: string | null

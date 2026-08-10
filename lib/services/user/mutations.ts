@@ -27,7 +27,16 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   }
 
   set('full_name', data.fullName)
+  // ล้างชื่อเล่นให้ว่างได้ด้วย จึงต้องแยกจาก set() ที่มองว่า '' คือค่าที่ใช้ได้
+  if (data.nickname !== undefined) {
+    patch.nickname = (data.nickname as string).trim() || null
+  }
   set('phone', data.phone as string | undefined)
+
+  // แก้ชื่อ = มีคนดูแล้วว่าถูก จึงถือว่ายืนยันแล้ว
+  // (ค่าที่ส่งมาตรง ๆ ชนะ เผื่อหน้าจอไหนอยากตั้งเอง)
+  set('name_verified', (data.nameVerified as boolean | undefined) ?? (data.fullName !== undefined ? true : undefined))
+
   set('line_display_name', data.lineDisplayName)
   set('line_picture_url', data.linePictureUrl)
   set('discord_user_id', data.discordUserId ?? undefined)
@@ -53,7 +62,8 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   // ฟิลด์ที่ไม่มีในสมัย Firestore — หน้าแก้หลายคนพร้อมกันส่งมา
   set('employment_status', data.employmentStatus as string | undefined)
   set('employment_type', data.employmentType as string | undefined)
-  set('business_unit_id', data.businessUnitId as string | undefined)
+  set('company_id', data.companyId as string | undefined)
+  set('job_function_id', data.jobFunctionId as string | undefined)
   set('primary_location_id', data.primaryLocationId as string | undefined)
   set('days_per_week', data.daysPerWeek as number | undefined)
   set('payroll_cycle', data.payrollCycle as string | undefined)
@@ -95,6 +105,28 @@ export async function approveUser(userId: string, approvedBy: string): Promise<v
     .eq('id', userId)
 
   if (error) throw new Error(`อนุมัติพนักงานไม่สำเร็จ: ${error.message}`)
+}
+
+/**
+ * ให้กลับมาเป็นพนักงานอีกครั้ง — ยกเลิกการสิ้นสุดการเป็นพนักงาน
+ *
+ * ใช้ตอนกดผิด หรือคนที่ลาออกแล้วกลับมาทำงานใหม่
+ * ต้องล้าง end_date ด้วย ไม่งั้น attendance_summary จะตัดรายงานไว้ที่วันนั้น
+ * แล้วเช็คอินหลังจากนั้นจะไม่โผล่ในรายงานเลย
+ *
+ * is_active เปิดให้เองโดย trigger trg_sync_is_active ตาม employment_status
+ */
+export async function reactivateUser(userId: string): Promise<void> {
+  const { error } = await sb()
+    .from('users')
+    .update({
+      employment_status: 'active',
+      end_date: null,
+      end_reason: null,
+    })
+    .eq('id', userId)
+
+  if (error) throw new Error(`ให้กลับมาทำงานไม่สำเร็จ: ${error.message}`)
 }
 
 export async function deactivateUser(userId: string): Promise<void> {

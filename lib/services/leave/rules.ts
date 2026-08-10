@@ -11,7 +11,7 @@ export { LEAVE_RULES }
  * นับจำนวนวันลา — นับทุกวันที่เลือก รวมเสาร์อาทิตย์
  *
  * ตั้งใจไม่ตัดวันหยุด เพราะหลายสาขาเปิด 7 วันและพนักงานทำงานเสาร์อาทิตย์จริง
- * (ดู coverage_days_per_week ใน business_units)
+ * (ดู coverage_days_per_week ใน job_functions)
  */
 export function calculateLeaveDays(startDate: Date, endDate: Date): number {
   const start = new Date(startDate)

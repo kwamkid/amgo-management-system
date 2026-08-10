@@ -106,12 +106,13 @@ export default function DeliveryMapPage() {
   const { mapPoints, loading, deleteDeliveryPoint, refetch } = useDeliveryMap(selectedDate)
   const { showToast } = useToast()
 
-  // Get unique drivers
+  // Get unique drivers — จัดกลุ่มด้วย driverId ไม่ใช่ชื่อ
+  // เพราะชื่อที่ฝังไว้กับจุดส่งเก่าอาจเป็นชื่อก่อนแก้โปรไฟล์ คนเดียวกันจะแตกเป็นหลายรายการ
   const uniqueDrivers = useMemo(() => {
     const drivers = new Map<string, string>()
     mapPoints.forEach(point => {
-      if (point.driverName) {
-        drivers.set(point.driverName, point.driverName)
+      if (point.driverId && point.driverName && !drivers.has(point.driverId)) {
+        drivers.set(point.driverId, point.driverName)
       }
     })
     return Array.from(drivers, ([id, name]) => ({ id, name }))
@@ -123,7 +124,7 @@ export default function DeliveryMapPage() {
     
     // Filter by driver
     if (selectedDriver !== 'all') {
-      filtered = filtered.filter(point => point.driverName === selectedDriver)
+      filtered = filtered.filter(point => point.driverId === selectedDriver)
     }
     
     // Filter by search term

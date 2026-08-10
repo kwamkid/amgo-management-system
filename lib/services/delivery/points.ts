@@ -201,11 +201,14 @@ export const getDeliveryPoints = async (
   const { data, error } = await q
   if (error) throw new Error(`ดึงรายการจุดส่งไม่สำเร็จ: ${error.message}`)
 
-  const rows = (data ?? []) as PointRow[]
+  const rows = ((data ?? []) as PointRow[]).slice(0, pageSize)
+  const photoUrls = await getDeliveryPhotoUrls(
+    rows.flatMap((r) => [r.photo_url, r.photo_thumbnail_url])
+  )
   return {
-    points: rows.slice(0, pageSize).map(toPoint),
+    points: rows.map((r) => toPoint(r, photoUrls)),
     lastDoc: offset + pageSize,
-    hasMore: rows.length > pageSize,
+    hasMore: (data ?? []).length > pageSize,
   }
 }
 
@@ -217,7 +220,11 @@ export const getDeliveryPoint = async (deliveryId: string): Promise<DeliveryPoin
     .maybeSingle()
 
   if (error) throw new Error(`ดึงข้อมูลจุดส่งไม่สำเร็จ: ${error.message}`)
-  return data ? toPoint(data as PointRow) : null
+  if (!data) return null
+
+  const row = data as PointRow
+  const photoUrls = await getDeliveryPhotoUrls([row.photo_url, row.photo_thumbnail_url])
+  return toPoint(row, photoUrls)
 }
 
 /* ------------------------------------------------------------------ *

@@ -238,6 +238,16 @@ export const useDeliveryMap = (date?: string) => {
 
       const { points } = await deliveryService.getDeliveryPoints(filters, 100)
 
+      // ชื่อคนขับถูกฝังไว้กับจุดส่ง ณ ตอนเช็คอิน — ถ้าโปรไฟล์เคยแก้ชื่อ
+      // จุดเก่าจะถือชื่อเก่าไว้ ทำให้คนเดียวกันโชว์หลายชื่อ
+      // จุดส่งเรียงจากใหม่ไปเก่า ชื่อแรกที่เจอของแต่ละ driverId คือชื่อล่าสุด
+      const latestNames = new Map<string, string>()
+      for (const point of points) {
+        if (point.driverId && point.driverName && !latestNames.has(point.driverId)) {
+          latestNames.set(point.driverId, point.driverName)
+        }
+      }
+
       // Import getAddressFromCoords
       const { getAddressFromCoords } = await import('@/lib/utils/location')
 
@@ -268,7 +278,8 @@ export const useDeliveryMap = (date?: string) => {
             sequence: points.length - index,
             photo: point.photo,
             note: point.note,
-            driverName: point.driverName // เพิ่ม driver name
+            driverId: point.driverId,
+            driverName: latestNames.get(point.driverId) ?? point.driverName
           }
         })
       )

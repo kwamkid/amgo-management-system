@@ -19,6 +19,7 @@ import { toDate } from '@/lib/utils/date'
 import LocationMultiSelect from './LocationMultiSelect'
 import { createClient } from '@/lib/supabase/client'
 import PayCard from './PayCard'
+import EmployeeTimeline from './EmployeeTimeline'
 import { TabBar, TabItem } from '@/components/aoo'
 import { Phone, Calendar, Save, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -68,7 +69,12 @@ export default function UserEditForm({
     return `${year}-${month}-${day}`
   }
 
-  const [tab, setTab] = useState<'info' | 'pay' | 'location'>('info')
+  // เปิดลิงก์ ?tab=timeline มาจากหน้ารายชื่อ/กล่องทดลองงานได้เลย
+  const [tab, setTab] = useState<'info' | 'pay' | 'location' | 'timeline'>(() => {
+    if (typeof window === 'undefined') return 'info'
+    const t = new URLSearchParams(window.location.search).get('tab')
+    return t === 'timeline' || t === 'pay' || t === 'location' ? t : 'info'
+  })
 
   // ตัวเลือกบริษัทกับตำแหน่ง — ตำแหน่งเป็นตัวกำหนดสิทธิ์ ตารางงาน รอบจ่ายเงิน
   const [companies, setCompanies] = useState<{ id: string; code: string; name_th: string }[]>([])
@@ -198,6 +204,11 @@ export default function UserEditForm({
           active={tab === 'location'}
           onClick={() => setTab('location')}
           label="สถานที่เช็คอิน"
+        />
+        <TabItem
+          active={tab === 'timeline'}
+          onClick={() => setTab('timeline')}
+          label="ไทม์ไลน์"
         />
       </TabBar>
 
@@ -529,8 +540,13 @@ export default function UserEditForm({
         </Card>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-3">
+      {/* ── แท็บ 4 · ไทม์ไลน์ (อ่านอย่างเดียว) ─────────────── */}
+      <div hidden={tab !== 'timeline'}>
+        {user.id && <EmployeeTimeline userId={user.id} />}
+      </div>
+
+      {/* Actions — แท็บไทม์ไลน์อ่านอย่างเดียว ไม่มีอะไรให้บันทึก */}
+      <div hidden={tab === 'timeline'} className="flex items-center justify-end gap-3">
 
         <Button
           type="button"

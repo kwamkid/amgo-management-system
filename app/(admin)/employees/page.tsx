@@ -141,7 +141,14 @@ export default function EmployeesPage() {
       header: 'พนักงาน',
       width: 260,
       cell: (u) => (
-        <div className="flex min-w-0 items-center gap-2">
+        // กดที่ชื่อเข้าหน้าแก้ไขได้เลย — เร็วกว่าไปเปิดเมนู ⋯ ทุกครั้ง
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleEdit(u.id!)}
+          onKeyDown={(e) => e.key === 'Enter' && handleEdit(u.id!)}
+          className="flex min-w-0 cursor-pointer items-center gap-2 hover:opacity-80"
+        >
           <UserCell
             // ชื่อจริง (ชื่อเล่น) — ชื่อ LINE ย้ายไปบรรทัดล่างเพราะดูไม่ออกว่าใคร
             name={u.displayName || u.fullName}
@@ -216,11 +223,11 @@ export default function EmployeesPage() {
         <ActionMenu
           items={[
             {
-              label: 'ดูสรุป + ไทม์ไลน์',
+              label: 'ดูไทม์ไลน์',
               icon: 'History',
               onSelect: () => {
                 setNavigating(true)
-                router.push(`/employees/${u.id}`)
+                router.push(`/employees/${u.id}/edit?tab=timeline`)
               },
             },
             { label: 'แก้ไขข้อมูล', icon: 'Pencil', onSelect: () => handleEdit(u.id!) },

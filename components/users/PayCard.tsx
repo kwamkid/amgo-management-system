@@ -24,17 +24,23 @@ import { ArrowUpRight, Check, History, Pencil, Plus, Trash2, Wallet, X } from 'l
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/aoo'
 
+type Tier = { upTo: number | null; percent: number }
+
 type PayItem = {
   id: string
   kind: string
   label: string
   amount: number
+  /** fixed = ยอดคงที่ · tiered_percent = ค่าคอมขั้นบันได · per_piece = บาทต่อชิ้น */
+  calc: string
+  config: { tiers?: Tier[] } | null
 }
 
 type Salary = { id: string; base_salary: number; effective_from: string; note: string | null }
 
 const KINDS = [
   { value: 'commission', label: 'ค่าคอมมิชชั่น' },
+  { value: 'piece', label: 'ค่าชิ้นงาน' },
   { value: 'position', label: 'ค่าตำแหน่ง' },
   { value: 'travel', label: 'ค่าเดินทาง' },
   { value: 'diligence', label: 'เบี้ยขยัน' },
@@ -48,8 +54,11 @@ const today = () => new Date().toISOString().slice(0, 10)
 const thaiDate = (iso: string) =>
   new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
 
+// ⚠️ ไม่ใส่ความกว้างใน FIELD — เคยใส่ w-full แล้วไปชนกับ w-36/w-28 ของ
+//    แต่ละช่อง (Tailwind ตัดสินจากลำดับใน stylesheet ไม่ใช่ลำดับ class)
+//    ช่องชื่อรายการเลยถูกบีบจนเหลือแต่กรอบ ส่วนช่องตัวเลขบานเต็มแถว
 const FIELD =
-  'h-9 w-full rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
+  'h-9 rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
 
 export default function PayCard({
   userId,
@@ -76,13 +85,20 @@ export default function PayCard({
         .order('effective_from', { ascending: false }),
       sb
         .from('user_pay_items')
-        .select('id, kind, label, amount')
+        .select('id, kind, label, amount, calc, config')
         .eq('user_id', userId)
         .order('created_at'),
     ])
 
     setHistory((comp ?? []).map((c) => ({ ...c, base_salary: Number(c.base_salary) })))
-    setItems((pay ?? []).map((i) => ({ ...i, amount: Number(i.amount) })))
+    setItems(
+      (pay ?? []).map((i) => ({
+        ...i,
+        amount: Number(i.amount),
+        // config เป็น jsonb ไร้รูปแบบจากมุมของ TypeScript — ระบุเองว่าคือกติกาขั้นบันได
+        config: i.config as PayItem['config'],
+      }))
+    )
     setLoading(false)
   }, [userId])
 
@@ -93,7 +109,9 @@ export default function PayCard({
   if (loading) return null
 
   const current = history[0] ?? null
-  const extraTotal = items.reduce((s, i) => s + i.amount, 0)
+  // รวมได้เฉพาะยอดคงที่ — ค่าคอม/ค่าชิ้นงานต้องรอยอดขายจริงของแต่ละเดือน
+  const extraTotal = items.filter((i) => i.calc === 'fixed').reduce((s, i) => s + i.amount, 0)
+  const hasVariable = items.some((i) => i.calc !== 'fixed')
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -211,12 +229,19 @@ export default function PayCard({
       </div>
 
       {/* ── รวม ───────────────────────────────────────────── */}
-      {(current || extraTotal > 0) && (
+      {(current || items.length > 0) && (
         <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-2.5">
           <span className="text-sm font-medium text-gray-700">รวมต่อเดือน</span>
-          <span className="font-mono font-semibold tabular-nums text-gray-900">
-            {baht.format((current?.base_salary ?? 0) + extraTotal)}
-            <span className="ml-1 text-xs font-normal text-gray-400">บาท</span>
+          <span className="text-right">
+            <span className="font-mono font-semibold tabular-nums text-gray-900">
+              {baht.format((current?.base_salary ?? 0) + extraTotal)}
+              <span className="ml-1 text-xs font-normal text-gray-400">บาท</span>
+            </span>
+            {hasVariable && (
+              <span className="block text-xs text-gray-400">
+                + ค่าคอม/ค่าชิ้นงานตามยอดจริงของแต่ละเดือน
+              </span>
+            )}
           </span>
         </div>
       )}
@@ -301,7 +326,7 @@ function SalaryForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             autoFocus
-            className={`${FIELD} mt-0.5 text-right font-mono tabular-nums`}
+            className={`${FIELD} mt-0.5 w-full text-right font-mono tabular-nums`}
           />
         </label>
         <label className="block">
@@ -314,7 +339,7 @@ function SalaryForm({
             title={
               isRaise ? undefined : 'แก้ตัวเลขจะทับของวันเดิม — จะเปลี่ยนวันให้ใช้ปุ่มขึ้นเงินเดือน'
             }
-            className={`${FIELD} mt-0.5 disabled:bg-gray-100 disabled:text-gray-400`}
+            className={`${FIELD} mt-0.5 w-full disabled:bg-gray-100 disabled:text-gray-400`}
           />
         </label>
         <label className="block">
@@ -323,7 +348,7 @@ function SalaryForm({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={isRaise ? 'เช่น ปรับประจำปี' : 'เช่น กรอกผิด'}
-            className={`${FIELD} mt-0.5`}
+            className={`${FIELD} mt-0.5 w-full`}
           />
         </label>
       </div>
@@ -348,11 +373,30 @@ function SalaryForm({
 }
 
 /* ------------------------------------------------------------------ *
- *  รายได้พิเศษ 1 บรรทัด
+ *  รายได้พิเศษ 1 บรรทัด — หน้าตาเปลี่ยนตามประเภท
  *
- *  เป็นช่องกรอกตลอด แก้แล้วปุ่มติ๊กถูกจะโผล่ กดแล้วมีผลทันที
- *  ไม่มีปุ่ม "ขึ้น" เพราะไม่ได้เก็บเป็นช่วงเวลาเหมือนเงินเดือน
+ *    ค่าคอมมิชชั่น  ขั้นบันได "ไม่เกิน X ได้ a% · เกินจากนั้น b%"
+ *                   เก็บเป็นกติกา — ยอดจ่ายจริงขึ้นกับยอดขายของเดือนนั้น
+ *                   ไม่ใส่ขั้นเลยก็ได้ = คอมเปอร์เซ็นต์เดียวทั้งยอด
+ *    ค่าชิ้นงาน     เรตบาทต่อชิ้น — ยอดจ่ายจริงขึ้นกับจำนวนชิ้น
+ *    ที่เหลือ       ยอดคงที่ต่อเดือน แก้แล้วมีผลทันที
  * ------------------------------------------------------------------ */
+
+type TierDraft = { upTo: string; percent: string }
+
+const calcOf = (kind: string) =>
+  kind === 'commission' ? 'tiered_percent' : kind === 'piece' ? 'per_piece' : 'fixed'
+
+/** เทียบกติกาโดยไม่สน key order — jsonb เรียง key ใหม่ตอนเก็บ ใช้ JSON.stringify เทียบตรง ๆ ไม่ได้ */
+const tiersKey = (tiers: Tier[] | null) =>
+  tiers ? tiers.map((t) => `${t.upTo ?? 'over'}:${t.percent}`).join('|') : ''
+
+const tierText = (tiers: Tier[]) =>
+  tiers
+    .map((t) =>
+      t.upTo === null ? `เกินจากนั้น ${t.percent}%` : `ไม่เกิน ${baht.format(t.upTo)} ได้ ${t.percent}%`
+    )
+    .join(' · ')
 
 function ItemRow({
   item,
@@ -369,29 +413,70 @@ function ItemRow({
 }) {
   const [kind, setKind] = useState(item?.kind ?? 'commission')
   const [label, setLabel] = useState(item?.label ?? '')
-  const [amount, setAmount] = useState(item ? String(item.amount) : '')
+  const [amount, setAmount] = useState(
+    item && item.calc !== 'tiered_percent' && item.amount ? String(item.amount) : ''
+  )
+
+  // ขั้นบันได: แถวที่มีเพดาน + เปอร์เซ็นต์ของ "เกินจากนั้น" (ขั้นสุดท้ายเสมอ)
+  const stored = (item?.config?.tiers ?? []) as Tier[]
+  const [steps, setSteps] = useState<TierDraft[]>(
+    stored
+      .filter((t) => t.upTo !== null)
+      .map((t) => ({ upTo: String(t.upTo), percent: String(t.percent) }))
+  )
+  const [overPercent, setOverPercent] = useState(
+    String(stored.find((t) => t.upTo === null)?.percent ?? '')
+  )
   const [saving, setSaving] = useState(false)
 
-  const dirty = !item || kind !== item.kind || label !== item.label || Number(amount) !== item.amount
+  const calc = calcOf(kind)
+
+  /** ร่างที่กรอก → กติกาจริง — คืน null ถ้ายังกรอกไม่ครบหรือเพดานไม่ไล่จากน้อยไปมาก */
+  const buildTiers = (): Tier[] | null => {
+    const out: Tier[] = []
+    let last = 0
+    for (const step of steps) {
+      const upTo = Number(step.upTo)
+      const percent = Number(step.percent)
+      if (!step.upTo.trim() || !Number.isFinite(upTo) || upTo <= last) return null
+      if (!step.percent.trim() || !Number.isFinite(percent) || percent < 0) return null
+      out.push({ upTo, percent })
+      last = upTo
+    }
+    const over = Number(overPercent)
+    if (!overPercent.trim() || !Number.isFinite(over) || over < 0) return null
+    out.push({ upTo: null, percent: over })
+    return out
+  }
+
+  const name = label.trim() || KINDS.find((k) => k.value === kind)!.label
+  const draftTiers = calc === 'tiered_percent' ? buildTiers() : null
+  const draftAmount = calc === 'tiered_percent' ? 0 : Number(amount) || 0
+
+  const valid = calc === 'tiered_percent' ? draftTiers !== null : draftAmount > 0
+  const dirty =
+    !item ||
+    kind !== item.kind ||
+    name !== item.label ||
+    draftAmount !== item.amount ||
+    tiersKey(draftTiers) !== tiersKey(item.config?.tiers ?? null)
 
   const save = async () => {
-    const value = Number(amount)
-    if (!Number.isFinite(value) || value <= 0) return
-    // ไม่ตั้งชื่อก็ได้ — ใช้ชื่อประเภทแทน จะได้ไม่ต้องพิมพ์คำเดิมซ้ำ
-    const name = label.trim() || KINDS.find((k) => k.value === kind)!.label
-
+    if (!valid) return
     setSaving(true)
     const sb = createClient()
+    const payload = {
+      kind,
+      label: name,
+      amount: draftAmount,
+      calc,
+      config: draftTiers ? { tiers: draftTiers } : null,
+    }
     const { error } = item
-      ? await sb
-          .from('user_pay_items')
-          .update({ kind, label: name, amount: value })
-          .eq('id', item.id)
+      ? await sb.from('user_pay_items').update(payload).eq('id', item.id)
       : await sb.from('user_pay_items').insert({
+          ...payload,
           user_id: userId!,
-          kind,
-          label: name,
-          amount: value,
           effective_from: today(),
         })
 
@@ -399,77 +484,165 @@ function ItemRow({
     if (!error) onChanged()
   }
 
+  /* ── อ่านอย่างเดียว (หน้าโปรไฟล์ตัวเอง) ─────────────────── */
   if (!editable) {
+    const i = item!
     return (
-      <div className="flex items-baseline justify-between border-b border-gray-100 py-1.5 last:border-0">
-        <span className="text-sm text-gray-600">
-          {item!.label}
+      <div className="flex items-baseline justify-between gap-3 border-b border-gray-100 py-1.5 last:border-0">
+        <span className="min-w-0 text-sm text-gray-600">
+          {i.label}
           <span className="ml-1.5 text-xs text-gray-400">
-            {KINDS.find((k) => k.value === item!.kind)?.label}
+            {KINDS.find((k) => k.value === i.kind)?.label}
           </span>
+          {i.calc === 'tiered_percent' && (
+            <span className="block text-xs text-gray-400">{tierText(i.config?.tiers ?? [])}</span>
+          )}
         </span>
-        <span className="font-mono text-sm tabular-nums text-gray-900">
-          {baht.format(item!.amount)}
+        <span className="shrink-0 font-mono text-sm tabular-nums text-gray-900">
+          {i.calc === 'tiered_percent'
+            ? 'ตามยอด'
+            : i.calc === 'per_piece'
+              ? `${baht.format(i.amount)}/ชิ้น`
+              : baht.format(i.amount)}
         </span>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <select value={kind} onChange={(e) => setKind(e.target.value)} className={`${FIELD} w-36`}>
-        {KINDS.map((k) => (
-          <option key={k.value} value={k.value}>
-            {k.label}
-          </option>
-        ))}
-      </select>
-      <input
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder={KINDS.find((k) => k.value === kind)?.label}
-        className={`${FIELD} flex-1`}
-      />
-      <input
-        type="number"
-        min={0}
-        step={100}
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="0"
-        className={`${FIELD} w-28 text-right font-mono tabular-nums`}
-      />
+    <div className="rounded-lg border border-gray-100 p-1.5">
+      <div className="flex items-center gap-1.5">
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          className={`${FIELD} w-36 shrink-0`}
+        >
+          {KINDS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={KINDS.find((k) => k.value === kind)?.label}
+          className={`${FIELD} min-w-0 flex-1`}
+        />
+        {calc !== 'tiered_percent' && (
+          <input
+            type="number"
+            min={0}
+            step="any"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={calc === 'per_piece' ? 'บาท/ชิ้น' : '0'}
+            className={`${FIELD} w-28 shrink-0 text-right font-mono tabular-nums`}
+          />
+        )}
 
-      {/* ปุ่มบันทึกโผล่เฉพาะตอนมีอะไรเปลี่ยน — จะได้รู้ว่ายังไม่ได้กด */}
-      {dirty ? (
+        {/* ปุ่มบันทึกโผล่เฉพาะตอนมีอะไรเปลี่ยน — จะได้รู้ว่ายังไม่ได้กด */}
+        {dirty ? (
+          <button
+            type="button"
+            title={valid ? 'บันทึก' : 'กรอกให้ครบก่อน'}
+            disabled={saving || !valid}
+            onClick={save}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-40"
+          >
+            <Check size={15} />
+          </button>
+        ) : (
+          <span className="h-9 w-9 shrink-0" />
+        )}
+
         <button
           type="button"
-          title="บันทึก"
-          disabled={saving}
-          onClick={save}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+          title={item ? 'ลบรายการนี้' : 'ยกเลิก'}
+          onClick={async () => {
+            if (item) {
+              await createClient().from('user_pay_items').delete().eq('id', item.id)
+              onChanged()
+            } else {
+              onCancel?.()
+            }
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:text-red-600"
         >
-          <Check size={15} />
+          {item ? <Trash2 size={15} /> : <X size={15} />}
         </button>
-      ) : (
-        <span className="h-9 w-9 shrink-0" />
+      </div>
+
+      {calc === 'per_piece' && (
+        <p className="mt-1 pl-1 text-xs text-gray-400">
+          จ่ายจริง = เรตนี้ × จำนวนชิ้นของเดือนนั้น
+        </p>
       )}
 
-      <button
-        type="button"
-        title={item ? 'ลบรายการนี้' : 'ยกเลิก'}
-        onClick={async () => {
-          if (item) {
-            await createClient().from('user_pay_items').delete().eq('id', item.id)
-            onChanged()
-          } else {
-            onCancel?.()
-          }
-        }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:text-red-600"
-      >
-        {item ? <Trash2 size={15} /> : <X size={15} />}
-      </button>
+      {calc === 'tiered_percent' && (
+        <div className="mt-1.5 space-y-1.5 pl-1">
+          {steps.map((step, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-sm text-gray-600">
+              <span className="shrink-0">ยอดไม่เกิน</span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={step.upTo}
+                onChange={(e) =>
+                  setSteps(steps.map((x, j) => (j === i ? { ...x, upTo: e.target.value } : x)))
+                }
+                placeholder="100000"
+                className={`${FIELD} w-32 text-right font-mono tabular-nums`}
+              />
+              <span className="shrink-0">บาท ได้</span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={step.percent}
+                onChange={(e) =>
+                  setSteps(steps.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))
+                }
+                className={`${FIELD} w-16 text-right font-mono tabular-nums`}
+              />
+              <span className="shrink-0">%</span>
+              <button
+                type="button"
+                title="ลบขั้นนี้"
+                onClick={() => setSteps(steps.filter((_, j) => j !== i))}
+                className="text-gray-300 hover:text-red-600"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <span className="shrink-0">{steps.length ? 'เกินจากนั้น ได้' : 'ได้'}</span>
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={overPercent}
+              onChange={(e) => setOverPercent(e.target.value)}
+              className={`${FIELD} w-16 text-right font-mono tabular-nums`}
+            />
+            <span className="shrink-0">% ของยอดขาย</span>
+            <button
+              type="button"
+              onClick={() => setSteps([...steps, { upTo: '', percent: '' }])}
+              className="ml-2 flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-700"
+            >
+              <Plus size={12} /> เพิ่มขั้น
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400">
+            เก็บแค่กติกา — ยอดจ่ายจริงคำนวณจากยอดขายของแต่ละเดือน
+          </p>
+        </div>
+      )}
     </div>
   )
 }

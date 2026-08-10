@@ -2183,6 +2183,8 @@ export type Database = {
       user_pay_items: {
         Row: {
           amount: number
+          calc: string
+          config: Json | null
           created_at: string
           created_by: string | null
           effective_from: string
@@ -2197,6 +2199,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          calc?: string
+          config?: Json | null
           created_at?: string
           created_by?: string | null
           effective_from: string
@@ -2211,6 +2215,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          calc?: string
+          config?: Json | null
           created_at?: string
           created_by?: string | null
           effective_from?: string

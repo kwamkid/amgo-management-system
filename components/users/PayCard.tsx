@@ -3,20 +3,24 @@
 // กล่องค่าตอบแทนของพนักงาน 1 คน — เงินเดือนพื้นฐาน + รายได้พิเศษ
 //
 // ── ใช้ 2 ที่ ─────────────────────────────────────────────────────────
-// · หน้าแก้ไขพนักงาน (HR/admin) → แก้เงินเดือนและรายได้พิเศษได้
-// · หน้าโปรไฟล์ตัวเอง            → อ่านอย่างเดียว
+// · หน้าแก้ไขพนักงาน แท็บเงินเดือน (HR/admin) → แก้ได้
+// · หน้าโปรไฟล์ตัวเอง                          → อ่านอย่างเดียว
 //
-// ── กรอกได้ 2 ทาง ─────────────────────────────────────────────────────
-// เงินเดือนพื้นฐาน  หน้า "แก้หลายคนพร้อมกัน" (เร็วเวลาไล่กรอกทั้งบริษัท)
-//                   หรือที่นี่ทีละคน (เวลาขึ้นเงินเดือนคนเดียว)
-// รายได้พิเศษ       ที่นี่อย่างเดียว — ไม่เหมือนกันสักคน กรอกรวมไม่ได้
+// ── เงินเดือนพื้นฐาน กับ รายได้พิเศษ ต่างกันตรงไหน ────────────────────
+// เงินเดือนพื้นฐาน  เก็บเป็นประวัติ — "ขึ้นเงินเดือน" คือเพิ่มแถวใหม่ตามวันที่
+//                   มีผล ของเก่าต้องอยู่ครบเพราะ hourly_rate ใช้คิดค่าล่วงเวลา
+//                   ย้อนหลัง  ส่วน "แก้ตัวเลข" คือกรอกผิดแล้วแก้ ทับแถวเดิม
+//                   ไม่งั้นประวัติจะมีขั้นปลอมที่ไม่เคยเกิดขึ้นจริง
+// รายได้พิเศษ       แก้แล้วมีผลทันที ไม่ต้องมีปุ่มขึ้น
+//
+// ทั้งสองตารางมี trigger เขียน audit_log ไว้ว่าใครแก้อะไรเมื่อไหร่
 //
 // ── ใครเห็นอะไร ───────────────────────────────────────────────────────
-// RLS ที่ฐานข้อมูลกรองให้แล้ว (เจ้าตัว + HR) — ถ้าไม่มีสิทธิ์จะได้ 0 แถว
-// ไม่ใช่ error หน้าจอจึงขึ้นว่า "ยังไม่มีข้อมูล" ซึ่งถูกต้องแล้ว
+// RLS ที่ฐานข้อมูลกรองให้แล้ว (เจ้าตัว + HR) — คนอื่นได้ 0 แถว ไม่ใช่ error
+// หน้าจอจึงขึ้นว่า "ยังไม่มีข้อมูล" ซึ่งถูกต้องแล้ว
 
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { ArrowUpRight, Check, History, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/aoo'
 
@@ -25,10 +29,9 @@ type PayItem = {
   kind: string
   label: string
   amount: number
-  frequency: string
-  effective_from: string
-  effective_to: string | null
 }
+
+type Salary = { id: string; base_salary: number; effective_from: string; note: string | null }
 
 const KINDS = [
   { value: 'commission', label: 'ค่าคอมมิชชั่น' },
@@ -40,44 +43,45 @@ const KINDS = [
   { value: 'other', label: 'อื่น ๆ' },
 ]
 
-const baht = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+const baht = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 })
 const today = () => new Date().toISOString().slice(0, 10)
+const thaiDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
 
-/** ยังจ่ายอยู่ไหม ณ วันนี้ */
-const isCurrent = (i: PayItem) => !i.effective_to || i.effective_to >= today()
+const FIELD =
+  'h-9 w-full rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
 
 export default function PayCard({
   userId,
   editable = false,
 }: {
   userId: string
-  /** true = HR เปิดดูของคนอื่น เพิ่ม/หยุดรายการได้ */
+  /** true = HR/admin เปิดดูของคนอื่น แก้ได้ */
   editable?: boolean
 }) {
-  const [salary, setSalary] = useState<{ base_salary: number; effective_from: string } | null>(null)
+  const [history, setHistory] = useState<Salary[]>([])
   const [items, setItems] = useState<PayItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<'view' | 'fix' | 'raise'>('view')
   const [adding, setAdding] = useState(false)
-  const [editingSalary, setEditingSalary] = useState(false)
+  const [showLog, setShowLog] = useState(false)
 
   const load = useCallback(async () => {
     const sb = createClient()
     const [{ data: comp }, { data: pay }] = await Promise.all([
       sb
         .from('user_compensation')
-        .select('base_salary, effective_from')
-        .eq('user_id', userId)
-        .order('effective_from', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      sb
-        .from('user_pay_items')
-        .select('id, kind, label, amount, frequency, effective_from, effective_to')
+        .select('id, base_salary, effective_from, note')
         .eq('user_id', userId)
         .order('effective_from', { ascending: false }),
+      sb
+        .from('user_pay_items')
+        .select('id, kind, label, amount')
+        .eq('user_id', userId)
+        .order('created_at'),
     ])
 
-    setSalary(comp ? { base_salary: Number(comp.base_salary), effective_from: comp.effective_from } : null)
+    setHistory((comp ?? []).map((c) => ({ ...c, base_salary: Number(c.base_salary) })))
     setItems((pay ?? []).map((i) => ({ ...i, amount: Number(i.amount) })))
     setLoading(false)
   }, [userId])
@@ -88,133 +92,133 @@ export default function PayCard({
 
   if (loading) return null
 
-  const current = items.filter(isCurrent)
-  const monthly = current.filter((i) => i.frequency === 'monthly')
-  const extraTotal = monthly.reduce((s, i) => s + i.amount, 0)
-  const ended = items.filter((i) => !isCurrent(i))
+  const current = history[0] ?? null
+  const extraTotal = items.reduce((s, i) => s + i.amount, 0)
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-          <Wallet size={16} className="text-gray-400" /> ค่าตอบแทน
-        </h3>
-        {editable && !adding && (
-          <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-            <Plus size={14} /> เพิ่มรายได้พิเศษ
-          </Button>
+      <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
+        <Wallet size={16} className="text-gray-400" /> ค่าตอบแทน
+      </h3>
+
+      {/* ── เงินเดือนพื้นฐาน ─────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 p-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm text-gray-500">เงินเดือนพื้นฐาน</span>
+          <span className="font-mono text-lg font-semibold tabular-nums text-gray-900">
+            {current ? baht.format(current.base_salary) : '—'}
+          </span>
+          <span className="text-xs text-gray-400">
+            {current ? `บาท · ตั้งแต่ ${thaiDate(current.effective_from)}` : 'ยังไม่ได้กรอก'}
+          </span>
+
+          {editable && mode === 'view' && (
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button variant="ghost" size="sm" onClick={() => setMode('fix')}>
+                <Pencil size={13} /> แก้ตัวเลข
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setMode('raise')}>
+                <ArrowUpRight size={14} /> ขึ้นเงินเดือน
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {mode !== 'view' && (
+          <SalaryForm
+            userId={userId}
+            mode={mode}
+            current={current}
+            onDone={() => {
+              setMode('view')
+              load()
+            }}
+            onCancel={() => setMode('view')}
+          />
+        )}
+
+        {history.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setShowLog((v) => !v)}
+            className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700"
+          >
+            <History size={12} /> ประวัติเงินเดือน {history.length} ครั้ง
+          </button>
+        )}
+
+        {showLog && (
+          <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
+            {history.map((h, i) => {
+              // เทียบกับแถวถัดไป (เก่ากว่า) เพื่อบอกว่าขึ้นมาเท่าไหร่
+              const prev = history[i + 1]
+              const diff = prev ? h.base_salary - prev.base_salary : 0
+              return (
+                <div key={h.id} className="flex items-baseline gap-2 text-xs">
+                  <span className="w-20 shrink-0 text-gray-400">{thaiDate(h.effective_from)}</span>
+                  <span className="font-mono tabular-nums text-gray-700">
+                    {baht.format(h.base_salary)}
+                  </span>
+                  {diff > 0 && (
+                    <span className="font-mono tabular-nums text-green-600">
+                      +{baht.format(diff)}
+                    </span>
+                  )}
+                  {h.note && <span className="truncate text-gray-400">{h.note}</span>}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {/* ── เงินเดือนพื้นฐาน ─────────────────────────────── */}
-      {editingSalary ? (
-        <SalaryForm
-          userId={userId}
-          current={salary?.base_salary ?? null}
-          onDone={() => {
-            setEditingSalary(false)
-            load()
-          }}
-        />
-      ) : (
-        <Row
-          label={
-            <>
-              เงินเดือนพื้นฐาน
-              {salary && (
-                <span className="ml-1.5 text-xs text-gray-400">
-                  ตั้งแต่ {salary.effective_from}
-                </span>
-              )}
-            </>
-          }
-        >
-          {salary ? (
-            <>
-              <span className="font-mono tabular-nums">{baht.format(salary.base_salary)}</span>
-              <span className="ml-1 text-xs font-normal text-gray-400">บาท</span>
-            </>
-          ) : (
-            <span className="text-orange-600">ยังไม่ได้กรอก</span>
-          )}
-          {editable && (
-            <button
-              title="แก้เงินเดือน"
-              onClick={() => setEditingSalary(true)}
-              className="ml-2 align-middle text-gray-300 hover:text-gray-700"
-            >
-              <Pencil size={13} />
-            </button>
-          )}
-        </Row>
-      )}
-
       {/* ── รายได้พิเศษ ───────────────────────────────────── */}
-      {current.length === 0 && !adding ? (
-        <p className="py-2.5 text-sm text-gray-400">ยังไม่มีรายได้พิเศษ</p>
-      ) : (
-        current.map((i) => (
-          <Row
-            key={i.id}
-            label={
-              <>
-                {i.label}
-                <span className="ml-1.5 text-xs text-gray-400">
-                  {KINDS.find((k) => k.value === i.kind)?.label}
-                  {i.frequency === 'once' && ' · ครั้งเดียว'}
-                </span>
-              </>
-            }
-          >
-            <span className="font-mono tabular-nums">{baht.format(i.amount)}</span>
-            {editable && (
-              <button
-                title="หยุดจ่ายรายการนี้ตั้งแต่วันนี้ (ประวัติยังอยู่)"
-                onClick={async () => {
-                  await createClient()
-                    .from('user_pay_items')
-                    .update({ effective_to: today() })
-                    .eq('id', i.id)
-                  load()
-                }}
-                className="ml-2 align-middle text-gray-300 hover:text-red-600"
-              >
-                <Trash2 size={13} />
-              </button>
-            )}
-          </Row>
-        ))
-      )}
+      <div className="mt-3">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-sm text-gray-500">
+            รายได้พิเศษ{editable && ' — แก้แล้วมีผลทันที'}
+          </span>
+          {editable && !adding && (
+            <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
+              <Plus size={14} /> เพิ่ม
+            </Button>
+          )}
+        </div>
 
-      {adding && <AddForm userId={userId} onDone={() => { setAdding(false); load() }} />}
+        {items.length === 0 && !adding ? (
+          <p className="py-1 text-sm text-gray-400">ยังไม่มีรายได้พิเศษ</p>
+        ) : (
+          <div className="space-y-1.5">
+            {items.map((item) => (
+              <ItemRow key={item.id} item={item} editable={editable} onChanged={load} />
+            ))}
+          </div>
+        )}
+
+        {adding && (
+          <div className="mt-1.5">
+            <ItemRow
+              userId={userId}
+              editable
+              onChanged={() => {
+                setAdding(false)
+                load()
+              }}
+              onCancel={() => setAdding(false)}
+            />
+          </div>
+        )}
+      </div>
 
       {/* ── รวม ───────────────────────────────────────────── */}
-      {(salary || extraTotal > 0) && (
-        <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2.5">
+      {(current || extraTotal > 0) && (
+        <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-2.5">
           <span className="text-sm font-medium text-gray-700">รวมต่อเดือน</span>
           <span className="font-mono font-semibold tabular-nums text-gray-900">
-            {baht.format((salary?.base_salary ?? 0) + extraTotal)}
+            {baht.format((current?.base_salary ?? 0) + extraTotal)}
             <span className="ml-1 text-xs font-normal text-gray-400">บาท</span>
           </span>
         </div>
-      )}
-
-      {ended.length > 0 && (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600">
-            รายการที่หยุดจ่ายแล้ว {ended.length} รายการ
-          </summary>
-          <div className="mt-1">
-            {ended.map((i) => (
-              <div key={i.id} className="flex justify-between py-1 text-xs text-gray-400">
-                <span>
-                  {i.label} · ถึง {i.effective_to}
-                </span>
-                <span className="font-mono tabular-nums">{baht.format(i.amount)}</span>
-              </div>
-            ))}
-          </div>
-        </details>
       )}
     </div>
   )
@@ -223,39 +227,57 @@ export default function PayCard({
 /* ------------------------------------------------------------------ *
  *  เงินเดือนพื้นฐาน
  *
- *  เก็บเป็นประวัติตามวันที่มีผล — ขึ้นเงินเดือนแล้วยังย้อนดูได้ว่าเดือนนั้น
- *  ได้เท่าไหร่ (hourly_rate ใช้คิดค่าล่วงเวลาย้อนหลังด้วย)
- *
- *  ใช้ upsert เพราะถ้าแก้ซ้ำในวันเดียวกัน จะได้ทับแถวเดิมแทนที่จะชน
- *  unique(user_id, effective_from) แล้วบันทึกไม่ผ่านเฉย ๆ
+ *  fix   = กรอกผิดแล้วแก้ → ทับแถวเดิม ไม่สร้างขั้นปลอมในประวัติ
+ *  raise = ขึ้นเงินเดือน   → แถวใหม่ตามวันที่มีผล ของเก่าอยู่ครบ
  * ------------------------------------------------------------------ */
 
 function SalaryForm({
   userId,
+  mode,
   current,
   onDone,
+  onCancel,
 }: {
   userId: string
-  current: number | null
+  mode: 'fix' | 'raise'
+  current: Salary | null
   onDone: () => void
+  onCancel: () => void
 }) {
-  const [amount, setAmount] = useState(current !== null ? String(current) : '')
-  const [from, setFrom] = useState(today())
+  const isRaise = mode === 'raise'
+  const [amount, setAmount] = useState(current && !isRaise ? String(current.base_salary) : '')
+  const [from, setFrom] = useState(isRaise ? today() : (current?.effective_from ?? today()))
+  const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const save = async () => {
     const value = Number(amount)
-    if (!Number.isFinite(value) || value < 0) return setError('กรอกจำนวนเงินให้ถูกต้อง')
+    if (!Number.isFinite(value) || value <= 0) return setError('กรอกจำนวนเงินให้ถูกต้อง')
+
+    // กันเผลอใช้ปุ่มขึ้นเงินเดือนแก้เลขที่กรอกผิด — จะได้ประวัติที่อ่านแล้ว
+    // เหมือนบริษัทลดเงินเดือนพนักงาน ทั้งที่แค่พิมพ์ผิด
+    if (isRaise && current && value <= current.base_salary) {
+      return setError(
+        `ขึ้นเงินเดือนต้องมากกว่า ${baht.format(current.base_salary)} — ถ้าจะแก้เลขที่กรอกผิด ใช้ปุ่ม "แก้ตัวเลข"`
+      )
+    }
 
     setSaving(true)
     setError('')
-    const { error: dbErr } = await createClient()
-      .from('user_compensation')
-      .upsert(
-        { user_id: userId, effective_from: from, base_salary: value, pay_type: 'monthly' },
-        { onConflict: 'user_id,effective_from' }
-      )
+
+    // upsert ทั้งสองแบบ — ตารางมี unique(user_id, effective_from)
+    // แก้ซ้ำในวันเดิมจะทับแถวเดิม ไม่ชนจนบันทึกไม่ผ่าน
+    const { error: dbErr } = await createClient().from('user_compensation').upsert(
+      {
+        user_id: userId,
+        effective_from: from,
+        base_salary: value,
+        pay_type: 'monthly',
+        note: note.trim() || (isRaise ? 'ขึ้นเงินเดือน' : 'แก้ตัวเลข'),
+      },
+      { onConflict: 'user_id,effective_from' }
+    )
 
     if (dbErr) {
       setError(`บันทึกไม่สำเร็จ: ${dbErr.message}`)
@@ -265,20 +287,21 @@ function SalaryForm({
     onDone()
   }
 
-  const field = 'h-9 rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
-
   return (
-    <div className="my-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="mt-3 space-y-2 rounded-lg bg-gray-50 p-3">
+      <div className="grid gap-2 sm:grid-cols-3">
         <label className="block">
-          <span className="text-xs text-gray-500">เงินเดือนพื้นฐาน (บาท)</span>
+          <span className="text-xs text-gray-500">
+            {isRaise ? 'เงินเดือนใหม่ (บาท)' : 'เงินเดือน (บาท)'}
+          </span>
           <input
             type="number"
             min={0}
             step={100}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className={`${field} mt-0.5 w-full text-right font-mono tabular-nums`}
+            autoFocus
+            className={`${FIELD} mt-0.5 text-right font-mono tabular-nums`}
           />
         </label>
         <label className="block">
@@ -287,129 +310,166 @@ function SalaryForm({
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className={`${field} mt-0.5 w-full`}
+            disabled={!isRaise}
+            title={
+              isRaise ? undefined : 'แก้ตัวเลขจะทับของวันเดิม — จะเปลี่ยนวันให้ใช้ปุ่มขึ้นเงินเดือน'
+            }
+            className={`${FIELD} mt-0.5 disabled:bg-gray-100 disabled:text-gray-400`}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">หมายเหตุ</span>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={isRaise ? 'เช่น ปรับประจำปี' : 'เช่น กรอกผิด'}
+            className={`${FIELD} mt-0.5`}
           />
         </label>
       </div>
 
       <p className="text-xs text-gray-500">
-        ของเดิมไม่หาย — เก็บเป็นประวัติตามวันที่มีผล ย้อนดูได้ว่าเดือนก่อนได้เท่าไหร่
+        {isRaise
+          ? 'เพิ่มเป็นประวัติใหม่ — ของเดิมยังอยู่ ย้อนดูได้ว่าเดือนก่อนได้เท่าไหร่'
+          : 'ทับตัวเลขของวันที่มีผลเดิม ใช้ตอนกรอกผิด ไม่ใช่ตอนขึ้นเงินเดือน'}
       </p>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onDone} disabled={saving}>
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
           ยกเลิก
         </Button>
         <Button size="sm" onClick={save} disabled={saving}>
-          {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+          {saving ? 'กำลังบันทึก...' : isRaise ? 'บันทึกการขึ้นเงินเดือน' : 'บันทึก'}
         </Button>
       </div>
     </div>
   )
 }
 
-/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ *  รายได้พิเศษ 1 บรรทัด
+ *
+ *  เป็นช่องกรอกตลอด แก้แล้วปุ่มติ๊กถูกจะโผล่ กดแล้วมีผลทันที
+ *  ไม่มีปุ่ม "ขึ้น" เพราะไม่ได้เก็บเป็นช่วงเวลาเหมือนเงินเดือน
+ * ------------------------------------------------------------------ */
 
-function AddForm({ userId, onDone }: { userId: string; onDone: () => void }) {
-  const [kind, setKind] = useState('commission')
-  const [label, setLabel] = useState('')
-  const [amount, setAmount] = useState('')
-  const [frequency, setFrequency] = useState('monthly')
-  const [from, setFrom] = useState(today())
+function ItemRow({
+  item,
+  userId,
+  editable,
+  onChanged,
+  onCancel,
+}: {
+  item?: PayItem
+  userId?: string
+  editable: boolean
+  onChanged: () => void
+  onCancel?: () => void
+}) {
+  const [kind, setKind] = useState(item?.kind ?? 'commission')
+  const [label, setLabel] = useState(item?.label ?? '')
+  const [amount, setAmount] = useState(item ? String(item.amount) : '')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+
+  const dirty = !item || kind !== item.kind || label !== item.label || Number(amount) !== item.amount
 
   const save = async () => {
     const value = Number(amount)
-    // ชื่อว่างได้ — ใช้ชื่อประเภทแทน จะได้ไม่ต้องพิมพ์ซ้ำคำเดิม
+    if (!Number.isFinite(value) || value <= 0) return
+    // ไม่ตั้งชื่อก็ได้ — ใช้ชื่อประเภทแทน จะได้ไม่ต้องพิมพ์คำเดิมซ้ำ
     const name = label.trim() || KINDS.find((k) => k.value === kind)!.label
-    if (!Number.isFinite(value) || value <= 0) return setError('กรอกจำนวนเงินให้ถูกต้อง')
 
     setSaving(true)
-    setError('')
-    const { error: dbErr } = await createClient().from('user_pay_items').insert({
-      user_id: userId,
-      kind,
-      label: name,
-      amount: value,
-      frequency,
-      effective_from: from,
-    })
+    const sb = createClient()
+    const { error } = item
+      ? await sb
+          .from('user_pay_items')
+          .update({ kind, label: name, amount: value })
+          .eq('id', item.id)
+      : await sb.from('user_pay_items').insert({
+          user_id: userId!,
+          kind,
+          label: name,
+          amount: value,
+          effective_from: today(),
+        })
 
-    if (dbErr) {
-      setError(`บันทึกไม่สำเร็จ: ${dbErr.message}`)
-      setSaving(false)
-      return
-    }
-    onDone()
+    setSaving(false)
+    if (!error) onChanged()
   }
 
-  const field = 'h-9 rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
+  if (!editable) {
+    return (
+      <div className="flex items-baseline justify-between border-b border-gray-100 py-1.5 last:border-0">
+        <span className="text-sm text-gray-600">
+          {item!.label}
+          <span className="ml-1.5 text-xs text-gray-400">
+            {KINDS.find((k) => k.value === item!.kind)?.label}
+          </span>
+        </span>
+        <span className="font-mono text-sm tabular-nums text-gray-900">
+          {baht.format(item!.amount)}
+        </span>
+      </div>
+    )
+  }
 
   return (
-    <div className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <select value={kind} onChange={(e) => setKind(e.target.value)} className={field}>
-          {KINDS.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
-            </option>
-          ))}
-        </select>
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="ชื่อรายการ (ไม่ใส่ก็ได้)"
-          className={field}
-        />
-        <input
-          type="number"
-          min={0}
-          step={100}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="จำนวนเงิน"
-          className={`${field} text-right font-mono tabular-nums`}
-        />
-        <select
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
-          className={field}
+    <div className="flex items-center gap-1.5">
+      <select value={kind} onChange={(e) => setKind(e.target.value)} className={`${FIELD} w-36`}>
+        {KINDS.map((k) => (
+          <option key={k.value} value={k.value}>
+            {k.label}
+          </option>
+        ))}
+      </select>
+      <input
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder={KINDS.find((k) => k.value === kind)?.label}
+        className={`${FIELD} flex-1`}
+      />
+      <input
+        type="number"
+        min={0}
+        step={100}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="0"
+        className={`${FIELD} w-28 text-right font-mono tabular-nums`}
+      />
+
+      {/* ปุ่มบันทึกโผล่เฉพาะตอนมีอะไรเปลี่ยน — จะได้รู้ว่ายังไม่ได้กด */}
+      {dirty ? (
+        <button
+          type="button"
+          title="บันทึก"
+          disabled={saving}
+          onClick={save}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
         >
-          <option value="monthly">ได้ทุกเดือน</option>
-          <option value="once">ครั้งเดียว</option>
-        </select>
-        <label className="sm:col-span-2">
-          <span className="text-xs text-gray-500">เริ่มมีผล</span>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className={`${field} mt-0.5 w-full`}
-          />
-        </label>
-      </div>
+          <Check size={15} />
+        </button>
+      ) : (
+        <span className="h-9 w-9 shrink-0" />
+      )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onDone} disabled={saving}>
-          ยกเลิก
-        </Button>
-        <Button size="sm" onClick={save} disabled={saving}>
-          {saving ? 'กำลังบันทึก...' : 'เพิ่ม'}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function Row({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 last:border-0">
-      <span className="shrink-0 text-sm text-gray-500">{label}</span>
-      <span className="text-right text-sm font-medium text-gray-900">{children}</span>
+      <button
+        type="button"
+        title={item ? 'ลบรายการนี้' : 'ยกเลิก'}
+        onClick={async () => {
+          if (item) {
+            await createClient().from('user_pay_items').delete().eq('id', item.id)
+            onChanged()
+          } else {
+            onCancel?.()
+          }
+        }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:text-red-600"
+      >
+        {item ? <Trash2 size={15} /> : <X size={15} />}
+      </button>
     </div>
   )
 }

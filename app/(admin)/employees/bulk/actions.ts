@@ -102,15 +102,23 @@ export async function saveBulk(rows: BulkRow[]): Promise<SaveResult> {
     }
     updated++
 
-    // เงินเดือนเก็บแบบมีวันที่มีผล — เปลี่ยนทีก็เพิ่มแถวใหม่ ไม่ทับของเก่า
+    // เงินเดือนเก็บแบบมีวันที่มีผล — ขึ้นเงินเดือนคือเพิ่มแถวใหม่ ของเก่าไม่หาย
+    //
+    // ⚠️ ต้อง upsert ไม่ใช่ insert
+    //    ตารางมี unique(user_id, effective_from) พอ HR แก้ตัวเลขผิดแล้วกด
+    //    บันทึกซ้ำในวันเดียวกัน insert จะชนแถวเดิมแล้วทั้งใบขึ้นว่า "มีปัญหา"
+    //    ทั้งที่ช่องอื่นบันทึกไปแล้ว — ดูเหมือนบันทึกไม่ได้ทั้งหน้า (เจอจริง)
     if (r.base_salary !== null && r.base_salary !== latestSalary.get(r.id)) {
-      const { error: cErr } = await sb.from('user_compensation').insert({
-        user_id: r.id,
-        effective_from: r.start_date ?? new Date().toISOString().slice(0, 10),
-        base_salary: r.base_salary,
-        pay_type: r.employment_type,
-        note: `บันทึกโดย ${me.profile.full_name}`,
-      })
+      const { error: cErr } = await sb.from('user_compensation').upsert(
+        {
+          user_id: r.id,
+          effective_from: r.start_date ?? new Date().toISOString().slice(0, 10),
+          base_salary: r.base_salary,
+          pay_type: r.employment_type,
+          note: `บันทึกโดย ${me.profile.full_name}`,
+        },
+        { onConflict: 'user_id,effective_from' }
+      )
       if (cErr) errors.push(`เงินเดือน ${label(r.id)}: ${cErr.message}`)
       else salaryRows++
     }

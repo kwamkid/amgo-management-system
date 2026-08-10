@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { User, UpdateUserData } from '@/types/user'
 import { updateUser, getUser } from '@/lib/services/userService'
 import UserEditForm from '@/components/users/UserEditForm'
-import PayCard from '@/components/users/PayCard'
 import UserAvatar from '@/components/shared/UserAvatar'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -142,10 +141,7 @@ export default function EditUserPage({
         }
       />
 
-      {/* เงินเดือน + รายได้พิเศษ — RLS ให้เฉพาะ HR กับเจ้าตัวเห็น */}
-      <PayCard userId={user.id!} editable />
-
-      {/* Form */}
+      {/* ค่าตอบแทนอยู่ในแท็บ "เงินเดือน" ของฟอร์ม ไม่ใช่ตรงนี้ */}
       <UserEditForm
         user={user}
         onSubmit={handleSubmit}

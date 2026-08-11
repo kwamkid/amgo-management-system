@@ -73,9 +73,20 @@ export function useAuth() {
       return
     }
 
+    // สิทธิ์พิเศษตามตำแหน่ง — ตอนนี้มีเรื่องเดียว: ตำแหน่งไหนเห็นเมนูงานส่งของ
+    let seesDelivery = false
+    if (row.job_function_id) {
+      const { data: jf } = await sb
+        .from('job_functions')
+        .select('sees_delivery')
+        .eq('id', row.job_function_id)
+        .maybeSingle()
+      seesDelivery = jf?.sees_delivery ?? false
+    }
+
     setState({
       user: authUser,
-      userData: mapUser(row, (locs ?? []).map((l) => l.location_id)),
+      userData: { ...mapUser(row, (locs ?? []).map((l) => l.location_id)), seesDelivery },
       loading: false,
       error: null,
     })

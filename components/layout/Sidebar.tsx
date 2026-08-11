@@ -83,7 +83,8 @@ const navSections: NavSection[] = [
       {
         label: 'Delivery Tracking',
         icon: icon(Truck),
-        roles: ['driver', 'admin', 'hr'],
+        // 'delivery' = ตำแหน่งที่ติดธง sees_delivery (Call Center) — ดู roleKeys ใน component
+        roles: ['driver', 'admin', 'hr', 'delivery'],
         subItems: [
           { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
@@ -144,7 +145,10 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   const [expanded, setExpanded] = useState<string[]>([])
 
   const userRole = userData?.role || 'employee'
-  const allowed = (roles?: string[]) => !roles || roles.includes(userRole)
+  // นอกจาก role แล้ว บางตำแหน่งได้สิทธิ์พิเศษ — แทนเป็น key เสมือนในลิสต์เดียวกัน
+  // (delivery = ตำแหน่งติดธง sees_delivery เช่น Call Center)
+  const roleKeys = [userRole, ...(userData?.seesDelivery ? ['delivery'] : [])]
+  const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 
   // กางเมนูแม่ให้เองเมื่อเข้าหน้าลูก — ไม่งั้นผู้ใช้ไม่รู้ว่าตัวเองอยู่ตรงไหน
   useEffect(() => {

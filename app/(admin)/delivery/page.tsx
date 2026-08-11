@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { canSeeDelivery } from '@/lib/services/user/access'
 import { formatTime } from '@/lib/utils/date'
 import { 
   MapPin, 
@@ -42,7 +43,7 @@ export default function DeliveryDashboardPage() {
 
   // Check permission
   useEffect(() => {
-    if (userData && userData.role !== 'driver' && userData.role !== 'admin' && userData.role !== 'hr') {
+    if (userData && !canSeeDelivery(userData)) {
       router.push('/unauthorized')
     }
   }, [userData, router])

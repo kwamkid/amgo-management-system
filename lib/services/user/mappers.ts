@@ -37,6 +37,8 @@ export interface UserData {
   allowWorkFromHome?: boolean
   /** ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible) */
   otEligible?: boolean | null
+  /** เห็นเมนูงานส่งของ (มาจาก job_functions.sees_delivery — useAuth เติมให้ตอนล็อกอิน) */
+  seesDelivery?: boolean
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean
@@ -62,6 +64,10 @@ export interface UserData {
 
   bankName?: string | null
   bankAccountNo?: string | null
+
+  /** เลขบัตรประชาชน + ที่อยู่ — ใช้พิมพ์ในสัญญาจ้าง */
+  nationalId?: string | null
+  address?: string | null
 
   discordUserId?: string
   discordUsername?: string
@@ -117,6 +123,8 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
 
     bankName: row.bank_name,
     bankAccountNo: row.bank_account_no,
+    nationalId: row.national_id ?? null,
+    address: row.address ?? null,
     discordUserId: row.discord_user_id ?? undefined,
     discordUsername: row.discord_username ?? undefined,
     primaryLocationId: row.primary_location_id,

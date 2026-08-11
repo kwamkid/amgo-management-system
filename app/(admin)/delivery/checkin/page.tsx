@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { canSeeDelivery } from '@/lib/services/user/access'
 import { useDeliveryPoints, useCameraCapture } from '@/hooks/useDelivery'
 import { CreateDeliveryPointData } from '@/types/delivery'
 import { getCurrentLocation, getAddressFromCoords } from '@/lib/utils/location'
@@ -56,7 +57,7 @@ export default function DeliveryCheckInPage() {
 
   // Check if user is driver
   useEffect(() => {
-    if (userData && userData.role !== 'driver' && userData.role !== 'admin') {
+    if (userData && !canSeeDelivery(userData)) {
       router.push('/unauthorized')
     }
   }, [userData, router])

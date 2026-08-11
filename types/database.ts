@@ -1133,6 +1133,7 @@ export type Database = {
           ot_eligible: boolean
           payroll_cycle: string | null
           schedule_type: string
+          sees_delivery: boolean
           sort_order: number
           standard_hours_per_day: number
           updated_at: string
@@ -1149,6 +1150,7 @@ export type Database = {
           ot_eligible?: boolean
           payroll_cycle?: string | null
           schedule_type?: string
+          sees_delivery?: boolean
           sort_order?: number
           standard_hours_per_day?: number
           updated_at?: string
@@ -1165,6 +1167,7 @@ export type Database = {
           ot_eligible?: boolean
           payroll_cycle?: string | null
           schedule_type?: string
+          sees_delivery?: boolean
           sort_order?: number
           standard_hours_per_day?: number
           updated_at?: string
@@ -2496,13 +2499,13 @@ export type Database = {
       }
       users: {
         Row: {
+          address: string | null
           allow_checkin_outside_location: boolean
           approved_at: string | null
           approved_by: string | null
           bank_account_no: string | null
           bank_name: string | null
           birth_date: string | null
-          business_unit_id: string | null
           company_id: string | null
           created_at: string
           days_per_week: number | null
@@ -2532,6 +2535,7 @@ export type Database = {
           line_picture_url: string
           line_user_id: string
           name_verified: boolean
+          national_id: string | null
           needs_approval: boolean
           nickname: string | null
           ot_eligible: boolean | null
@@ -2549,13 +2553,13 @@ export type Database = {
           wfh_eligible: boolean
         }
         Insert: {
+          address?: string | null
           allow_checkin_outside_location?: boolean
           approved_at?: string | null
           approved_by?: string | null
           bank_account_no?: string | null
           bank_name?: string | null
           birth_date?: string | null
-          business_unit_id?: string | null
           company_id?: string | null
           created_at?: string
           days_per_week?: number | null
@@ -2585,6 +2589,7 @@ export type Database = {
           line_picture_url?: string
           line_user_id: string
           name_verified?: boolean
+          national_id?: string | null
           needs_approval?: boolean
           nickname?: string | null
           ot_eligible?: boolean | null
@@ -2602,13 +2607,13 @@ export type Database = {
           wfh_eligible?: boolean
         }
         Update: {
+          address?: string | null
           allow_checkin_outside_location?: boolean
           approved_at?: string | null
           approved_by?: string | null
           bank_account_no?: string | null
           bank_name?: string | null
           birth_date?: string | null
-          business_unit_id?: string | null
           company_id?: string | null
           created_at?: string
           days_per_week?: number | null
@@ -2638,6 +2643,7 @@ export type Database = {
           line_picture_url?: string
           line_user_id?: string
           name_verified?: boolean
+          national_id?: string | null
           needs_approval?: boolean
           nickname?: string | null
           ot_eligible?: boolean | null

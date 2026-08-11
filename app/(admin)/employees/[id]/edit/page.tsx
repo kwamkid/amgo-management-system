@@ -6,7 +6,7 @@ import { User, UpdateUserData } from '@/types/user'
 import { updateUser, getUser } from '@/lib/services/userService'
 import UserEditForm from '@/components/users/UserEditForm'
 import UserAvatar from '@/components/shared/UserAvatar'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, FileText } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
@@ -121,6 +121,11 @@ export default function EditUserPage({
         actions={
           // กดที่รูปเพื่อดึงรูปโปรไฟล์ล่าสุดจาก LINE มาใหม่
           <div className="flex items-center gap-3">
+            <Link href={`/employees/${id}/contract`}>
+              <Button variant="outline" size="sm">
+                <FileText className="mr-1.5 h-4 w-4" /> สัญญาจ้าง
+              </Button>
+            </Link>
             {(user as { employmentStatus?: string }).employmentStatus === 'probation' && (
               <StatusBadge status="probation" />
             )}

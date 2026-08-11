@@ -109,6 +109,46 @@ export async function loadAttendanceDays(
   )
 }
 
+/**
+ * ชั่วโมง OT จริงของเดือน — เฉพาะคนที่มีสิทธิ์ OT (รายคนชนะ ไม่ตั้งก็ตามตำแหน่ง)
+ * คนมีสิทธิ์มี entry เสมอ (ไม่มี OT = 0) · คนไม่มีสิทธิ์ไม่มี entry
+ * ปุ่ม "อัปเดตจากข้อมูลจริง" ใช้แยกว่าใครให้ระบบทับ ใครคงเลขที่ HR กรอกมือไว้
+ */
+export async function loadOtHours(month: Date): Promise<Map<string, number>> {
+  const client = sb()
+  const from = new Date(month.getFullYear(), month.getMonth(), 1)
+  const to = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+
+  const [usersRes, fnRes, otRes] = await Promise.all([
+    client
+      .from('users')
+      .select('id, ot_eligible, job_function_id')
+      .eq('is_active', true)
+      .eq('is_system', false)
+      .is('deleted_at', null),
+    client.from('job_functions').select('id, ot_eligible'),
+    client
+      .from('checkins')
+      .select('user_id, overtime_hours')
+      .gte('work_date', format(from, 'yyyy-MM-dd'))
+      .lte('work_date', format(to, 'yyyy-MM-dd'))
+      .gt('overtime_hours', 0),
+  ])
+
+  const fnOt = new Map((fnRes.data ?? []).map((f) => [f.id, f.ot_eligible]))
+  const sums = new Map<string, number>()
+  for (const c of otRes.data ?? []) {
+    sums.set(c.user_id, (sums.get(c.user_id) ?? 0) + Number(c.overtime_hours))
+  }
+
+  const result = new Map<string, number>()
+  for (const u of usersRes.data ?? []) {
+    const otOk = u.ot_eligible ?? (u.job_function_id ? fnOt.get(u.job_function_id) : false) ?? false
+    if (otOk) result.set(u.id, Math.round((sums.get(u.id) ?? 0) * 100) / 100)
+  }
+  return result
+}
+
 /* ------------------------------------------------------------------ */
 export async function loadPayroll(month: Date): Promise<PayrollRow[]> {
   const client = sb()

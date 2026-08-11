@@ -37,6 +37,8 @@ export interface User {
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
   otEligible?: boolean | null // ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible)
+  nationalId?: string | null // เลขบัตรประชาชน 13 หลัก — ใช้ในสัญญาจ้าง
+  address?: string | null // ที่อยู่ — ใช้ในสัญญาจ้าง
   
   // Invite Link Info
   inviteLinkId?: string // ID ของ invite link ที่ใช้

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, addMonths } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Wallet, ChevronLeft, ChevronRight, Download, Save, CopyPlus, Calculator, Search } from 'lucide-react'
+import { Wallet, ChevronLeft, ChevronRight, Download, Save, CopyPlus, Calculator, Search, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,7 @@ import { PageHeader, TechLoader } from '@/components/shared'
 import {
   loadPayroll,
   loadAttendanceDays,
+  loadOtHours,
   savePayroll,
   loadPreviousExtras,
   payrollCsv,
@@ -113,6 +114,48 @@ export default function PayrollPage() {
     }
   }
 
+  /**
+   * ดึงเลขที่ระบบเป็นเจ้าของ (วันมา/ขาด + ชั่วโมง OT ของคนมีสิทธิ์) มาทับ —
+   * ใช้กรณีบันทึกกลางเดือนแล้วแถวถูกตรึง ข้อมูลใหม่ไม่ไหลเข้าเอง
+   * ของที่กรอกมือ (เงินเดือน ค่าคอม พิเศษ หัก หมายเหตุ) ไม่ถูกแตะ
+   * และ OT ที่พิมพ์เองให้คนไม่มีสิทธิ์ก็คงไว้
+   */
+  const refreshReality = async () => {
+    try {
+      const [att, ot] = await Promise.all([loadAttendanceDays(month), loadOtHours(month)])
+      let changed = false
+      setRows((prev) =>
+        prev.map((r) => {
+          const a = att.get(r.userId)
+          const o = ot.has(r.userId) ? ot.get(r.userId)! : r.otHours
+          const next = {
+            ...r,
+            workDays: a?.work ?? r.workDays,
+            absentDays: a?.absent ?? r.absentDays,
+            otHours: o,
+          }
+          if (
+            next.workDays !== r.workDays ||
+            next.absentDays !== r.absentDays ||
+            next.otHours !== r.otHours
+          ) {
+            changed = true
+            return next
+          }
+          return r
+        })
+      )
+      if (changed) {
+        setDirty(true)
+        showToast('อัปเดตวันมา/ขาด และชั่วโมง OT จากข้อมูลจริงแล้ว — กดบันทึกเพื่อยืนยัน', 'success')
+      } else {
+        showToast('ตัวเลขตรงกับข้อมูลจริงอยู่แล้ว', 'success')
+      }
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    }
+  }
+
   const patch = (userId: string, field: keyof PayrollRow, value: number | string) => {
     setDirty(true)
     setRows((prev) =>
@@ -199,6 +242,14 @@ export default function PayrollPage() {
         icon={Wallet}
         actions={
           <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={refreshReality}
+              title="ดึงวันมา/ขาด กับชั่วโมง OT ล่าสุดมาทับ — ของที่กรอกมือไม่ถูกแตะ"
+            >
+              <RefreshCw size={15} /> อัปเดตจากข้อมูลจริง
+            </Button>
             <Button variant="secondary" size="sm" onClick={pullPrevious}>
               <CopyPlus size={15} /> ดึงค่าคอมเดือนก่อน
             </Button>

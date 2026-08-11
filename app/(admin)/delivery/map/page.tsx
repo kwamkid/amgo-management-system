@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { canSeeDelivery } from '@/lib/services/user/access'
 import { useDeliveryMap } from '@/hooks/useDelivery'
 import { DeliveryMapPoint } from '@/types/delivery'
 import { formatTime } from '@/lib/utils/date'
@@ -146,7 +147,7 @@ export default function DeliveryMapPage() {
 
   // Check permission
   useEffect(() => {
-    if (userData && userData.role !== 'driver' && userData.role !== 'admin' && userData.role !== 'hr') {
+    if (userData && !canSeeDelivery(userData)) {
       router.push('/unauthorized')
     }
   }, [userData, router])

@@ -54,6 +54,10 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   // null = กลับไปตามตำแหน่ง — ต้องเขียน null ลงจริง ไม่ใช่ข้าม
   set('ot_eligible', data.otEligible as boolean | null | undefined)
 
+  // ช่องข้อความที่ล้างว่างได้ — '' เก็บเป็น null
+  if (data.nationalId !== undefined) patch.national_id = (data.nationalId as string | null)?.trim() || null
+  if (data.address !== undefined) patch.address = (data.address as string | null)?.trim() || null
+
   if (data.birthDate !== undefined) {
     patch.birth_date =
       data.birthDate instanceof Date

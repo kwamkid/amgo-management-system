@@ -98,6 +98,8 @@ export default function UserEditForm({
     nickname: user.nickname || '',
     phone: user.phone || '',
     birthDate: formatDateForInput(user.birthDate), // This is already a string
+    nationalId: user.nationalId ?? '',
+    address: user.address ?? '',
     // ⚠️ ไม่มี role — สิทธิ์มากับตำแหน่ง trigger ที่ฐานข้อมูลเซ็ตให้เอง
     companyId: user.companyId ?? null,
     jobFunctionId: user.jobFunctionId ?? null,
@@ -312,6 +314,36 @@ export default function UserEditForm({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="nationalId">เลขบัตรประชาชน</Label>
+              <Input
+                id="nationalId"
+                type="text"
+                inputMode="numeric"
+                maxLength={13}
+                value={(formData.nationalId as string) ?? ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, nationalId: e.target.value.replace(/\D/g, '') })
+                }
+                placeholder="13 หลัก"
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">ใช้พิมพ์ในสัญญาจ้าง</p>
+            </div>
+
+            <div>
+              <Label htmlFor="address">ที่อยู่</Label>
+              <Input
+                id="address"
+                type="text"
+                value={(formData.address as string) ?? ''}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="ที่อยู่ตามทะเบียนบ้าน"
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">ใช้พิมพ์ในสัญญาจ้าง</p>
             </div>
           </div>
         </CardContent>

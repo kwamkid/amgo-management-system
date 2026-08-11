@@ -29,27 +29,27 @@ export const useInviteLinks = (activeOnly = false) => {
     }
   }, [activeOnly])
 
-  // Create invite link
-  const createInviteLink = async (data: CreateInviteLinkData): Promise<boolean> => {
+  // Create invite link — คืน id ของลิงก์ใหม่ เพื่อพาไปหน้ารายละเอียดที่โชว์ URL เต็ม
+  const createInviteLink = async (data: CreateInviteLinkData): Promise<string | null> => {
     try {
       setLoading(true)
-      
+
       // Use current user data if available, otherwise use defaults
       const createdBy = userData?.id || 'system'
       const createdByName = userData?.fullName || userData?.lineDisplayName || 'System Admin'
-      
-      await inviteService.createInviteLink(
+
+      const linkId = await inviteService.createInviteLink(
         data,
         createdBy,
         createdByName
       )
       showToast('สร้างลิงก์สำเร็จ', 'success')
       await fetchInviteLinks() // Refresh list
-      return true
+      return linkId
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create invite link'
       showToast(message, 'error')
-      return false
+      return null
     } finally {
       setLoading(false)
     }

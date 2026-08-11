@@ -105,7 +105,12 @@ export async function getLeaveRequests(
 
   const { data, error } = await q
   if (error) throw new Error(`ดึงรายการลาไม่สำเร็จ: ${error.message}`)
-  return ((data ?? []) as LeaveRequestRow[]).map(toLeaveRequest)
+
+  // ทับ userName (snapshot ชื่อจริงตอนยื่นใบลา) ด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
+  const requests = ((data ?? []) as LeaveRequestRow[]).map(toLeaveRequest)
+  const { getDisplayNames } = await import('../user/queries')
+  const names = await getDisplayNames(requests.map((r) => r.userId))
+  return requests.map((r) => ({ ...r, userName: names.get(r.userId) || r.userName }))
 }
 
 /** ใบลาใบเดียว */

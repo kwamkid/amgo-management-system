@@ -28,7 +28,7 @@ import {
   Camera,
   Map,
   Home,
-  Table2,
+  Wallet,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -78,7 +78,6 @@ const navSections: NavSection[] = [
           { label: 'ขอลา', href: '/leaves/request', icon: subIcon(UserPlus) },
           { label: 'ประวัติการลา', href: '/leaves/history', icon: subIcon(Clock) },
           { label: 'จัดการคำขอลา', href: '/leaves/management', icon: subIcon(UserCog), roles: ['hr', 'admin', 'manager'] },
-          { label: 'จัดการโควต้า', href: '/leaves/quota', icon: subIcon(Settings), roles: ['hr', 'admin'] },
         ],
       },
       {
@@ -101,13 +100,16 @@ const navSections: NavSection[] = [
         icon: icon(Users),
         roles: ['hr', 'admin', 'manager'],
         subItems: [
+          // แก้ไขหลายคนพร้อมกัน ไม่มีเมนูแล้ว — เข้าจากปุ่มบนหน้ารายการพนักงานทางเดียว
           { label: 'รายการพนักงาน', href: '/employees', icon: subIcon(Users) },
-          { label: 'แก้ไขหลายคนพร้อมกัน', href: '/employees/bulk', icon: subIcon(Table2), roles: ['hr', 'admin'] },
+          // ย้ายมาจากกลุ่มการลา — HR หาไม่เจอเพราะเป็นงานจัดการคน ไม่ใช่งานยื่นลา
+          { label: 'จัดการโควต้าวันลา', href: '/leaves/quota', icon: subIcon(Settings), roles: ['hr', 'admin'] },
           { label: 'เชิญพนักงานใหม่', href: '/employees/invite-links', icon: subIcon(UserPlus) },
           { label: 'รออนุมัติ', href: '/employees/pending', icon: subIcon(Clock) },
         ],
       },
       { label: 'รายงาน', href: '/reports', icon: icon(FileText), roles: ['hr', 'admin', 'manager'] },
+      { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },
     ],
   },
   {

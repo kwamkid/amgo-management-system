@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { CheckInRecord } from '@/types/checkin'
 import { getCheckInRecords } from '@/lib/services/checkinService'
+import UserAvatar from '@/components/shared/UserAvatar'
 import { formatTime } from '@/lib/utils/date'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -261,19 +262,8 @@ export default function CheckinMapPage() {
               <CardContent className="p-3">
                 <div className="flex gap-3">
                   {/* Avatar */}
-                  <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                    {record.userAvatar ? (
-                      <img
-                        src={record.userAvatar}
-                        alt={record.userName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-gray-600 text-xs font-medium">
-                        {record.userName?.charAt(0) || '?'}
-                      </span>
-                    )}
-                  </div>
+                  {/* ลิงก์รูปจาก LINE ใน snapshot หมดอายุได้ — UserAvatar ดึงผ่าน /api/avatar ที่เก็บสำเนาไว้ */}
+                  <UserAvatar name={record.userName} userId={record.userId} imageUrl={record.userAvatar} size="md" />
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
@@ -355,19 +345,7 @@ export default function CheckinMapPage() {
         <div className="min-w-[180px] max-w-[220px]">
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-              {selectedRecord.userAvatar ? (
-                <img
-                  src={selectedRecord.userAvatar}
-                  alt={selectedRecord.userName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-600 text-xs font-medium">
-                  {selectedRecord.userName?.charAt(0) || '?'}
-                </span>
-              )}
-            </div>
+            <UserAvatar name={selectedRecord.userName} userId={selectedRecord.userId} imageUrl={selectedRecord.userAvatar} size="sm" />
             <div>
               <p className="font-medium text-sm">{selectedRecord.userName}</p>
               <p className="text-xs text-gray-500">

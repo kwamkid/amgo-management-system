@@ -294,7 +294,7 @@ export default function LeaveQuotaManagementPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   // CarryOver Dialog state
   const [showCarryOverDialog, setShowCarryOverDialog] = useState(false)
@@ -718,6 +718,7 @@ export default function LeaveQuotaManagementPage() {
               totalPages={totalPages}
               totalItems={filteredQuotas.length}
               itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
               onPageChange={setCurrentPage}
             />
           </div>
@@ -728,7 +729,7 @@ export default function LeaveQuotaManagementPage() {
       <CarryOverDialog
         open={showCarryOverDialog}
         onOpenChange={setShowCarryOverDialog}
-        users={users.map(u => ({ id: u.id!, fullName: u.fullName }))}
+        users={users.map(u => ({ id: u.id!, fullName: u.displayName || u.fullName }))}
         currentYear={year}
         executedBy={userData?.id || ''}
         onSuccess={fetchAllQuotas}

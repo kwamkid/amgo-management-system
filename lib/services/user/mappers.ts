@@ -22,6 +22,8 @@ export interface UserData {
   nickname: string
   /** "ชื่อจริง (ชื่อเล่น)" — ฐานข้อมูลคำนวณให้ ใช้ตอนแสดงผลแทนการต่อสตริงเอง */
   displayName: string
+  /** รหัสพนักงานแบบเลขต่อเนื่อง — โชว์ด้วย lpad 3 หลัก (001) · บัญชีระบบไม่มี */
+  employeeCode: number | null
   /** false = ยังเป็นชื่อ LINE ที่ลากมาจากระบบเก่า ยังไม่มีใครยืนยัน */
   nameVerified: boolean
   /** บัญชีระบบ (Dev Admin / Super Admin) — ไม่ใช่พนักงาน ไม่ต้องกรอกอะไร */
@@ -33,6 +35,8 @@ export interface UserData {
   allowedLocationIds?: string[]
   allowCheckInOutsideLocation?: boolean
   allowWorkFromHome?: boolean
+  /** ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible) */
+  otEligible?: boolean | null
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean
@@ -56,6 +60,9 @@ export interface UserData {
   requiresCheckin: boolean | null
   wfhEligible: boolean
 
+  bankName?: string | null
+  bankAccountNo?: string | null
+
   discordUserId?: string
   discordUsername?: string
   primaryLocationId?: string | null
@@ -76,6 +83,7 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     fullName: row.full_name,
     nickname: row.nickname ?? '',
     displayName: row.display_name || row.full_name,
+    employeeCode: row.employee_code,
     nameVerified: row.name_verified ?? false,
     isSystem: row.is_system ?? false,
     phone: row.phone ?? '',
@@ -85,6 +93,7 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     allowedLocationIds,
     allowCheckInOutsideLocation: row.allow_checkin_outside_location ?? false,
     allowWorkFromHome: row.wfh_eligible ?? false,
+    otEligible: row.ot_eligible ?? null,
     inviteLinkId: row.invite_link_id ?? undefined,
     inviteLinkCode: row.invite_link_code ?? undefined,
     isActive: row.is_active,
@@ -106,6 +115,8 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     requiresCheckin: row.requires_checkin,
     wfhEligible: row.wfh_eligible ?? false,
 
+    bankName: row.bank_name,
+    bankAccountNo: row.bank_account_no,
     discordUserId: row.discord_user_id ?? undefined,
     discordUsername: row.discord_username ?? undefined,
     primaryLocationId: row.primary_location_id,

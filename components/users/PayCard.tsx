@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Check, History, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/aoo'
+import { Button, MoneyInput } from '@/components/aoo'
 
 type Tier = { upTo: number | null; percent: number }
 
@@ -112,6 +112,11 @@ export default function PayCard({
   })
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'view' | 'fix' | 'raise' | 'post'>('view')
+
+  // กดปรับเงินเดือนเมื่อไหร่ กางประวัติให้เลย — จะได้เห็นว่าที่ผ่านมาขึ้นยังไง
+  useEffect(() => {
+    if (mode !== 'view') setShowLog(true)
+  }, [mode])
   const [adding, setAdding] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [stagedCount, setStagedCount] = useState(0)
@@ -390,14 +395,16 @@ export default function PayCard({
                   <span className="font-mono tabular-nums text-gray-700">
                     {baht.format(h.base_salary)}
                   </span>
-                  {diff !== 0 && (
+                  {diff !== 0 && prev && (
                     <span
                       className={`font-mono tabular-nums ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
                       {diff > 0 ? '+' : ''}
-                      {baht.format(diff)}
+                      {baht.format(diff)} ({diff > 0 ? '+' : ''}
+                      {Math.round((diff / prev.base_salary) * 100)}%)
                     </span>
                   )}
+                  {!prev && <span className="text-gray-400">เริ่มต้น</span>}
                   {h.note && <span className="truncate text-gray-400">{h.note}</span>}
                 </div>
               )
@@ -536,12 +543,9 @@ function SalaryForm({
           <span className="text-xs text-gray-500">
             {isPost ? 'เงินเดือนหลังพ้นโปร (บาท)' : isRaise ? 'เงินเดือนใหม่ (บาท)' : 'เงินเดือน (บาท)'}
           </span>
-          <input
-            type="number"
-            min={0}
-            step={100}
+          <MoneyInput
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onValueChange={(_, text) => setAmount(text)}
             autoFocus
             className={`${FIELD} mt-0.5 w-full text-right font-mono tabular-nums`}
           />
@@ -754,12 +758,9 @@ function ItemRow({
         )}
 
         {calc !== 'tiered_percent' && (
-          <input
-            type="number"
-            min={0}
-            step="any"
+          <MoneyInput
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onValueChange={(_, text) => setAmount(text)}
             placeholder={calc === 'per_piece' ? 'บาท/ชิ้น' : '0'}
             className={`${FIELD} w-28 shrink-0 text-right font-mono tabular-nums`}
           />
@@ -799,15 +800,12 @@ function ItemRow({
           {steps.map((step, i) => (
             <div key={i} className="flex items-center gap-1.5 text-sm text-gray-600">
               <span className="shrink-0">ยอดไม่เกิน</span>
-              <input
-                type="number"
-                min={0}
-                step="any"
+              <MoneyInput
                 value={step.upTo}
-                onChange={(e) =>
-                  setSteps(steps.map((x, j) => (j === i ? { ...x, upTo: e.target.value } : x)))
+                onValueChange={(_, text) =>
+                  setSteps(steps.map((x, j) => (j === i ? { ...x, upTo: text } : x)))
                 }
-                placeholder="100000"
+                placeholder="100,000"
                 className={`${FIELD} w-32 text-right font-mono tabular-nums`}
               />
               <span className="shrink-0">บาท ได้</span>

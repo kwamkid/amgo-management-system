@@ -1,6 +1,7 @@
 'use client'
 
-import { Inbox } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronsUpDown, Inbox } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 /**
@@ -30,6 +31,32 @@ export type Column<T> = {
   hideOnMobile?: boolean
   /** ตรึงคอลัมน์ไว้ตอนเลื่อนแนวนอน (ใช้กับคอลัมน์ชื่อ) */
   sticky?: boolean
+  /**
+   * ใส่แล้วคอลัมน์นี้คลิกหัวเพื่อเรียงได้ — คืนค่าที่ใช้เทียบ (ตัวเลข/ข้อความ)
+   * คลิกวน: น้อย→มาก · มาก→น้อย · กลับลำดับเดิม · ค่า null ไปท้ายเสมอ
+   */
+  sortValue?: (row: T) => string | number | null | undefined
+}
+
+export type SortState = { key: string; dir: 'asc' | 'desc' } | null
+
+/** เรียงแถวตาม sortValue ของคอลัมน์ — ใช้เองก็ได้เมื่อหน้าแบ่งหน้าเองแล้วต้องเรียงก่อนตัดหน้า */
+export function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState): T[] {
+  if (!sort) return rows
+  const col = columns.find((c) => c.key === sort.key)
+  if (!col?.sortValue) return rows
+
+  const dir = sort.dir === 'asc' ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const va = col.sortValue!(a)
+    const vb = col.sortValue!(b)
+    // ค่าว่างไปท้ายเสมอ ไม่ว่าจะเรียงทางไหน
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir
+    return String(va).localeCompare(String(vb), 'th') * dir
+  })
 }
 
 export default function DataTable<T>({
@@ -43,6 +70,8 @@ export default function DataTable<T>({
   onRowClick,
   rowClassName,
   footer,
+  sort: sortProp,
+  onSortChange,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -54,7 +83,34 @@ export default function DataTable<T>({
   onRowClick?: (row: T) => void
   rowClassName?: (row: T) => string | undefined
   footer?: ReactNode
+  /**
+   * ส่ง sort + onSortChange มาคู่กัน = หน้าจัดการเรียงเอง (จำเป็นเมื่อหน้าแบ่งหน้าเอง
+   * ไม่งั้นจะเรียงแค่ในหน้าที่เห็น) — ไม่ส่งมา ตารางเรียงให้เองทั้งก้อน
+   */
+  sort?: SortState
+  onSortChange?: (sort: SortState) => void
 }) {
+  // เรียงในตาราง — คงลำดับที่ผู้เรียกส่งมาไว้เป็นค่าเริ่มต้น
+  const [internalSort, setInternalSort] = useState<SortState>(null)
+  const controlled = onSortChange !== undefined
+  const sort = controlled ? (sortProp ?? null) : internalSort
+
+  const sortedRows = useMemo(
+    () => (controlled ? rows : sortRows(rows, columns, sort)),
+    [rows, columns, sort, controlled]
+  )
+
+  const toggleSort = (key: string) => {
+    const next: SortState =
+      sort?.key !== key
+        ? { key, dir: 'asc' }
+        : sort.dir === 'asc'
+          ? { key, dir: 'desc' }
+          : null // คลิกครั้งที่สาม — กลับลำดับเดิม
+    if (controlled) onSortChange!(next)
+    else setInternalSort(next)
+  }
+
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -94,17 +150,41 @@ export default function DataTable<T>({
               <th
                 key={c.key}
                 style={c.width ? { minWidth: c.width } : undefined}
+                aria-sort={
+                  sort?.key === c.key
+                    ? sort.dir === 'asc' ? 'ascending' : 'descending'
+                    : undefined
+                }
                 className={`border-b border-gray-200 px-4 py-2.5 font-medium text-gray-600 ${alignOf(c)} ${
                   c.hideOnMobile ? 'hidden md:table-cell' : ''
                 } ${c.sticky ? 'sticky left-0 z-10 bg-gray-50' : ''}`}
               >
-                {c.header}
+                {c.sortValue ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(c.key)}
+                    className="inline-flex items-center gap-1 hover:text-gray-900"
+                  >
+                    {c.header}
+                    {sort?.key === c.key ? (
+                      sort.dir === 'asc' ? (
+                        <ArrowUp size={13} className="shrink-0" />
+                      ) : (
+                        <ArrowDown size={13} className="shrink-0" />
+                      )
+                    ) : (
+                      <ChevronsUpDown size={13} className="shrink-0 text-gray-300" />
+                    )}
+                  </button>
+                ) : (
+                  c.header
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {sortedRows.map((row, i) => (
             <tr
               key={rowKey(row, i)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}

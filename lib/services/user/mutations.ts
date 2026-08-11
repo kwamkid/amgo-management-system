@@ -51,6 +51,8 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   // allowWorkFromHome กับ wfhEligible คือคอลัมน์เดียวกัน แล้วแต่หน้าจอไหนส่งมา
   const wfh = (data.allowWorkFromHome ?? data.wfhEligible) as boolean | undefined
   set('wfh_eligible', wfh)
+  // null = กลับไปตามตำแหน่ง — ต้องเขียน null ลงจริง ไม่ใช่ข้าม
+  set('ot_eligible', data.otEligible as boolean | null | undefined)
 
   if (data.birthDate !== undefined) {
     patch.birth_date =

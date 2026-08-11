@@ -231,7 +231,8 @@ export function DateRangePicker({ startDate, endDate, onChange, className }: Dat
       <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
         <div className="flex">
           {/* Presets sidebar */}
-          <div className="flex flex-col p-3 border-r min-w-[130px] shrink-0">
+          {/* Tailwind v4: border ไม่ระบุสี = currentColor (ดำ) — ต้องเทาอ่อนแบบ aoosocial */}
+          <div className="flex flex-col p-3 border-r border-gray-100 min-w-[130px] shrink-0">
             <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2 px-1">ช่วงเวลา</p>
             {DATE_RANGE_PRESETS.map(p => (
               <button
@@ -276,7 +277,7 @@ export function DateRangePicker({ startDate, endDate, onChange, className }: Dat
             </div>
 
             {/* Two months side by side */}
-            <div className="flex divide-x">
+            <div className="flex divide-x divide-gray-100">
               <RangeMonthCalendar
                 month={leftMonth}
                 range={selecting}

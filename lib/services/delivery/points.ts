@@ -202,11 +202,19 @@ export const getDeliveryPoints = async (
   if (error) throw new Error(`ดึงรายการจุดส่งไม่สำเร็จ: ${error.message}`)
 
   const rows = ((data ?? []) as PointRow[]).slice(0, pageSize)
-  const photoUrls = await getDeliveryPhotoUrls(
-    rows.flatMap((r) => [r.photo_url, r.photo_thumbnail_url])
-  )
+  const [photoUrls, driverNames] = await Promise.all([
+    getDeliveryPhotoUrls(rows.flatMap((r) => [r.photo_url, r.photo_thumbnail_url])),
+    // driver_name เป็น snapshot ชื่อจริงตอนเช็คอิน — ทับด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
+    import('../user/queries').then(({ getDisplayNames }) =>
+      getDisplayNames(rows.map((r) => r.driver_id))
+    ),
+  ])
   return {
-    points: rows.map((r) => toPoint(r, photoUrls)),
+    points: rows.map((r) => {
+      const p = toPoint(r, photoUrls)
+      p.driverName = driverNames.get(p.driverId) || p.driverName
+      return p
+    }),
     lastDoc: offset + pageSize,
     hasMore: (data ?? []).length > pageSize,
   }

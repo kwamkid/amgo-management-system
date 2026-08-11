@@ -1130,6 +1130,7 @@ export type Database = {
           id: string
           is_active: boolean
           name_th: string
+          ot_eligible: boolean
           payroll_cycle: string | null
           schedule_type: string
           sort_order: number
@@ -1145,6 +1146,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name_th: string
+          ot_eligible?: boolean
           payroll_cycle?: string | null
           schedule_type?: string
           sort_order?: number
@@ -1160,6 +1162,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name_th?: string
+          ot_eligible?: boolean
           payroll_cycle?: string | null
           schedule_type?: string
           sort_order?: number
@@ -2090,6 +2093,61 @@ export type Database = {
           },
         ]
       }
+      payroll_entries: {
+        Row: {
+          absent_days: number
+          base_salary: number
+          commission: number
+          deduction: number
+          extra: number
+          id: string
+          month: string
+          note: string
+          ot_hours: number
+          ot_rate: number
+          total: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          variable_inputs: Json | null
+          work_days: number
+        }
+        Insert: {
+          absent_days?: number
+          base_salary?: number
+          commission?: number
+          deduction?: number
+          extra?: number
+          id?: string
+          month: string
+          note?: string
+          ot_hours?: number
+          ot_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          variable_inputs?: Json | null
+          work_days?: number
+        }
+        Update: {
+          absent_days?: number
+          base_salary?: number
+          commission?: number
+          deduction?: number
+          extra?: number
+          id?: string
+          month?: string
+          note?: string
+          ot_hours?: number
+          ot_rate?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          variable_inputs?: Json | null
+          work_days?: number
+        }
+        Relationships: []
+      }
       user_allowed_locations: {
         Row: {
           location_id: string
@@ -2188,6 +2246,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_remarks: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          remark: string
+          remark_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          remark: string
+          remark_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          remark?: string
+          remark_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_pay_items: {
         Row: {
@@ -2411,6 +2499,8 @@ export type Database = {
           allow_checkin_outside_location: boolean
           approved_at: string | null
           approved_by: string | null
+          bank_account_no: string | null
+          bank_name: string | null
           birth_date: string | null
           business_unit_id: string | null
           company_id: string | null
@@ -2422,6 +2512,7 @@ export type Database = {
           discord_user_id: string | null
           discord_username: string | null
           display_name: string | null
+          employee_code: number | null
           employment_status: string
           employment_type: string
           end_date: string | null
@@ -2443,6 +2534,7 @@ export type Database = {
           name_verified: boolean
           needs_approval: boolean
           nickname: string | null
+          ot_eligible: boolean | null
           payroll_cycle: string | null
           phone: string
           photo_url: string | null
@@ -2460,6 +2552,8 @@ export type Database = {
           allow_checkin_outside_location?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
           birth_date?: string | null
           business_unit_id?: string | null
           company_id?: string | null
@@ -2471,6 +2565,7 @@ export type Database = {
           discord_user_id?: string | null
           discord_username?: string | null
           display_name?: string | null
+          employee_code?: number | null
           employment_status?: string
           employment_type?: string
           end_date?: string | null
@@ -2492,6 +2587,7 @@ export type Database = {
           name_verified?: boolean
           needs_approval?: boolean
           nickname?: string | null
+          ot_eligible?: boolean | null
           payroll_cycle?: string | null
           phone?: string
           photo_url?: string | null
@@ -2509,6 +2605,8 @@ export type Database = {
           allow_checkin_outside_location?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
           birth_date?: string | null
           business_unit_id?: string | null
           company_id?: string | null
@@ -2520,6 +2618,7 @@ export type Database = {
           discord_user_id?: string | null
           discord_username?: string | null
           display_name?: string | null
+          employee_code?: number | null
           employment_status?: string
           employment_type?: string
           end_date?: string | null
@@ -2541,6 +2640,7 @@ export type Database = {
           name_verified?: boolean
           needs_approval?: boolean
           nickname?: string | null
+          ot_eligible?: boolean | null
           payroll_cycle?: string | null
           phone?: string
           photo_url?: string | null

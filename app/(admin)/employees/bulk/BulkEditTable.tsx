@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from 'react'
 import { Check, ClipboardPaste, Search, Undo2 } from 'lucide-react'
-import { Button, Pill, EmptyState, useToast, SelectMenu } from '@/components/aoo'
+import { Button, Pill, EmptyState, useToast, SelectMenu, MoneyInput } from '@/components/aoo'
 import { saveBulk } from './actions'
 import { isEnded, type BulkRow, type EmploymentStatus } from './types'
 import { PageHeader } from '@/components/shared'
@@ -797,15 +797,10 @@ function Cell({
     case 'base_salary':
       return (
         <td className="px-2 py-1">
-          <input
+          <MoneyInput
             {...inputShared}
-            type="number"
-            min={0}
-            step={100}
             value={row.base_salary ?? ''}
-            onChange={(e) =>
-              onChange({ base_salary: e.target.value ? Number(e.target.value) : null })
-            }
+            onValueChange={(_, text) => onChange({ base_salary: text ? Number(text) : null })}
             className={`${base} text-right font-mono tabular-nums ${
               row.base_salary === null ? 'border-red-300 bg-red-50' : 'border-transparent'
             }`}

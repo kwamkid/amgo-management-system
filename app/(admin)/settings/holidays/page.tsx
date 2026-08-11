@@ -63,7 +63,7 @@ export default function HolidaysPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
   
   // Hooks
   const { holidays, loading, deleteHoliday, importPublicHolidays } = useHolidays({
@@ -365,6 +365,7 @@ export default function HolidaysPage() {
                     totalPages={totalPages}
                     totalItems={filteredHolidays.length}
                     itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
                     onPageChange={setCurrentPage}
                   />
                 </div>

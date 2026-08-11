@@ -51,7 +51,8 @@ export default function ReportFilters({
   pageSize,
 }: ReportFiltersProps) {
   const { locations } = useLocations()
-  const { users } = useUsers()
+  // เฉพาะพนักงานปัจจุบัน — คนที่ออกแล้วไม่ขึ้นในตัวเลือก (ประวัติยังอยู่ในรายงานตามข้อมูลจริง)
+  const { users } = useUsers({ isActive: true, pageSize: 200 })
   const { showToast } = useToast()
 
   const [loading, setLoading] = useState(false)
@@ -59,6 +60,7 @@ export default function ReportFilters({
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState<string>('')
+  const [onlyPresent, setOnlyPresent] = useState(false)
   const [openUserSelect, setOpenUserSelect] = useState(false)
   const [openLocationSelect, setOpenLocationSelect] = useState(false)
   const [userSearchTerm, setUserSearchTerm] = useState('')
@@ -109,7 +111,8 @@ export default function ReportFilters({
         locationId: selectedLocation || undefined,
         page,
         pageSize,
-        showOnlyPresent: true,
+        // ค่าเริ่มต้นแสดงทุกวัน — วันขาดคือสิ่งที่ HR ต้องเห็น ไม่ใช่สิ่งที่ถูกซ่อน
+        showOnlyPresent: onlyPresent,
       } as AttendanceReportFilters
 
       const response = await getAttendanceReportPaginated(filters)
@@ -128,7 +131,7 @@ export default function ReportFilters({
     if (typeof window !== 'undefined') {
       (window as any).__generateReport = generateReport
     }
-  }, [startDate, endDate, selectedUsers, selectedLocation, pageSize])
+  }, [startDate, endDate, selectedUsers, selectedLocation, pageSize, onlyPresent])
 
   const useLocationCombobox = locations.length > 7
   const selectedLocationName = locations.find(l => l.id === selectedLocation)?.name
@@ -170,7 +173,7 @@ export default function ReportFilters({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0">
-                  <div className="flex items-center border-b px-3 py-2 bg-gray-50">
+                  <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
                     <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                     <input
                       placeholder="ค้นหาสถานที่..."
@@ -183,7 +186,7 @@ export default function ReportFilters({
                   <div className="max-h-[240px] overflow-auto">
                     <div
                       onClick={() => { setSelectedLocation(''); setOpenLocationSelect(false); setLocationSearchTerm('') }}
-                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b"
+                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b border-gray-100"
                     >
                       <Check className={`mr-2 h-3.5 w-3.5 ${!selectedLocation ? 'opacity-100' : 'opacity-0'}`} />
                       ทั้งหมด
@@ -239,7 +242,7 @@ export default function ReportFilters({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[360px] p-0">
-                <div className="flex items-center border-b px-3 py-2 bg-gray-50">
+                <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
                   <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                   <input
                     placeholder="ค้นหาชื่อหรือเบอร์โทร..."
@@ -253,7 +256,7 @@ export default function ReportFilters({
                   {selectedUsers.length > 0 && (
                     <div
                       onClick={() => { setSelectedUsers([]); setUserSearchTerm('') }}
-                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b"
+                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b border-gray-100"
                     >
                       <span className="font-medium text-red-600">ล้างการเลือกทั้งหมด ({selectedUsers.length})</span>
                     </div>
@@ -282,13 +285,12 @@ export default function ReportFilters({
             </Popover>
           </div>
 
-          {/* Generate button — 4th column, aligned to bottom */}
-          <div>
-            <Label className="text-gray-500 mb-1 invisible">ดูข้อมูล</Label>
+          {/* Generate button + checkbox — คอลัมน์สุดท้าย อยู่บรรทัดเดียวกับ input ทั้งแถว */}
+          <div className="flex items-center gap-3">
             <Button
               onClick={() => generateReport(1)}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-red-500 to-rose-600 h-[42px]"
+              className="shrink-0 bg-gradient-to-r from-red-500 to-rose-600 h-[42px] px-5"
             >
               {loading ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />กำลังดึงข้อมูล...</>
@@ -296,6 +298,18 @@ export default function ReportFilters({
                 <><Filter className="w-4 h-4 mr-2" />ดูข้อมูล</>
               )}
             </Button>
+            <label
+              className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-gray-600"
+              title="ซ่อนวันขาด/วันหยุด เหลือเฉพาะวันที่มาทำงานจริง"
+            >
+              <input
+                type="checkbox"
+                checked={onlyPresent}
+                onChange={(e) => setOnlyPresent(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 accent-red-600"
+              />
+              เฉพาะวันที่มา
+            </label>
           </div>
         </div>
 

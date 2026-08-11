@@ -116,7 +116,7 @@ export default function EditUserPage({
     <div className="max-w-4xl space-y-6">
       <PageHeader
         title="แก้ไขข้อมูลพนักงาน"
-        description={user.fullName}
+        description={user.displayName || user.fullName}
         backHref="/employees"
         actions={
           // กดที่รูปเพื่อดึงรูปโปรไฟล์ล่าสุดจาก LINE มาใหม่

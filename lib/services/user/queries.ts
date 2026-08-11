@@ -25,6 +25,21 @@ async function locationsFor(userIds: string[]) {
   return data ?? []
 }
 
+/**
+ * id → "ชื่อจริง (ชื่อเล่น)" จากโปรไฟล์ปัจจุบัน
+ *
+ * ไว้ทับชื่อที่ตาราง event (checkins, delivery_points, ...) ถ่าย snapshot
+ * เก็บไว้ตอนเกิดเหตุการณ์ — snapshot เป็นชื่อจริงล้วนและไม่อัปเดตตามโปรไฟล์
+ * คนอ่านหน้าจอจำกันด้วยชื่อเล่น
+ */
+export async function getDisplayNames(userIds: string[]): Promise<Map<string, string>> {
+  const ids = [...new Set(userIds.filter(Boolean))]
+  if (!ids.length) return new Map()
+
+  const { data } = await sb().from('users').select('id, full_name, display_name').in('id', ids)
+  return new Map((data ?? []).map((u) => [u.id, u.display_name || u.full_name]))
+}
+
 /** ช่องที่ยอมให้ค้นหา — ตรงกับที่หน้าจัดการพนักงานบอกผู้ใช้ */
 const SEARCH_COLUMNS = ['full_name', 'nickname', 'line_display_name', 'phone', 'discord_username']
 
@@ -76,7 +91,8 @@ export async function getUsers(
     .select('*')
     .is('deleted_at', null)
     .eq('is_system', false) // Dev Admin / Super Admin ไม่ใช่พนักงาน
-    .order('created_at', { ascending: false })
+    // เรียงตามรหัสพนักงาน — เลขน้อย = อยู่มานาน อ่านไล่ง่าย
+    .order('employee_code', { ascending: true, nullsFirst: false })
     .range(offset, offset + pageSize) // ขอเกิน 1 แถวเพื่อรู้ว่ายังมีต่อไหม
 
   if (filters?.role) q = q.eq('role', filters.role)

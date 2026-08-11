@@ -59,7 +59,7 @@ export default function InfluencersPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
   
   const { 
     influencers, 
@@ -446,6 +446,7 @@ export default function InfluencersPage() {
               totalPages={totalPages}
               totalItems={influencers.length}
               itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
               onPageChange={setCurrentPage}
             />
           </div>

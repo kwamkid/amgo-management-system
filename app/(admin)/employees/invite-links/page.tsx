@@ -34,7 +34,7 @@ export default function InviteLinksPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   // Pagination calculations
   const totalPages = Math.ceil(inviteLinks.length / itemsPerPage)
@@ -424,6 +424,7 @@ export default function InviteLinksPage() {
                 totalPages={totalPages}
                 totalItems={inviteLinks.length}
                 itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
                 onPageChange={setCurrentPage}
               />
             </div>

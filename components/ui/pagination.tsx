@@ -11,17 +11,22 @@ export interface PaginationProps {
   totalItems?: number
   itemsPerPage?: number
   onPageChange: (page: number) => void
+  /** ส่งมาเมื่ออยากให้ผู้ใช้เลือกจำนวนแถวต่อหน้าเองได้ — เปลี่ยนแล้วเด้งกลับหน้า 1 ให้ */
+  onItemsPerPageChange?: (size: number) => void
   loading?: boolean
   showItemsInfo?: boolean
   className?: string
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+
 export function Pagination({
   currentPage,
   totalPages,
   totalItems,
-  itemsPerPage = 10,
+  itemsPerPage = 25,
   onPageChange,
+  onItemsPerPageChange,
   loading = false,
   showItemsInfo = true,
   className
@@ -74,15 +79,33 @@ export function Pagination({
     return `${start}-${end} จาก ${totalItems} รายการ`
   }
 
-  if (totalPages <= 1) return null
+  // มีตัวเลือกขนาดหน้าอยู่ ต้องไม่ซ่อนแถบ — ไม่งั้นเลือก 100 แล้วเหลือหน้าเดียว จะสลับกลับไม่ได้
+  const showSizePicker = !!onItemsPerPageChange && (totalItems ?? 0) > PAGE_SIZE_OPTIONS[0]
+  if (totalPages <= 1 && !showSizePicker) return null
 
   return (
     <div className={cn('flex items-center justify-between mt-4 px-2', className)}>
-      <div className="text-sm text-gray-600">
-        {showItemsInfo && totalItems ? (
-          getItemsInfo()
-        ) : (
-          `หน้า ${currentPage} จาก ${totalPages}`
+      <div className="flex items-center gap-3 text-sm text-gray-600">
+        <span>
+          {showItemsInfo && totalItems ? getItemsInfo() : `หน้า ${currentPage} จาก ${totalPages}`}
+        </span>
+        {showSizePicker && (
+          <label className="flex items-center gap-1.5">
+            <select
+              value={itemsPerPage}
+              disabled={loading}
+              onChange={(e) => {
+                onItemsPerPageChange!(Number(e.target.value))
+                onPageChange(1)
+              }}
+              className="h-8 rounded-md border border-gray-200 bg-white px-1.5 text-sm text-gray-700"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            <span className="hidden sm:inline">แถว/หน้า</span>
+          </label>
         )}
       </div>
 
@@ -159,7 +182,7 @@ export function Pagination({
 }
 
 // Hook for managing pagination state
-export function usePagination<T>(items: T[], itemsPerPage: number = 10) {
+export function usePagination<T>(items: T[], itemsPerPage: number = 25) {
   const [currentPage, setCurrentPage] = React.useState(1)
 
   const totalItems = items.length

@@ -126,15 +126,7 @@ export default function PendingCheckouts({
                 {/* Employee Info */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {record.userAvatar ? (
-                      <img
-                        src={record.userAvatar}
-                        alt={record.userName}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-300 rounded-full" />
-                    )}
+                    <UserAvatar name={record.userName} userId={record.userId} imageUrl={record.userAvatar} size="md" />
                     <div>
                       <p className="font-semibold text-gray-900">{record.userName}</p>
                       <p className="text-sm text-gray-600">
@@ -223,15 +215,7 @@ export default function PendingCheckouts({
               <Card className={`bg-gradient-to-r ${gradients.grayLight} border-0`}>
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
-                    {selectedRecord.userAvatar ? (
-                      <img
-                        src={selectedRecord.userAvatar}
-                        alt={selectedRecord.userName}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-300 rounded-full" />
-                    )}
+                    <UserAvatar name={selectedRecord.userName} userId={selectedRecord.userId} imageUrl={selectedRecord.userAvatar} size="md" />
                     <div>
                       <p className="font-medium">{selectedRecord.userName}</p>
                       <p className="text-sm text-gray-600">
@@ -329,3 +313,4 @@ export default function PendingCheckouts({
     </>
   )
 }
+import UserAvatar from '@/components/shared/UserAvatar'

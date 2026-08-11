@@ -75,6 +75,17 @@ function toRecord(r: Row): CheckInRecord {
 
 const sb = () => createClient()
 
+/**
+ * ทับ userName (snapshot ชื่อจริงตอนเช็คอิน) ด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
+ * อ่านโปรไฟล์คนอื่นไม่ได้ (RLS) ก็คงชื่อเดิมไว้
+ */
+async function withDisplayNames(records: CheckInRecord[]): Promise<CheckInRecord[]> {
+  const { getDisplayNames } = await import('./user/queries')
+  const names = await getDisplayNames(records.map((r) => r.userId))
+  if (!names.size) return records
+  return records.map((r) => ({ ...r, userName: names.get(r.userId) || r.userName }))
+}
+
 /* ------------------------------------------------------------------ *
  *  ปิดกะที่ค้าง — ใช้ตอนคนลืมเช็คเอาท์แล้วมาเช็คอินวันใหม่
  *  ไม่ต้องใช้ GPS
@@ -271,10 +282,60 @@ export async function getCheckInRecords(
   const hasMore = rows.length > pageSize
 
   return {
-    records: rows.slice(0, pageSize).map(toRecord),
+    records: await withDisplayNames(rows.slice(0, pageSize).map(toRecord)),
     lastDoc: offset + pageSize,
     hasMore,
   }
+}
+
+/* ------------------------------------------------------------------ *
+ *  HR เติมวันทำงานย้อนหลัง — กรณีพิสูจน์ได้ว่าพนักงานมาทำงานแต่ลืมเช็คอิน
+ *
+ *  RLS: policy checkins_manage ให้เฉพาะ HR/แอดมินเขียนแถวของคนอื่นได้
+ *  เหตุผลบังคับกรอก และขึ้นต้น note ให้เสมอ — ในรายงานจะเห็นชัดว่าเป็นวันที่เติมให้
+ * ------------------------------------------------------------------ */
+export async function backfillWorkDay(params: {
+  userId: string
+  userName: string
+  workDate: string // YYYY-MM-DD
+  inTime: string // HH:mm
+  outTime: string // HH:mm
+  reason: string
+}): Promise<void> {
+  const { userId, userName, workDate, inTime, outTime, reason } = params
+
+  if (!reason.trim()) throw new Error('กรุณาระบุเหตุผล/หลักฐานที่เติมวันให้')
+
+  const checkin = new Date(`${workDate}T${inTime}:00+07:00`)
+  const checkout = new Date(`${workDate}T${outTime}:00+07:00`)
+  const hours = (checkout.getTime() - checkin.getTime()) / 3_600_000
+  if (hours <= 0) throw new Error('เวลาออกต้องอยู่หลังเวลาเข้า')
+
+  // กันเติมซ้ำวันที่มีเช็คอินอยู่แล้ว
+  const { data: existing } = await sb()
+    .from('checkins')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('work_date', workDate)
+    .limit(1)
+  if (existing?.length) throw new Error('วันนี้มีเช็คอินอยู่แล้ว')
+
+  const rounded = Math.round(hours * 100) / 100
+  const { error } = await sb().from('checkins').insert({
+    user_id: userId,
+    user_name: userName,
+    work_date: workDate,
+    checkin_time: checkin.toISOString(),
+    checkout_time: checkout.toISOString(),
+    checkin_lat: 0,
+    checkin_lng: 0,
+    checkin_type: 'offsite',
+    status: 'completed',
+    regular_hours: rounded,
+    total_hours: rounded,
+    note: `HR เติมวันทำงานย้อนหลัง: ${reason.trim()}`,
+  })
+  if (error) throw new Error(`เติมวันทำงานไม่สำเร็จ: ${error.message}`)
 }
 
 /* ------------------------------------------------------------------ *
@@ -295,7 +356,7 @@ export async function getPendingCheckouts(): Promise<CheckInRecord[]> {
     .order('checkin_time', { ascending: false })
 
   if (error) throw new Error(`ดึงรายการที่ลืมเช็คเอาท์ไม่สำเร็จ: ${error.message}`)
-  return (data ?? []).map(toRecord)
+  return withDisplayNames((data ?? []).map(toRecord))
 }
 
 /* ------------------------------------------------------------------ *

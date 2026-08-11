@@ -16,6 +16,9 @@ export interface User {
   fullName: string
   nickname?: string        // ชื่อเล่น — ที่ทำงานเรียกกันด้วยชื่อนี้
   displayName?: string     // "ชื่อจริง (ชื่อเล่น)" — ฐานข้อมูลคำนวณให้ แก้ตรง ๆ ไม่ได้
+  employeeCode?: number | null // รหัสพนักงานเลขต่อเนื่อง — โชว์เป็น 3 หลัก (001)
+  bankName?: string | null
+  bankAccountNo?: string | null
   nameVerified?: boolean   // false = ยังเป็นชื่อ LINE ที่ลากมาจากระบบเก่า
   phone?: string
   birthDate?: Date | string
@@ -25,6 +28,7 @@ export interface User {
   role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
   companyId?: string | null
   jobFunctionId?: string | null
+  startDate?: Date | string | null // วันเริ่มงานจริง (start_date_verified บอกว่ายืนยันแล้ว)
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   requiresCheckin?: boolean | null // false = ไม่ต้องเช็คอิน รายงานไม่นับขาดงาน · null = ตามตำแหน่ง
   employmentStatus?: string        // active | probation | resigned | terminated | retired
@@ -32,6 +36,7 @@ export interface User {
   probationEndDate?: string | null // วันพ้นทดลองงาน — ใช้ลงวันที่เงินเดือนหลังโปร + สัญญา
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
+  otEligible?: boolean | null // ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible)
   
   // Invite Link Info
   inviteLinkId?: string // ID ของ invite link ที่ใช้

@@ -21,13 +21,14 @@ export default function CreateInviteLinkPage() {
 
   const handleSubmit = async (data: CreateInviteLinkData): Promise<boolean> => {
     setIsSubmitting(true)
-    const success = await createInviteLink(data)
+    const linkId = await createInviteLink(data)
     setIsSubmitting(false)
-    
-    if (success) {
-      router.push('/employees/invite-links')
+
+    if (linkId) {
+      // ไปหน้ารายละเอียดที่โชว์ URL เต็ม + ปุ่มคัดลอก — จบที่หน้ารายการแล้วคนหาลิงก์ไม่เจอ
+      router.push(`/employees/invite-links/${linkId}`)
     }
-    return success
+    return !!linkId
   }
 
   const handleCancel = () => {

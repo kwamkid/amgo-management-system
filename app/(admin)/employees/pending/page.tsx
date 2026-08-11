@@ -36,7 +36,7 @@ export default function PendingUsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   const handleApprove = async (user: User) => {
-    if (confirm(`อนุมัติการลงทะเบียนของ ${user.fullName}?`)) {
+    if (confirm(`อนุมัติการลงทะเบียนของ ${user.displayName || user.fullName}?`)) {
       const success = await approveUser(user.id!)
       if (success) {
         refetch()
@@ -45,7 +45,7 @@ export default function PendingUsersPage() {
   }
 
   const handleReject = async (user: User) => {
-    if (confirm(`ปฏิเสธการลงทะเบียนของ ${user.fullName}?\n\nการปฏิเสธจะทำให้พนักงานไม่สามารถเข้าใช้งานระบบได้`)) {
+    if (confirm(`ปฏิเสธการลงทะเบียนของ ${user.displayName || user.fullName}?\n\nการปฏิเสธจะทำให้พนักงานไม่สามารถเข้าใช้งานระบบได้`)) {
       const success = await deactivateUser(user.id!)
       if (success) {
         refetch()
@@ -115,7 +115,7 @@ export default function PendingUsersPage() {
                 <div className="flex items-start gap-4">
                   <UserAvatar name={user.fullName} userId={user.id} size="xl" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">{user.fullName}</h3>
+                    <h3 className="font-semibold text-gray-900 text-lg">{user.displayName || user.fullName}</h3>
                     <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
                     <div className="mt-2">
                       {getRoleBadge(user.role)}
@@ -224,7 +224,7 @@ export default function PendingUsersPage() {
                 <div className="flex items-center gap-4">
                   <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
                   <div>
-                    <h4 className="font-semibold text-lg">{selectedUser.fullName}</h4>
+                    <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
                     <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
                     <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
                   </div>

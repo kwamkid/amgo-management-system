@@ -20,8 +20,10 @@ import LocationMultiSelect from './LocationMultiSelect'
 import { createClient } from '@/lib/supabase/client'
 import PayCard from './PayCard'
 import EmployeeTimeline from './EmployeeTimeline'
+import RemarksCard from './RemarksCard'
+import WorkScheduleCard from './WorkScheduleCard'
 import { TabBar, TabItem } from '@/components/aoo'
-import { Phone, Calendar, Save, X } from 'lucide-react'
+import { Phone, Calendar, Clock, Save, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,23 +72,23 @@ export default function UserEditForm({
   }
 
   // เปิดลิงก์ ?tab=timeline มาจากหน้ารายชื่อ/กล่องทดลองงานได้เลย
-  const [tab, setTab] = useState<'info' | 'pay' | 'location' | 'timeline'>(() => {
+  const [tab, setTab] = useState<'info' | 'pay' | 'location' | 'timeline' | 'remarks'>(() => {
     if (typeof window === 'undefined') return 'info'
     const t = new URLSearchParams(window.location.search).get('tab')
-    return t === 'timeline' || t === 'pay' || t === 'location' ? t : 'info'
+    return t === 'timeline' || t === 'pay' || t === 'location' || t === 'remarks' ? t : 'info'
   })
 
   // ตัวเลือกบริษัทกับตำแหน่ง — ตำแหน่งเป็นตัวกำหนดสิทธิ์ ตารางงาน รอบจ่ายเงิน
   const [companies, setCompanies] = useState<{ id: string; code: string; name_th: string }[]>([])
   const [functions, setFunctions] = useState<
-    { id: string; name_th: string; default_role: string | null }[]
+    { id: string; name_th: string; default_role: string | null; ot_eligible: boolean }[]
   >([])
 
   useEffect(() => {
     const sb = createClient()
     sb.from('companies').select('id, code, name_th').order('code')
       .then(({ data }) => setCompanies(data ?? []))
-    sb.from('job_functions').select('id, name_th, default_role').eq('is_active', true)
+    sb.from('job_functions').select('id, name_th, default_role, ot_eligible').eq('is_active', true)
       .order('sort_order')
       .then(({ data }) => setFunctions(data ?? []))
   }, [])
@@ -105,6 +107,7 @@ export default function UserEditForm({
     employmentStatus: user.employmentStatus ?? 'active',
     employmentType: user.employmentType ?? 'monthly',
     probationEndDate: user.probationEndDate ?? '',
+    otEligible: user.otEligible ?? null,
     isActive: user.isActive
   })
 
@@ -210,6 +213,7 @@ export default function UserEditForm({
           onClick={() => setTab('timeline')}
           label="ไทม์ไลน์"
         />
+        <TabItem active={tab === 'remarks'} onClick={() => setTab('remarks')} label="โน้ต" />
       </TabBar>
 
       {/* ── แท็บ 1 · ข้อมูล + สถานะ ─────────────────────────── */}
@@ -458,7 +462,7 @@ export default function UserEditForm({
       </div>
 
       {/* ── แท็บ 2 · เงินเดือน ──────────────────────────────── */}
-      <div hidden={tab !== 'pay'}>
+      <div hidden={tab !== 'pay'} className="space-y-5">
         {user.id && (
           <PayCard
             userId={user.id}
@@ -466,6 +470,43 @@ export default function UserEditForm({
             registerFlush={(fn) => (payFlushRef.current = fn)}
           />
         )}
+
+        {/* สิทธิ์ OT — เรื่องเงินเหมือนกัน เลยอยู่แท็บนี้
+            แต่เป็นคอลัมน์ของ users บันทึกผ่านปุ่มบันทึกท้ายฟอร์มเหมือนแท็บแรก */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
+            <Clock size={16} className="text-gray-400" /> ค่าล่วงเวลา (OT)
+          </h3>
+          <div className="max-w-sm">
+            <Select
+              value={formData.otEligible == null ? 'inherit' : formData.otEligible ? 'yes' : 'no'}
+              onValueChange={(v) =>
+                setFormData({ ...formData, otEligible: v === 'inherit' ? null : v === 'yes' })
+              }
+              disabled={isLoading}
+            >
+              <SelectTrigger id="otEligible">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const picked = functions.find((f) => f.id === formData.jobFunctionId)
+                  const byPosition = picked
+                    ? picked.ot_eligible
+                      ? 'ได้ OT'
+                      : 'ไม่ได้ OT'
+                    : 'ยังไม่ระบุตำแหน่ง = ไม่ได้ OT'
+                  return <SelectItem value="inherit">ตามตำแหน่ง ({byPosition})</SelectItem>
+                })()}
+                <SelectItem value="yes">ได้ OT — กำหนดเฉพาะคนนี้</SelectItem>
+                <SelectItem value="no">ไม่ได้ OT — กำหนดเฉพาะคนนี้</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="mt-1.5 text-xs text-gray-500">
+            มีผลกับการเติมชั่วโมง OT อัตโนมัติในหน้าสรุปเงินเดือน — HR ยังพิมพ์เองได้เสมอ
+          </p>
+        </div>
       </div>
 
       {/* ── แท็บ 3 · สถานที่เช็คอิน ─────────────────────────── *
@@ -534,6 +575,13 @@ export default function UserEditForm({
                     />
                   </div>
                 </div>
+
+                {/* วันหยุดประจำ + สลับวันหยุด — บันทึกในตัวเอง ไม่ผ่านปุ่มบันทึกของฟอร์ม */}
+                {user.id && (
+                  <div className="border-t border-gray-100 pt-4">
+                    <WorkScheduleCard userId={user.id} />
+                  </div>
+                )}
               </>
             )}
           </CardContent>
@@ -545,8 +593,16 @@ export default function UserEditForm({
         {user.id && <EmployeeTimeline userId={user.id} />}
       </div>
 
-      {/* Actions — แท็บไทม์ไลน์อ่านอย่างเดียว ไม่มีอะไรให้บันทึก */}
-      <div hidden={tab === 'timeline'} className="flex items-center justify-end gap-3">
+      {/* ── แท็บ 5 · โน้ต (บันทึกในตัวเอง ไม่ผ่านปุ่มบันทึกของฟอร์ม) ── */}
+      <div hidden={tab !== 'remarks'}>
+        {user.id && <RemarksCard userId={user.id} />}
+      </div>
+
+      {/* Actions — แท็บไทม์ไลน์/โน้ตไม่มีอะไรให้ปุ่มนี้บันทึก */}
+      <div
+        hidden={tab === 'timeline' || tab === 'remarks'}
+        className="flex items-center justify-end gap-3"
+      >
 
         <Button
           type="button"

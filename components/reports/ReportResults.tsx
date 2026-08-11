@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
@@ -26,6 +26,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
+import { backfillWorkDay } from '@/lib/services/checkinService'
+import UserScheduleDialog from '@/components/users/UserScheduleDialog'
+import { getAttendanceReportForExport } from '@/lib/services/reportService'
+import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/hooks/useToast'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 interface ReportResultsProps {
   reportData: AttendanceReportData[]
@@ -36,6 +43,8 @@ interface ReportResultsProps {
   onPageChange?: (page: number) => void
   pageSize?: number
   onPageSizeChange?: (size: number) => void
+  /** เรียกหลัง HR เติมวันทำงานสำเร็จ — ให้หน้าแม่ดึงรายงานใหม่ */
+  onDataChanged?: () => void
 }
 
 export default function ReportResults({
@@ -47,9 +56,21 @@ export default function ReportResults({
   onPageChange,
   pageSize = 50,
   onPageSizeChange,
+  onDataChanged,
 }: ReportResultsProps) {
-  const [activeTab, setActiveTab] = useState('daily')
+  // ตารางวันขึ้นก่อน — เจ้าของบอกดูง่ายที่สุด เห็นทั้งเดือนในตาเดียว
+  const [activeTab, setActiveTab] = useState('calendar')
   const [loadingPage, setLoadingPage] = useState(false)
+  const { userData } = useAuth()
+  // เติมวันได้เฉพาะ HR/แอดมิน — RLS ฝั่งฐานข้อมูลกันซ้ำอีกชั้น
+  const canBackfill = userData?.role === 'hr' || userData?.role === 'admin'
+  const [backfillFor, setBackfillFor] = useState<AttendanceReportData | null>(null)
+  // กดชื่อพนักงาน → แก้ตารางวันทำงาน (วันทำงาน/สัปดาห์ · วันหยุดประจำ) ได้ตรงนั้นเลย
+  const [scheduleFor, setScheduleFor] = useState<{ userId: string; name: string } | null>(null)
+  const [scheduleReload, setScheduleReload] = useState(0)
+  const openSchedule = canBackfill
+    ? (userId: string, name: string) => setScheduleFor({ userId, name })
+    : undefined
   
   // Handle page change with loading state
   const handlePageChange = async (page: number) => {
@@ -112,11 +133,24 @@ export default function ReportResults({
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="calendar">ตารางวัน</TabsTrigger>
             <TabsTrigger value="daily">รายวัน</TabsTrigger>
             <TabsTrigger value="summary">สรุปรายคน</TabsTrigger>
           </TabsList>
-          
+
+          {/* Day slot — ช่องวันของทุกคนเรียงตรงกัน เห็นทั้งเดือนในตาเดียว */}
+          <TabsContent value="calendar" className="mt-4">
+            {activeTab === 'calendar' && (
+              <DaySlotGrid
+                filters={filters}
+                reloadKey={scheduleReload}
+                onNameClick={openSchedule}
+              />
+            )}
+          </TabsContent>
+
+
           {/* Daily Report */}
           <TabsContent value="daily" className="mt-4">
             {loadingPage ? (
@@ -136,7 +170,11 @@ export default function ReportResults({
               </div>
             ) : (
               <>
-                <DailyReportTable data={reportData} />
+                <DailyReportTable
+                  data={reportData}
+                  canBackfill={canBackfill}
+                  onBackfill={setBackfillFor}
+                />
                 <PaginationControls
                   pagination={pagination}
                   onPageChange={handlePageChange}
@@ -150,11 +188,123 @@ export default function ReportResults({
           
           {/* Summary Report */}
           <TabsContent value="summary" className="mt-4">
-            <SummaryReportTable data={summaryData} />
+            <SummaryReportTable data={summaryData} onNameClick={openSchedule} />
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {backfillFor && (
+        <BackfillDayDialog
+          record={backfillFor}
+          onClose={() => setBackfillFor(null)}
+          onSaved={() => {
+            setBackfillFor(null)
+            onDataChanged?.()
+          }}
+        />
+      )}
+
+      {scheduleFor && (
+        <UserScheduleDialog
+          userId={scheduleFor.userId}
+          name={scheduleFor.name}
+          onClose={() => {
+            setScheduleFor(null)
+            // ตารางเวรเปลี่ยน = มา/ขาดเปลี่ยน — ดึงรายงานใหม่ทั้งตารางวันและแท็บอื่น
+            setScheduleReload((k) => k + 1)
+            onDataChanged?.()
+          }}
+        />
+      )}
     </Card>
+  )
+}
+
+/**
+ * HR เติมวันทำงานย้อนหลัง — ใช้กับวันที่ขึ้น "ขาด" แต่พิสูจน์ได้ว่ามาทำงานจริง
+ * บังคับกรอกเหตุผล และรายงานจะติดหมายเหตุ "HR เติมวันทำงานย้อนหลัง" เสมอ
+ */
+function BackfillDayDialog({
+  record,
+  onClose,
+  onSaved,
+}: {
+  record: AttendanceReportData
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { showToast } = useToast()
+  const [inTime, setInTime] = useState('09:00')
+  const [outTime, setOutTime] = useState('18:00')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    try {
+      setSaving(true)
+      await backfillWorkDay({
+        userId: record.userId,
+        userName: record.userName,
+        workDate: record.date,
+        inTime,
+        outTime,
+        reason,
+      })
+      showToast('เติมวันทำงานแล้ว', 'success')
+      onSaved()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <CardContent className="space-y-4 p-5">
+          <div>
+            <h3 className="font-semibold text-gray-900">เติมวันทำงานย้อนหลัง</h3>
+            <p className="mt-0.5 text-sm text-gray-600">
+              {record.userName} · {format(new Date(record.date), 'dd MMM yyyy', { locale: th })}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500">เวลาเข้า</label>
+              <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">เวลาออก</label>
+              <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500">เหตุผล / หลักฐาน (บังคับ)</label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="เช่น มีรูปถ่ายหน้างาน · หัวหน้ายืนยันว่ามาทำงาน แต่ลืมเช็คอิน"
+              rows={2}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+              ยกเลิก
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving || !reason.trim()}>
+              {saving ? 'กำลังบันทึก...' : 'เติมวันนี้ให้'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -189,7 +339,7 @@ function PaginationControls({
   const showPages = pagination && pagination.totalPages > 1
 
   return (
-    <div className="flex items-center justify-between mt-4 pt-3 border-t px-1">
+    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 px-1">
       {/* Left: rows per page */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500">แสดง</span>
@@ -261,7 +411,15 @@ function PaginationControls({
 }
 
 // Daily Report Table Component
-function DailyReportTable({ data }: { data: AttendanceReportData[] }) {
+function DailyReportTable({
+  data,
+  canBackfill,
+  onBackfill,
+}: {
+  data: AttendanceReportData[]
+  canBackfill: boolean
+  onBackfill: (r: AttendanceReportData) => void
+}) {
   if (data.length === 0) {
     return (
       <div className="text-center py-8">
@@ -283,6 +441,7 @@ function DailyReportTable({ data }: { data: AttendanceReportData[] }) {
             <TableHead>สถานที่</TableHead>
             <TableHead>สถานะ</TableHead>
             <TableHead>หมายเหตุ</TableHead>
+            {canBackfill && <TableHead />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -318,6 +477,15 @@ function DailyReportTable({ data }: { data: AttendanceReportData[] }) {
               <TableCell className="text-sm text-gray-600">
                 {record.note || '-'}
               </TableCell>
+              {canBackfill && (
+                <TableCell className="text-right">
+                  {record.status === 'absent' && (
+                    <Button variant="outline" size="sm" onClick={() => onBackfill(record)}>
+                      เติมวัน
+                    </Button>
+                  )}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -327,7 +495,13 @@ function DailyReportTable({ data }: { data: AttendanceReportData[] }) {
 }
 
 // Summary Report Table Component
-function SummaryReportTable({ data }: { data: any[] }) {
+function SummaryReportTable({
+  data,
+  onNameClick,
+}: {
+  data: any[]
+  onNameClick?: (userId: string, name: string) => void
+}) {
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-8">
@@ -336,13 +510,26 @@ function SummaryReportTable({ data }: { data: any[] }) {
     )
   }
   
+  // คนมีปัญหา (ขาดงาน) ขึ้นก่อนเสมอ — ขาดมากอยู่บนสุด ที่เหลือไล่ตามชื่อ
+  const sorted = [...data].sort(
+    (a, b) => (b.absentDays - a.absentDays) || a.userName.localeCompare(b.userName, 'th')
+  )
+  const problemCount = sorted.filter((s) => s.absentDays > 0).length
+
   return (
     <div className="overflow-x-auto">
+      {problemCount > 0 && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          มีพนักงานขาดงาน (ไม่เช็คอินในวันทำงาน) {problemCount} คนในช่วงนี้ — แสดงไว้บนสุดแล้ว
+          ถ้าพิสูจน์ได้ว่ามาทำงานจริง กดเติมวันได้ในแท็บรายวัน
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>ชื่อพนักงาน</TableHead>
-            <TableHead className="text-center">วันทำงาน</TableHead>
+            <TableHead className="text-center">ควรมา</TableHead>
+            <TableHead className="text-center">มาจริง</TableHead>
             <TableHead className="text-center">วันขาด</TableHead>
             <TableHead className="text-center">วันสาย</TableHead>
             <TableHead className="text-center">รวมชั่วโมง</TableHead>
@@ -350,10 +537,27 @@ function SummaryReportTable({ data }: { data: any[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((summary, index) => (
-            <TableRow key={summary.userId || index}>
+          {sorted.map((summary, index) => (
+            <TableRow
+              key={summary.userId || index}
+              className={summary.absentDays > 0 ? 'bg-red-50/60' : undefined}
+            >
               <TableCell className="font-medium">
-                {summary.userName}
+                {onNameClick && summary.userId ? (
+                  <button
+                    type="button"
+                    onClick={() => onNameClick(summary.userId, summary.userName)}
+                    className="text-left hover:text-indigo-600 hover:underline"
+                    title="กดเพื่อแก้ตารางวันทำงาน"
+                  >
+                    {summary.userName}
+                  </button>
+                ) : (
+                  summary.userName
+                )}
+              </TableCell>
+              <TableCell className="text-center text-gray-600">
+                {summary.expectedDays ?? summary.presentDays + summary.absentDays}
               </TableCell>
               <TableCell className="text-center">
                 <Badge variant="success">{summary.presentDays}</Badge>
@@ -409,4 +613,220 @@ function AttendanceStatusBadge({
   }
   
   return <Badge variant="success">ปกติ</Badge>
+}
+
+/* ------------------------------------------------------------------ *
+ *  Day slot — แต่ละคนหนึ่งแถว ช่องวันที่เรียงตรงกันทุกคน
+ *  เขียว=มา · ส้ม=มาสาย · แดง=ขาด · ฟ้า=ลา · เทา=วันหยุด/ไม่ต้องเช็คอิน
+ * ------------------------------------------------------------------ */
+type DaySlotSummary = { present: number; absent: number; leave: number; total: number }
+
+function DaySlotGrid({
+  filters,
+  reloadKey = 0,
+  onNameClick,
+}: {
+  filters: AttendanceReportFilters | null
+  /** bump เมื่อแก้ตารางเวรเสร็จ — ให้ดึงข้อมูลใหม่ */
+  reloadKey?: number
+  onNameClick?: (userId: string, name: string) => void
+}) {
+  const [rows, setRows] = useState<AttendanceReportData[] | null>(null)
+  const [sumByUser, setSumByUser] = useState<Map<string, DaySlotSummary>>(new Map())
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!filters) return
+    let cancelled = false
+    setLoading(true)
+    // ดึงทั้งช่วง (ไม่ใช่หน้าเดียว) และเอาวันขาด/วันหยุดมาด้วย
+    getAttendanceReportForExport({
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      userIds: filters.userIds,
+      locationId: filters.locationId,
+      showOnlyPresent: false,
+    })
+      .then((r) => {
+        if (cancelled) return
+        setRows(r.data)
+        // เลขใช้ของแท็บสรุป — คิดกะหมุนเวียน/เลื่อนวันหยุดให้แล้ว
+        setSumByUser(
+          new Map(
+            (r.summary || []).map((x) => [
+              x.userId,
+              {
+                present: x.presentDays,
+                absent: x.absentDays,
+                leave: x.leaveDays ?? 0,
+                total: x.totalDays,
+              },
+            ])
+          )
+        )
+      })
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [filters, reloadKey])
+
+  if (!filters) return null
+  if (loading || !rows) {
+    return <div className="py-10 text-center text-sm text-gray-500">กำลังโหลดตารางวัน...</div>
+  }
+
+  // รายการวันในช่วง (ตัดที่วันนี้ — วันอนาคตยังไม่มีอะไรให้ดู)
+  // เทียบเป็นวันล้วน ไม่ใช่ Date ตรง ๆ — เวลาที่ติดมากับ filters ทำให้วันสุดท้ายหลุด
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const endStr = format(filters.endDate, 'yyyy-MM-dd')
+  const lastDay = endStr < today ? endStr : today
+  const days: string[] = []
+  for (let d = new Date(filters.startDate); format(d, 'yyyy-MM-dd') <= lastDay; d.setDate(d.getDate() + 1)) {
+    days.push(format(d, 'yyyy-MM-dd'))
+  }
+
+  type Cell = { status: string; late: boolean; note: string; hours: number }
+  const byUser = new Map<
+    string,
+    { userId: string; name: string; cells: Map<string, Cell>; sum: DaySlotSummary }
+  >()
+  for (const r of rows) {
+    let u = byUser.get(r.userId)
+    if (!u) {
+      u = {
+        userId: r.userId,
+        name: r.userName,
+        cells: new Map(),
+        sum: sumByUser.get(r.userId) ?? { present: 0, absent: 0, leave: 0, total: 0 },
+      }
+      byUser.set(r.userId, u)
+    }
+    u.cells.set(r.date, { status: r.status, late: r.isLate, note: r.note || '', hours: r.totalHours })
+  }
+
+  // คนขาดมากอยู่บนสุด — เหมือนแท็บสรุป
+  const people = [...byUser.values()].sort(
+    (a, b) => b.sum.absent - a.sum.absent || a.name.localeCompare(b.name, 'th')
+  )
+
+  const cellClass = (c?: Cell): string => {
+    if (!c) return 'bg-gray-50'
+    if (c.status === 'absent') return 'bg-red-500'
+    if (c.status === 'late') return 'bg-amber-400'
+    if (c.status === 'normal') return 'bg-green-500'
+    // holiday รวม ลา/วันหยุดตามตาราง/ไม่ต้องเช็คอิน — แยกด้วยหมายเหตุ
+    if (c.hours > 0) return 'bg-green-500 ring-1 ring-green-700' // มาทำงานวันหยุด
+    if (c.note.includes('ลา')) return 'bg-sky-400'
+    return 'bg-gray-200'
+  }
+
+  const legend = [
+    ['bg-green-500', 'มาทำงาน'],
+    ['bg-amber-400', 'มาสาย'],
+    ['bg-red-500', 'ขาด'],
+    ['bg-sky-400', 'ลา'],
+    ['bg-gray-200', 'วันหยุด/ไม่ต้องเช็คอิน'],
+  ] as const
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+        {legend.map(([cls, label]) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span className={`inline-block h-3 w-3 rounded-sm ${cls}`} />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-gray-100">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 min-w-44 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-left font-medium text-gray-600">
+                พนักงาน
+              </th>
+              {days.map((d) => (
+                <th
+                  key={d}
+                  className="border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
+                >
+                  <span className="block text-[10px] leading-tight">
+                    {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
+                  </span>
+                  <span className="block leading-tight">{Number(d.slice(8))}</span>
+                </th>
+              ))}
+              <th className="border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600">
+                มา/ขาด
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {people.map((p) => (
+              <tr key={p.userId} className="border-b border-gray-50 last:border-0">
+                <td className="sticky left-0 z-10 max-w-44 truncate bg-white px-3 py-1 text-gray-800">
+                  {onNameClick ? (
+                    <button
+                      type="button"
+                      onClick={() => onNameClick(p.userId, p.name)}
+                      className="max-w-full truncate text-left hover:text-indigo-600 hover:underline"
+                      title="กดเพื่อแก้ตารางวันทำงาน"
+                    >
+                      {p.name}
+                    </button>
+                  ) : (
+                    p.name
+                  )}
+                </td>
+                {days.map((d) => {
+                  const c = p.cells.get(d)
+                  return (
+                    <td key={d} className="px-0.5 py-1 text-center">
+                      <span
+                        title={`${format(new Date(d), 'dd MMM', { locale: th })}${c ? ` · ${c.status === 'absent' ? 'ขาด' : c.status === 'late' ? 'มาสาย' : c.status === 'normal' ? 'มาทำงาน' : c.note || 'วันหยุด'}` : ''}`}
+                        className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)}`}
+                      />
+                    </td>
+                  )
+                })}
+                {(() => {
+                  // คู่เลขต้องบวกกันได้เท่าวันที่แสดงของคนนั้น (30/31 ถ้าดูทั้งเดือน)
+                  // "ไม่มา" รวมทุกอย่างที่ไม่ได้มา — แตกให้ดูข้างล่างว่าเป็นขาดจริง/ลา/หยุดกี่วัน
+                  const missed = Math.max(0, p.sum.total - p.sum.present)
+                  const off = Math.max(0, missed - p.sum.absent - p.sum.leave)
+                  const breakdown = [
+                    p.sum.absent > 0 && `ขาด ${p.sum.absent}`,
+                    p.sum.leave > 0 && `ลา ${p.sum.leave}`,
+                    off > 0 && `หยุด ${off}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                  return (
+                    <td className="whitespace-nowrap px-2 py-1 text-center">
+                      <span className="font-semibold text-green-600">{p.sum.present}</span>
+                      <span className="text-gray-300">/</span>
+                      <span
+                        className={
+                          p.sum.absent > 0 ? 'font-semibold text-red-600' : 'text-gray-400'
+                        }
+                      >
+                        {missed}
+                      </span>
+                      {breakdown && (
+                        <span className="block text-[10px] leading-tight text-gray-400">
+                          {breakdown}
+                        </span>
+                      )}
+                    </td>
+                  )
+                })()}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }

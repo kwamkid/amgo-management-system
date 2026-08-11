@@ -81,10 +81,11 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
       
       allUsers.forEach(user => {
         const record = recordMap[user.id!];
-        
+
         if (record) {
           checkedIn.push(user);
-        } else {
+        } else if (user.requiresCheckin !== false) {
+          // คนที่ตั้งไว้ว่าไม่ต้องเช็คอิน ไม่ใช่คน "ยังไม่มา" — ไม่ต้องขึ้นในลิสต์
           notCheckedIn.push(user);
         }
       });
@@ -261,7 +262,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                         <div className="flex items-center gap-3">
                           <UserAvatar name={user.fullName} userId={user.id} size="md" />
                           <div>
-                            <p className="font-medium">{user.fullName}</p>
+                            <p className="font-medium">{user.displayName || user.fullName}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="flex items-center gap-1 text-sm text-gray-600">
                                 <LogIn className="w-3.5 h-3.5" />
@@ -315,7 +316,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                     <div className="flex items-center gap-3">
                       <UserAvatar name={user.fullName} userId={user.id} size="md" />
                       <div>
-                        <p className="font-medium">{user.fullName}</p>
+                        <p className="font-medium">{user.displayName || user.fullName}</p>
                         <p className="text-sm text-gray-600">
                           {user.role === 'manager' ? 'ผู้จัดการ' : 
                            user.role === 'hr' ? 'ฝ่ายบุคคล' : 

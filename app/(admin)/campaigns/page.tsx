@@ -74,7 +74,7 @@ export default function CampaignsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   const { campaigns, loading, cancelCampaign, deleteCampaign } = useCampaigns()
   
@@ -918,6 +918,7 @@ export default function CampaignsPage() {
               totalPages={totalPages}
               totalItems={filteredCampaigns.length}
               itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
               onPageChange={setCurrentPage}
             />
           </div>

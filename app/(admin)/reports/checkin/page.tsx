@@ -228,6 +228,8 @@ export default function CheckInReportPage() {
         onPageChange={handlePageChange}
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
+        // HR เติมวันทำงานแล้วดึงหน้าปัจจุบันใหม่ — ตัวเลขวันขาด/วันมาอัปเดตทันที
+        onDataChanged={() => handlePageChange(pagination?.currentPage ?? 1)}
       />
     </div>
   )

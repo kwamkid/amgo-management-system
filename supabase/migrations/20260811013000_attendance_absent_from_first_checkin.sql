@@ -1,0 +1,99 @@
+-- ═══════════════════════════════════════════════════════════════════════
+-- attendance_summary v6 — คนต้องเช็คอิน เริ่มนับจากวันเช็คอินครั้งแรกจริง
+--
+-- v5 กันเฉพาะคนที่ "วันเริ่มยังไม่ยืนยัน" แต่เจอเคสจริงทันที: ชัชวาลย์
+-- เพิ่งสมัครเข้าระบบเมื่อวาน HR ใส่วันเริ่มงาน 1 มิ.ย. (ยืนยันแล้ว)
+-- แต่ยังไม่เคยเช็คอินเลย → ขึ้นขาด 18 วันอยู่บนสุดของรายงาน
+--
+-- กติกาใหม่: คนที่ต้องเช็คอิน จะถูกนับ (มา/ขาด) ตั้งแต่วันเช็คอินครั้งแรกจริง
+-- เท่านั้น — ก่อนหน้านั้นยังไม่เริ่มงาน หรือยังไม่มีแอปให้เช็ค นับขาดไม่ได้
+-- ยังไม่เคยเช็คอินเลย = ไม่มีแถวในรายงาน
+-- คนไม่ต้องเช็คอิน (requires_checkin=false) ใช้วันเริ่มงานที่ยืนยันตามเดิม
+-- ═══════════════════════════════════════════════════════════════════════
+
+create or replace function public.attendance_summary(p_from date, p_to date, p_user_id uuid default null::uuid)
+ returns table(user_id uuid, full_name text, company_code text, business_unit text, work_date date, expected_mode text, status text, checkin_type text, leave_type text, total_hours numeric, is_late boolean)
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  with days as (select generate_series(p_from, p_to, interval '1 day')::date as d),
+  people as (
+    select u.id, u.display_name as full_name, c.code as company_code, jf.name_th as unit,
+           coalesce(u.requires_checkin, rs.requires_checkin, true) as needs_checkin,
+           u.is_active,
+           case
+             when coalesce(u.requires_checkin, rs.requires_checkin, true) then
+               -- คนต้องเช็คอิน: นับจากเช็คอินครั้งแรกจริง (ยังไม่เคยเช็ค = infinity = ไม่ขึ้น)
+               -- และไม่ก่อนวันเริ่มงานที่ยืนยันแล้ว (greatest ข้าม null ให้เอง)
+               greatest(
+                 coalesce((select min(cc.work_date) from public.checkins cc where cc.user_id = u.id),
+                          'infinity'::date),
+                 case when u.start_date_verified then u.start_date end)
+             when u.start_date_verified then u.start_date
+             else null
+           end as from_day,
+           u.end_date as to_day
+    from public.users u
+    left join public.role_settings  rs on rs.role = u.role
+    left join public.job_functions  jf on jf.id  = u.job_function_id
+    left join public.companies      c  on c.id   = u.company_id
+    where u.deleted_at is null
+      and (p_user_id is null or u.id = p_user_id)
+  ),
+  grid as (
+    select p.*, d.d,
+           public.expected_work_mode(p.id, d.d) as expected,
+           exists (select 1 from public.holidays h
+                    where h.holiday_date = d.d and h.is_active) as is_holiday
+    from people p cross join days d
+    where (p.from_day is null or d.d >= p.from_day)
+      and (p.to_day   is null or d.d <= p.to_day)
+  ),
+  ci as (
+    select c.user_id, c.work_date, sum(c.total_hours) as hours,
+           bool_or(c.is_late) as late, min(c.checkin_type) as ctype
+    from public.checkins c
+    where c.work_date between p_from and p_to
+    group by c.user_id, c.work_date
+  ),
+  lv as (
+    select ld.user_id, ld.leave_date, min(lr.leave_type) as ltype
+    from public.leave_days ld
+    join public.leave_requests lr on lr.id = ld.leave_request_id
+    where ld.leave_date between p_from and p_to
+      and ld.counts_toward_quota and lr.status = 'approved'
+    group by ld.user_id, ld.leave_date
+  ),
+  scored as (
+    select g.id as user_id, g.full_name, g.company_code, g.unit as business_unit,
+      g.d as work_date, g.expected as expected_mode,
+      case
+        when g.is_holiday           then 'holiday'
+        when g.expected = 'off'     then 'day_off'
+        when ci.user_id is not null then
+          case when g.expected = 'wfh' then 'worked_wfh' else 'worked' end
+        when lv.user_id is not null then 'leave'
+        when not g.needs_checkin    then 'not_tracked'
+        when g.expected = 'rotating' then 'not_scheduled'
+        else 'absent'
+      end as status,
+      ci.ctype as checkin_type, lv.ltype as leave_type,
+      ci.hours as total_hours, coalesce(ci.late, false) as is_late,
+      g.is_active
+    from grid g
+    left join ci on ci.user_id = g.id and ci.work_date  = g.d
+    left join lv on lv.user_id = g.id and lv.leave_date = g.d
+  )
+  select s.user_id, s.full_name, s.company_code, s.business_unit, s.work_date,
+         s.expected_mode, s.status, s.checkin_type, s.leave_type, s.total_hours, s.is_late
+  from scored s
+  -- คนที่ออกไปแล้ว เหลือเฉพาะวันที่มีร่องรอยจริง — ไม่นับขาด ไม่โชว์วันหยุดลอย ๆ
+  where s.is_active
+     or s.status in ('worked', 'worked_wfh', 'leave')
+     or coalesce(s.total_hours, 0) > 0
+  order by s.full_name, s.work_date;
+$function$;
+
+comment on function public.attendance_summary is
+  'v6 — คนต้องเช็คอินนับจากเช็คอินครั้งแรกจริง (ยังไม่เคยเช็ค = ไม่ขึ้นรายงาน) · คนออกแล้วเหลือเฉพาะวันที่มีร่องรอยจริง';

@@ -38,7 +38,8 @@ export default function InviteLinkDetailPage({
 }) {
   const { id } = use(params)
   const { inviteLink, stats, loading, error } = useInviteLink(id)
-  const { users } = useUsers({ role: undefined })
+  // หน้านี้เป็นบันทึกว่าใครสมัครผ่านลิงก์ — เอาทุกสถานะ แต่ต้องดึงครบทุกคน ไม่ใช่แค่หน้าแรก
+  const { users } = useUsers({ pageSize: 500 })
   const { locations } = useLocations()
   const { showToast } = useToast()
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null)
@@ -313,7 +314,7 @@ export default function InviteLinkDetailPage({
                       <div className="flex items-center gap-3">
                         <UserAvatar name={user.fullName} userId={user.id} size="md" />
                         <div>
-                          <p className="font-medium text-gray-900">{user.fullName}</p>
+                          <p className="font-medium text-gray-900">{user.displayName || user.fullName}</p>
                           <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
                         </div>
                       </div>
@@ -387,7 +388,7 @@ export default function InviteLinkDetailPage({
                 <div className="flex items-center gap-4">
                   <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
                   <div>
-                    <h4 className="font-semibold text-lg">{selectedUser.fullName}</h4>
+                    <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
                     <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
                     <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
                   </div>

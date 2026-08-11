@@ -6,7 +6,7 @@ import { User, UpdateUserData } from '@/types/user'
 import { updateUser, getUser } from '@/lib/services/userService'
 import UserEditForm from '@/components/users/UserEditForm'
 import UserAvatar from '@/components/shared/UserAvatar'
-import { ArrowLeft, FileText } from 'lucide-react'
+import { ArrowLeft, FileCheck, FileText } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
@@ -124,6 +124,11 @@ export default function EditUserPage({
             <Link href={`/employees/${id}/contract`}>
               <Button variant="outline" size="sm">
                 <FileText className="mr-1.5 h-4 w-4" /> สัญญาจ้าง
+              </Button>
+            </Link>
+            <Link href={`/employees/${id}/certificate`}>
+              <Button variant="outline" size="sm">
+                <FileCheck className="mr-1.5 h-4 w-4" /> ใบรับรองเงินเดือน
               </Button>
             </Link>
             {(user as { employmentStatus?: string }).employmentStatus === 'probation' && (

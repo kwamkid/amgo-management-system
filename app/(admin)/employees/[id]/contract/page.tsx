@@ -26,7 +26,12 @@ type ContractData = {
   employmentStatus: string | null
   position: string | null
   cycle: string | null
-  company: { name_th: string; address: string | null; registration_no: string | null } | null
+  company: {
+    name_th: string
+    address: string | null
+    registration_no: string | null
+    logo_url: string | null
+  } | null
   salaryNow: number | null
   salaryUpcoming: { amount: number; from: string } | null
 }
@@ -84,7 +89,7 @@ export default function ContractPage({ params }: { params: Promise<{ id: string 
         u.company_id
           ? sbc
               .from('companies')
-              .select('name_th, address, registration_no')
+              .select('name_th, address, registration_no, logo_url')
               .eq('id', u.company_id)
               .maybeSingle()
           : Promise.resolve({ data: null }),
@@ -169,7 +174,7 @@ export default function ContractPage({ params }: { params: Promise<{ id: string 
   ].filter(Boolean) as string[]
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-[210mm] space-y-4">
       {/* แถบควบคุม — จอเท่านั้น */}
       <div className="space-y-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
@@ -236,11 +241,27 @@ export default function ContractPage({ params }: { params: Promise<{ id: string 
         )}
       </div>
 
-      {/* ตัวสัญญา — ส่วนเดียวที่ติดไปตอนพิมพ์ */}
+      {/* ตัวสัญญา — แผ่น A4 จริง (210×297มม.) ส่วนเดียวที่ติดไปตอนพิมพ์ */}
       <div
         id="contract-sheet"
-        className="rounded-xl border border-gray-200 bg-white p-10 text-[15px] leading-7 text-gray-900 print:rounded-none print:border-0 print:p-0"
+        className="mx-auto flex w-[210mm] max-w-full min-h-[297mm] flex-col rounded-xl border border-gray-200 bg-white p-[18mm] pt-[30mm] text-[15px] leading-7 text-gray-900 shadow-sm print:min-h-[249mm] print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
+        {/* พื้นที่โลโก้ — จองไว้เสมอให้หัวเอกสารคงที่ ยังไม่อัพโหลดเห็นเป็นกรอบบอกบนจอ
+            (ตอนพิมพ์กรอบหาย เหลือที่ว่างไว้ประทับ/แปะเองได้) */}
+        <div className="mb-10 flex h-20 items-center justify-center">
+          {data.company?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.company.logo_url}
+              alt={data.company.name_th}
+              className="h-full object-contain"
+            />
+          ) : (
+            <div className="flex h-full w-44 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400 print:hidden">
+              โลโก้บริษัท — อัพโหลดที่ ตั้งค่า &gt; บริษัท
+            </div>
+          )}
+        </div>
         <h1 className="text-center text-xl font-bold">
           {isProbation ? 'สัญญาจ้างทดลองงาน' : 'สัญญาจ้างงาน'}
         </h1>
@@ -329,8 +350,8 @@ export default function ContractPage({ params }: { params: Promise<{ id: string 
           เห็นว่าตรงตามเจตนาของตน จึงลงลายมือชื่อไว้เป็นสำคัญต่อหน้าพยาน
         </p>
 
-        {/* ช่องลงชื่อ */}
-        <div className="mt-12 grid grid-cols-2 gap-x-10 gap-y-12 text-center">
+        {/* ช่องลงชื่อ — ดันลงชิดขอบล่างของกระดาษเสมอ */}
+        <div className="mt-auto grid grid-cols-2 gap-x-10 gap-y-12 pt-16 text-center">
           <div>
             <p>ลงชื่อ ................................................ นายจ้าง</p>
             <p className="mt-2 text-sm text-gray-700">( ................................................ )</p>
@@ -356,7 +377,8 @@ export default function ContractPage({ params }: { params: Promise<{ id: string 
           body * { visibility: hidden; }
           #contract-sheet, #contract-sheet * { visibility: visible; }
           #contract-sheet { position: absolute; left: 0; top: 0; width: 100%; }
-          @page { size: A4; margin: 18mm 20mm; }
+          /* หัวกระดาษ 30มม. ตามที่เจ้าของขอ — ท้าย 18มม. */
+          @page { size: A4; margin: 30mm 20mm 18mm; }
         }
       `}</style>
     </div>

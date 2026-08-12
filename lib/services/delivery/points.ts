@@ -271,3 +271,61 @@ export const deleteDeliveryPoint = async (deliveryId: string): Promise<void> => 
   const { error } = await client.from('delivery_points').delete().eq('id', deliveryId)
   if (error) throw new Error(`ลบจุดส่งไม่สำเร็จ: ${error.message}`)
 }
+
+/* ------------------------------------------------------------------ *
+ *  สรุปงานส่งรายเดือน — วันไหนใครส่งกี่เจ้า (หน้ารายงานการส่งของ)
+ *  นับจากจุดที่เช็คอินแล้วจริง · ตัดวันตามเวลาไทย
+ *  เปิดให้ทั้งคนขับและ Call Center ดู — RLS ฝั่งตารางเปิดอ่านตาม role อยู่แล้ว
+ * ------------------------------------------------------------------ */
+export const getDeliveryMonthlySummary = async (
+  month: Date
+): Promise<{
+  drivers: { id: string; name: string }[]
+  /** `${YYYY-MM-DD}|${driverId}` → จำนวนจุดส่งที่เช็คอินแล้ว */
+  counts: Map<string, number>
+}> => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const y = month.getFullYear()
+  const m = month.getMonth()
+  const next = m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }
+  const startIso = new Date(`${y}-${pad(m + 1)}-01T00:00:00+07:00`).toISOString()
+  const endIso = new Date(`${next.y}-${pad(next.m + 1)}-01T00:00:00+07:00`).toISOString()
+
+  // PostgREST ตัดผลที่ 1,000 แถวเงียบ ๆ — ไล่เก็บเป็นช่วงจนหมด
+  type Row = { driver_id: string; driver_name: string; check_in_time: string }
+  const rows: Row[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb()
+      .from('delivery_points')
+      .select('driver_id, driver_name, check_in_time')
+      .gte('check_in_time', startIso)
+      .lt('check_in_time', endIso)
+      .order('check_in_time')
+      .range(from, from + 999)
+    if (error) throw new Error(`ดึงสรุปงานส่งไม่สำเร็จ: ${error.message}`)
+    rows.push(...((data ?? []) as Row[]))
+    if (!data || data.length < 1000) break
+  }
+
+  // driver_name เป็น snapshot — ทับด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบันตามกติกาแสดงชื่อ
+  const { getDisplayNames } = await import('../user/queries')
+  const names = await getDisplayNames([...new Set(rows.map((r) => r.driver_id))])
+
+  const driverMap = new Map<string, string>()
+  const counts = new Map<string, number>()
+  for (const r of rows) {
+    driverMap.set(r.driver_id, names.get(r.driver_id) || r.driver_name)
+    const day = new Date(new Date(r.check_in_time).getTime() + 7 * 3_600_000)
+      .toISOString()
+      .slice(0, 10)
+    const k = `${day}|${r.driver_id}`
+    counts.set(k, (counts.get(k) ?? 0) + 1)
+  }
+
+  return {
+    drivers: [...driverMap]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'th')),
+    counts,
+  }
+}

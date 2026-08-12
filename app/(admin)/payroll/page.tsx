@@ -22,6 +22,7 @@ import {
   loadPreviousExtras,
   payrollCsv,
   payrollTotal,
+  rowKey,
   standardOtRate,
   calcVariablePay,
   type PayrollRow,
@@ -50,7 +51,7 @@ export default function PayrollPage() {
 
   // dialog กรอกยอดขาย/จำนวนชิ้นของคนที่มีค่าคอมขั้นบันได/ค่าชิ้นงาน
   // ยอดที่พิมพ์ค้างใน draft จนกด "ใส่ในช่องค่าคอม" ค่อยลงแถวจริง
-  const [calcUserId, setCalcUserId] = useState<string | null>(null)
+  const [calcKey, setCalcKey] = useState<string | null>(null)
   const [calcDraft, setCalcDraft] = useState<Record<string, number>>({})
 
   // ตัวกรอง ตำแหน่ง/บริษัท/ชื่อ — กรองเฉพาะการแสดงผลกับไฟล์ export
@@ -126,6 +127,7 @@ export default function PayrollPage() {
       let changed = false
       setRows((prev) =>
         prev.map((r) => {
+          if (!r.isPrimary) return r // แถวบริษัทอื่นไม่มีวันมา/ขาด/OT
           const a = att.get(r.userId)
           const o = ot.has(r.userId) ? ot.get(r.userId)! : r.otHours
           const next = {
@@ -156,11 +158,11 @@ export default function PayrollPage() {
     }
   }
 
-  const patch = (userId: string, field: keyof PayrollRow, value: number | string) => {
+  const patch = (key: string, field: keyof PayrollRow, value: number | string) => {
     setDirty(true)
     setRows((prev) =>
       prev.map((r) => {
-        if (r.userId !== userId) return r
+        if (rowKey(r) !== key) return r
         const next = { ...r, [field]: value }
         // แก้เงินเดือนแล้วอัตรา OT มาตรฐานขยับตาม (เฉพาะตอนยังใช้ค่ามาตรฐานอยู่)
         if (field === 'baseSalary' && r.otRate === standardOtRate(r.baseSalary)) {
@@ -194,7 +196,7 @@ export default function PayrollPage() {
       }
       setRows((rs) =>
         rs.map((r) => {
-          const p = prev.get(r.userId)
+          const p = prev.get(rowKey(r))
           return p ? { ...r, commission: p.commission, extra: p.extra, note: p.note } : r
         })
       )
@@ -217,11 +219,16 @@ export default function PayrollPage() {
   }, [rows, fnFilter, companyFilter, nameFilter])
   const filtering = !!(fnFilter || companyFilter || nameFilter.trim())
 
+  const companyCode = (id: string | null) =>
+    id ? (companyOptions.find((o) => o.value === id)?.label.split(' \u00b7 ')[0] ?? '') : ''
+
   const exportCsv = () => {
     const blob = new Blob([payrollCsv(visible)], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `payroll-${format(month, 'yyyy-MM')}.csv`
+    // กรองบริษัทอยู่ = ไฟล์ของบริษัทนั้น — ตั้งชื่อไฟล์ให้รู้ว่าเป็นงวดใคร
+    const suffix = companyFilter ? `-${companyCode(companyFilter)}` : ''
+    a.download = `payroll-${format(month, 'yyyy-MM')}${suffix}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -246,12 +253,17 @@ export default function PayrollPage() {
               variant="secondary"
               size="sm"
               onClick={refreshReality}
-              title="ดึงวันมา/ขาด กับชั่วโมง OT ล่าสุดมาทับ — ของที่กรอกมือไม่ถูกแตะ"
+              title="ดึงเลขจากเช็คอินล่าสุดมาทับ — ใช้เมื่อกดบันทึกไว้ก่อนสิ้นเดือนแล้วมีเช็คอินเพิ่ม · ค่าคอม/พิเศษ/หักที่กรอกมือไม่ถูกแตะ"
             >
-              <RefreshCw size={15} /> อัปเดตจากข้อมูลจริง
+              <RefreshCw size={15} /> รีเฟรชวันมา-ขาด/OT
             </Button>
-            <Button variant="secondary" size="sm" onClick={pullPrevious}>
-              <CopyPlus size={15} /> ดึงค่าคอมเดือนก่อน
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={pullPrevious}
+              title="คัดลอกค่าคอม/เงินพิเศษ/หมายเหตุของเดือนก่อนมาใส่ตั้งต้น — เหมาะกับรายการที่จ่ายเท่ากันทุกเดือน"
+            >
+              <CopyPlus size={15} /> คัดลอกค่าคอมเดือนก่อน
             </Button>
             <Button variant="secondary" size="sm" onClick={exportCsv}>
               <Download size={15} /> ไฟล์โอนธนาคาร
@@ -300,24 +312,26 @@ export default function PayrollPage() {
               className="h-8 w-44 rounded-lg border border-gray-200 pl-8 pr-2 text-sm focus:border-red-300 focus:outline-none"
             />
           </div>
-          <SelectMenu
-            value={fnFilter}
-            options={fnOptions}
-            onChange={setFnFilter}
-            placeholder="ทุกตำแหน่ง"
-            clearable="ทุกตำแหน่ง"
-            size="sm"
-            className="w-44"
-          />
-          <SelectMenu
-            value={companyFilter}
-            options={companyOptions}
-            onChange={setCompanyFilter}
-            placeholder="ทุกบริษัท"
-            clearable="ทุกบริษัท"
-            size="sm"
-            className="w-40"
-          />
+          <div className="w-40 shrink-0">
+            <SelectMenu
+              value={fnFilter}
+              options={fnOptions}
+              onChange={setFnFilter}
+              placeholder="ทุกตำแหน่ง"
+              clearable="ทุกตำแหน่ง"
+              size="sm"
+            />
+          </div>
+          <div className="w-36 shrink-0">
+            <SelectMenu
+              value={companyFilter}
+              options={companyOptions}
+              onChange={setCompanyFilter}
+              placeholder="ทุกบริษัท"
+              clearable="ทุกบริษัท"
+              size="sm"
+            />
+          </div>
           {filtering && (
             <span className="text-xs text-gray-400">
               แสดง {visible.length} จาก {rows.length} คน
@@ -345,7 +359,7 @@ export default function PayrollPage() {
           </thead>
           <tbody>
             {visible.map((r) => (
-              <tr key={r.userId} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+              <tr key={rowKey(r)} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
                 <td className="px-3 py-1.5 font-mono text-gray-500 tabular-nums">
                   {r.employeeCode != null ? String(r.employeeCode).padStart(3, '0') : '-'}
                 </td>
@@ -358,22 +372,35 @@ export default function PayrollPage() {
                   >
                     {r.name}
                   </button>
+                  {!r.isPrimary && (
+                    <p className="text-[11px] font-medium text-amber-700">
+                      ค่าตอบแทนจาก {companyCode(r.companyId) || 'บริษัทอื่น'}
+                    </p>
+                  )}
                 </td>
                 <td className="px-3 py-1.5 text-center">
-                  {/* มา X จากที่ควรมา Y ตามตารางของคนนั้น — ขาด = Y-X */}
-                  <span className="whitespace-nowrap">
-                    <span className="text-green-700">{r.workDays}</span>
-                    <span className="text-gray-400">/{r.workDays + r.absentDays}</span>
-                  </span>
-                  {r.absentDays > 0 && (
-                    <p className="text-xs font-semibold text-red-600">ขาด {r.absentDays}</p>
+                  {/* มา X จากที่ควรมา Y ตามตารางของคนนั้น — ขาด = Y-X · แถวบริษัทอื่นไม่มี */}
+                  {r.isPrimary ? (
+                    <>
+                      <span className="whitespace-nowrap">
+                        <span className="text-green-700">{r.workDays}</span>
+                        <span className="text-gray-400">/{r.workDays + r.absentDays}</span>
+                      </span>
+                      {r.absentDays > 0 && (
+                        <p className="text-xs font-semibold text-red-600">ขาด {r.absentDays}</p>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-300">—</span>
                   )}
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
                     className={cell}
                     value={r.baseSalary || ''}
-                    onValueChange={(n) => patch(r.userId, 'baseSalary', n)}
+                    disabled={!r.isPrimary}
+                    title={r.isPrimary ? undefined : 'เงินเดือนอยู่ที่งวดบริษัทต้นสังกัด'}
+                    onValueChange={(n) => patch(rowKey(r), 'baseSalary', n)}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right">
@@ -381,7 +408,9 @@ export default function PayrollPage() {
                     type="number"
                     className={`${cell} w-20`}
                     value={r.otHours || ''}
-                    onChange={(e) => patch(r.userId, 'otHours', num(e.target.valueAsNumber))}
+                    disabled={!r.isPrimary}
+                    title={r.isPrimary ? undefined : 'OT อยู่ที่งวดบริษัทต้นสังกัด'}
+                    onChange={(e) => patch(rowKey(r), 'otHours', num(e.target.valueAsNumber))}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right">
@@ -389,7 +418,8 @@ export default function PayrollPage() {
                     decimals={3}
                     className={`${cell} w-20`}
                     value={r.otRate || ''}
-                    onValueChange={(n) => patch(r.userId, 'otRate', n)}
+                    disabled={!r.isPrimary}
+                    onValueChange={(n) => patch(rowKey(r), 'otRate', n)}
                   />
                 </td>
                 <td className="px-3 py-1.5">
@@ -400,9 +430,9 @@ export default function PayrollPage() {
                         title="กรอกยอดขาย/จำนวนชิ้น ให้ระบบคิดค่าคอมตามกติกาของคนนี้"
                         onClick={() => {
                           setCalcDraft(r.variableInputs)
-                          setCalcUserId(r.userId)
+                          setCalcKey(rowKey(r))
                         }}
-                        className="rounded-md p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                        className="rounded-md p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
                       >
                         <Calculator size={15} />
                       </button>
@@ -410,7 +440,7 @@ export default function PayrollPage() {
                     <MoneyInput
                       className={cell}
                       value={r.commission || ''}
-                      onValueChange={(n) => patch(r.userId, 'commission', n)}
+                      onValueChange={(n) => patch(rowKey(r), 'commission', n)}
                     />
                   </div>
                 </td>
@@ -418,14 +448,14 @@ export default function PayrollPage() {
                   <MoneyInput
                     className={`${cell} w-20`}
                     value={r.extra || ''}
-                    onValueChange={(n) => patch(r.userId, 'extra', n)}
+                    onValueChange={(n) => patch(rowKey(r), 'extra', n)}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
                     className={`${cell} w-20`}
                     value={r.deduction || ''}
-                    onValueChange={(n) => patch(r.userId, 'deduction', n)}
+                    onValueChange={(n) => patch(rowKey(r), 'deduction', n)}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right font-mono font-semibold tabular-nums">
@@ -436,7 +466,7 @@ export default function PayrollPage() {
                     type="text"
                     className="w-40 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-red-300 focus:outline-none"
                     value={r.note}
-                    onChange={(e) => patch(r.userId, 'note', e.target.value)}
+                    onChange={(e) => patch(rowKey(r), 'note', e.target.value)}
                     placeholder="—"
                   />
                 </td>
@@ -477,10 +507,16 @@ export default function PayrollPage() {
         />
       )}
 
-      {/* dialog กรอกยอดขาย/จำนวนชิ้น → คิดค่าคอมตามกติกาใน user_pay_items */}
+      {/* dialog กรอกยอดขาย/จำนวนชิ้น → คิดค่าคอมตามกติกาใน user_pay_items
+          กติกาเจ้าของ: ยอดขายเดือนนี้จ่ายเป็นค่าคอมงวดเดือนหน้า — งวดเดือน M จึงถามยอดของ M−1
+          เดือนถูกล็อกตามงวดที่เปิดอยู่ (ไม่มีตัวเลือกเดือน กรอกผิดเดือนไม่ได้)
+          ย้อนหลัง/แก้ = เปิดงวดเดือนนั้นแล้วกรอกใหม่ · เดือนที่ยังมาไม่ถึงล็อกไว้ */}
       {(() => {
-        const row = rows.find((r) => r.userId === calcUserId)
+        const row = rows.find((r) => rowKey(r) === calcKey)
         if (!row) return null
+        const salesMonth = addMonths(month, -1)
+        const salesMonthLabel = format(salesMonth, 'MMMM yyyy', { locale: th })
+        const salesMonthFuture = salesMonth.getTime() > Date.now()
         const total =
           Math.round(
             row.variableItems.reduce((s, it) => s + calcVariablePay(it, calcDraft[it.id] ?? 0), 0) *
@@ -489,33 +525,40 @@ export default function PayrollPage() {
         return (
           <Modal
             open
-            onClose={() => setCalcUserId(null)}
+            onClose={() => setCalcKey(null)}
             title={`ค่าคอม / ค่าชิ้นงาน — ${row.name}`}
-            description="กรอกยอดของเดือนนี้ ระบบคิดเป็นเงินตามกติกาที่ตั้งไว้ในหน้าพนักงาน แท็บเงินเดือน"
+            description={`กรอกยอดขายของเดือน${salesMonthLabel} — จ่ายเป็นค่าคอมในงวดเงินเดือน${format(month, 'MMMM yyyy', { locale: th })} ตามกติกาที่ตั้งไว้ในหน้าพนักงาน`}
             footer={
               <>
-                <Button variant="ghost" onClick={() => setCalcUserId(null)}>
-                  ยกเลิก
+                <Button variant="ghost" onClick={() => setCalcKey(null)}>
+                  ปิด
                 </Button>
+                {row.variableItems.length > 0 && !salesMonthFuture && (
                 <Button
                   onClick={() => {
                     setRows((prev) =>
                       prev.map((r) =>
-                        r.userId === row.userId
+                        rowKey(r) === calcKey
                           ? { ...r, commission: total, variableInputs: { ...calcDraft } }
                           : r
                       )
                     )
                     setDirty(true)
-                    setCalcUserId(null)
+                    setCalcKey(null)
                   }}
                 >
                   ใส่ในช่องค่าคอม {baht.format(total)}
                 </Button>
+                )}
               </>
             }
           >
             <div className="space-y-4">
+              {salesMonthFuture && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-900">
+                  เดือน{salesMonthLabel} ยังมาไม่ถึง — ยอดขายยังไม่เกิด กรอกไม่ได้
+                </p>
+              )}
               {row.variableItems.map((it) => {
                 const input = calcDraft[it.id] ?? 0
                 const pay = calcVariablePay(it, input)
@@ -535,11 +578,14 @@ export default function PayrollPage() {
                     )}
                     <div className="flex items-center gap-2">
                       <span className="shrink-0 text-sm text-gray-500">
-                        {it.calc === 'per_piece' ? 'จำนวนชิ้น' : 'ยอดขาย (บาท)'}
+                        {it.calc === 'per_piece'
+                          ? `จำนวนชิ้น เดือน${salesMonthLabel}`
+                          : `ยอดขาย เดือน${salesMonthLabel} (บาท)`}
                       </span>
                       <MoneyInput
                         value={input || ''}
                         decimals={it.calc === 'per_piece' ? 0 : 2}
+                        disabled={salesMonthFuture}
                         onValueChange={(n) => setCalcDraft((d) => ({ ...d, [it.id]: n }))}
                         className="w-36 rounded-md border border-gray-200 px-2 py-1.5 text-right font-mono text-sm tabular-nums focus:border-red-300 focus:outline-none"
                       />

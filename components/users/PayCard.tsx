@@ -21,9 +21,9 @@
 // RLS: เจ้าตัว + HR เท่านั้นที่อ่านได้ — คนอื่นได้ 0 แถว ไม่ใช่ error
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Check, History, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, History, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Button, MoneyInput } from '@/components/aoo'
+import { Button, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
 
 type Tier = { upTo: number | null; percent: number }
 
@@ -35,7 +35,11 @@ type PayItem = {
   /** fixed = ยอดคงที่ · tiered_percent = ค่าคอมขั้นบันได · per_piece = บาทต่อชิ้น */
   calc: string
   config: { tiers?: Tier[] } | null
+  /** บริษัทผู้จ่าย — null = บริษัทต้นสังกัดของพนักงาน (เช่น อยู่ AGD แต่ได้ค่าคอมจาก ADF) */
+  companyId: string | null
 }
+
+type CompanyOpt = { id: string; code: string; name_th: string }
 
 type Salary = { id: string; base_salary: number; effective_from: string; note: string | null }
 
@@ -83,6 +87,7 @@ const itemChanged = (a: PayItem, b: PayItem) =>
   a.kind !== b.kind ||
   a.label !== b.label ||
   a.amount !== b.amount ||
+  a.companyId !== b.companyId ||
   tiersKey(a.config?.tiers) !== tiersKey(b.config?.tiers)
 
 let tmpSeq = 0
@@ -110,6 +115,9 @@ export default function PayCard({
     onProbation: false,
     endDate: null,
   })
+  // บริษัททั้งหมด + ต้นสังกัดของคนนี้ — รายได้พิเศษระบุบริษัทผู้จ่ายได้
+  const [companies, setCompanies] = useState<CompanyOpt[]>([])
+  const [ownCompanyId, setOwnCompanyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'view' | 'fix' | 'raise' | 'post'>('view')
 
@@ -118,6 +126,7 @@ export default function PayCard({
     if (mode !== 'view') setShowLog(true)
   }, [mode])
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [stagedCount, setStagedCount] = useState(0)
 
@@ -130,7 +139,7 @@ export default function PayCard({
 
   const load = useCallback(async () => {
     const sb = createClient()
-    const [{ data: comp }, { data: pay }, { data: person }] = await Promise.all([
+    const [{ data: comp }, { data: pay }, { data: person }, { data: cos }] = await Promise.all([
       sb
         .from('user_compensation')
         .select('id, base_salary, effective_from, note')
@@ -138,14 +147,15 @@ export default function PayCard({
         .order('effective_from', { ascending: false }),
       sb
         .from('user_pay_items')
-        .select('id, kind, label, amount, calc, config')
+        .select('id, kind, label, amount, calc, config, company_id')
         .eq('user_id', userId)
         .order('created_at'),
       sb
         .from('users')
-        .select('employment_status, probation_end_date')
+        .select('employment_status, probation_end_date, company_id')
         .eq('id', userId)
         .maybeSingle(),
+      sb.from('companies').select('id, code, name_th').eq('is_active', true).order('code'),
     ])
 
     setHistory((comp ?? []).map((c) => ({ ...c, base_salary: Number(c.base_salary) })))
@@ -153,6 +163,7 @@ export default function PayCard({
       ...i,
       amount: Number(i.amount),
       config: i.config as PayItem['config'],
+      companyId: i.company_id,
     }))
     setItems(loaded)
     originalsRef.current = loaded
@@ -162,6 +173,8 @@ export default function PayCard({
       onProbation: person?.employment_status === 'probation',
       endDate: person?.probation_end_date ?? null,
     })
+    setOwnCompanyId(person?.company_id ?? null)
+    setCompanies(cos ?? [])
     setLoading(false)
   }, [userId])
 
@@ -200,6 +213,7 @@ export default function PayCard({
         amount: item.amount,
         calc: item.calc,
         config: item.config,
+        company_id: item.companyId,
       }
       if (item.id.startsWith('tmp-')) {
         const { error } = await sb.from('user_pay_items').insert({
@@ -282,6 +296,7 @@ export default function PayCard({
       amount: item.amount,
       calc: item.calc,
       config: item.config,
+      company_id: item.companyId,
     }
     const { error } = item.id.startsWith('tmp-')
       ? await sb
@@ -418,9 +433,14 @@ export default function PayCard({
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-sm text-gray-500">รายได้พิเศษ</span>
           {editable && !adding && (
-            <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-              <Plus size={14} /> เพิ่ม
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setImporting(true)}>
+                <Copy size={13} /> คัดลอกจากคนอื่น
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
+                <Plus size={14} /> เพิ่ม
+              </Button>
+            </div>
           )}
         </div>
 
@@ -433,6 +453,8 @@ export default function PayCard({
                 key={item.id}
                 item={item}
                 editable={editable}
+                companies={companies}
+                ownCompanyId={ownCompanyId}
                 onSave={saveItem}
                 onRemove={removeItem}
               />
@@ -440,10 +462,36 @@ export default function PayCard({
           </div>
         )}
 
+        {importing && (
+          <ImportItemsModal
+            currentUserId={userId}
+            companies={companies}
+            ownCompanyId={ownCompanyId}
+            onClose={() => setImporting(false)}
+            onCopy={async (list) => {
+              const errs: string[] = []
+              for (const it of list) {
+                const err = await saveItem(it)
+                if (err) errs.push(`${it.label}: ${err}`)
+              }
+              if (errs.length) alert(`คัดลอกไม่สำเร็จบางรายการ:\n${errs.join('\n')}`)
+              setImporting(false)
+            }}
+          />
+        )}
+
         {adding && (
-          <div className="mt-1.5">
+          <Modal
+            open
+            onClose={() => setAdding(false)}
+            title="เพิ่มรายได้พิเศษ"
+            description="เลือกบริษัทผู้จ่ายได้ — พนักงานอาจได้ค่าคอม/เงินพิเศษจากอีกบริษัท"
+            maxWidth={620}
+          >
             <ItemRow
               editable
+              companies={companies}
+              ownCompanyId={ownCompanyId}
               onSave={async (item) => {
                 const err = await saveItem(item)
                 if (!err) setAdding(false)
@@ -451,7 +499,7 @@ export default function PayCard({
               }}
               onRemove={async () => setAdding(false)}
             />
-          </div>
+          </Modal>
         )}
       </div>
 
@@ -617,16 +665,22 @@ type TierDraft = { upTo: string; percent: string }
 function ItemRow({
   item,
   editable,
+  companies,
+  ownCompanyId,
   onSave,
   onRemove,
 }: {
   item?: PayItem
   editable: boolean
+  companies: CompanyOpt[]
+  ownCompanyId: string | null
   onSave: (item: PayItem) => Promise<string | null>
   onRemove: (id: string) => Promise<void> | void
 }) {
   const [kind, setKind] = useState(item?.kind ?? 'commission')
   const [label, setLabel] = useState(item?.label ?? '')
+  // '' = ตามบริษัทต้นสังกัด (เก็บ null) — ย้ายบริษัทแล้วรายการตามไปเอง
+  const [companyId, setCompanyId] = useState(item?.companyId ?? '')
   const [amount, setAmount] = useState(
     item && item.calc !== 'tiered_percent' && item.amount ? String(item.amount) : ''
   )
@@ -671,6 +725,7 @@ function ItemRow({
     kind !== item.kind ||
     name !== item.label ||
     draftAmount !== item.amount ||
+    (companyId || null) !== item.companyId ||
     tiersKey(draftTiers) !== tiersKey(item.config?.tiers ?? null)
 
   const save = async () => {
@@ -683,9 +738,17 @@ function ItemRow({
       amount: draftAmount,
       calc,
       config: draftTiers ? { tiers: draftTiers } : null,
+      companyId: companyId || null,
     })
     setSaving(false)
   }
+
+  const ownCode = companies.find((c) => c.id === ownCompanyId)?.code
+  /** ป้ายบริษัทผู้จ่าย — โชว์เมื่อจ่ายโดยบริษัทอื่นที่ไม่ใช่ต้นสังกัด */
+  const paidByOther =
+    item?.companyId && item.companyId !== ownCompanyId
+      ? companies.find((c) => c.id === item.companyId)?.code
+      : null
 
   /* ── อ่านอย่างเดียว ─────────────────────────────────────────── */
   if (!editable) {
@@ -697,6 +760,11 @@ function ItemRow({
           <span className="ml-1.5 text-xs text-gray-400">
             {KINDS.find((k) => k.value === i.kind)?.label}
           </span>
+          {paidByOther && (
+            <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[11px] font-medium text-amber-700">
+              จ่ายโดย {paidByOther}
+            </span>
+          )}
           {i.calc === 'tiered_percent' && (
             <span className="block text-xs text-gray-400">{tierText(i.config?.tiers ?? [])}</span>
           )}
@@ -715,23 +783,36 @@ function ItemRow({
   return (
     <div className="rounded-lg border border-gray-100 p-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <select
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          className={`${FIELD} w-36 shrink-0`}
-        >
-          {KINDS.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-36 shrink-0">
+          <SelectMenu
+            value={kind}
+            options={KINDS.map((k) => ({ value: k.value, label: k.label }))}
+            onChange={(v) => setKind(v ?? 'commission')}
+            size="md"
+          />
+        </div>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder={KINDS.find((k) => k.value === kind)?.label}
+          placeholder={
+            kind === 'commission'
+              ? 'ค่าคอมของแบรนด์อะไร — เช่น ค่าคอมแบรนด์ AooCare'
+              : KINDS.find((k) => k.value === kind)?.label
+          }
           className={`${FIELD} w-32 min-w-0 flex-1`}
         />
+
+        {/* บริษัทผู้จ่าย — ค่าเริ่มต้นตามต้นสังกัด เปลี่ยนได้เมื่ออีกบริษัทเป็นคนจ่าย */}
+        <div className="w-44 shrink-0">
+          <SelectMenu
+            value={companyId || null}
+            options={companies.map((c) => ({ value: c.id, label: `จ่ายโดย ${c.code} · ${c.name_th}` }))}
+            onChange={(v) => setCompanyId(v ?? '')}
+            clearable={`จ่ายโดยต้นสังกัด${ownCode ? ` (${ownCode})` : ''}`}
+            placeholder={`จ่ายโดยต้นสังกัด${ownCode ? ` (${ownCode})` : ''}`}
+            size="md"
+          />
+        </div>
 
         {/* คอมแบบไม่มีขั้น = เปอร์เซ็นต์เดียว อยู่แถวเดียวกันจบ
             กดเพิ่มขั้นเมื่อไหร่ค่อยกางลงข้างล่าง */}
@@ -766,28 +847,6 @@ function ItemRow({
           />
         )}
 
-        {dirty ? (
-          <button
-            type="button"
-            title={valid ? 'ตกลง' : 'กรอกให้ครบก่อน'}
-            disabled={saving || !valid}
-            onClick={save}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-40"
-          >
-            <Check size={15} />
-          </button>
-        ) : (
-          <span className="h-9 w-9 shrink-0" />
-        )}
-
-        <button
-          type="button"
-          title={item ? 'ลบรายการนี้' : 'ยกเลิก'}
-          onClick={() => onRemove(item?.id ?? '')}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:text-red-600"
-        >
-          {item ? <Trash2 size={15} /> : <X size={15} />}
-        </button>
       </div>
 
       {calc === 'per_piece' && (
@@ -856,6 +915,206 @@ function ItemRow({
           </p>
         </div>
       )}
+
+      {/* ปุ่มยืนยัน — ข้อความชัดเจนแทนไอคอน ✓/✕ เดิม */}
+      <div className="mt-3 flex items-center justify-end gap-2 border-t border-gray-100 pt-2.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(item?.id ?? '')}
+          disabled={saving}
+        >
+          {item ? (
+            <>
+              <Trash2 size={14} /> ลบรายการ
+            </>
+          ) : (
+            <>
+              <X size={14} /> ยกเลิก
+            </>
+          )}
+        </Button>
+        <Button
+          size="sm"
+          onClick={save}
+          disabled={saving || !valid || !dirty}
+          title={valid ? undefined : 'กรอกให้ครบก่อน'}
+        >
+          <Check size={14} /> {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+        </Button>
+      </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ *  คัดลอกรายได้พิเศษจากคนอื่น — คนตำแหน่งเดียวกันมักได้กติกาชุดเดียวกัน
+ *  (PC ได้ค่าคอมเรตเดียวกันทั้งทีม) ตั้งที่คนแรกคนเดียวแล้วคัดลอกให้ที่เหลือ
+ *
+ *  ลิสต์เฉพาะคนที่มีรายได้พิเศษให้เลือกเป็นต้นแบบ → ติ๊กรายการที่จะเอา →
+ *  ได้มาเป็นรายการใหม่ของคนนี้ (แก้ต่อได้อิสระ ไม่ผูกกับต้นแบบ)
+ * ------------------------------------------------------------------ */
+
+function ImportItemsModal({
+  currentUserId,
+  companies,
+  ownCompanyId,
+  onCopy,
+  onClose,
+}: {
+  currentUserId: string
+  companies: CompanyOpt[]
+  ownCompanyId: string | null
+  onCopy: (items: PayItem[]) => Promise<void>
+  onClose: () => void
+}) {
+  const [options, setOptions] = useState<{ value: string; label: string }[]>([])
+  const [sourceId, setSourceId] = useState<string | null>(null)
+  const [sourceItems, setSourceItems] = useState<PayItem[] | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [copying, setCopying] = useState(false)
+
+  // คนที่มีรายได้พิเศษเท่านั้นที่เป็นต้นแบบได้ — โชว์จำนวนรายการท้ายชื่อ
+  useEffect(() => {
+    ;(async () => {
+      const sb = createClient()
+      const [{ data: pays }, { data: users }] = await Promise.all([
+        sb.from('user_pay_items').select('user_id'),
+        sb
+          .from('users')
+          .select('id, display_name, full_name')
+          .eq('is_active', true)
+          .eq('is_system', false)
+          .is('deleted_at', null)
+          .order('employee_code', { ascending: true, nullsFirst: false }),
+      ])
+      const counts = new Map<string, number>()
+      for (const r of pays ?? []) counts.set(r.user_id, (counts.get(r.user_id) ?? 0) + 1)
+      setOptions(
+        (users ?? [])
+          .filter((u) => u.id !== currentUserId && counts.has(u.id))
+          .map((u) => ({
+            value: u.id,
+            label: `${u.display_name || u.full_name} (${counts.get(u.id)} รายการ)`,
+          }))
+      )
+    })()
+  }, [currentUserId])
+
+  const pickSource = async (id: string | null) => {
+    setSourceId(id)
+    setSourceItems(null)
+    if (!id) return
+    const { data } = await createClient()
+      .from('user_pay_items')
+      .select('id, kind, label, amount, calc, config, company_id')
+      .eq('user_id', id)
+      .order('created_at')
+    const loaded = (data ?? []).map((i) => ({
+      ...i,
+      amount: Number(i.amount),
+      config: i.config as PayItem['config'],
+      companyId: i.company_id,
+    }))
+    setSourceItems(loaded)
+    setPicked(new Set(loaded.map((i) => i.id))) // ติ๊กครบไว้ก่อน — ส่วนใหญ่เอาทั้งชุด
+  }
+
+  const summaryOf = (i: PayItem) => {
+    if (i.calc === 'tiered_percent') return tierText(i.config?.tiers ?? [])
+    if (i.calc === 'per_piece') return `${baht.format(i.amount)} บาท/ชิ้น`
+    return `${baht.format(i.amount)} บาท/เดือน`
+  }
+
+  const copy = async () => {
+    if (!sourceItems) return
+    setCopying(true)
+    await onCopy(
+      sourceItems
+        .filter((i) => picked.has(i.id))
+        .map((i) => ({ ...i, id: `tmp-${++tmpSeq}` })) // ได้สำเนาใหม่ ไม่ผูกกับของต้นแบบ
+    )
+    setCopying(false)
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="คัดลอกรายได้พิเศษจากคนอื่น"
+      description="เลือกพนักงานต้นแบบ แล้วติ๊กรายการที่จะคัดลอกมาให้คนนี้ — คัดลอกแล้วแก้แยกกันได้อิสระ"
+      maxWidth={520}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={copying}>
+            ยกเลิก
+          </Button>
+          <Button onClick={copy} disabled={copying || !sourceItems || picked.size === 0}>
+            {copying ? 'กำลังคัดลอก...' : `คัดลอก ${picked.size} รายการ`}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <SelectMenu
+          value={sourceId}
+          options={options}
+          onChange={pickSource}
+          placeholder={options.length ? 'เลือกพนักงานต้นแบบ' : 'ยังไม่มีใครตั้งรายได้พิเศษไว้เลย'}
+          size="md"
+        />
+
+        {sourceId && sourceItems === null && (
+          <p className="py-2 text-sm text-gray-400">กำลังโหลด...</p>
+        )}
+
+        {sourceItems?.length === 0 && (
+          <p className="py-2 text-sm text-gray-400">คนนี้ไม่มีรายได้พิเศษ</p>
+        )}
+
+        {!!sourceItems?.length && (
+          <div className="space-y-1">
+            {sourceItems.map((i) => {
+              const paidBy =
+                i.companyId && i.companyId !== ownCompanyId
+                  ? companies.find((c) => c.id === i.companyId)?.code
+                  : null
+              return (
+                <label
+                  key={i.id}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-100 p-2.5 hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={picked.has(i.id)}
+                    onChange={(e) =>
+                      setPicked((prev) => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(i.id)
+                        else next.delete(i.id)
+                        return next
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-red-600"
+                  />
+                  <span className="min-w-0 text-sm">
+                    <span className="font-medium text-gray-900">{i.label}</span>
+                    <span className="ml-1.5 text-xs text-gray-400">
+                      {KINDS.find((k) => k.value === i.kind)?.label}
+                    </span>
+                    {paidBy && (
+                      <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[11px] font-medium text-amber-700">
+                        จ่ายโดย {paidBy}
+                      </span>
+                    )}
+                    <span className="block text-xs text-gray-500">{summaryOf(i)}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }

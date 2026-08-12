@@ -631,6 +631,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          logo_url: string | null
           name_th: string
           registration_no: string | null
         }
@@ -640,6 +641,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name_th: string
           registration_no?: string | null
         }
@@ -649,6 +651,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           name_th?: string
           registration_no?: string | null
         }
@@ -2101,6 +2104,7 @@ export type Database = {
           absent_days: number
           base_salary: number
           commission: number
+          company_id: string | null
           deduction: number
           extra: number
           id: string
@@ -2119,6 +2123,7 @@ export type Database = {
           absent_days?: number
           base_salary?: number
           commission?: number
+          company_id?: string | null
           deduction?: number
           extra?: number
           id?: string
@@ -2136,6 +2141,7 @@ export type Database = {
           absent_days?: number
           base_salary?: number
           commission?: number
+          company_id?: string | null
           deduction?: number
           extra?: number
           id?: string
@@ -2284,6 +2290,7 @@ export type Database = {
         Row: {
           amount: number
           calc: string
+          company_id: string | null
           config: Json | null
           created_at: string
           created_by: string | null
@@ -2300,6 +2307,7 @@ export type Database = {
         Insert: {
           amount: number
           calc?: string
+          company_id?: string | null
           config?: Json | null
           created_at?: string
           created_by?: string | null
@@ -2316,6 +2324,7 @@ export type Database = {
         Update: {
           amount?: number
           calc?: string
+          company_id?: string | null
           config?: Json | null
           created_at?: string
           created_by?: string | null

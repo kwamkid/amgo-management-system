@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   Users,
+  Building2,
   MapPin,
   Calendar,
   FileText,
@@ -89,6 +90,8 @@ const navSections: NavSection[] = [
           { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
           { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
+          // สรุปรายเดือน วันไหนใครส่งกี่เจ้า — คนขับ/Call Center เข้าได้เหมือนกัน
+          { label: 'รายงานการส่งของ', href: '/delivery/report', icon: subIcon(FileText) },
         ],
       },
     ],
@@ -109,7 +112,16 @@ const navSections: NavSection[] = [
           { label: 'รออนุมัติ', href: '/employees/pending', icon: subIcon(Clock) },
         ],
       },
-      { label: 'รายงาน', href: '/reports', icon: icon(FileText), roles: ['hr', 'admin', 'manager'] },
+      {
+        label: 'รายงาน',
+        icon: icon(FileText),
+        roles: ['hr', 'admin', 'manager'],
+        subItems: [
+          // ⚠️ ใส่เฉพาะรายงานที่มีหน้าจริง — สร้างรายงานใหม่เมื่อไหร่ค่อยเพิ่มแถวที่นี่
+          //    (หน้าศูนย์รวม /reports เอาออกจากเมนูแล้ว — เจ้าของบอกไม่จำเป็น)
+          { label: 'รายงานการเข้างาน', href: '/reports/checkin', icon: subIcon(Clock) },
+        ],
+      },
       { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },
     ],
   },
@@ -125,6 +137,7 @@ const navSections: NavSection[] = [
           //    Next.js prefetch ลิงก์ในเมนูอัตโนมัติ ลิงก์ตายจึงยิง 404
           //    รัวใน console ตั้งแต่เปิดหน้า โดยยังไม่มีใครกดด้วยซ้ำ
           { label: 'สถานที่ทำงาน', href: '/settings/locations', icon: subIcon(MapPin) },
+          { label: 'บริษัท', href: '/settings/companies', icon: subIcon(Building2) },
           { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
           { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
           { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },

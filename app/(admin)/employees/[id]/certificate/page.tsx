@@ -20,7 +20,12 @@ type CertData = {
   nationalId: string | null
   startDate: string | null
   position: string | null
-  company: { name_th: string; address: string | null; registration_no: string | null } | null
+  company: {
+    name_th: string
+    address: string | null
+    registration_no: string | null
+    logo_url: string | null
+  } | null
   salaryNow: number | null
   /** รายได้ประจำอื่นรวมต่อเดือน (เฉพาะยอดคงที่ — ค่าคอม/ค่าชิ้นงานผันตามยอด ไม่รับรอง) */
   fixedExtra: number
@@ -69,7 +74,7 @@ export default function SalaryCertificatePage({ params }: { params: Promise<{ id
         u.company_id
           ? sbc
               .from('companies')
-              .select('name_th, address, registration_no')
+              .select('name_th, address, registration_no, logo_url')
               .eq('id', u.company_id)
               .maybeSingle()
           : Promise.resolve({ data: null }),
@@ -116,7 +121,7 @@ export default function SalaryCertificatePage({ params }: { params: Promise<{ id
   ].filter(Boolean) as string[]
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-[210mm] space-y-4">
       {/* แถบควบคุม — จอเท่านั้น */}
       <div className="space-y-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
@@ -145,14 +150,31 @@ export default function SalaryCertificatePage({ params }: { params: Promise<{ id
         )}
       </div>
 
-      {/* ตัวหนังสือรับรอง — ส่วนเดียวที่ติดไปตอนพิมพ์ */}
+      {/* ตัวหนังสือรับรอง — แผ่น A4 จริง (210×297มม.) ส่วนเดียวที่ติดไปตอนพิมพ์ */}
       <div
         id="certificate-sheet"
-        className="rounded-xl border border-gray-200 bg-white p-10 text-[15px] leading-8 text-gray-900 print:rounded-none print:border-0 print:p-0"
+        className="mx-auto flex w-[210mm] max-w-full min-h-[297mm] flex-col rounded-xl border border-gray-200 bg-white p-[20mm] pt-[30mm] text-[15px] leading-8 text-gray-900 shadow-sm print:min-h-[247mm] print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         <p className="text-sm text-gray-700">เลขที่ ............/............</p>
 
-        <h1 className="mt-2 text-center text-xl font-bold">หนังสือรับรองการทำงานและเงินเดือน</h1>
+        {/* พื้นที่โลโก้ — จองไว้เสมอให้หัวเอกสารคงที่ ยังไม่อัพโหลดเห็นเป็นกรอบบอกบนจอ
+            (ตอนพิมพ์กรอบหาย เหลือที่ว่างไว้ประทับ/แปะเองได้) */}
+        <div className="mt-4 mb-10 flex h-20 items-center justify-center">
+          {data.company?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.company.logo_url}
+              alt={data.company.name_th}
+              className="h-full object-contain"
+            />
+          ) : (
+            <div className="flex h-full w-44 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400 print:hidden">
+              โลโก้บริษัท — อัพโหลดที่ ตั้งค่า &gt; บริษัท
+            </div>
+          )}
+        </div>
+
+        <h1 className="text-center text-xl font-bold">หนังสือรับรองการทำงานและเงินเดือน</h1>
 
         <p className="mt-6 indent-12">
           บริษัท <Fill v={data.company?.name_th} w={180} /> ทะเบียนนิติบุคคลเลขที่{' '}
@@ -189,8 +211,8 @@ export default function SalaryCertificatePage({ params }: { params: Promise<{ id
 
         <p className="mt-4 indent-12">ให้ไว้ ณ วันที่ {thDate(new Date().toISOString())}</p>
 
-        {/* ผู้ลงนาม */}
-        <div className="mx-auto mt-16 w-72 text-center">
+        {/* ผู้ลงนาม — ชิดขวา ดันลงชิดขอบล่างของกระดาษเสมอ */}
+        <div className="ml-auto mt-auto w-72 pt-16 text-center">
           <p>ลงชื่อ ................................................</p>
           <p className="mt-3">( ................................................ )</p>
           <p className="mt-3">ตำแหน่ง ................................................</p>
@@ -204,7 +226,8 @@ export default function SalaryCertificatePage({ params }: { params: Promise<{ id
           body * { visibility: hidden; }
           #certificate-sheet, #certificate-sheet * { visibility: visible; }
           #certificate-sheet { position: absolute; left: 0; top: 0; width: 100%; }
-          @page { size: A4; margin: 20mm; }
+          /* หัวกระดาษ 30มม. ตามที่เจ้าของขอ — ท้าย 20มม. */
+          @page { size: A4; margin: 30mm 20mm 20mm; }
         }
       `}</style>
     </div>

@@ -36,9 +36,12 @@ export interface PayrollRow {
   bankName: string | null
   bankAccountNo: string | null
   payrollCycle: string | null
-  /** ไว้ให้หน้าจอกรองตามตำแหน่ง/บริษัท */
+  /** ไว้ให้หน้าจอกรองตามตำแหน่ง */
   jobFunctionId: string | null
+  /** งวดจ่ายของบริษัทไหน — คนเดียวมีได้หลายแถวถ้ารายได้พิเศษมาจากอีกบริษัท */
   companyId: string | null
+  /** true = แถวต้นสังกัด (เงินเดือน/OT/วันมา-ขาด) · false = แถวบริษัทอื่น จ่ายแค่ค่าคอม/พิเศษ */
+  isPrimary: boolean
   baseSalary: number
   workDays: number
   absentDays: number
@@ -58,6 +61,10 @@ export interface PayrollRow {
 
 export const payrollTotal = (r: PayrollRow) =>
   r.baseSalary + Math.round(r.otHours * r.otRate * 100) / 100 + r.commission + r.extra - r.deduction
+
+/** กุญแจประจำแถว — คนเดียวมีหลายแถวได้ (แยกตามบริษัทผู้จ่าย) */
+export const rowKey = (r: Pick<PayrollRow, 'userId' | 'companyId'>) =>
+  `${r.userId}|${r.companyId ?? ''}`
 
 /** อัตรา OT มาตรฐานไทย: เงินเดือน / 30 วัน / 8 ชม. × 1.5 */
 export const standardOtRate = (baseSalary: number) =>
@@ -181,7 +188,7 @@ export async function loadPayroll(month: Date): Promise<PayrollRow[]> {
     getAttendanceReportForExport({ startDate: from, endDate: to, showOnlyPresent: false }),
     client.from('job_functions').select('id, ot_eligible'),
     // กติการายได้พิเศษ — ยอดคงที่เติมช่องพิเศษให้เลย ค่าคอม/ค่าชิ้นงานรอยอดของเดือน
-    client.from('user_pay_items').select('id, user_id, label, amount, calc, config'),
+    client.from('user_pay_items').select('id, user_id, label, amount, calc, config, company_id'),
   ])
 
   const latestSalary = new Map<string, number>()
@@ -199,62 +206,123 @@ export async function loadPayroll(month: Date): Promise<PayrollRow[]> {
     attendance.summary.map((s) => [s.userId, { work: s.presentDays, absent: s.absentDays }])
   )
 
-  const savedByUser = new Map((savedRes.data ?? []).map((s) => [s.user_id, s]))
+  // งวดที่บันทึกแล้ว — กุญแจ (คน, บริษัท) เพราะคนเดียวมีได้หลายงวด
+  const savedByKey = new Map(
+    (savedRes.data ?? []).map((s) => [`${s.user_id}|${s.company_id ?? ''}`, s])
+  )
   const fnOt = new Map((fnRes.data ?? []).map((f) => [f.id, f.ot_eligible]))
 
-  const fixedByUser = new Map<string, number>()
-  const varByUser = new Map<string, VariablePayItem[]>()
+  const itemsByUser = new Map<string, NonNullable<typeof payItemsRes.data>>()
   for (const p of payItemsRes.data ?? []) {
-    if (p.calc === 'fixed') {
-      fixedByUser.set(p.user_id, (fixedByUser.get(p.user_id) ?? 0) + Number(p.amount))
-    } else {
-      const list = varByUser.get(p.user_id) ?? []
-      list.push({
-        id: p.id,
-        label: p.label,
-        calc: p.calc as VariablePayItem['calc'],
-        amount: Number(p.amount),
-        tiers: ((p.config as { tiers?: PayTier[] } | null)?.tiers ?? null) as PayTier[] | null,
-      })
-      varByUser.set(p.user_id, list)
-    }
+    const list = itemsByUser.get(p.user_id) ?? []
+    list.push(p)
+    itemsByUser.set(p.user_id, list)
   }
 
-  return (usersRes.data ?? []).map((u) => {
-    const saved = savedByUser.get(u.id)
-    const base = saved ? Number(saved.base_salary) : (latestSalary.get(u.id) ?? 0)
-    const att = attByUser.get(u.id)
-    // สิทธิ์ OT: รายคนชนะ ไม่ตั้งก็ตามตำแหน่ง — ไม่มีสิทธิ์ = ไม่เติมชั่วโมงให้
-    // (ช่องยังพิมพ์เองได้ และค่าที่ HR บันทึกไว้แล้วไม่ถูกล้าง)
-    const otOk = u.ot_eligible ?? (u.job_function_id ? fnOt.get(u.job_function_id) : false) ?? false
-    return {
-      userId: u.id,
-      employeeCode: u.employee_code,
-      name: u.display_name || u.full_name,
-      bankName: u.bank_name,
-      bankAccountNo: u.bank_account_no,
-      payrollCycle: u.payroll_cycle,
-      jobFunctionId: u.job_function_id,
-      companyId: u.company_id,
-      baseSalary: base,
-      workDays: saved ? Number(saved.work_days) : (att?.work ?? 0),
-      absentDays: saved ? Number(saved.absent_days) : (att?.absent ?? 0),
-      otHours: saved
-        ? Number(saved.ot_hours)
-        : otOk
-          ? Math.round((otByUser.get(u.id) ?? 0) * 100) / 100
-          : 0,
-      otRate: saved ? Number(saved.ot_rate) : standardOtRate(base),
-      commission: saved ? Number(saved.commission) : 0,
-      // รายได้พิเศษยอดคงที่ (ค่าตำแหน่ง/ค่าเดินทาง ฯลฯ) เติมให้เลยทุกเดือน
-      extra: saved ? Number(saved.extra) : (fixedByUser.get(u.id) ?? 0),
-      deduction: saved ? Number(saved.deduction) : 0,
-      note: saved?.note ?? '',
-      variableItems: varByUser.get(u.id) ?? [],
-      variableInputs: (saved?.variable_inputs as Record<string, number> | null) ?? {},
-      saved: !!saved,
-    }
+  const toVarItem = (p: NonNullable<typeof payItemsRes.data>[number]): VariablePayItem => ({
+    id: p.id,
+    label: p.label,
+    calc: p.calc as VariablePayItem['calc'],
+    amount: Number(p.amount),
+    tiers: ((p.config as { tiers?: PayTier[] } | null)?.tiers ?? null) as PayTier[] | null,
   })
+
+  const rows: PayrollRow[] = []
+  for (const u of usersRes.data ?? []) {
+    const primaryC = u.company_id as string | null
+    const items = itemsByUser.get(u.id) ?? []
+
+    // แยกรายการตามบริษัทผู้จ่าย — null บนตัวรายการ = ตามต้นสังกัด
+    const byCompany = new Map<string | null, typeof items>()
+    for (const p of items) {
+      const c = (p.company_id ?? primaryC) as string | null
+      const list = byCompany.get(c) ?? []
+      list.push(p)
+      byCompany.set(c, list)
+    }
+
+    const base = (companyItems: typeof items | undefined) => ({
+      fixed: (companyItems ?? [])
+        .filter((p) => p.calc === 'fixed')
+        .reduce((s, p) => s + Number(p.amount), 0),
+      variable: (companyItems ?? []).filter((p) => p.calc !== 'fixed').map(toVarItem),
+    })
+
+    // ── แถวหลัก: งวดของต้นสังกัด — เงินเดือน/OT/วันมา-ขาด อยู่ที่นี่ ──
+    {
+      const saved = savedByKey.get(`${u.id}|${primaryC ?? ''}`)
+      const salary = saved ? Number(saved.base_salary) : (latestSalary.get(u.id) ?? 0)
+      const att = attByUser.get(u.id)
+      // สิทธิ์ OT: รายคนชนะ ไม่ตั้งก็ตามตำแหน่ง — ไม่มีสิทธิ์ = ไม่เติมชั่วโมงให้
+      const otOk =
+        u.ot_eligible ?? (u.job_function_id ? fnOt.get(u.job_function_id) : false) ?? false
+      const own = base(byCompany.get(primaryC))
+      rows.push({
+        userId: u.id,
+        employeeCode: u.employee_code,
+        name: u.display_name || u.full_name,
+        bankName: u.bank_name,
+        bankAccountNo: u.bank_account_no,
+        payrollCycle: u.payroll_cycle,
+        jobFunctionId: u.job_function_id,
+        companyId: primaryC,
+        isPrimary: true,
+        baseSalary: salary,
+        workDays: saved ? Number(saved.work_days) : (att?.work ?? 0),
+        absentDays: saved ? Number(saved.absent_days) : (att?.absent ?? 0),
+        otHours: saved
+          ? Number(saved.ot_hours)
+          : otOk
+            ? Math.round((otByUser.get(u.id) ?? 0) * 100) / 100
+            : 0,
+        otRate: saved ? Number(saved.ot_rate) : standardOtRate(salary),
+        commission: saved ? Number(saved.commission) : 0,
+        // รายได้พิเศษยอดคงที่ (ค่าตำแหน่ง/ค่าเดินทาง ฯลฯ) เติมให้เลยทุกเดือน
+        extra: saved ? Number(saved.extra) : own.fixed,
+        deduction: saved ? Number(saved.deduction) : 0,
+        note: saved?.note ?? '',
+        variableItems: own.variable,
+        variableInputs: (saved?.variable_inputs as Record<string, number> | null) ?? {},
+        saved: !!saved,
+      })
+    }
+
+    // ── แถวเสริม: บริษัทอื่นที่จ่ายรายได้พิเศษให้คนนี้ (หรือเคยบันทึกงวดไว้) ──
+    const otherCompanies = new Set<string | null>([...byCompany.keys()])
+    for (const s of savedRes.data ?? []) {
+      if (s.user_id === u.id) otherCompanies.add(s.company_id as string | null)
+    }
+    otherCompanies.delete(primaryC)
+
+    for (const c of otherCompanies) {
+      const saved = savedByKey.get(`${u.id}|${c ?? ''}`)
+      const grp = base(byCompany.get(c))
+      rows.push({
+        userId: u.id,
+        employeeCode: u.employee_code,
+        name: u.display_name || u.full_name,
+        bankName: u.bank_name,
+        bankAccountNo: u.bank_account_no,
+        payrollCycle: u.payroll_cycle,
+        jobFunctionId: u.job_function_id,
+        companyId: c,
+        isPrimary: false,
+        baseSalary: saved ? Number(saved.base_salary) : 0,
+        workDays: saved ? Number(saved.work_days) : 0,
+        absentDays: saved ? Number(saved.absent_days) : 0,
+        otHours: saved ? Number(saved.ot_hours) : 0,
+        otRate: saved ? Number(saved.ot_rate) : 0,
+        commission: saved ? Number(saved.commission) : 0,
+        extra: saved ? Number(saved.extra) : grp.fixed,
+        deduction: saved ? Number(saved.deduction) : 0,
+        note: saved?.note ?? '',
+        variableItems: grp.variable,
+        variableInputs: (saved?.variable_inputs as Record<string, number> | null) ?? {},
+        saved: !!saved,
+      })
+    }
+  }
+  return rows
 }
 
 /* ------------------------------------------------------------------ */
@@ -265,6 +333,7 @@ export async function savePayroll(month: Date, rows: PayrollRow[], savedBy: stri
       rows.map((r) => ({
         month: monthKey(month),
         user_id: r.userId,
+        company_id: r.companyId,
         base_salary: r.baseSalary,
         work_days: r.workDays,
         absent_days: r.absentDays,
@@ -278,25 +347,25 @@ export async function savePayroll(month: Date, rows: PayrollRow[], savedBy: stri
         updated_by: savedBy,
         updated_at: new Date().toISOString(),
       })),
-      { onConflict: 'month,user_id' }
+      { onConflict: 'month,user_id,company_id' }
     )
   if (error) throw new Error(`บันทึกสรุปเงินเดือนไม่สำเร็จ: ${error.message}`)
 }
 
-/** ดึงค่าคอม + เงินพิเศษ + หมายเหตุ จากเดือนก่อนมาตั้งต้น */
+/** ดึงค่าคอม + เงินพิเศษ + หมายเหตุ จากเดือนก่อนมาตั้งต้น — กุญแจ (คน, บริษัท) */
 export async function loadPreviousExtras(
   month: Date
 ): Promise<Map<string, { commission: number; extra: number; note: string }>> {
   const prev = new Date(month.getFullYear(), month.getMonth() - 1, 1)
   const { data, error } = await sb()
     .from('payroll_entries')
-    .select('user_id, commission, extra, note')
+    .select('user_id, company_id, commission, extra, note')
     .eq('month', monthKey(prev))
 
   if (error) throw new Error(`ดึงข้อมูลเดือนก่อนไม่สำเร็จ: ${error.message}`)
   return new Map(
     (data ?? []).map((r) => [
-      r.user_id,
+      `${r.user_id}|${r.company_id ?? ''}`,
       { commission: Number(r.commission), extra: Number(r.extra), note: r.note ?? '' },
     ])
   )

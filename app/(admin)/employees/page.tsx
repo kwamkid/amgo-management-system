@@ -240,7 +240,6 @@ export default function EmployeesPage() {
     {
       key: 'contact',
       header: 'ติดต่อ',
-      hideOnMobile: true,
       cell: (u) => (
         <div className="space-y-0.5 text-sm text-gray-600">
           {u.phone && (
@@ -311,7 +310,6 @@ export default function EmployeesPage() {
     {
       key: 'position',
       header: 'ตำแหน่ง',
-      hideOnMobile: true,
       sortValue: (u) => (u.jobFunctionId && positions.get(u.jobFunctionId)) || null,
       cell: (u) => {
         const name = u.jobFunctionId ? positions.get(u.jobFunctionId) : null
@@ -360,10 +358,20 @@ export default function EmployeesPage() {
       header: '',
       align: 'right',
       width: 48,
+      mobileFooterAction: true,
       cell: (u) => (
         <ActionMenu
           items={[
             { label: 'แก้ไขข้อมูล', icon: 'Pencil', onSelect: () => handleEdit(u.id!) },
+            {
+              // ทางลัดเข้าแท็บเงินเดือนตรง ๆ — งานที่ HR เข้าบ่อยสุด
+              label: 'จัดการเงินเดือน',
+              icon: 'Wallet',
+              onSelect: () => {
+                setNavigating(true)
+                router.push(`/employees/${u.id}/edit?tab=pay`)
+              },
+            },
             {
               label: 'ดู timeline',
               icon: 'History',

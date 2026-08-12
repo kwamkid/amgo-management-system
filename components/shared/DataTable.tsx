@@ -27,10 +27,19 @@ export type Column<T> = {
   align?: 'left' | 'right' | 'center'
   /** ความกว้างขั้นต่ำ (px) */
   width?: number
-  /** ซ่อนบนจอแคบ — ใช้กับคอลัมน์รอง */
+  /** ไม่แสดงบนจอแคบ (มุมมองการ์ด) — ใช้กับคอลัมน์รอง */
   hideOnMobile?: boolean
   /** ตรึงคอลัมน์ไว้ตอนเลื่อนแนวนอน (ใช้กับคอลัมน์ชื่อ) */
   sticky?: boolean
+  /**
+   * จอแคบตารางกลายเป็นการ์ด (แบบ aoosocial/aoocommerce) —
+   * คอลัมน์นี้เป็น "หัวการ์ด" ตัวหนาบนสุด · ไม่ระบุ = ใช้คอลัมน์แรก
+   */
+  mobilePrimary?: boolean
+  /** ป้ายกำกับในการ์ด — ไม่ใส่ใช้ header (เมื่อ header เป็นข้อความ) */
+  mobileLabel?: string
+  /** ดึงคอลัมน์นี้ไปลอยมุมขวาล่างของการ์ด ไม่มีป้าย — ใช้กับเมนู "..." ของแถว */
+  mobileFooterAction?: boolean
   /**
    * ใส่แล้วคอลัมน์นี้คลิกหัวเพื่อเรียงได้ — คืนค่าที่ใช้เทียบ (ตัวเลข/ข้อความ)
    * คลิกวน: น้อย→มาก · มาก→น้อย · กลับลำดับเดิม · ค่า null ไปท้ายเสมอ
@@ -141,8 +150,55 @@ export default function DataTable<T>({
   const alignOf = (c: Column<T>) =>
     c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left'
 
+  // มุมมองการ์ดบนจอแคบ — หัวการ์ด · ข้อมูลรอง grid 2 คอลัมน์ · action ลอยขวาล่าง
+  const primaryCol = columns.find((c) => c.mobilePrimary) ?? columns[0]
+  const footerActionCol = columns.find((c) => c.mobileFooterAction)
+  const cardCols = columns.filter(
+    (c) => c !== primaryCol && c !== footerActionCol && !c.hideOnMobile
+  )
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <>
+    {/* ── จอแคบ: การ์ด (แบบ aoosocial/aoocommerce) ─────────────── */}
+    <div className="space-y-2.5 md:hidden">
+      {sortedRows.map((row, i) => (
+        <div
+          key={rowKey(row, i)}
+          onClick={onRowClick ? () => onRowClick(row) : undefined}
+          className={`relative rounded-xl border border-gray-200 bg-white p-4 ${
+            onRowClick ? 'cursor-pointer active:bg-gray-50' : ''
+          } ${rowClassName?.(row) ?? ''}`}
+        >
+          <div className="pr-8 font-semibold text-gray-900">{primaryCol.cell(row, i)}</div>
+
+          {cardCols.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+              {cardCols.map((c) => (
+                <div key={c.key} className="min-w-0">
+                  <p className="text-[11px] text-gray-400">
+                    {c.mobileLabel ?? (typeof c.header === 'string' ? c.header : c.key)}
+                  </p>
+                  <div className="truncate text-sm text-gray-800">{c.cell(row, i)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {footerActionCol && (
+            <div
+              className="absolute bottom-3 right-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {footerActionCol.cell(row, i)}
+            </div>
+          )}
+        </div>
+      ))}
+      {/* tfoot (แถวสรุป) เป็นโครงของตาราง — มุมมองการ์ดไม่แสดง */}
+    </div>
+
+    {/* ── จอกว้าง: ตารางเต็ม ───────────────────────────────────── */}
+    <div className="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white md:block">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-gray-50">
@@ -212,5 +268,6 @@ export default function DataTable<T>({
         )}
       </table>
     </div>
+    </>
   )
 }

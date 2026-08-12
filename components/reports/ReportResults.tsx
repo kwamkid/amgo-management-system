@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
+import { HelpTooltip } from '@/components/aoo'
 import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -750,7 +751,7 @@ function DaySlotGrid({
               {days.map((d) => (
                 <th
                   key={d}
-                  className="border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
+                  className="w-8 border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
                 >
                   <span className="block text-[10px] leading-tight">
                     {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
@@ -758,6 +759,8 @@ function DaySlotGrid({
                   <span className="block leading-tight">{Number(d.slice(8))}</span>
                 </th>
               ))}
+              {/* คอลัมน์ว่างดูดพื้นที่เหลือ — วันชิดซ้ายเสมอ ไม่ถูกเกลี่ยเต็มจอ */}
+              <th className="w-full border-b border-gray-100 bg-gray-50" />
               <th className="border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600">
                 มา/ขาด
               </th>
@@ -784,13 +787,18 @@ function DaySlotGrid({
                   const c = p.cells.get(d)
                   return (
                     <td key={d} className="px-0.5 py-1 text-center">
-                      <span
-                        title={`${format(new Date(d), 'dd MMM', { locale: th })}${c ? ` · ${c.status === 'absent' ? 'ขาด' : c.status === 'late' ? 'มาสาย' : c.status === 'normal' ? 'มาทำงาน' : c.note || 'วันหยุด'}` : ''}`}
-                        className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)}`}
-                      />
+                      <HelpTooltip
+                        variant="tooltip"
+                        delay={100}
+                        content={`${format(new Date(d), 'dd MMM', { locale: th })}${c ? ` · ${c.status === 'absent' ? 'ขาด' : c.status === 'late' ? 'มาสาย' : c.status === 'normal' ? 'มาทำงาน' : c.note || 'วันหยุด'}` : ''}`}
+                        triggerStyle={{ borderBottom: 'none', cursor: 'default', display: 'inline-flex' }}
+                      >
+                        <span className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)}`} />
+                      </HelpTooltip>
                     </td>
                   )
                 })}
+                <td />
                 {(() => {
                   // คู่เลขต้องบวกกันได้เท่าวันที่แสดงของคนนั้น (30/31 ถ้าดูทั้งเดือน)
                   // "ไม่มา" รวมทุกอย่างที่ไม่ได้มา — แตกให้ดูข้างล่างว่าเป็นขาดจริง/ลา/หยุดกี่วัน

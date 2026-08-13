@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/client'
 import PayCard from './PayCard'
 import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
+import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
 import { TabBar, TabItem } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
@@ -44,7 +45,7 @@ const ROLE_TH: Record<string, string> = {
   hr: 'ฝ่ายบุคคล — แก้ได้ทุกคน (ยกเว้นผู้ดูแลระบบ)',
   manager: 'ผู้จัดการ',
   employee: 'พนักงาน',
-  driver: 'เห็นงานส่งของ',
+  driver: 'พนักงานขับรถ (เห็นงานส่งของ)',
   marketing: 'การตลาด (เห็นเมนู influencer)',
 }
 
@@ -82,6 +83,7 @@ export default function UserEditForm({
 
   // ตัวเลือกบริษัทกับตำแหน่ง — ตำแหน่งเป็นตัวกำหนดสิทธิ์ ตารางงาน รอบจ่ายเงิน
   const [companies, setCompanies] = useState<{ id: string; code: string; name_th: string }[]>([])
+  const [showEndDialog, setShowEndDialog] = useState(false)
   const [functions, setFunctions] = useState<
     { id: string; name_th: string; default_role: string | null; ot_eligible: boolean }[]
   >([])
@@ -455,27 +457,54 @@ export default function UserEditForm({
               )}
             </div>
 
-            {/* เปิดใช้งานเป็นสวิตช์ on/off (เจ้าของสั่ง 13 ส.ค. 69) */}
-            <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked as boolean })
-                }
-                disabled={isLoading}
-              />
-              <div className="space-y-1">
-                <Label htmlFor="isActive" className="text-base font-medium cursor-pointer">
-                  เปิดใช้งาน
-                </Label>
-                <p className="text-sm text-gray-500">
-                  {formData.isActive
-                    ? 'พนักงานสามารถเข้าใช้งานระบบได้'
-                    : 'พนักงานไม่สามารถเข้าใช้งานระบบได้'}
-                </p>
+            {/* เปิดใช้งานเป็นสวิตช์ on/off + ปุ่มสิ้นสุดการจ้างอยู่คู่กัน จะได้ไม่งง
+                ว่าปิดสวิตช์ = ลาออก (เจ้าของสั่ง 13 ส.ค. 69) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+              <div className="flex items-center space-x-3">
+                <Switch
+                  id="isActive"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isActive: checked as boolean })
+                  }
+                  disabled={isLoading}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="isActive" className="text-base font-medium cursor-pointer">
+                    เปิดใช้งาน
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    {formData.isActive
+                      ? 'เข้าใช้งานระบบได้ปกติ'
+                      : 'ระงับการเข้าระบบชั่วคราว — ยังเป็นพนักงานอยู่'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    ไม่ใช่การลาออก — การสิ้นสุดการจ้างใช้ปุ่มด้านขวา (ระบบจะปิดสวิตช์นี้ให้เอง)
+                  </p>
+                </div>
               </div>
+
+              {user.id && !['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => setShowEndDialog(true)}
+                  disabled={isLoading}
+                >
+                  สิ้นสุดการเป็นพนักงาน…
+                </Button>
+              )}
             </div>
+
+            {showEndDialog && (
+              <EndEmploymentDialog
+                user={user}
+                open={showEndDialog}
+                onOpenChange={setShowEndDialog}
+                onSuccess={() => window.location.reload()}
+              />
+            )}
           </div>
         </CardContent>
       </Card>

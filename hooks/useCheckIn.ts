@@ -309,27 +309,23 @@ export function useCheckIn(): UseCheckInReturn {
       }
       // ──────────────────────────────────────────────────────────────────────
 
-      await checkinService.checkOut(userData.id, {
+      const hours = await checkinService.checkOut(userData.id, {
         lat: pos?.coords.latitude,
         lng: pos?.coords.longitude,
         note
       })
-      
-      // Calculate hours for notification
-      const checkinTime = currentCheckIn.checkinTime instanceof Date 
-        ? currentCheckIn.checkinTime 
-        : new Date(currentCheckIn.checkinTime)
-      const hoursWorked = (Date.now() - checkinTime.getTime()) / (1000 * 60 * 60)
-      const overtime = Math.max(0, hoursWorked - 8)
-      
+
       // Send Discord notification (no toast if fails)
       try {
+        // เลขชั่วโมง/โอทีใช้ของที่คำนวณจริง (หักพัก/ตัดเวลาปิดร้านแล้ว) — เดิมคิดจาก
+        // เวลาดิบ−8 เลยขึ้นโอทีทุกคน · และโชว์โอทีเฉพาะคนที่มีสิทธิ์ OT เท่านั้น
+        const otEligible = await checkinService.resolveOtEligible(userData.id)
         await DiscordNotificationService.notifyCheckOut(
           userData.id,
           // ชื่อจริง (ชื่อเล่น) — เหมือนฝั่งเช็คอิน
           userData.displayName || userData.fullName,
-          Math.round(hoursWorked * 10) / 10,
-          Math.round(overtime * 10) / 10,
+          Math.round(hours.totalHours * 10) / 10,
+          otEligible ? Math.round(hours.overtimeHours * 10) / 10 : 0,
           userData.linePictureUrl
         )
       } catch (err) {

@@ -37,43 +37,47 @@ export type RecipeType = 'fixed' | 'brix'
 export interface Recipe {
   id: string
   name: string
+  /** รูปประจำสูตร (emoji) — ฝ่ายผลิตอ่านไทยไม่ออก จำจากรูป */
+  image: string
   note: string
   isActive: boolean
   updatedAt: string
   /** fixed = ส่วนผสมต่อ 1 ลิตร · brix = วัดค่าน้ำคั้นก่อนแล้วคำนวณของที่เติม */
   recipeType: RecipeType
-  /** เป้าความหวานของน้ำขาย (สูตร brix) */
+  /** เป้าความหวานของน้ำขาย (สูตร brix — น้ำส้ม Joolz = 12) */
   targetBrix: number | null
-  /** ความหวานน้ำเชื่อมที่ใช้เติม (สูตร brix) */
-  syrupBrix: number
+  /** % น้ำคั้นแท้ต่อปริมาณน้ำสุดท้าย (น้ำส้ม Joolz = 70) */
+  juiceRatio: number
   /** ขั้นตอนการทำ — ข้อความ fix แสดงในหน้าผสม */
   steps: string
-  /** fixed: ต่อ 1 ลิตร · brix: ของที่เติมต่อลิตรน้ำสุดท้าย (เช่น เกลือ) */
+  /** fixed: ต่อ 1 ลิตร · brix: ของที่เติมต่อลิตรน้ำสุดท้าย (เกลือ แซคส้ม) */
   items: RecipeItem[]
 }
 
 /**
- * คำนวณของที่ต้องเติมจากค่า Brix ที่วัดได้ (สมดุลความหวานมาตรฐาน)
- * - หวานเกินเป้า → เติมน้ำเปล่าเจือจาง
- * - หวานไม่ถึงเป้า → เติมน้ำเชื่อม (ความหวาน syrupBrix)
- * ตัวเลขเป็นค่าประมาณ (Brix เป็น % โดยน้ำหนัก แต่หน้างานตวงเป็นลิตร)
+ * สูตรน้ำส้ม Joolz — แกะจากเว็บเก่า cal.joolzjuice.com (result.php, ตรวจค่าตรงกัน)
+ *
+ * เริ่มจาก "จะทำกี่ลิตร" + Brix น้ำคั้นที่วัดได้:
+ * - น้ำคั้นแท้ = juiceRatio% ของปริมาณรวม (Joolz = 70%)
+ * - น้ำตาล (g) = Brix เป้า × ปริมาณรวม/100 − น้ำคั้น × Brix วัดได้/100
+ *   (เติมน้ำตาลให้ทั้งถังหวานถึงเป้าพอดี — เว็บเก่าคิด g ≈ ml)
+ * - น้ำดื่ม = ปริมาณรวม − น้ำคั้น − น้ำตาล
+ * - แบบน้ำเชื่อม: น้ำเชื่อม = น้ำตาล × 2 (เข้มข้นครึ่งต่อครึ่ง) · น้ำหักออกเท่าน้ำตาล
  */
-export function brixMix(juiceLiters: number, juiceBrix: number, targetBrix: number, syrupBrix: number) {
+export function juiceMix(totalLiters: number, measuredBrix: number, targetBrix: number, juiceRatio: number) {
   const r2 = (n: number) => Math.round(n * 100) / 100
-  if (juiceLiters <= 0 || juiceBrix <= 0 || targetBrix <= 0) {
-    return { waterLiters: 0, syrupLiters: 0, totalLiters: r2(juiceLiters) }
-  }
-  let waterLiters = 0
-  let syrupLiters = 0
-  if (juiceBrix > targetBrix) {
-    waterLiters = (juiceLiters * (juiceBrix - targetBrix)) / targetBrix
-  } else if (juiceBrix < targetBrix && syrupBrix > targetBrix) {
-    syrupLiters = (juiceLiters * (targetBrix - juiceBrix)) / (syrupBrix - targetBrix)
-  }
+  const totalMl = totalLiters * 1000
+  const juiceMl = (totalMl * juiceRatio) / 100
+  const sugarG = Math.max(0, (targetBrix * totalMl) / 100 - (juiceMl * measuredBrix) / 100)
+  const waterMl = Math.max(0, totalMl - juiceMl - sugarG)
+  const syrupG = sugarG * 2
+  const waterSyrupMl = Math.max(0, waterMl - sugarG)
   return {
-    waterLiters: r2(waterLiters),
-    syrupLiters: r2(syrupLiters),
-    totalLiters: r2(juiceLiters + waterLiters + syrupLiters),
+    juiceLiters: r2(juiceMl / 1000),
+    sugarG: Math.round(sugarG),
+    waterLiters: r2(waterMl / 1000),
+    syrupG: Math.round(syrupG),
+    waterSyrupLiters: r2(waterSyrupMl / 1000),
   }
 }
 
@@ -144,7 +148,7 @@ export function smartQty(qty: number, unit: RecipeUnit): { qty: number; unit: Re
 export async function getRecipes(includeInactive = false): Promise<Recipe[]> {
   let q = sb()
     .from('production_recipes')
-    .select('id, name, note, is_active, updated_at, recipe_type, target_brix, syrup_brix, steps, production_recipe_items(id, name, qty_per_liter, unit, is_yield_base, sort_order)')
+    .select('id, name, image, note, is_active, updated_at, recipe_type, target_brix, juice_ratio, steps, production_recipe_items(id, name, qty_per_liter, unit, is_yield_base, sort_order)')
     .order('sort_order')
     .order('name')
   if (!includeInactive) q = q.eq('is_active', true)
@@ -153,12 +157,13 @@ export async function getRecipes(includeInactive = false): Promise<Recipe[]> {
   return (data ?? []).map((r) => ({
     id: r.id,
     name: r.name,
+    image: r.image ?? '',
     note: r.note,
     isActive: r.is_active,
     updatedAt: r.updated_at,
     recipeType: (r.recipe_type as RecipeType) ?? 'fixed',
     targetBrix: r.target_brix === null ? null : Number(r.target_brix),
-    syrupBrix: Number(r.syrup_brix ?? 65),
+    juiceRatio: Number(r.juice_ratio ?? 70),
     steps: r.steps ?? '',
     items: [...r.production_recipe_items]
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -176,10 +181,11 @@ export async function getRecipes(includeInactive = false): Promise<Recipe[]> {
 export async function saveRecipe(data: {
   id?: string
   name: string
+  image: string
   note: string
   recipeType: RecipeType
   targetBrix: number | null
-  syrupBrix: number
+  juiceRatio: number
   steps: string
   items: RecipeItem[]
   updatedBy: string
@@ -187,10 +193,11 @@ export async function saveRecipe(data: {
   const client = sb()
   const fields = {
     name: data.name,
+    image: data.image,
     note: data.note,
     recipe_type: data.recipeType,
     target_brix: data.recipeType === 'brix' ? data.targetBrix : null,
-    syrup_brix: data.syrupBrix,
+    juice_ratio: data.juiceRatio,
     steps: data.steps,
     updated_by: data.updatedBy,
   }

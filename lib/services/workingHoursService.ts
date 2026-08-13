@@ -100,6 +100,8 @@ export function calculateWorkingHours(
   let totalHours = totalMinutes / 60
   
   // Deduct break time if worked more than 4 hours
+  // (หักรอบเดียวตาม breakHours ของสาขา — เจ้าของยืนยัน 14 ส.ค. 69 ว่าถูกแล้ว:
+  //  ห้าง 10:00–22:00 = 12 ชม. หักพัก 1 เหลือ 11 → โอที 3)
   let appliedBreakHours = 0
   if (totalHours > 4) {
     appliedBreakHours = Math.min(location.breakHours, totalHours - 4)

@@ -20,6 +20,11 @@ import { safeFormatDate, formatDateRange } from '@/lib/utils/date'
 
 type NotifyType = keyof DiscordSettings['notifications']
 
+// รูปใหญ่มุมขวาของ embed — ให้เช็คอิน/เช็คเอาท์แยกกันออกในแวบเดียว
+// (สีขอบซ้ายอย่างเดียวเจ้าของบอกดูไม่ออก) — ใช้รูป emoji จาก twemoji CDN
+const emojiIcon = (code: string) =>
+  `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${code}.png`
+
 // Helper function to get leave type emoji and label
 function getLeaveTypeInfo(type: string): { emoji: string; label: string; color: number } {
   switch (type) {
@@ -74,13 +79,14 @@ export async function sendCheckInNotification(event: NotificationEvent) {
   const isOffsite = checkinType === 'offsite'
 
   const embed: DiscordEmbed = {
+    title: isOffsite ? '🟡 เช็คอิน · นอกสถานที่' : '🟢 เช็คอิน',
+    // รูปใหญ่มุมขวา: เขียวเข้างาน — คนละภาพกับเช็คเอาท์ชัด ๆ
+    thumbnail: { url: emojiIcon(isOffsite ? '1f4cd' : '2705') },
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: isOffsite
-      ? `📍 เช็คอินนอกสถานที่`
-      : `เช็คอินเรียบร้อย ที่**${event.locationName}**`,
+    description: isOffsite ? undefined : `ที่ **${event.locationName}**`,
     color: isOffsite ? EmbedColors.WARNING : EmbedColors.SUCCESS,
     fields: [
       {
@@ -119,12 +125,14 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
   const { totalHours, overtime } = event.data || {}
 
   const embed: DiscordEmbed = {
+    title: '🔴 เช็คเอาท์',
+    // รูปบ้าน = เลิกงานกลับบ้าน + การ์ดสีแดง — ตัดกับเช็คอินสีเขียวทันที
+    thumbnail: { url: emojiIcon('1f3e0') },
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: `เช็คเอาท์เรียบร้อย`,
-    color: EmbedColors.INFO,
+    color: EmbedColors.DANGER,
     fields: [
       {
         name: 'เวลาทำงาน',

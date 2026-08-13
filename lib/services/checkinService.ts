@@ -188,8 +188,26 @@ export async function createCheckIn(
   return row.id
 }
 
+/**
+ * สิทธิ์ OT: ตั้งรายคนชนะ ไม่ตั้งใช้ของตำแหน่ง — noti เช็คเอาท์ใช้ตัดสินว่าควรโชว์โอทีไหม
+ * (พนักงานทั่วไปทำเกิน 8 ชม. ระบบเก็บชั่วโมงไว้เป็นข้อมูล แต่ไม่ใช่เงินโอที)
+ */
+export async function resolveOtEligible(userId: string): Promise<boolean> {
+  const { data } = await sb()
+    .from('users')
+    .select('ot_eligible, job_functions(ot_eligible)')
+    .eq('id', userId)
+    .single()
+  const jfRaw = data?.job_functions
+  const jf = (Array.isArray(jfRaw) ? jfRaw[0] : jfRaw) as { ot_eligible: boolean | null } | null
+  return data?.ot_eligible ?? jf?.ot_eligible ?? false
+}
+
 /* ------------------------------------------------------------------ */
-export async function checkOut(userId: string, checkoutData: CheckOutData): Promise<void> {
+export async function checkOut(
+  userId: string,
+  checkoutData: CheckOutData
+): Promise<{ totalHours: number; overtimeHours: number }> {
   const active = await getActiveCheckIn(userId)
   if (!active) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
 
@@ -245,6 +263,9 @@ export async function checkOut(userId: string, checkoutData: CheckOutData): Prom
     .eq('id', active.id!)
 
   if (error) throw new Error(`เช็คเอาท์ไม่สำเร็จ: ${error.message}`)
+
+  // ส่งเลขที่คำนวณจริงกลับไปให้ noti — ไม่ต้องคิดเองจากเวลาดิบอีก
+  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours }
 }
 
 /* ------------------------------------------------------------------ *

@@ -2056,7 +2056,9 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          image: string
           is_active: boolean
+          juice_ratio: number
           name: string
           note: string
           recipe_type: string
@@ -2070,7 +2072,9 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          image?: string
           is_active?: boolean
+          juice_ratio?: number
           name: string
           note?: string
           recipe_type?: string
@@ -2084,7 +2088,9 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          image?: string
           is_active?: boolean
+          juice_ratio?: number
           name?: string
           note?: string
           recipe_type?: string

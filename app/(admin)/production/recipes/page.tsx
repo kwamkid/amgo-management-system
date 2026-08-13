@@ -36,13 +36,17 @@ const UNIT_OPTIONS = (Object.keys(UNIT_TH) as RecipeUnit[]).map((u) => ({
 
 const EMPTY_ITEM: RecipeItem = { name: '', qtyPerLiter: 0, unit: 'g', isYieldBase: false }
 
+// รูปให้เลือกประจำสูตร — ฝ่ายผลิตอ่านไทยไม่ออก จำจากรูป (เจ้าของสั่ง 14 ส.ค.)
+const RECIPE_IMAGES = ['🍊', '🍋', '🍎', '🍏', '🍇', '🍉', '🍓', '🥭', '🍍', '🥕', '🥥', '🌼', '🍵', '🧃']
+
 interface Draft {
   id?: string
   name: string
+  image: string
   note: string
   recipeType: RecipeType
   targetBrix: string
-  syrupBrix: string
+  juiceRatio: string
   steps: string
   items: RecipeItem[]
 }
@@ -50,20 +54,23 @@ interface Draft {
 const draftFrom = (r: Recipe): Draft => ({
   id: r.id,
   name: r.name,
+  image: r.image,
   note: r.note,
   recipeType: r.recipeType,
   targetBrix: r.targetBrix === null ? '' : String(r.targetBrix),
-  syrupBrix: String(r.syrupBrix),
+  juiceRatio: String(r.juiceRatio),
   steps: r.steps,
   items: r.items.map((i) => ({ ...i })),
 })
 
+// ค่าตั้งต้นตามสูตรน้ำส้ม Joolz (cal.joolzjuice.com): เป้า Brix 12 · น้ำคั้นแท้ 70%
 const NEW_DRAFT: Draft = {
   name: '',
+  image: '🍊',
   note: '',
   recipeType: 'brix',
-  targetBrix: '',
-  syrupBrix: '65',
+  targetBrix: '12',
+  juiceRatio: '70',
   steps: '',
   items: [{ ...EMPTY_ITEM }],
 }
@@ -104,20 +111,24 @@ export default function ProductionRecipesPage() {
     if (!draft || !userData?.id) return
     const items = draft.items.filter((i) => i.name.trim() && i.qtyPerLiter > 0)
     const targetBrix = parseFloat(draft.targetBrix) || 0
+    const juiceRatio = parseFloat(draft.juiceRatio) || 0
     if (!draft.name.trim()) return showToast('ใส่ชื่อสูตรก่อน', 'error')
     if (draft.recipeType === 'fixed' && items.length === 0)
       return showToast('ใส่ส่วนผสมอย่างน้อย 1 ตัว', 'error')
     if (draft.recipeType === 'brix' && targetBrix <= 0)
       return showToast('ใส่เป้า Brix ของน้ำขายก่อน', 'error')
+    if (draft.recipeType === 'brix' && (juiceRatio <= 0 || juiceRatio > 100))
+      return showToast('% น้ำคั้นแท้ต้องอยู่ระหว่าง 1-100', 'error')
     setSaving(true)
     try {
       await saveRecipe({
         id: draft.id,
         name: draft.name.trim(),
+        image: draft.image,
         note: draft.note.trim(),
         recipeType: draft.recipeType,
         targetBrix: targetBrix > 0 ? targetBrix : null,
-        syrupBrix: parseFloat(draft.syrupBrix) || 65,
+        juiceRatio: juiceRatio > 0 ? juiceRatio : 70,
         steps: stepLines(draft.steps).join('\n'),
         items,
         updatedBy: userData.id!,
@@ -178,7 +189,9 @@ export default function ProductionRecipesPage() {
         {visibleRecipes.map((r) => (
           <SectionCard key={r.id} className={r.isActive ? '' : 'opacity-60'}>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span className="text-3xl leading-none">{r.image || '🧃'}</span>
+                <div className="min-w-0">
                 <div className="text-base font-semibold text-gray-900">
                   {r.name}
                   <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
@@ -194,6 +207,7 @@ export default function ProductionRecipesPage() {
                     วิธีทำ {stepLines(r.steps).length} ขั้น: 1. {stepLines(r.steps)[0]}…
                   </p>
                 )}
+                </div>
               </div>
               {isAdmin && (
                 <div className="flex shrink-0 items-center gap-2">
@@ -288,6 +302,29 @@ export default function ProductionRecipesPage() {
           }
         >
           <div className="space-y-3">
+            <div>
+              <div className="mb-1 text-xs font-semibold text-gray-500">
+                รูปประจำสูตร — ฝ่ายผลิตจำจากรูปนี้
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {RECIPE_IMAGES.map((img) => (
+                  <button
+                    key={img}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, image: img })}
+                    className={`flex h-11 w-11 items-center justify-center rounded-lg border-2 text-2xl transition-colors ${
+                      draft.image === img
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    aria-label={`เลือกรูป ${img}`}
+                  >
+                    {img}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Input
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -306,7 +343,7 @@ export default function ProductionRecipesPage() {
               />
               <p className="mt-1 text-xs text-gray-400">
                 {draft.recipeType === 'brix'
-                  ? 'เช่น น้ำส้ม — วัด Brix น้ำคั้นก่อน ระบบคำนวณน้ำเปล่า/น้ำเชื่อมให้ถึงเป้า'
+                  ? 'เช่น น้ำส้ม (สูตร Joolz) — กรอกจำนวนขวด + Brix น้ำคั้น ระบบคำนวณน้ำคั้น/น้ำตาลหรือน้ำเชื่อม/น้ำให้'
                   : 'เช่น น้ำเก๊กฮวย — ส่วนผสมตายตัวต่อน้ำ 1 ลิตร ระบบคูณขยายตามที่ผสม'}
               </p>
             </div>
@@ -325,14 +362,15 @@ export default function ProductionRecipesPage() {
                   />
                 </div>
                 <div className="flex-1">
-                  <div className="mb-1 text-xs font-semibold text-gray-500">Brix น้ำเชื่อมที่ใช้เติม</div>
+                  <div className="mb-1 text-xs font-semibold text-gray-500">% น้ำคั้นแท้</div>
                   <Input
                     type="number"
                     inputMode="decimal"
-                    min={0}
-                    value={draft.syrupBrix}
-                    onChange={(e) => setDraft({ ...draft, syrupBrix: e.target.value })}
-                    placeholder="65"
+                    min={1}
+                    max={100}
+                    value={draft.juiceRatio}
+                    onChange={(e) => setDraft({ ...draft, juiceRatio: e.target.value })}
+                    placeholder="70"
                   />
                 </div>
               </div>

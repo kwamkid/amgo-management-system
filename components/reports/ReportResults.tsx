@@ -742,6 +742,34 @@ function DaySlotGrid({
     return 'bg-gray-200'
   }
 
+  // ช่วงยาวกว่า 1 เดือน: คงขนาดจุดไว้แล้วเลื่อนแนวนอนแทน (ชื่อตรึงซ้าย มา/ขาดตรึงขวา)
+  // — บีบ 90+ จุดลงจอเดียวจะดูไม่ออก ส่วนภาพรวมแบบย่อมีหน้า Performance อยู่แล้ว
+  const scrollMode = days.length > 31
+  const monthSegs: { label: string; count: number }[] = []
+  if (scrollMode) {
+    for (const d of days) {
+      const label = format(new Date(d), 'MMM yyyy', { locale: th })
+      const last = monthSegs[monthSegs.length - 1]
+      if (last && last.label === label) last.count++
+      else monthSegs.push({ label, count: 1 })
+    }
+  }
+  const monthStart = (d: string) => scrollMode && d.slice(8) === '01'
+
+  const dayHead = (d: string) => (
+    <th
+      key={d}
+      className={`border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400 ${
+        scrollMode ? 'min-w-6' : ''
+      } ${monthStart(d) ? 'border-l-2 border-l-gray-200' : ''}`}
+    >
+      <span className="block text-[10px] leading-tight">
+        {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
+      </span>
+      <span className="block leading-tight">{Number(d.slice(8))}</span>
+    </th>
+  )
+
   const legend = [
     ['bg-green-500', 'มาทำงาน (สาขา)'],
     ['bg-purple-500', 'นอกสถานที่'],
@@ -764,27 +792,36 @@ function DaySlotGrid({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-100">
-        <table className="w-full table-fixed border-collapse text-xs">
+        <table className={`${scrollMode ? '' : 'w-full table-fixed'} border-collapse text-xs`}>
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 w-44 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-left font-medium text-gray-600">
+              <th
+                rowSpan={scrollMode ? 2 : 1}
+                className="sticky left-0 z-10 w-44 min-w-44 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-left font-medium text-gray-600"
+              >
                 พนักงาน
               </th>
-              {days.map((d) => (
-                <th
-                  key={d}
-                  className="border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
-                >
-                  <span className="block text-[10px] leading-tight">
-                    {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
-                  </span>
-                  <span className="block leading-tight">{Number(d.slice(8))}</span>
-                </th>
-              ))}
-              <th className="w-28 border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600">
+              {scrollMode
+                ? monthSegs.map((seg) => (
+                    <th
+                      key={seg.label}
+                      colSpan={seg.count}
+                      className="border-b border-l-2 border-gray-100 border-l-gray-200 bg-gray-50 px-2 py-1 text-left text-[11px] font-medium text-gray-500"
+                    >
+                      {seg.label}
+                    </th>
+                  ))
+                : days.map(dayHead)}
+              <th
+                rowSpan={scrollMode ? 2 : 1}
+                className={`w-28 min-w-28 border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600 ${
+                  scrollMode ? 'sticky right-0 z-10 border-l border-l-gray-100' : ''
+                }`}
+              >
                 มา/ขาด
               </th>
             </tr>
+            {scrollMode && <tr>{days.map(dayHead)}</tr>}
           </thead>
           <tbody>
             {people.map((p) => (
@@ -806,7 +843,12 @@ function DaySlotGrid({
                 {days.map((d) => {
                   const c = p.cells.get(d)
                   return (
-                    <td key={d} className="px-0.5 py-1 text-center">
+                    <td
+                      key={d}
+                      className={`px-0.5 py-1 text-center ${
+                        monthStart(d) ? 'border-l-2 border-l-gray-100' : ''
+                      }`}
+                    >
                       <HelpTooltip
                         variant="tooltip"
                         delay={100}
@@ -874,7 +916,11 @@ function DaySlotGrid({
                     .filter(Boolean)
                     .join(' · ')
                   return (
-                    <td className="whitespace-nowrap px-2 py-1 text-center">
+                    <td
+                      className={`whitespace-nowrap px-2 py-1 text-center ${
+                        scrollMode ? 'sticky right-0 z-10 border-l border-l-gray-100 bg-white' : ''
+                      }`}
+                    >
                       <span className="font-semibold text-green-600">{p.sum.present}</span>
                       <span className="text-gray-300">/</span>
                       <span

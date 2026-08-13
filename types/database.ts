@@ -1751,6 +1751,102 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_entries: {
+        Row: {
+          absent_days: number
+          base_salary: number
+          commission: number
+          company_id: string | null
+          deduction: number
+          extra: number
+          id: string
+          month: string
+          note: string
+          ot_hours: number
+          ot_rate: number
+          total: number | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          variable_inputs: Json | null
+          work_days: number
+        }
+        Insert: {
+          absent_days?: number
+          base_salary?: number
+          commission?: number
+          company_id?: string | null
+          deduction?: number
+          extra?: number
+          id?: string
+          month: string
+          note?: string
+          ot_hours?: number
+          ot_rate?: number
+          total?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          variable_inputs?: Json | null
+          work_days?: number
+        }
+        Update: {
+          absent_days?: number
+          base_salary?: number
+          commission?: number
+          company_id?: string | null
+          deduction?: number
+          extra?: number
+          id?: string
+          month?: string
+          note?: string
+          ot_hours?: number
+          ot_rate?: number
+          total?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          variable_inputs?: Json | null
+          work_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_entries_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand_id: string
@@ -2099,64 +2195,6 @@ export type Database = {
           },
         ]
       }
-      payroll_entries: {
-        Row: {
-          absent_days: number
-          base_salary: number
-          commission: number
-          company_id: string | null
-          deduction: number
-          extra: number
-          id: string
-          month: string
-          note: string
-          ot_hours: number
-          ot_rate: number
-          total: number
-          updated_at: string
-          updated_by: string | null
-          user_id: string
-          variable_inputs: Json | null
-          work_days: number
-        }
-        Insert: {
-          absent_days?: number
-          base_salary?: number
-          commission?: number
-          company_id?: string | null
-          deduction?: number
-          extra?: number
-          id?: string
-          month: string
-          note?: string
-          ot_hours?: number
-          ot_rate?: number
-          updated_at?: string
-          updated_by?: string | null
-          user_id: string
-          variable_inputs?: Json | null
-          work_days?: number
-        }
-        Update: {
-          absent_days?: number
-          base_salary?: number
-          commission?: number
-          company_id?: string | null
-          deduction?: number
-          extra?: number
-          id?: string
-          month?: string
-          note?: string
-          ot_hours?: number
-          ot_rate?: number
-          updated_at?: string
-          updated_by?: string | null
-          user_id?: string
-          variable_inputs?: Json | null
-          work_days?: number
-        }
-        Relationships: []
-      }
       user_allowed_locations: {
         Row: {
           location_id: string
@@ -2256,36 +2294,6 @@ export type Database = {
           },
         ]
       }
-      user_remarks: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          created_by_name: string
-          id: string
-          remark: string
-          remark_date: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          created_by_name?: string
-          id?: string
-          remark: string
-          remark_date?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          created_by_name?: string
-          id?: string
-          remark?: string
-          remark_date?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_pay_items: {
         Row: {
           amount: number
@@ -2339,6 +2347,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_pay_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_pay_items_created_by_fkey"
             columns: ["created_by"]
@@ -2427,6 +2442,65 @@ export type Database = {
           },
           {
             foreignKeyName: "user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_remarks: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          remark: string
+          remark_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          remark: string
+          remark_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          remark?: string
+          remark_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_remarks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_remarks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_remarks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_remarks_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2839,6 +2913,16 @@ export type Database = {
           user_id: string
           work_date: string
         }[]
+      }
+      attendance_report_json: {
+        Args: {
+          p_from: string
+          p_location_id?: string
+          p_only_present?: boolean
+          p_to: string
+          p_user_ids?: string[]
+        }
+        Returns: Json
       }
       attendance_summary: {
         Args: { p_from: string; p_to: string; p_user_id?: string }

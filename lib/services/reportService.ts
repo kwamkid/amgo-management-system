@@ -182,23 +182,34 @@ async function fetchReport(
 }
 
 /**
- * ดึงทั้งช่วงให้ครบจริง ๆ — PostgREST ตัดผลลัพธ์ที่ ~1,000 แถวแบบเงียบ ๆ
- * ต่อให้ส่ง limit 100,000 ก็ได้คืนแค่พันแรก (ทั้งเดือน = 39 คน × 31 วัน ≈ 1,200 แถว
- * → ตารางวันเลยขาดช่วงท้ายเดือน) ต้องขอเป็นช่วง ๆ แล้วต่อกันจนครบตาม total_count
+ * ดึงทั้งช่วงให้ครบจริง ๆ — ผ่าน RPC ที่คืน jsonb ก้อนเดียว (ไม่ติดเพดาน 1,000 แถว
+ * ของ PostgREST) เดิมขอเป็นช่วง ๆ ทีละ 1,000 แต่ฟังก์ชันรายงานคำนวณใหม่ทั้งชุด
+ * ทุกรอบ — ดูทั้งปีคือคำนวณซ้ำ ~10 รอบ จนชน statement timeout ตอนคนใช้พร้อมกัน
  */
 async function fetchReportAll(
   filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>
 ): Promise<{ rows: AttendanceReportData[]; total: number }> {
-  const batch = 1000
-  const first = await fetchReport(filters, batch, 0)
-  const rows = [...first.rows]
-  let guard = 0
-  while (rows.length < first.total && ++guard < 60) {
-    const next = await fetchReport(filters, batch, rows.length)
-    if (!next.rows.length) break
-    rows.push(...next.rows)
-  }
-  return { rows, total: first.total }
+  const endCapped = filters.endDate > new Date() ? new Date() : filters.endDate
+
+  const { data, error } = await sb().rpc('attendance_report_json', {
+    p_from: ymd(filters.startDate),
+    p_to: ymd(endCapped),
+    p_user_ids: filters.userIds?.length ? filters.userIds : undefined,
+    p_location_id: filters.locationId ?? undefined,
+    p_only_present: filters.showOnlyPresent !== false,
+  })
+
+  if (error) throw new Error(`ดึงรายงานไม่สำเร็จ: ${error.message}`)
+
+  const raw = (data ?? []) as ReportRow[]
+  const { getDisplayNames } = await import('./user/queries')
+  const names = await getDisplayNames(raw.map((r) => r.user_id))
+  const rows = raw.map((r) => {
+    const row = toReportData(r)
+    row.userName = names.get(r.user_id) || row.userName
+    return row
+  })
+  return { rows, total: rows.length }
 }
 
 /** วันทำงาน/สัปดาห์ของแต่ละคน — ใช้คิดวันขาดของกะหมุนเวียน */

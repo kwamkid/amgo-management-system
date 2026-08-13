@@ -35,6 +35,9 @@ export interface DiscordEmbed {
   thumbnail?: {
     url: string
   }
+  image?: {
+    url: string
+  }
   author?: {
     name: string
     url?: string

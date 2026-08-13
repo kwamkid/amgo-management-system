@@ -21,9 +21,18 @@ import { safeFormatDate, formatDateRange } from '@/lib/utils/date'
 type NotifyType = keyof DiscordSettings['notifications']
 
 // รูปใหญ่มุมขวาของ embed — ให้เช็คอิน/เช็คเอาท์แยกกันออกในแวบเดียว
-// (สีขอบซ้ายอย่างเดียวเจ้าของบอกดูไม่ออก) — ใช้รูป emoji จาก twemoji CDN
-const emojiIcon = (code: string) =>
-  `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${code}.png`
+// (สีขอบซ้ายอย่างเดียวเจ้าของบอกดูไม่ออก) — ป้ายเข้า/ออกประตูดีไซน์คู่กัน
+// ไฟล์อยู่ใน public/discord/ ของแอปเอง (Discord ดึงจากโดเมน production)
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.amgovenger.com'
+const NOTI_ICONS = {
+  checkIn: `${APP_URL}/discord/checkin.png`,
+  checkOut: `${APP_URL}/discord/checkout.png`,
+  offsite: `${APP_URL}/discord/offsite.png`,
+} as const
+
+// รูปใสสูง 3px กว้าง 500px ใส่เป็น image ท้าย embed — ดันการ์ดให้กว้างเต็ม
+// เท่ากันทุกใบ (ปกติ Discord หดการ์ดตามเนื้อหา ทำให้แต่ละใบกว้างไม่เท่ากัน)
+const CARD_WIDTH_SPACER = { url: `${APP_URL}/discord/spacer.png` }
 
 // Helper function to get leave type emoji and label
 function getLeaveTypeInfo(type: string): { emoji: string; label: string; color: number } {
@@ -80,8 +89,9 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 
   const embed: DiscordEmbed = {
     title: isOffsite ? '🟡 เช็คอิน · นอกสถานที่' : '🟢 เช็คอิน',
-    // รูปใหญ่มุมขวา: เขียวเข้างาน — คนละภาพกับเช็คเอาท์ชัด ๆ
-    thumbnail: { url: emojiIcon(isOffsite ? '1f4cd' : '2705') },
+    // รูปใหญ่มุมขวา: ป้ายเขียวลูกศรเข้าประตู — คนละภาพกับเช็คเอาท์ชัด ๆ
+    thumbnail: { url: isOffsite ? NOTI_ICONS.offsite : NOTI_ICONS.checkIn },
+    image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
@@ -126,8 +136,9 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
 
   const embed: DiscordEmbed = {
     title: '🔴 เช็คเอาท์',
-    // รูปบ้าน = เลิกงานกลับบ้าน + การ์ดสีแดง — ตัดกับเช็คอินสีเขียวทันที
-    thumbnail: { url: emojiIcon('1f3e0') },
+    // ป้ายแดงลูกศรออกประตู + การ์ดสีแดง — ตัดกับเช็คอินสีเขียวทันที
+    thumbnail: { url: NOTI_ICONS.checkOut },
+    image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined

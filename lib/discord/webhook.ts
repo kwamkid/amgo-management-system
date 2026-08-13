@@ -28,7 +28,15 @@ const NOTI_ICONS = {
   checkIn: `${APP_URL}/discord/checkin.png`,
   checkOut: `${APP_URL}/discord/checkout.png`,
   offsite: `${APP_URL}/discord/offsite.png`,
+  leaveRequest: `${APP_URL}/discord/leave-request.png`,
+  leaveApproved: `${APP_URL}/discord/leave-approved.png`,
+  leaveRejected: `${APP_URL}/discord/leave-rejected.png`,
 } as const
+
+// คนที่ต้องถูก tag เมื่อมีคำขอลาใหม่ — เจ้าของระบุ 14 ส.ค. 69:
+// กอล์ฟ (ผู้บริหาร) · หน่อย (HR) · อุ้ย (HR) — id จาก users.discord_user_id
+const LEAVE_APPROVER_MENTIONS =
+  '<@1357559583136157696> <@1360075523690336277> <@1357709532179988570>'
 
 // รูปใสสูง 3px กว้าง 500px ใส่เป็น image ท้าย embed — ดันการ์ดให้กว้างเต็ม
 // เท่ากันทุกใบ (ปกติ Discord หดการ์ดตามเนื้อหา ทำให้แต่ละใบกว้างไม่เท่ากัน)
@@ -175,14 +183,17 @@ export async function sendLeaveRequestNotification(event: NotificationEvent) {
   const { leaveType, startDate, endDate, totalDays, reason, isUrgent } = event.data || {}
   
   const leaveInfo = getLeaveTypeInfo(leaveType)
-  
+
   const embed: DiscordEmbed = {
-    title: `${leaveInfo.emoji} คำขอ${leaveInfo.label}ใหม่`,
+    title: `🟠 ขอ${leaveInfo.label}${isUrgent ? ' · ด่วน' : ''}`,
+    // ปฏิทินส้ม = รออนุมัติ — ชุดเดียวกับป้ายเช็คอิน/เช็คเอาท์
+    thumbnail: { url: NOTI_ICONS.leaveRequest },
+    image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    color: leaveInfo.color,
+    color: 0xe67e22,
     fields: [
       {
         name: '📅 วันที่ลา',
@@ -215,7 +226,9 @@ export async function sendLeaveRequestNotification(event: NotificationEvent) {
     })
   }
 
-  return webhook.sendEmbed(embed)
+  // tag คนอนุมัติให้เด้งเตือน — mention ต้องอยู่ใน content เท่านั้นถึงจะ ping
+  // (พิมพ์ในตัว embed จะเป็นแค่ข้อความ ไม่เด้ง)
+  return webhook.send({ content: LEAVE_APPROVER_MENTIONS, embeds: [embed] })
 }
 
 export async function sendLeaveApprovalNotification(event: NotificationEvent) {
@@ -226,12 +239,13 @@ export async function sendLeaveApprovalNotification(event: NotificationEvent) {
   const leaveInfo = getLeaveTypeInfo(leaveType)
   
   const embed: DiscordEmbed = {
-    title: `✅ อนุมัติ${leaveInfo.label}`,
+    title: `🟢 อนุมัติ${leaveInfo.label}`,
+    thumbnail: { url: NOTI_ICONS.leaveApproved },
+    image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: `คำขอ${leaveInfo.label}ได้รับการอนุมัติแล้ว`,
     color: EmbedColors.SUCCESS,
     fields: [
       {
@@ -261,12 +275,13 @@ export async function sendLeaveRejectionNotification(event: NotificationEvent) {
   const leaveInfo = getLeaveTypeInfo(leaveType)
   
   const embed: DiscordEmbed = {
-    title: `❌ ไม่อนุมัติ${leaveInfo.label}`,
+    title: `🔴 ไม่อนุมัติ${leaveInfo.label}`,
+    thumbnail: { url: NOTI_ICONS.leaveRejected },
+    image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: `คำขอ${leaveInfo.label}ไม่ได้รับการอนุมัติ`,
     color: EmbedColors.DANGER,
     fields: [
       {

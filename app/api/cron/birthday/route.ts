@@ -107,14 +107,20 @@ export async function GET(request: NextRequest) {
     // id ที่ขึ้นต้น "dev:" เป็นของปลอมจากตอนพัฒนา — mention ไปก็ไม่มีตัวตน
     const realDiscordId =
       u.discord_user_id && !u.discord_user_id.startsWith('dev:') ? u.discord_user_id : null
-    const who = realDiscordId ? `<@${realDiscordId}>` : `**${name}**`
 
+    // การ์ดชุดเดียวกับ noti เช็คอิน/ใบลา — icon เค้ก + spacer ดันกว้างเท่ากัน
+    // mention ต้องอยู่ใน content (นอกการ์ด) เท่านั้นถึงจะเด้งเตือนเจ้าตัวจริง
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.amgovenger.com'
     const body = {
+      content: realDiscordId ? `<@${realDiscordId}>` : undefined,
       embeds: [
         {
-          title: '🎂 วันนี้วันเกิด',
-          description: `${who}\n\n${pickBirthdayMessage(u.id, today)}`,
-          color: 0xf59e0b,
+          title: '🎂 สุขสันต์วันเกิด',
+          author: { name },
+          description: pickBirthdayMessage(u.id, today),
+          thumbnail: { url: `${appUrl}/discord/birthday.png` },
+          image: { url: `${appUrl}/discord/spacer.png` },
+          color: 0xeb459e,
         },
       ],
       // mention ให้เด้งจริง ต้องอนุญาตไว้ ไม่งั้น Discord แสดงเป็นข้อความเฉย ๆ

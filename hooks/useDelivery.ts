@@ -1,6 +1,6 @@
 // hooks/useDelivery.ts
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import * as deliveryService from '@/lib/services/deliveryService'
@@ -312,6 +312,9 @@ export const useCameraCapture = () => {
   const [isCapturing, setIsCapturing] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
+  // ตัวจริงของ stream สำหรับปิดกล้อง — ใช้ state ตรงๆ ใน cleanup ไม่ได้ (ค่าค้างเป็น null
+  // ตอน mount) ทำให้ออกจากหน้าแล้วกล้องไม่ถูกปล่อย → Android ล็อกกล้อง เปิดรอบถัดไปไม่ได้
+  const streamRef = useRef<MediaStream | null>(null)
   const { showToast } = useToast()
 
   // Start camera
@@ -325,20 +328,20 @@ export const useCameraCapture = () => {
           height: { ideal: 1080 }
         }
       })
+      streamRef.current = mediaStream
       setStream(mediaStream)
     } catch (error) {
       console.error('Error accessing camera:', error)
-      showToast('ไม่สามารถเข้าถึงกล้องได้', 'error')
+      showToast('ไม่สามารถเข้าถึงกล้องได้ ลองปิดแอปแล้วเปิดใหม่ หรือใช้ปุ่มถ่ายด้วยแอปกล้องของเครื่อง', 'error')
       setIsCapturing(false)
     }
   }
 
   // Stop camera
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-    }
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+    setStream(null)
     setIsCapturing(false)
   }
 
@@ -398,10 +401,11 @@ export const useCameraCapture = () => {
     stopCamera()
   }
 
-  // Cleanup on unmount
+  // Cleanup on unmount — ปิดผ่าน ref เพื่อให้ได้ stream ตัวล่าสุดจริงๆ
   useEffect(() => {
     return () => {
-      stopCamera()
+      streamRef.current?.getTracks().forEach(track => track.stop())
+      streamRef.current = null
     }
   }, [])
 

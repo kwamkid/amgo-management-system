@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { canSeeDelivery } from '@/lib/services/user/access'
@@ -85,6 +85,26 @@ const DRIVER_PALETTE = [
   '#7c3aed', // violet
 ]
 
+// ชุดสัญลักษณ์บนเส้นทาง: ขีดวิ่ง (เลื่อน offset ให้เห็นทิศ) + หัวลูกศรกลางเส้น
+const routeIcons = (color: string, offsetPx: number) => [
+  {
+    icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, strokeWeight: 3, scale: 3, strokeColor: color },
+    offset: `${offsetPx}px`,
+    repeat: '16px',
+  },
+  {
+    icon: {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      fillOpacity: 1,
+      fillColor: color,
+      strokeColor: '#ffffff',
+      strokeWeight: 1,
+      scale: 2.5,
+    },
+    offset: '50%',
+  },
+]
+
 // Custom marker icon - ขนาดเล็กลง สีตามคนขับ
 const createMarkerIcon = (color: string) => ({
   path: google.maps.SymbolPath.CIRCLE,
@@ -109,7 +129,11 @@ export default function DeliveryMapPage() {
   
   const [selectedDate, setSelectedDate] = useState(getLocalDateString(new Date()))
   const [selectedPoint, setSelectedPoint] = useState<DeliveryMapPoint | null>(null)
+  // แผนที่มี 2 ตัว (desktop/mobile — อีกตัวแค่ถูกซ่อนด้วย CSS แต่ยัง mount อยู่)
+  // ต้องแยก state และสั่งทั้งคู่ — เดิมใช้ตัวเดียว ตัวที่โหลดทีหลัง (มักเป็นตัวที่ซ่อน)
+  // แย่งที่ ปุ่มดูทั้งหมด/โฟกัสจุดบนมือถือเลยไม่ขยับ
   const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [mobileMap, setMobileMap] = useState<google.maps.Map | null>(null)
   const [showLightbox, setShowLightbox] = useState(false)
   const [lightboxImage, setLightboxImage] = useState<string>('')
   const [addressCache, setAddressCache] = useState<Record<string, string>>({})
@@ -183,13 +207,19 @@ export default function DeliveryMapPage() {
     return routes
   }, [mapPoints, selectedDriver])
 
-  // เฟสของขีดวิ่งบนเส้นทาง — ขยับทีละนิดให้เห็นทิศทาง 1 → 2 → 3
-  const [dashPhase, setDashPhase] = useState(0)
+  // ขีดวิ่งบนเส้นทาง: ขยับผ่าน setOptions ตรง ๆ ไม่ผ่าน state — ถ้าให้ React วาดใหม่
+  // ทุก 90ms หมุด/เส้นบนแผนที่ทั้งสองตัวจะถูกตั้งค่ารัว ๆ จนแผนที่กระตุกลากไม่ได้
+  const routeLines = useRef(new Set<{ line: google.maps.Polyline; color: string }>())
   useEffect(() => {
-    if (driverRoutes.length === 0) return
-    const t = setInterval(() => setDashPhase(p => (p + 1) % 16), 90)
+    let offset = 0
+    const t = setInterval(() => {
+      offset = (offset + 2) % 16
+      routeLines.current.forEach(({ line, color }) =>
+        line.setOptions({ icons: routeIcons(color, offset) })
+      )
+    }, 120)
     return () => clearInterval(t)
-  }, [driverRoutes.length])
+  }, [])
 
   // Filter points based on search and driver
   const filteredPoints = useMemo(() => {
@@ -270,23 +300,39 @@ export default function DeliveryMapPage() {
     fetchMissingAddresses()
   }, [isLoaded, mapPoints, addressCache])
 
-  // Fit map to show all points
-  useEffect(() => {
-    if (map && filteredPoints.length > 0) {
-      const bounds = new google.maps.LatLngBounds()
-      filteredPoints.forEach(point => {
-        bounds.extend({ lat: point.lat, lng: point.lng })
-      })
-      map.fitBounds(bounds)
-      
-      // Add padding - less for mobile
-      const isMobile = window.innerWidth < 768
-      const padding = isMobile 
-        ? { top: 50, right: 20, bottom: 50, left: 20 }
-        : { top: 50, right: 50, bottom: 50, left: 380 }
-      map.fitBounds(bounds, padding)
+  // ซูมให้เห็นครบทุกจุด — สั่งทั้งสองแผนที่ ตัวไหนแสดงอยู่ตัวนั้นขยับ
+  // อ่านจุดผ่าน ref และ fit เมื่อ "ชุดจุด" เปลี่ยนจริงเท่านั้น — เดิมผูกกับ identity
+  // ของ array ซึ่งเปลี่ยนทุกครั้งที่ geocode ที่อยู่เสร็จ แผนที่เลยเด้งกลับเองระหว่างใช้
+  const pointsRef = useRef(filteredPoints)
+  pointsRef.current = filteredPoints
+  const pointsKey = useMemo(() => filteredPoints.map(p => p.id).join('|'), [filteredPoints])
+
+  const fitAll = useCallback(() => {
+    const pts = pointsRef.current
+    if (!pts.length) return
+    const makeBounds = () => {
+      const b = new google.maps.LatLngBounds()
+      pts.forEach(p => b.extend({ lat: p.lat, lng: p.lng }))
+      return b
     }
-  }, [map, filteredPoints])
+    map?.fitBounds(makeBounds(), { top: 50, right: 50, bottom: 50, left: 380 })
+    mobileMap?.fitBounds(makeBounds(), { top: 50, right: 20, bottom: 50, left: 20 })
+  }, [map, mobileMap])
+
+  useEffect(() => {
+    fitAll()
+  }, [fitAll, pointsKey])
+
+  // สลับมาแท็บแผนที่: กล่องเพิ่งโผล่จาก display:none — Maps ยังจำขนาดตอนถูกซ่อนอยู่
+  // ต้องบอกให้วัดขนาดใหม่ก่อนแล้วค่อย fit ไม่งั้นซูม/จุดหลุดนอกส่วนที่มองเห็น
+  useEffect(() => {
+    if (activeView !== 'map' || !mobileMap) return
+    const t = setTimeout(() => {
+      google.maps.event.trigger(mobileMap, 'resize')
+      fitAll()
+    }, 60)
+    return () => clearTimeout(t)
+  }, [activeView, mobileMap, fitAll])
 
   // Navigate between dates
   const changeDate = (days: number) => {
@@ -308,21 +354,7 @@ export default function DeliveryMapPage() {
   }
 
   // View all points
-  const viewAllPoints = () => {
-    if (map && filteredPoints.length > 0) {
-      const bounds = new google.maps.LatLngBounds()
-      filteredPoints.forEach(point => {
-        bounds.extend({ lat: point.lat, lng: point.lng })
-      })
-      map.fitBounds(bounds)
-      
-      const isMobile = window.innerWidth < 768
-      const padding = isMobile 
-        ? { top: 50, right: 20, bottom: 50, left: 20 }
-        : { top: 50, right: 50, bottom: 50, left: 380 }
-      map.fitBounds(bounds, padding)
-    }
-  }
+  const viewAllPoints = () => fitAll()
 
   // Handle delete
   const handleDelete = async () => {
@@ -346,9 +378,9 @@ export default function DeliveryMapPage() {
   // Select point and focus on map
   const handleSelectPoint = (point: DeliveryMapPoint) => {
     setSelectedPoint(point)
-    if (map) {
-      map.panTo({ lat: point.lat, lng: point.lng })
-      map.setZoom(17)
+    for (const m of [map, mobileMap]) {
+      m?.panTo({ lat: point.lat, lng: point.lng })
+      m?.setZoom(17)
     }
     // On mobile, switch to map view when selecting a point
     if (window.innerWidth < 768) {
@@ -384,30 +416,19 @@ export default function DeliveryMapPage() {
           <Polyline
             key={route.driverId}
             path={route.path}
+            // ลงทะเบียนเส้นไว้ให้ตัวจับเวลาขยับขีดผ่าน setOptions ตรง ๆ (ไม่ผ่าน React)
+            onLoad={line => routeLines.current.add({ line, color })}
+            onUnmount={line => {
+              routeLines.current.forEach(e => {
+                if (e.line === line) routeLines.current.delete(e)
+              })
+            }}
             options={{
               strokeColor: color,
               strokeOpacity: 0.25,
               strokeWeight: 3,
               geodesic: true,
-              icons: [
-                // ขีดวิ่งไล่จากจุดแรกไปจุดสุดท้าย — บอกทิศทางการวิ่งงาน
-                {
-                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, strokeWeight: 3, scale: 3, strokeColor: color },
-                  offset: `${dashPhase}px`,
-                  repeat: '16px',
-                },
-                {
-                  icon: {
-                    path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                    fillOpacity: 1,
-                    fillColor: color,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 1,
-                    scale: 2.5,
-                  },
-                  offset: '50%',
-                },
-              ],
+              icons: routeIcons(color, 0),
             }}
           />
         )
@@ -546,7 +567,8 @@ export default function DeliveryMapPage() {
   )
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] relative">
+    // dvh ไม่นับพื้นที่หลังแถบ URL ของเบราว์เซอร์มือถือ — 100vh เดิมทำขอบล่างโดนบัง
+    <div className="flex h-[calc(100dvh-4rem)] relative">
       {/* Desktop Sidebar - ลดความกว้าง */}
       <div className="hidden lg:flex w-80 bg-white border-r border-gray-200 flex-col">
         {/* Header */}
@@ -569,7 +591,7 @@ export default function DeliveryMapPage() {
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 flex-1 text-sm h-8"
+              className="flex-1 text-sm h-8"
             />
             
             <Button
@@ -645,66 +667,68 @@ export default function DeliveryMapPage() {
         </div>
       </div>
 
-      {/* Mobile Content Container */}
-      <div className="lg:hidden w-full">
-        {/* Mobile Header - Compact */}
-        <div className="sticky top-0 left-0 right-0 bg-white border-b z-40 p-3 shadow-sm">
+      {/* Mobile Content Container — flex column: หัวสูงตามจริง แผนที่กินที่ที่เหลือพอดีจอ
+          (เดิมกะความสูงเป็น 100vh-10rem แต่หัวจริงสูงกว่านั้น กรอบแผนที่เลยยาวทะลุจอ) */}
+      <div className="lg:hidden flex h-full w-full flex-col">
+        {/* Mobile Header */}
+        <div className="shrink-0 bg-white border-b z-40 p-3 shadow-sm">
+          {/* ขนาดเท่ากับ desktop — เจ้าของขอไม่ให้ย่อ font/ปุ่มบนมือถือ */}
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-semibold text-gray-900">รายการส่งของ</h2>
+            <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
             <div className="flex gap-1">
               <Button
                 variant={activeView === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setActiveView('list')}
-                className="h-7 text-xs"
+                className="h-8 text-sm"
               >
-                <Menu className="w-3 h-3 mr-1" />
+                <Menu className="w-3.5 h-3.5 mr-1" />
                 รายการ
               </Button>
               <Button
                 variant={activeView === 'map' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setActiveView('map')}
-                className="h-7 text-xs"
+                className="h-8 text-sm"
               >
-                <MapIcon className="w-3 h-3 mr-1" />
+                <MapIcon className="w-3.5 h-3.5 mr-1" />
                 แผนที่
               </Button>
             </div>
           </div>
 
           {/* Date Navigation */}
-          <div className="flex items-center gap-1 mb-2">
+          <div className="flex items-center gap-2 mb-2">
             <Button
               variant="outline"
               size="icon"
               onClick={() => changeDate(-1)}
               disabled={loading}
-              className="h-7 w-7"
+              className="h-8 w-8"
             >
               <ChevronLeft className="w-3 h-3" />
             </Button>
-            
+
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 flex-1 h-7 text-xs"
+              className="flex-1 text-sm h-8"
             />
-            
+
             <Button
               variant="outline"
               size="icon"
               onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === new Date().toISOString().split('T')[0]}
-              className="h-7 w-7"
+              disabled={loading || selectedDate === getLocalDateString(new Date())}
+              className="h-8 w-8"
             >
               <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
 
-          {/* Search and Filter - Compact */}
-          <div className="space-y-1">
+          {/* Search and Filter */}
+          <div className="space-y-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
               <Input
@@ -712,43 +736,43 @@ export default function DeliveryMapPage() {
                 placeholder="ค้นหา..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-7 text-xs"
+                className="pl-8 text-sm h-8"
               />
             </div>
-            
+
             {/* Driver Filter and Summary */}
             <div className="flex items-center justify-between">
               {uniqueDrivers.length > 0 ? (
                 <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                  <SelectTrigger className="h-7 text-xs w-[140px]">
+                  <SelectTrigger className="h-8 text-sm w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">
-                      <span className="text-xs">ทั้งหมด</span>
+                      <span className="text-sm">ทั้งหมด</span>
                     </SelectItem>
                     {uniqueDrivers.map((driver) => (
                       <SelectItem key={driver.id} value={driver.id}>
-                        <span className="text-xs">{driver.name}</span>
+                        <span className="text-sm">{driver.name}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <span className="text-xs text-gray-600">
+                <span className="text-sm text-gray-600">
                   พบ {filteredPoints.length} จุด
                 </span>
               )}
-              
+
               {mapPoints.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={viewAllPoints}
                   disabled={loading}
-                  className="h-7 text-xs cursor-pointer hover:bg-gray-100"
+                  className="h-8 text-sm cursor-pointer hover:bg-gray-100"
                 >
-                  <Eye className="w-3 h-3 mr-1" />
+                  <Eye className="w-3.5 h-3.5 mr-1" />
                   ดูทั้งหมด
                 </Button>
               )}
@@ -757,19 +781,19 @@ export default function DeliveryMapPage() {
         </div>
 
         {/* Mobile List View */}
-        <div className={`${activeView === 'list' ? 'block' : 'hidden'}`}>
+        <div className={`${activeView === 'list' ? 'block' : 'hidden'} min-h-0 flex-1 overflow-y-auto`}>
           <div className="p-3">
             <PointsList />
           </div>
         </div>
 
         {/* Mobile Map View */}
-        <div className={`${activeView === 'map' ? 'block' : 'hidden'} h-[calc(100vh-10rem)]`}>
+        <div className={`${activeView === 'map' ? 'block' : 'hidden'} min-h-0 flex-1`}>
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
             zoom={13}
-            onLoad={setMap}
+            onLoad={setMobileMap}
             options={{
               streetViewControl: false,
               mapTypeControl: true,

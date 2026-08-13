@@ -7,31 +7,23 @@ import { canSeeDelivery } from '@/lib/services/user/access'
 import { useDeliveryMap } from '@/hooks/useDelivery'
 import { DeliveryMapPoint } from '@/types/delivery'
 import { formatTime } from '@/lib/utils/date'
-import { 
-  MapPin, 
-  Calendar,
+import {
+  MapPin,
   Navigation,
-  Clock,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Camera,
   X,
   Eye,
   Trash2,
-  Search,
-  User,
   Menu,
   Map as MapIcon,
-  Package,
-  Filter
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { GoogleMap, Marker, InfoWindow, Polyline, useJsApiLoader } from '@react-google-maps/api'
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
+import FilterBar, { FilterSelect } from '@/components/shared/FilterBar'
 import {
   Dialog,
   DialogContent,
@@ -48,13 +40,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/useToast'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
 import { DatePicker } from '@/components/aoo'
 
@@ -66,6 +51,16 @@ const mapContainerStyle = {
 const defaultCenter = {
   lat: 13.7563, // Bangkok
   lng: 100.5018
+}
+
+// ปิดเส้นรถไฟฟ้า/รถไฟของ Google — เส้นทึบสีแดง/น้ำเงิน/เหลืองตามแนวถนนคือ
+// สายรถไฟฟ้า ไม่ใช่เส้นทางส่งของ คนอ่านสับสนกับเส้นของเราเอง
+const MAP_OPTIONS: google.maps.MapOptions = {
+  streetViewControl: false,
+  mapTypeControl: true,
+  fullscreenControl: true,
+  zoomControl: true,
+  styles: [{ featureType: 'transit', stylers: [{ visibility: 'off' }] }],
 }
 
 
@@ -143,6 +138,7 @@ export default function DeliveryMapPage() {
   const [showMobileList, setShowMobileList] = useState(false)
   const [activeView, setActiveView] = useState<'map' | 'list'>('map') // For mobile
   const [selectedDriver, setSelectedDriver] = useState<string>('all')
+  const [showRoutes, setShowRoutes] = useState(true)
 
   const { mapPoints, loading, deleteDeliveryPoint, refetch } = useDeliveryMap(selectedDate)
   const { showToast } = useToast()
@@ -167,8 +163,10 @@ export default function DeliveryMapPage() {
     return colors
   }, [uniqueDrivers])
 
-  const colorOf = (driverId?: string) =>
-    (driverId && driverColors.get(driverId)) || DRIVER_PALETTE[0]
+  const colorOf = useCallback(
+    (driverId?: string) => (driverId && driverColors.get(driverId)) || DRIVER_PALETTE[0],
+    [driverColors]
+  )
 
   // เลขลำดับจุด "ของแต่ละคน" — นับ 1,2,3… แยกตามคนขับ เรียงตามเวลาเช็คอิน
   // (sequence ที่ฝังมากับข้อมูลเป็นเลขรวมทั้งวัน เลยไม่ใช้)
@@ -207,9 +205,40 @@ export default function DeliveryMapPage() {
     return routes
   }, [mapPoints, selectedDriver])
 
-  // ขีดวิ่งบนเส้นทาง: ขยับผ่าน setOptions ตรง ๆ ไม่ผ่าน state — ถ้าให้ React วาดใหม่
-  // ทุก 90ms หมุด/เส้นบนแผนที่ทั้งสองตัวจะถูกตั้งค่ารัว ๆ จนแผนที่กระตุกลากไม่ได้
+  // วาดเส้นทางแบบคุมเองทั้งหมด — ไม่ผ่าน <Polyline> ของไลบรารี
+  // (ตัวไลบรารีมีจังหวะ instance หลุดมือระหว่าง remount แล้วเส้นค้างบนแผนที่ลบไม่ได้อีก)
+  // ทุกครั้งที่วัน/ตัวกรอง/ปุ่มเส้นทางเปลี่ยน: ลบเส้นทุกเส้นทิ้งแล้ววาดชุดใหม่จากศูนย์
   const routeLines = useRef(new Set<{ line: google.maps.Polyline; color: string }>())
+  useEffect(() => {
+    const entries: { line: google.maps.Polyline; color: string }[] = []
+    if (showRoutes) {
+      for (const m of [map, mobileMap]) {
+        if (!m) continue
+        for (const route of driverRoutes) {
+          const color = colorOf(route.driverId)
+          entries.push({
+            color,
+            line: new google.maps.Polyline({
+              map: m,
+              path: route.path,
+              strokeColor: color,
+              strokeOpacity: 0.25,
+              strokeWeight: 3,
+              icons: routeIcons(color, 0),
+            }),
+          })
+        }
+      }
+    }
+    routeLines.current = new Set(entries)
+    return () => {
+      entries.forEach(e => e.line.setMap(null))
+      routeLines.current = new Set()
+    }
+  }, [map, mobileMap, driverRoutes, showRoutes, colorOf])
+
+  // ขีดวิ่งบนเส้นทาง: ขยับผ่าน setOptions ตรง ๆ ไม่ผ่าน state — ถ้าให้ React วาดใหม่
+  // ทุก 120ms หมุด/เส้นบนแผนที่ทั้งสองตัวจะถูกตั้งค่ารัว ๆ จนแผนที่กระตุกลากไม่ได้
   useEffect(() => {
     let offset = 0
     const t = setInterval(() => {
@@ -410,29 +439,7 @@ export default function DeliveryMapPage() {
   // เลเยอร์บนแผนที่ (ใช้ร่วม desktop/mobile): เส้นทางรายคน + หมุดเลขลำดับของแต่ละคน
   const renderMapLayers = () => (
     <>
-      {driverRoutes.map(route => {
-        const color = colorOf(route.driverId)
-        return (
-          <Polyline
-            key={route.driverId}
-            path={route.path}
-            // ลงทะเบียนเส้นไว้ให้ตัวจับเวลาขยับขีดผ่าน setOptions ตรง ๆ (ไม่ผ่าน React)
-            onLoad={line => routeLines.current.add({ line, color })}
-            onUnmount={line => {
-              routeLines.current.forEach(e => {
-                if (e.line === line) routeLines.current.delete(e)
-              })
-            }}
-            options={{
-              strokeColor: color,
-              strokeOpacity: 0.25,
-              strokeWeight: 3,
-              geodesic: true,
-              icons: routeIcons(color, 0),
-            }}
-          />
-        )
-      })}
+      {/* เส้นทางวาดแบบ imperative ใน useEffect ข้างบน — ที่นี่มีแต่หมุด */}
       {filteredPoints.map(point => (
         <Marker
           key={point.id}
@@ -550,9 +557,9 @@ export default function DeliveryMapPage() {
                       {point.address || addressCache[point.id] || 'กำลังโหลด...'}
                     </p>
 
-                    {/* Note - เฉพาะ mobile จะซ่อน */}
+                    {/* รายละเอียดการส่ง (ร้าน/บิล/ลูกค้า) — โชว์ทุกจอ ข้อมูลหลักไม่ใช่หมายเหตุแล้ว */}
                     {point.note && (
-                      <p className="text-xs text-gray-400 mt-1 italic hidden sm:block line-clamp-1">
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-1">
                         {point.note}
                       </p>
                     )}
@@ -572,7 +579,7 @@ export default function DeliveryMapPage() {
       {/* Desktop Sidebar - ลดความกว้าง */}
       <div className="hidden lg:flex w-80 bg-white border-r border-gray-200 flex-col">
         {/* Header */}
-        <div className="p-3 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
           
           {/* Date Navigation */}
@@ -582,16 +589,16 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(-1)}
               disabled={loading}
-              className="h-8 w-8"
+              className="h-10 w-10"
             >
-              <ChevronLeft className="w-3 h-3" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
             
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 text-sm h-8"
+              className="flex-1"
             />
             
             <Button
@@ -599,9 +606,9 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(1)}
               disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-8 w-8"
+              className="h-10 w-10"
             >
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
@@ -611,54 +618,49 @@ export default function DeliveryMapPage() {
               พบ {filteredPoints.length} จุด
             </span>
             {mapPoints.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={viewAllPoints}
-                disabled={loading}
-                className="h-7 text-xs cursor-pointer hover:bg-gray-100"
-              >
-                <Eye className="w-3 h-3 mr-1" />
-                ดูทั้งหมด
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant={showRoutes ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowRoutes(v => !v)}
+                  className="h-8 text-sm cursor-pointer"
+                  title="เปิด/ปิดเส้นลำดับการส่ง"
+                >
+                  เส้นทาง
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={viewAllPoints}
+                  disabled={loading}
+                  className="h-8 text-sm cursor-pointer hover:bg-gray-100"
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1" />
+                  ดูทั้งหมด
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* Search */}
-          <div className="mt-2 relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="ค้นหา..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 text-sm h-8"
-            />
+          {/* ตัวกรอง — component กลางชุดเดียวกับหน้ารายการอื่นทั้งระบบ */}
+          <div className="mt-3">
+            <FilterBar
+              sticky={false}
+              search={searchTerm}
+              onSearch={setSearchTerm}
+              placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า / คนขับ"
+            >
+              {uniqueDrivers.length > 0 && (
+                <FilterSelect
+                  label="พนักงาน"
+                  value={selectedDriver === 'all' ? null : selectedDriver}
+                  options={uniqueDrivers.map(d => ({ value: d.id, label: d.name }))}
+                  onChange={(v) => setSelectedDriver(v ?? 'all')}
+                  width={200}
+                />
+              )}
+            </FilterBar>
           </div>
-
-          {/* Driver Filter Dropdown */}
-          {uniqueDrivers.length > 0 && (
-            <div className="mt-2">
-              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                <SelectTrigger className="text-sm h-8">
-                  <SelectValue placeholder="เลือกพนักงาน" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    <div className="flex items-center gap-2">
-                      <User className="w-3 h-3" />
-                      <span className="text-sm">พนักงานทั้งหมด</span>
-                    </div>
-                  </SelectItem>
-                  {uniqueDrivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      <span className="text-sm">{driver.name}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         {/* Points List */}
@@ -704,16 +706,16 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(-1)}
               disabled={loading}
-              className="h-8 w-8"
+              className="h-10 w-10"
             >
-              <ChevronLeft className="w-3 h-3" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
 
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 text-sm h-8"
+              className="flex-1"
             />
 
             <Button
@@ -721,50 +723,26 @@ export default function DeliveryMapPage() {
               size="icon"
               onClick={() => changeDate(1)}
               disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-8 w-8"
+              className="h-10 w-10"
             >
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Search and Filter */}
-          <div className="space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="ค้นหา..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 text-sm h-8"
-              />
-            </div>
-
-            {/* Driver Filter and Summary */}
-            <div className="flex items-center justify-between">
-              {uniqueDrivers.length > 0 ? (
-                <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                  <SelectTrigger className="h-8 text-sm w-[160px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      <span className="text-sm">ทั้งหมด</span>
-                    </SelectItem>
-                    {uniqueDrivers.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        <span className="text-sm">{driver.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <span className="text-sm text-gray-600">
-                  พบ {filteredPoints.length} จุด
-                </span>
-              )}
-
-              {mapPoints.length > 0 && (
+          {/* Summary */}
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm text-gray-600">พบ {filteredPoints.length} จุด</span>
+            {mapPoints.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant={showRoutes ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowRoutes(v => !v)}
+                  className="h-8 text-sm cursor-pointer"
+                  title="เปิด/ปิดเส้นลำดับการส่ง"
+                >
+                  เส้นทาง
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -775,9 +753,27 @@ export default function DeliveryMapPage() {
                   <Eye className="w-3.5 h-3.5 mr-1" />
                   ดูทั้งหมด
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+
+          {/* ตัวกรอง — component กลางชุดเดียวกับหน้ารายการอื่นทั้งระบบ */}
+          <FilterBar
+            sticky={false}
+            search={searchTerm}
+            onSearch={setSearchTerm}
+            placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า / คนขับ"
+          >
+            {uniqueDrivers.length > 0 && (
+              <FilterSelect
+                label="พนักงาน"
+                value={selectedDriver === 'all' ? null : selectedDriver}
+                options={uniqueDrivers.map(d => ({ value: d.id, label: d.name }))}
+                onChange={(v) => setSelectedDriver(v ?? 'all')}
+                width={180}
+              />
+            )}
+          </FilterBar>
         </div>
 
         {/* Mobile List View */}
@@ -791,15 +787,10 @@ export default function DeliveryMapPage() {
         <div className={`${activeView === 'map' ? 'block' : 'hidden'} min-h-0 flex-1`}>
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
-            center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
+            center={defaultCenter} // ค่าคงที่ — ส่งก้อนใหม่ทุก render แล้วแผนที่จะเด้งกลับเองทุกครั้งที่กดอะไร (ตำแหน่งจริง fitAll จัดให้)
             zoom={13}
             onLoad={setMobileMap}
-            options={{
-              streetViewControl: false,
-              mapTypeControl: true,
-              fullscreenControl: true,
-              zoomControl: true
-            }}
+            options={MAP_OPTIONS}
           >
             {renderMapLayers()}
 
@@ -834,6 +825,11 @@ export default function DeliveryMapPage() {
                   <p className="text-xs text-gray-500 mb-2 line-clamp-2">
                     {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลด...'}
                   </p>
+
+                  {/* รายละเอียดการส่ง (ร้าน/บิล/ลูกค้า) */}
+                  {selectedPoint.note && (
+                    <p className="text-xs text-gray-700 mb-2 line-clamp-2">{selectedPoint.note}</p>
+                  )}
 
                   {/* Photo Thumbnail - Smaller */}
                   {selectedPoint.photo && (
@@ -871,15 +867,10 @@ export default function DeliveryMapPage() {
       <div className="hidden lg:block flex-1 relative">
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
-          center={filteredPoints.length > 0 ? { lat: filteredPoints[0].lat, lng: filteredPoints[0].lng } : defaultCenter}
+          center={defaultCenter} // ค่าคงที่ — ส่งก้อนใหม่ทุก render แล้วแผนที่จะเด้งกลับเองทุกครั้งที่กดอะไร (ตำแหน่งจริง fitAll จัดให้)
           zoom={13}
           onLoad={setMap}
-          options={{
-            streetViewControl: false,
-            mapTypeControl: true,
-            fullscreenControl: true,
-            zoomControl: true
-          }}
+          options={MAP_OPTIONS}
         >
           {renderMapLayers()}
 
@@ -914,6 +905,11 @@ export default function DeliveryMapPage() {
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">
                   {selectedPoint.address || addressCache[selectedPoint.id] || 'กำลังโหลด...'}
                 </p>
+
+                {/* รายละเอียดการส่ง (ร้าน/บิล/ลูกค้า) */}
+                {selectedPoint.note && (
+                  <p className="text-xs text-gray-700 mb-2 line-clamp-2">{selectedPoint.note}</p>
+                )}
 
                 {/* Photo Thumbnail */}
                 {selectedPoint.photo && (

@@ -322,16 +322,16 @@ export default function DeliveryCheckInPage() {
           </CardContent>
         </Card>
 
-        {/* Note */}
+        {/* รายละเอียดการส่ง — เก็บลงช่อง note เดิม (เจ้าของขอไม่ใช้คำว่า "หมายเหตุ") */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">หมายเหตุ (ถ้ามี)</CardTitle>
+            <CardTitle className="text-lg">รายละเอียดการส่ง</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น ลูกค้าไม่อยู่ ฝากไว้กับยาม..."
+              placeholder="ชื่อร้าน · เลขที่บิล · ชื่อลูกค้า — เช่น ร้านป้าแดง บิล 10234 คุณสมชาย ฝากไว้กับยาม"
               rows={3}
             />
           </CardContent>

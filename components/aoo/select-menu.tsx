@@ -124,9 +124,13 @@ export function SelectMenu({
       setPos({ top, left, width })
     }
     place()
+    // รอบแรกแผงยังไม่เรนเดอร์ (panelRef null) เลยใช้ค่าเดา 280 — ถ้าพลิกขึ้นบน
+    // เมนูสั้น ๆ จะลอยสูงเกินจริง → พอแผงโผล่แล้ววัดความสูงจริงและวางซ้ำหนึ่งรอบ
+    const raf = requestAnimationFrame(place)
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('scroll', place, true)
       window.removeEventListener('resize', place)
     }

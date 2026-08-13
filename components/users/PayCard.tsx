@@ -62,6 +62,11 @@ const KINDS = [
   { value: 'other', label: 'อื่น ๆ' },
 ]
 
+// ค่าคอม/ค่าชิ้นงาน แยกส่วนกับรายได้พิเศษยอดคงที่ (เจ้าของสั่ง 13 ส.ค. 69 —
+// ติ๊ก "มีค่าคอม" ชัด ๆ ไม่ปนกับเบี้ยขยัน/ค่าเดินทาง)
+const COM_KINDS = KINDS.filter((k) => k.value === 'commission' || k.value === 'piece')
+const EXTRA_KINDS = KINDS.filter((k) => k.value !== 'commission' && k.value !== 'piece')
+
 const baht = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 })
 const today = () => new Date().toISOString().slice(0, 10)
 const thaiDate = (iso: string) =>
@@ -130,6 +135,14 @@ export default function PayCard({
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  // ติ๊ก "มีค่าคอม" / "มีรายได้พิเศษ" — เปิดเองเมื่อโหลดเจอรายการที่ตั้งไว้แล้ว
+  const [hasCom, setHasCom] = useState(false)
+  const [hasExtra, setHasExtra] = useState(false)
+  const [addingCom, setAddingCom] = useState(false)
+  useEffect(() => {
+    if (items.some((i) => i.calc !== 'fixed')) setHasCom(true)
+    if (items.some((i) => i.calc === 'fixed')) setHasExtra(true)
+  }, [items])
   const [stagedCount, setStagedCount] = useState(0)
 
   // ค่าที่ flush ต้องใช้ — เก็บใน ref เพื่อให้ฟังก์ชันที่ลงทะเบียนครั้งเดียว
@@ -253,8 +266,10 @@ export default function PayCard({
     !!probation.endDate && history.some((h) => h.effective_from >= probation.endDate!)
 
   // รวมได้เฉพาะยอดคงที่ — ค่าคอม/ค่าชิ้นงานต้องรอยอดขายจริงของแต่ละเดือน
-  const extraTotal = items.filter((i) => i.calc === 'fixed').reduce((s, i) => s + i.amount, 0)
-  const hasVariable = items.some((i) => i.calc !== 'fixed')
+  const extraItems = items.filter((i) => i.calc === 'fixed')
+  const comItems = items.filter((i) => i.calc !== 'fixed')
+  const extraTotal = extraItems.reduce((s, i) => s + i.amount, 0)
+  const hasVariable = comItems.length > 0
 
   /* ── ตัวรับจากฟอร์มย่อย — จัดฉากหรือเขียนเลยตามโหมด ─────────── */
 
@@ -430,11 +445,116 @@ export default function PayCard({
         )}
       </div>
 
-      {/* ── รายได้พิเศษ ───────────────────────────────────── */}
-      <div className="mt-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-sm text-gray-500">รายได้พิเศษ</span>
-          {editable && !adding && (
+      {/* ── ค่าคอม/ค่าชิ้นงาน — อยู่เหนือรายได้พิเศษ (เจ้าของจัดลำดับ 13 ส.ค. 69) ── */}
+      <div className="mt-3 border-t border-gray-100 pt-3">
+        <label className="flex w-fit cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={hasCom}
+            disabled={!editable}
+            className="h-4 w-4 accent-red-600"
+            onChange={(e) => {
+              // มีกติกาอยู่แล้วห้ามติ๊กออกเฉย ๆ — ต้องตั้งใจลบกติกาก่อน กันข้อมูลหายเงียบ
+              if (!e.target.checked && comItems.length > 0) {
+                alert('มีกติกาค่าคอมตั้งไว้อยู่ — ลบกติกาด้านล่างออกก่อน แล้วค่อยติ๊กออก')
+                return
+              }
+              setHasCom(e.target.checked)
+            }}
+          />
+          <span className="text-sm font-medium text-gray-700">
+            มีค่าคอมมิชชั่น / ค่าชิ้นงาน
+          </span>
+        </label>
+
+        {hasCom && (
+          <div className="mt-2">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                กรอก % เดียวได้เลย — อยากเป็นขั้นบันไดค่อยกด &ldquo;เพิ่มขั้น&rdquo; ·
+                หน้าสรุปเงินเดือนจะมีปุ่มเครื่องคิดเลขให้กรอกยอดแล้วคิดให้เอง
+              </span>
+              {editable && !addingCom && comItems.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setAddingCom(true)}>
+                  <Plus size={14} /> เพิ่มกติกา
+                </Button>
+              )}
+            </div>
+            {comItems.length === 0 ? (
+              // ติ๊กปุ๊บฟอร์มกติกาแรกโผล่เลย (เจ้าของสั่ง) — ยกเลิก = ติ๊กออก
+              <ItemRow
+                editable={editable}
+                companies={companies}
+                ownCompanyId={ownCompanyId}
+                kinds={COM_KINDS}
+                onSave={saveItem}
+                onRemove={() => setHasCom(false)}
+              />
+            ) : (
+              <div className="space-y-1.5">
+                {comItems.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    editable={editable}
+                    companies={companies}
+                    ownCompanyId={ownCompanyId}
+                    onSave={saveItem}
+                    onRemove={removeItem}
+                    kinds={COM_KINDS}
+                  />
+                ))}
+              </div>
+            )}
+
+            {addingCom && (
+              <Modal
+                open
+                onClose={() => setAddingCom(false)}
+                title="เพิ่มกติกาค่าคอม/ค่าชิ้นงาน"
+                description="เลือกบริษัทผู้จ่ายได้ — ค่าคอมอาจมาจากอีกบริษัท"
+                maxWidth={620}
+              >
+                <ItemRow
+                  editable
+                  companies={companies}
+                  ownCompanyId={ownCompanyId}
+                  kinds={COM_KINDS}
+                  onSave={async (item) => {
+                    const err = await saveItem(item)
+                    if (!err) setAddingCom(false)
+                    return err
+                  }}
+                  onRemove={async () => setAddingCom(false)}
+                />
+              </Modal>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── รายได้พิเศษ (ยอดคงที่) — ติ๊กแบบเดียวกับค่าคอม ── */}
+      <div className="mt-3 border-t border-gray-100 pt-3">
+        <div className="flex items-center justify-between">
+          <label className="flex w-fit cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={hasExtra}
+              disabled={!editable}
+              className="h-4 w-4 accent-red-600"
+              onChange={(e) => {
+                if (!e.target.checked && extraItems.length > 0) {
+                  alert('มีรายได้พิเศษตั้งไว้อยู่ — ลบรายการออกก่อน แล้วค่อยติ๊กออก')
+                  return
+                }
+                setHasExtra(e.target.checked)
+              }}
+            />
+            <span className="text-sm font-medium text-gray-700">
+              มีรายได้พิเศษ (ยอดคงที่ เช่น ค่าตำแหน่ง ค่าเดินทาง เบี้ยขยัน)
+            </span>
+          </label>
+          {hasExtra && editable && !adding && (
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => setImporting(true)}>
                 <Copy size={13} /> คัดลอกจากคนอื่น
@@ -446,21 +566,26 @@ export default function PayCard({
           )}
         </div>
 
-        {items.length === 0 && !adding ? (
-          <p className="py-1 text-sm text-gray-400">ยังไม่มีรายได้พิเศษ</p>
-        ) : (
-          <div className="space-y-1.5">
-            {items.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                editable={editable}
-                companies={companies}
-                ownCompanyId={ownCompanyId}
-                onSave={saveItem}
-                onRemove={removeItem}
-              />
-            ))}
+        {hasExtra && (
+          <div className="mt-2">
+            {extraItems.length === 0 && !adding ? (
+              <p className="py-1 text-sm text-gray-400">ยังไม่มีรายได้พิเศษ — กด &ldquo;เพิ่ม&rdquo;</p>
+            ) : (
+              <div className="space-y-1.5">
+                {extraItems.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    editable={editable}
+                    companies={companies}
+                    ownCompanyId={ownCompanyId}
+                    onSave={saveItem}
+                    onRemove={removeItem}
+                    kinds={EXTRA_KINDS}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -487,13 +612,14 @@ export default function PayCard({
             open
             onClose={() => setAdding(false)}
             title="เพิ่มรายได้พิเศษ"
-            description="เลือกบริษัทผู้จ่ายได้ — พนักงานอาจได้ค่าคอม/เงินพิเศษจากอีกบริษัท"
+            description="เลือกบริษัทผู้จ่ายได้ — พนักงานอาจได้เงินพิเศษจากอีกบริษัท (ค่าคอมไปตั้งที่ส่วนของมันข้างล่าง)"
             maxWidth={620}
           >
             <ItemRow
               editable
               companies={companies}
               ownCompanyId={ownCompanyId}
+              kinds={EXTRA_KINDS}
               onSave={async (item) => {
                 const err = await saveItem(item)
                 if (!err) setAdding(false)
@@ -671,6 +797,7 @@ function ItemRow({
   ownCompanyId,
   onSave,
   onRemove,
+  kinds = KINDS,
 }: {
   item?: PayItem
   editable: boolean
@@ -678,8 +805,10 @@ function ItemRow({
   ownCompanyId: string | null
   onSave: (item: PayItem) => Promise<string | null>
   onRemove: (id: string) => Promise<void> | void
+  /** จำกัดประเภทที่เลือกได้ — ส่วนค่าคอมให้เฉพาะคอม/ชิ้นงาน ส่วนรายได้พิเศษไม่มีสองตัวนั้น */
+  kinds?: typeof KINDS
 }) {
-  const [kind, setKind] = useState(item?.kind ?? 'commission')
+  const [kind, setKind] = useState(item?.kind ?? kinds[0].value)
   const [label, setLabel] = useState(item?.label ?? '')
   // '' = ตามบริษัทต้นสังกัด (เก็บ null) — ย้ายบริษัทแล้วรายการตามไปเอง
   const [companyId, setCompanyId] = useState(item?.companyId ?? '')
@@ -788,7 +917,7 @@ function ItemRow({
         <div className="w-36 shrink-0">
           <SelectMenu
             value={kind}
-            options={KINDS.map((k) => ({ value: k.value, label: k.label }))}
+            options={kinds.map((k) => ({ value: k.value, label: k.label }))}
             onChange={(v) => setKind(v ?? 'commission')}
             size="md"
           />

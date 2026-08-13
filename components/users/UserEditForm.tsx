@@ -23,12 +23,14 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import WorkScheduleCard from './WorkScheduleCard'
 import { TabBar, TabItem } from '@/components/aoo'
-import { Phone, Calendar, Clock, Save, X } from 'lucide-react'
+import { Segmented } from '@/components/shared'
+import { Phone, Calendar, Save, X, Banknote } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -411,40 +413,27 @@ export default function UserEditForm({
             {/* ทดลองงานหรือผ่านแล้ว — ส่วนการออกจากงานใช้ปุ่มในหน้ารายชื่อ */}
             <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
               <div>
-                <Label htmlFor="employmentStatus">สถานะการจ้าง</Label>
-                <Select
-                  value={formData.employmentStatus ?? 'active'}
-                  onValueChange={(v) => setFormData({ ...formData, employmentStatus: v })}
-                  disabled={isLoading || ['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '')}
-                >
-                  <SelectTrigger id="employmentStatus">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="probation">ทดลองงาน</SelectItem>
-                    <SelectItem value="active">พนักงานประจำ (ผ่านทดลองงาน)</SelectItem>
-                    {['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') && (
-                      <SelectItem value={formData.employmentStatus!}>สิ้นสุดการเป็นพนักงานแล้ว</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="employmentType">ประเภทการจ้าง</Label>
-                <Select
-                  value={(formData.employmentType as string) ?? 'monthly'}
-                  onValueChange={(v) => setFormData({ ...formData, employmentType: v })}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="employmentType">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">รายเดือน</SelectItem>
-                    <SelectItem value="daily">รายวัน</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>สถานะการจ้าง</Label>
+                <div className="mt-1.5">
+                  {['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') ? (
+                    <p className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-500">
+                      สิ้นสุดการเป็นพนักงานแล้ว
+                    </p>
+                  ) : (
+                    <Segmented
+                      value={formData.employmentStatus ?? 'active'}
+                      onChange={(v) => setFormData({ ...formData, employmentStatus: v })}
+                      disabled={isLoading}
+                      options={[
+                        { value: 'probation', label: 'ทดลองงาน' },
+                        { value: 'active', label: 'พนักงานประจำ' },
+                      ]}
+                    />
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-gray-500">
+                  ทดลองงาน = มีช่องวันพ้นโปร ใช้พิมพ์สัญญาทดลองงาน และขึ้นกล่องติดตามบน Dashboard
+                </p>
               </div>
 
               {onProbation && (
@@ -466,28 +455,26 @@ export default function UserEditForm({
               )}
             </div>
 
+            {/* เปิดใช้งานเป็นสวิตช์ on/off (เจ้าของสั่ง 13 ส.ค. 69) */}
             <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
-            <Checkbox
-              id="isActive"
-              checked={formData.isActive}
-              onCheckedChange={(checked) => 
-                setFormData({ ...formData, isActive: checked as boolean })
-              }
-              disabled={isLoading}
-            />
-            <div className="space-y-1">
-              <Label 
-                htmlFor="isActive" 
-                className="text-base font-medium cursor-pointer"
-              >
-                เปิดใช้งาน
-              </Label>
-              <p className="text-sm text-gray-500">
-                {formData.isActive 
-                  ? 'พนักงานสามารถเข้าใช้งานระบบได้' 
-                  : 'พนักงานไม่สามารถเข้าใช้งานระบบได้'}
-              </p>
-            </div>
+              <Switch
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isActive: checked as boolean })
+                }
+                disabled={isLoading}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="isActive" className="text-base font-medium cursor-pointer">
+                  เปิดใช้งาน
+                </Label>
+                <p className="text-sm text-gray-500">
+                  {formData.isActive
+                    ? 'พนักงานสามารถเข้าใช้งานระบบได้'
+                    : 'พนักงานไม่สามารถเข้าใช้งานระบบได้'}
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -496,6 +483,61 @@ export default function UserEditForm({
 
       {/* ── แท็บ 2 · เงินเดือน ──────────────────────────────── */}
       <div hidden={tab !== 'pay'} className="space-y-5">
+        {/* ประเภทการจ้าง + OT ช่องเดียวกัน (เจ้าของสั่ง 13 ส.ค. 69) — คอลัมน์ของ users
+            ทั้งคู่ บันทึกผ่านปุ่มบันทึกท้ายฟอร์มเหมือนแท็บแรก */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
+            <Banknote size={16} className="text-gray-400" /> การจ้างและค่าล่วงเวลา
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label>ประเภทการจ้าง</Label>
+              <div className="mt-1.5">
+                <Segmented
+                  value={(formData.employmentType as string) ?? 'monthly'}
+                  onChange={(v) => setFormData({ ...formData, employmentType: v })}
+                  disabled={isLoading}
+                  options={[
+                    { value: 'monthly', label: 'รายเดือน' },
+                    { value: 'daily', label: 'รายวัน' },
+                  ]}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">
+                รายเดือน = เงินเดือนคงที่ · รายวัน = คิดตามวันที่มาทำงาน
+              </p>
+            </div>
+            <div>
+              <Label>ค่าล่วงเวลา (OT)</Label>
+              <div className="mt-1.5">
+                <Segmented
+                  value={formData.otEligible == null ? 'inherit' : formData.otEligible ? 'yes' : 'no'}
+                  onChange={(v) =>
+                    setFormData({ ...formData, otEligible: v === 'inherit' ? null : v === 'yes' })
+                  }
+                  disabled={isLoading}
+                  options={(() => {
+                    const picked = functions.find((f) => f.id === formData.jobFunctionId)
+                    const byPosition = picked
+                      ? picked.ot_eligible
+                        ? 'ได้ OT'
+                        : 'ไม่ได้ OT'
+                      : 'ไม่ได้ OT'
+                    return [
+                      { value: 'inherit', label: `ตามตำแหน่ง (${byPosition})` },
+                      { value: 'yes', label: 'ได้' },
+                      { value: 'no', label: 'ไม่ได้' },
+                    ]
+                  })()}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">
+                มีผลกับการเติมชั่วโมง OT อัตโนมัติในหน้าสรุปเงินเดือน — HR ยังพิมพ์เองได้เสมอ
+              </p>
+            </div>
+          </div>
+        </div>
+
         {user.id && (
           <PayCard
             userId={user.id}
@@ -504,42 +546,6 @@ export default function UserEditForm({
           />
         )}
 
-        {/* สิทธิ์ OT — เรื่องเงินเหมือนกัน เลยอยู่แท็บนี้
-            แต่เป็นคอลัมน์ของ users บันทึกผ่านปุ่มบันทึกท้ายฟอร์มเหมือนแท็บแรก */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
-            <Clock size={16} className="text-gray-400" /> ค่าล่วงเวลา (OT)
-          </h3>
-          <div className="max-w-sm">
-            <Select
-              value={formData.otEligible == null ? 'inherit' : formData.otEligible ? 'yes' : 'no'}
-              onValueChange={(v) =>
-                setFormData({ ...formData, otEligible: v === 'inherit' ? null : v === 'yes' })
-              }
-              disabled={isLoading}
-            >
-              <SelectTrigger id="otEligible">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(() => {
-                  const picked = functions.find((f) => f.id === formData.jobFunctionId)
-                  const byPosition = picked
-                    ? picked.ot_eligible
-                      ? 'ได้ OT'
-                      : 'ไม่ได้ OT'
-                    : 'ยังไม่ระบุตำแหน่ง = ไม่ได้ OT'
-                  return <SelectItem value="inherit">ตามตำแหน่ง ({byPosition})</SelectItem>
-                })()}
-                <SelectItem value="yes">ได้ OT — กำหนดเฉพาะคนนี้</SelectItem>
-                <SelectItem value="no">ไม่ได้ OT — กำหนดเฉพาะคนนี้</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="mt-1.5 text-xs text-gray-500">
-            มีผลกับการเติมชั่วโมง OT อัตโนมัติในหน้าสรุปเงินเดือน — HR ยังพิมพ์เองได้เสมอ
-          </p>
-        </div>
       </div>
 
       {/* ── แท็บ 3 · สถานที่เช็คอิน ─────────────────────────── *

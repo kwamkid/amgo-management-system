@@ -58,56 +58,50 @@ export default function ReportFilters({
   const [loading, setLoading] = useState(false)
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+
   const [selectedLocation, setSelectedLocation] = useState<string>('')
   const [onlyPresent, setOnlyPresent] = useState(false)
-  const [openUserSelect, setOpenUserSelect] = useState(false)
+
   const [openLocationSelect, setOpenLocationSelect] = useState(false)
   const [userSearchTerm, setUserSearchTerm] = useState('')
   const [locationSearchTerm, setLocationSearchTerm] = useState('')
-  const [filteredUsers, setFilteredUsers] = useState(users)
 
-  // Filter users based on search term
-  useEffect(() => {
-    if (!userSearchTerm) {
-      setFilteredUsers(users)
-    } else {
-      const searchLower = userSearchTerm.toLowerCase()
-      setFilteredUsers(
-        users.filter(u =>
-          u.fullName.toLowerCase().includes(searchLower) ||
-          u.nickname?.toLowerCase().includes(searchLower) ||
-          u.phone?.includes(searchLower) ||
-          u.lineDisplayName?.toLowerCase().includes(searchLower)
-        )
-      )
-    }
-  }, [userSearchTerm, users])
 
   const filteredLocations = locationSearchTerm
     ? locations.filter(l => l.name.toLowerCase().includes(locationSearchTerm.toLowerCase()))
     : locations
 
 
-  const toggleUserSelection = (userId: string) => {
-    setSelectedUsers(prev =>
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-    )
-  }
 
-  const removeSelectedUser = (userId: string) => {
-    setSelectedUsers(prev => prev.filter(id => id !== userId))
-  }
 
   const generateReport = async (page: number = 1) => {
     try {
       setLoading(true)
       onLoadingChange(true)
 
+      // พิมพ์ชื่อ = กรองทุกคนที่ชื่อ/ชื่อเล่น/เบอร์เข้าเค้า — ว่าง = ทั้งหมด
+      const q = userSearchTerm.trim().toLowerCase()
+      const matchedIds = q
+        ? users
+            .filter(
+              (u) =>
+                u.fullName?.toLowerCase().includes(q) ||
+                u.nickname?.toLowerCase().includes(q) ||
+                u.phone?.includes(q)
+            )
+            .map((u) => u.id!)
+        : []
+      if (q && matchedIds.length === 0) {
+        showToast('ไม่พบพนักงานชื่อนี้', 'error')
+        setLoading(false)
+        onLoadingChange(false)
+        return
+      }
+
       const filters: AttendanceReportFilters = {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        userIds: selectedUsers.length > 0 ? selectedUsers : undefined,
+        userIds: matchedIds.length > 0 ? matchedIds : undefined,
         locationId: selectedLocation || undefined,
         page,
         pageSize,
@@ -131,7 +125,7 @@ export default function ReportFilters({
     if (typeof window !== 'undefined') {
       (window as any).__generateReport = generateReport
     }
-  }, [startDate, endDate, selectedUsers, selectedLocation, pageSize, onlyPresent])
+  }, [startDate, endDate, userSearchTerm, selectedLocation, pageSize, onlyPresent])
 
   const useLocationCombobox = locations.length > 7
   const selectedLocationName = locations.find(l => l.id === selectedLocation)?.name
@@ -222,67 +216,18 @@ export default function ReportFilters({
             )}
           </div>
 
-          {/* User filter */}
+          {/* User filter — พิมพ์ค้นตรง ๆ (เจ้าของสั่งเลิกใช้ dropdown เลือกคน) */}
           <div>
             <Label className="text-gray-500 mb-1">พนักงาน</Label>
-            <Popover open={openUserSelect} onOpenChange={setOpenUserSelect}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className="w-full h-[42px] justify-between font-normal px-3"
-                >
-                  <span className="flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-gray-400" />
-                    {selectedUsers.length > 0 ? `${selectedUsers.length} คน` : 'ทั้งหมด'}
-                  </span>
-                  {selectedUsers.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">{selectedUsers.length}</Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[360px] p-0">
-                <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
-                  <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                  <input
-                    placeholder="ค้นหาชื่อหรือเบอร์โทร..."
-                    value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                    className="h-7 w-full bg-white rounded px-2 text-sm outline-none border border-gray-200 focus:border-gray-400"
-                    autoFocus
-                  />
-                </div>
-                <div className="max-h-[280px] overflow-auto">
-                  {selectedUsers.length > 0 && (
-                    <div
-                      onClick={() => { setSelectedUsers([]); setUserSearchTerm('') }}
-                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      <span className="font-medium text-red-600">ล้างการเลือกทั้งหมด ({selectedUsers.length})</span>
-                    </div>
-                  )}
-                  {filteredUsers.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-gray-500">ไม่พบพนักงานที่ค้นหา</div>
-                  ) : (
-                    filteredUsers.map(user => (
-                      <div
-                        key={user.id}
-                        onClick={() => toggleUserSelection(user.id!)}
-                        className="flex cursor-pointer items-center justify-between px-4 py-2 text-sm hover:bg-gray-100"
-                      >
-                        <div>
-                          <p className="font-medium">{user.displayName || user.fullName}</p>
-                          {user.phone && <p className="text-xs text-gray-500">{user.phone}</p>}
-                        </div>
-                        {selectedUsers.includes(user.id!) && (
-                          <Check className="h-4 w-4 text-blue-600" />
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                placeholder="พิมพ์ชื่อ/ชื่อเล่น — ว่าง = ทั้งหมด"
+                className="h-[42px] w-full rounded-md border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-red-400"
+              />
+            </div>
           </div>
 
           {/* Generate button + checkbox — คอลัมน์สุดท้าย อยู่บรรทัดเดียวกับ input ทั้งแถว */}
@@ -313,28 +258,7 @@ export default function ReportFilters({
           </div>
         </div>
 
-        {/* Selected user tags */}
-        {selectedUsers.length > 0 && (
-          <div className="flex items-start gap-2">
-            <Label className="text-xs text-gray-500 mt-1 min-w-[56px]">เลือก:</Label>
-            <div className="flex flex-wrap gap-1">
-              {selectedUsers.map(userId => {
-                const user = users.find(u => u.id === userId)
-                return user ? (
-                  <Badge
-                    key={userId}
-                    variant="secondary"
-                    className="cursor-pointer hover:bg-gray-200 flex items-center gap-1 h-5 px-2 text-xs"
-                    onClick={() => removeSelectedUser(userId)}
-                  >
-                    {user.nickname || user.fullName}
-                    <X className="w-2.5 h-2.5" />
-                  </Badge>
-                ) : null
-              })}
-            </div>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   )

@@ -2,6 +2,8 @@
 
 'use client'
 
+import { Skeleton } from '@/components/shared'
+
 import { useState, useEffect } from 'react'
 import { useCheckIn } from '@/hooks/useCheckIn'
 import { useLocations } from '@/hooks/useLocations'
@@ -35,14 +37,7 @@ const CheckInMap = dynamic(
   () => import('./CheckInMap'),
   {
     ssr: false,
-    loading: () => (
-      <div className="w-full h-[400px] bg-gray-100 rounded-lg flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-gray-400 mx-auto" />
-          <p className="text-gray-600 mt-2">กำลังโหลดแผนที่...</p>
-        </div>
-      </div>
-    )
+    loading: () => <Skeleton className="h-[400px]" rows={7} />
   }
 )
 
@@ -345,6 +340,8 @@ export default function CheckInButton() {
 
   // ─── Not checked in → show check-in UI ───────────────────────────────────
   const isOffsite = locationCheckResult?.canCheckIn && locationCheckResult.locationsInRange.length === 0
+  // ปุ่ม WFH เห็นเฉพาะคนที่ HR ติ๊ก "ทำงานที่บ้านได้" ไว้ (แท็บสถานที่เช็คอิน)
+  // คนอื่นที่ออกนอกรัศมีได้ เห็นแค่ปุ่มนอกสถานที่ — กันติ๊ก WFH มั่ว
   const showWFHOption = isOffsite && userData?.allowWorkFromHome
 
   return (

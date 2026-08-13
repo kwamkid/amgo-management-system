@@ -2,6 +2,7 @@
 
 import React, { type CSSProperties, type ButtonHTMLAttributes } from "react";
 import {
+  Wallet,
   Plus,
   Search,
   Bell,
@@ -112,6 +113,7 @@ const ICON_MAP: Record<string, React.FC<LucideProps>> = {
   History,
   MessageSquareText,
   GripVertical,
+  Wallet,
 };
 
 /* ------------------------------------------------------------------ */

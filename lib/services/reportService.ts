@@ -31,6 +31,8 @@ export interface AttendanceReportData {
   totalHours: number
   status: 'normal' | 'late' | 'absent' | 'holiday'
   locationName?: string
+  /** onsite | offsite | wfh — ใช้แยกสีในตารางวัน */
+  checkinType?: string
   isLate: boolean
   lateMinutes: number
   note?: string
@@ -107,6 +109,7 @@ function toReportData(r: ReportRow): AttendanceReportData {
     totalHours: Math.round(Number(r.total_hours ?? 0) * 100) / 100,
     status: mapStatus(r),
     locationName: r.location_name ?? undefined,
+    checkinType: r.checkin_type ?? undefined,
     isLate: r.is_late ?? false,
     lateMinutes: r.late_minutes ?? 0,
     note: buildNote(r),

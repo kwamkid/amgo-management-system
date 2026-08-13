@@ -1,5 +1,7 @@
 'use client'
 
+import { Skeleton } from '@/components/shared'
+
 // components/users/RemarksCard.tsx
 //
 // โน้ตต่อพนักงาน (remark) — บันทึกตามวันเวลา เห็นเฉพาะ HR/แอดมิน (RLS คุมอีกชั้น)
@@ -114,7 +116,7 @@ export default function RemarksCard({ userId }: { userId: string }) {
 
         {/* รายการโน้ต ใหม่ → เก่า */}
         {loading ? (
-          <p className="text-sm text-gray-500 text-center py-4">กำลังโหลด...</p>
+          <Skeleton bare rows={3} />
         ) : remarks.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-4">ยังไม่มีโน้ต</p>
         ) : (

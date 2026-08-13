@@ -30,7 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
+import { GoogleMap, Marker, InfoWindow, Polyline, useJsApiLoader } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import {
   Dialog,
@@ -69,14 +69,30 @@ const defaultCenter = {
 }
 
 
-// Custom marker icon - ขนาดเล็กลง
-const createMarkerIcon = (label: string) => ({
+// สีประจำคนขับ — แจกตามลำดับชื่อ (คนขับมีไม่กี่คน ครบ 12 สีค่อยวนซ้ำ)
+const DRIVER_PALETTE = [
+  '#dc2626', // red
+  '#2563eb', // blue
+  '#16a34a', // green
+  '#9333ea', // purple
+  '#ea580c', // orange
+  '#0d9488', // teal
+  '#db2777', // pink
+  '#4f46e5', // indigo
+  '#ca8a04', // yellow-dark
+  '#0891b2', // cyan
+  '#65a30d', // lime-dark
+  '#7c3aed', // violet
+]
+
+// Custom marker icon - ขนาดเล็กลง สีตามคนขับ
+const createMarkerIcon = (color: string) => ({
   path: google.maps.SymbolPath.CIRCLE,
-  fillColor: '#DC2626',
+  fillColor: color,
   fillOpacity: 1,
   strokeColor: '#ffffff',
-  strokeWeight: 2, // ลดจาก 3 เป็น 2
-  scale: 10, // ลดจาก 12 เป็น 10
+  strokeWeight: 2,
+  scale: 10,
   labelOrigin: new google.maps.Point(0, 0)
 })
 
@@ -118,6 +134,62 @@ export default function DeliveryMapPage() {
     })
     return Array.from(drivers, ([id, name]) => ({ id, name }))
   }, [mapPoints])
+
+  // สีประจำคนขับ — เรียงตามชื่อให้สีนิ่งตลอดวัน ไม่สลับตามลำดับเช็คอิน
+  const driverColors = useMemo(() => {
+    const sorted = [...uniqueDrivers].sort((a, b) => a.name.localeCompare(b.name, 'th'))
+    const colors = new Map<string, string>()
+    sorted.forEach((d, i) => colors.set(d.id, DRIVER_PALETTE[i % DRIVER_PALETTE.length]))
+    return colors
+  }, [uniqueDrivers])
+
+  const colorOf = (driverId?: string) =>
+    (driverId && driverColors.get(driverId)) || DRIVER_PALETTE[0]
+
+  // เลขลำดับจุด "ของแต่ละคน" — นับ 1,2,3… แยกตามคนขับ เรียงตามเวลาเช็คอิน
+  // (sequence ที่ฝังมากับข้อมูลเป็นเลขรวมทั้งวัน เลยไม่ใช้)
+  const seqByPoint = useMemo(() => {
+    const counters = new Map<string, number>()
+    const seq = new Map<string, number>()
+    const byTime = [...mapPoints].sort(
+      (a, b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime()
+    )
+    byTime.forEach(p => {
+      const key = p.driverId || '?'
+      const n = (counters.get(key) || 0) + 1
+      counters.set(key, n)
+      seq.set(p.id, n)
+    })
+    return seq
+  }, [mapPoints])
+
+  // เส้นทางของแต่ละคน: จุดเรียงตามเวลา (อย่างน้อย 2 จุดถึงจะลากเส้นได้)
+  const driverRoutes = useMemo(() => {
+    const groups = new Map<string, DeliveryMapPoint[]>()
+    mapPoints.forEach(p => {
+      if (!p.driverId) return
+      if (!groups.has(p.driverId)) groups.set(p.driverId, [])
+      groups.get(p.driverId)!.push(p)
+    })
+    const routes: { driverId: string; path: { lat: number; lng: number }[] }[] = []
+    groups.forEach((points, driverId) => {
+      if (selectedDriver !== 'all' && driverId !== selectedDriver) return
+      if (points.length < 2) return
+      const sorted = [...points].sort(
+        (a, b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime()
+      )
+      routes.push({ driverId, path: sorted.map(p => ({ lat: p.lat, lng: p.lng })) })
+    })
+    return routes
+  }, [mapPoints, selectedDriver])
+
+  // เฟสของขีดวิ่งบนเส้นทาง — ขยับทีละนิดให้เห็นทิศทาง 1 → 2 → 3
+  const [dashPhase, setDashPhase] = useState(0)
+  useEffect(() => {
+    if (driverRoutes.length === 0) return
+    const t = setInterval(() => setDashPhase(p => (p + 1) % 16), 90)
+    return () => clearInterval(t)
+  }, [driverRoutes.length])
 
   // Filter points based on search and driver
   const filteredPoints = useMemo(() => {
@@ -303,6 +375,60 @@ export default function DeliveryMapPage() {
     )
   }
 
+  // เลเยอร์บนแผนที่ (ใช้ร่วม desktop/mobile): เส้นทางรายคน + หมุดเลขลำดับของแต่ละคน
+  const renderMapLayers = () => (
+    <>
+      {driverRoutes.map(route => {
+        const color = colorOf(route.driverId)
+        return (
+          <Polyline
+            key={route.driverId}
+            path={route.path}
+            options={{
+              strokeColor: color,
+              strokeOpacity: 0.25,
+              strokeWeight: 3,
+              geodesic: true,
+              icons: [
+                // ขีดวิ่งไล่จากจุดแรกไปจุดสุดท้าย — บอกทิศทางการวิ่งงาน
+                {
+                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, strokeWeight: 3, scale: 3, strokeColor: color },
+                  offset: `${dashPhase}px`,
+                  repeat: '16px',
+                },
+                {
+                  icon: {
+                    path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    fillOpacity: 1,
+                    fillColor: color,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 1,
+                    scale: 2.5,
+                  },
+                  offset: '50%',
+                },
+              ],
+            }}
+          />
+        )
+      })}
+      {filteredPoints.map(point => (
+        <Marker
+          key={point.id}
+          position={{ lat: point.lat, lng: point.lng }}
+          icon={createMarkerIcon(colorOf(point.driverId))}
+          label={{
+            text: String(seqByPoint.get(point.id) ?? ''),
+            color: '#ffffff',
+            fontSize: '12px',
+            fontWeight: 'bold',
+          }}
+          onClick={() => setSelectedPoint(point)}
+        />
+      ))}
+    </>
+  )
+
   // Points List Component - Optimized
   const PointsList = () => (
     <>
@@ -347,9 +473,12 @@ export default function DeliveryMapPage() {
                     {/* Time and Sequence */}
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-medium text-red-600">
-                            {point.sequence}
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: colorOf(point.driverId) }}
+                        >
+                          <span className="text-xs font-semibold text-white">
+                            {seqByPoint.get(point.id)}
                           </span>
                         </div>
                         <span className="text-sm font-medium">
@@ -361,7 +490,10 @@ export default function DeliveryMapPage() {
                         {/* Driver Name - Mobile hide */}
                         {point.driverName && (
                           <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500">
-                            <User className="w-3 h-3" />
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: colorOf(point.driverId) }}
+                            />
                             <span className="truncate max-w-[80px]">{point.driverName}</span>
                           </div>
                         )}
@@ -645,23 +777,7 @@ export default function DeliveryMapPage() {
               zoomControl: true
             }}
           >
-            {/* Markers */}
-            {filteredPoints.map((point, index) => (
-              <Marker
-                key={point.id}
-                position={{ lat: point.lat, lng: point.lng }}
-                icon={{
-                  ...createMarkerIcon(point.sequence?.toString() || (index + 1).toString()),
-                }}
-                label={{
-                  text: point.sequence?.toString() || (index + 1).toString(),
-                  color: '#ffffff',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-                onClick={() => setSelectedPoint(point)}
-              />
-            ))}
+            {renderMapLayers()}
 
             {/* Info Window - Compact */}
             {selectedPoint && (
@@ -672,7 +788,14 @@ export default function DeliveryMapPage() {
                 <div className="min-w-[160px] max-w-[200px]">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-xs">จุดที่ {selectedPoint.sequence}</span>
+                    <span className="font-medium text-xs flex items-center gap-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: colorOf(selectedPoint.driverId) }}
+                    />
+                    จุดที่ {seqByPoint.get(selectedPoint.id)}
+                    {selectedPoint.driverName ? ` · ${selectedPoint.driverName}` : ''}
+                  </span>
                     <span className="text-xs text-gray-600">
                       {formatTime(selectedPoint.checkInTime)}
                     </span>
@@ -734,23 +857,7 @@ export default function DeliveryMapPage() {
             zoomControl: true
           }}
         >
-          {/* Markers */}
-          {filteredPoints.map((point, index) => (
-            <Marker
-              key={point.id}
-              position={{ lat: point.lat, lng: point.lng }}
-              icon={{
-                ...createMarkerIcon(point.sequence?.toString() || (index + 1).toString()),
-              }}
-              label={{
-                text: point.sequence?.toString() || (index + 1).toString(),
-                color: '#ffffff',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}
-              onClick={() => setSelectedPoint(point)}
-            />
-          ))}
+          {renderMapLayers()}
 
           {/* Info Window */}
           {selectedPoint && (
@@ -761,7 +868,14 @@ export default function DeliveryMapPage() {
               <div className="min-w-[160px] max-w-[200px]">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-xs">จุดที่ {selectedPoint.sequence}</span>
+                  <span className="font-medium text-xs flex items-center gap-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: colorOf(selectedPoint.driverId) }}
+                    />
+                    จุดที่ {seqByPoint.get(selectedPoint.id)}
+                    {selectedPoint.driverName ? ` · ${selectedPoint.driverName}` : ''}
+                  </span>
                   <span className="text-xs text-gray-600">
                     {formatTime(selectedPoint.checkInTime)}
                   </span>

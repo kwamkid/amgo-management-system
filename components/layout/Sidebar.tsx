@@ -30,6 +30,7 @@ import {
   Map,
   Home,
   Wallet,
+  TrendingUp,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -90,8 +91,6 @@ const navSections: NavSection[] = [
           { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
           { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
-          // สรุปรายเดือน วันไหนใครส่งกี่เจ้า — คนขับ/Call Center เข้าได้เหมือนกัน
-          { label: 'รายงานการส่งของ', href: '/delivery/report', icon: subIcon(FileText) },
         ],
       },
     ],
@@ -115,11 +114,14 @@ const navSections: NavSection[] = [
       {
         label: 'รายงาน',
         icon: icon(FileText),
-        roles: ['hr', 'admin', 'manager'],
+        // กลุ่มเปิดกว้างถึงสายส่ง (driver/delivery) — สิทธิ์จริงกรองรายเมนูข้างใน
+        roles: ['hr', 'admin', 'manager', 'driver', 'delivery'],
         subItems: [
           // ⚠️ ใส่เฉพาะรายงานที่มีหน้าจริง — สร้างรายงานใหม่เมื่อไหร่ค่อยเพิ่มแถวที่นี่
           //    (หน้าศูนย์รวม /reports เอาออกจากเมนูแล้ว — เจ้าของบอกไม่จำเป็น)
-          { label: 'รายงานการเข้างาน', href: '/reports/checkin', icon: subIcon(Clock) },
+          { label: 'รายงานการเข้างาน', href: '/reports/checkin', icon: subIcon(Clock), roles: ['hr', 'admin', 'manager'] },
+          { label: 'Performance การมาทำงาน', href: '/reports/performance', icon: subIcon(TrendingUp), roles: ['hr', 'admin', 'manager'] },
+          { label: 'รายงานการส่งของ', href: '/delivery/report', icon: subIcon(Truck), roles: ['hr', 'admin', 'manager', 'driver', 'delivery'] },
         ],
       },
       { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },

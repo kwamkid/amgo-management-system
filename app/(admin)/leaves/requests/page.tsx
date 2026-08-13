@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/shared'
+import { Skeleton, PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -180,7 +180,7 @@ export default function LeaveRequestsPage() {
       {fetching ? (
         <Card className="border-0 shadow-md">
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">กำลังโหลด...</p>
+            <Skeleton />
           </CardContent>
         </Card>
       ) : leaves.length === 0 ? (

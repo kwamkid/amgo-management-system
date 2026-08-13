@@ -105,6 +105,7 @@ export default function UserEditForm({
     jobFunctionId: user.jobFunctionId ?? null,
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
+    allowWorkFromHome: user.allowWorkFromHome || false,
     requiresCheckin: user.requiresCheckin ?? true,
     employmentStatus: user.employmentStatus ?? 'active',
     employmentType: user.employmentType ?? 'monthly',
@@ -594,6 +595,31 @@ export default function UserEditForm({
                     </p>
                   </div>
                 </div>
+
+                {/* WFH เป็นสิทธิ์ย่อยของการเช็คอินนอกรัศมี — ติ๊กได้เมื่อเปิดตัวบนก่อน */}
+                {formData.allowCheckInOutsideLocation && (
+                  <div className="ml-8 flex items-center space-x-3">
+                    <Checkbox
+                      id="allowWorkFromHome"
+                      checked={formData.allowWorkFromHome ?? false}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, allowWorkFromHome: checked as boolean })
+                      }
+                      disabled={isLoading}
+                    />
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="allowWorkFromHome"
+                        className="text-base font-normal cursor-pointer"
+                      >
+                        ทำงานที่บ้านได้ (WFH)
+                      </Label>
+                      <p className="text-sm text-gray-500">
+                        ตอนเช็คอินนอกรัศมีจะมีปุ่มให้เลือกว่า WFH — รายงานแยกสีให้ (ไม่ติ๊ก = เลือกได้แค่นอกสถานที่)
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-100 pt-4">
                   <Label>สาขาที่อนุญาตให้เช็คอิน</Label>

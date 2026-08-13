@@ -2,6 +2,8 @@
 
 'use client'
 
+import { Skeleton } from '@/components/shared'
+
 import { useLocations } from '@/hooks/useLocations'
 import { MapPin, Check } from 'lucide-react'
 import { useEffect, useRef } from 'react'
@@ -44,13 +46,7 @@ export default function LocationMultiSelect({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
-        <span className="text-gray-500">กำลังโหลด...</span>
-      </div>
-    )
-  }
+  if (loading) return <Skeleton bare rows={2} />
 
   if (locations.length === 0) {
     return (

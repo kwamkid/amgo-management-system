@@ -85,6 +85,8 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>('active')
+  // กดการ์ด "รออนุมัติ" — กรองเฉพาะคนที่ needs_approval (เป็นคนละแกนกับสถานะทำงาน)
+  const [pendingOnly, setPendingOnly] = useState(false)
   const [company, setCompany] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortState>(null)
@@ -146,11 +148,12 @@ export default function EmployeesPage() {
     return () => clearTimeout(timer)
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => setPage(1), [search, role, status, company, sort])
+  useEffect(() => setPage(1), [search, role, status, company, sort, pendingOnly])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     let list = users
+    if (pendingOnly) list = list.filter((u) => u.needsApproval)
     if (company) list = list.filter((u) => u.companyId === company)
     if (!q) return list
     return list.filter(
@@ -161,7 +164,7 @@ export default function EmployeesPage() {
         u.phone?.includes(q) ||
         u.discordUsername?.toLowerCase().includes(q)
     )
-  }, [users, search, company])
+  }, [users, search, company, pendingOnly])
 
   const handleEdit = (userId: string) => {
     setNavigating(true)
@@ -267,9 +270,20 @@ export default function EmployeesPage() {
     {
       key: 'status',
       header: 'สถานะ',
-      sortValue: (u) => (u as { employmentStatus?: string }).employmentStatus ?? '',
+      sortValue: (u) =>
+        u.needsApproval ? 'pending' : ((u as { employmentStatus?: string }).employmentStatus ?? ''),
       // แสดงสถานะจริง (ทดลองงาน/ลาออก/เลิกจ้าง/เกษียณ) ไม่ใช่แค่เปิด-ปิดการใช้งาน
-      cell: (u) => <StatusBadge status={(u as { employmentStatus?: string }).employmentStatus ?? (u.isActive ? 'active' : 'resigned')} />,
+      // คนที่ยังไม่ผ่านอนุมัติต้องขึ้น "รออนุมัติ" ก่อนเสมอ — ไม่งั้นขึ้นทำงานอยู่ทั้งที่ยังไม่รับเข้า
+      cell: (u) => (
+        <StatusBadge
+          status={
+            u.needsApproval
+              ? 'pending'
+              : ((u as { employmentStatus?: string }).employmentStatus ??
+                (u.isActive ? 'active' : 'resigned'))
+          }
+        />
+      ),
     },
     {
       // วันเริ่มงานจริง + อายุงาน — วันสมัครเข้าระบบไม่มีใครอยากรู้
@@ -432,6 +446,7 @@ export default function EmployeesPage() {
                 setSearch('')
                 setRole(null)
                 setStatus('active')
+                setPendingOnly(false)
                 refetch()
               }}
             />
@@ -439,11 +454,56 @@ export default function EmployeesPage() {
         }
       />
 
+      {/* กดการ์ดเพื่อกรองรายชื่อข้างล่างได้เลย — การ์ดที่เลือกอยู่ขึ้นกรอบสี */}
       <StatGrid>
-        <StatCard label="ทั้งหมด" value={statistics.total} unit="คน" icon={Users} />
-        <StatCard label="ใช้งาน" value={statistics.active} unit="คน" icon={CheckCircle} tone="success" />
-        <StatCard label="รออนุมัติ" value={statistics.pending} unit="คน" icon={Clock} tone="warning" />
-        <StatCard label="สิ้นสุดแล้ว" value={statistics.inactive} unit="คน" icon={XCircle} tone="danger" />
+        <StatCard
+          label="ทั้งหมด"
+          value={statistics.total}
+          unit="คน"
+          icon={Users}
+          selected={!pendingOnly && status === null}
+          onClick={() => {
+            setPendingOnly(false)
+            setStatus(null)
+          }}
+        />
+        <StatCard
+          label="ใช้งาน"
+          value={statistics.active}
+          unit="คน"
+          icon={CheckCircle}
+          tone="success"
+          selected={!pendingOnly && status === 'active'}
+          onClick={() => {
+            setPendingOnly(false)
+            setStatus('active')
+          }}
+        />
+        <StatCard
+          label="รออนุมัติ"
+          value={statistics.pending}
+          unit="คน"
+          icon={Clock}
+          tone="warning"
+          selected={pendingOnly}
+          onClick={() => {
+            // คนรออนุมัติอาจยังไม่ active — ปลดตัวกรองสถานะให้เห็นครบ
+            setPendingOnly(true)
+            setStatus(null)
+          }}
+        />
+        <StatCard
+          label="สิ้นสุดแล้ว"
+          value={statistics.inactive}
+          unit="คน"
+          icon={XCircle}
+          tone="danger"
+          selected={!pendingOnly && status === 'inactive'}
+          onClick={() => {
+            setPendingOnly(false)
+            setStatus('inactive')
+          }}
+        />
       </StatGrid>
 
       <FilterBar
@@ -452,7 +512,16 @@ export default function EmployeesPage() {
         placeholder="ค้นหาชื่อ ชื่อเล่น เบอร์โทร LINE"
       >
         <FilterSelect label="สิทธิ์" value={role} options={ROLE_OPTIONS} onChange={setRole} />
-        <FilterSelect label="สถานะ" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+        <FilterSelect
+          label="สถานะ"
+          value={status}
+          options={STATUS_OPTIONS}
+          onChange={(v) => {
+            // เปลี่ยนสถานะเองจาก dropdown = เลิกโหมดรออนุมัติ
+            setPendingOnly(false)
+            setStatus(v)
+          }}
+        />
         <FilterSelect
           label="บริษัท"
           value={company}
@@ -494,7 +563,13 @@ export default function EmployeesPage() {
         sort={sort}
         onSortChange={setSort}
         loading={loading}
-        emptyTitle={search ? 'ไม่พบพนักงานที่ค้นหา' : 'ยังไม่มีพนักงาน'}
+        emptyTitle={
+          search
+            ? 'ไม่พบพนักงานที่ค้นหา'
+            : pendingOnly
+              ? 'ไม่มีคนรออนุมัติ'
+              : 'ยังไม่มีพนักงาน'
+        }
         emptyBody={search ? `ไม่มีผลลัพธ์สำหรับ "${search}"` : undefined}
       />
 

@@ -273,23 +273,23 @@ export const deleteDeliveryPoint = async (deliveryId: string): Promise<void> => 
 }
 
 /* ------------------------------------------------------------------ *
- *  สรุปงานส่งรายเดือน — วันไหนใครส่งกี่เจ้า (หน้ารายงานการส่งของ)
- *  นับจากจุดที่เช็คอินแล้วจริง · ตัดวันตามเวลาไทย
+ *  สรุปงานส่งตามช่วงวัน — วันไหนใครส่งกี่เจ้า (หน้ารายงานการส่งของ)
+ *  นับจากจุดที่เช็คอินแล้วจริง · ตัดวันตามเวลาไทย · รับช่วงวันแบบ YYYY-MM-DD
  *  เปิดให้ทั้งคนขับและ Call Center ดู — RLS ฝั่งตารางเปิดอ่านตาม role อยู่แล้ว
  * ------------------------------------------------------------------ */
-export const getDeliveryMonthlySummary = async (
-  month: Date
+export const getDeliveryRangeSummary = async (
+  start: string,
+  end: string
 ): Promise<{
   drivers: { id: string; name: string }[]
   /** `${YYYY-MM-DD}|${driverId}` → จำนวนจุดส่งที่เช็คอินแล้ว */
   counts: Map<string, number>
 }> => {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const y = month.getFullYear()
-  const m = month.getMonth()
-  const next = m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }
-  const startIso = new Date(`${y}-${pad(m + 1)}-01T00:00:00+07:00`).toISOString()
-  const endIso = new Date(`${next.y}-${pad(next.m + 1)}-01T00:00:00+07:00`).toISOString()
+  const startIso = new Date(`${start}T00:00:00+07:00`).toISOString()
+  // ถึง "สิ้นวัน" ของวันสุดท้าย = ก่อนเที่ยงคืนไทยของวันถัดไป
+  const endIso = new Date(
+    new Date(`${end}T00:00:00+07:00`).getTime() + 86_400_000
+  ).toISOString()
 
   // PostgREST ตัดผลที่ 1,000 แถวเงียบ ๆ — ไล่เก็บเป็นช่วงจนหมด
   type Row = { driver_id: string; driver_name: string; check_in_time: string }

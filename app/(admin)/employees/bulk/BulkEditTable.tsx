@@ -65,6 +65,14 @@ function parseDate(raw: string): string | undefined {
 
 const baht = new Intl.NumberFormat('th-TH')
 
+/** อ่านค่าติ๊กจากข้อความที่วางมา — ใช่/y/1/✓ = ติ๊ก · ไม่/n/0/x/ว่าง = ไม่ติ๊ก */
+const parseTick = (raw: string): boolean | undefined => {
+  const t = raw.trim().toLowerCase()
+  if (['ใช่', 'ได้', 'y', 'yes', 'true', '1', '✓', '✔'].includes(t)) return true
+  if (['ไม่', 'ไม่ได้', 'n', 'no', 'false', '0', 'x', '✗', '-', ''].includes(t)) return false
+  return undefined
+}
+
 /* ------------------------------------------------------------------ *
  *  นิยามคอลัมน์
  *
@@ -84,6 +92,8 @@ type ColKey = keyof Pick<
   | 'days_per_week'
   | 'base_salary'
   | 'payroll_cycle'
+  | 'allow_checkin_outside_location'
+  | 'wfh_eligible'
 >
 
 type Column = {
@@ -203,6 +213,34 @@ const COLUMNS: Column[] = [
       if (q.includes('30')) return { payroll_cycle: 'c30' }
       if (q === '4' || q.includes('ที่ 4')) return { payroll_cycle: 'c4' }
       return undefined
+    },
+  },
+  {
+    key: 'allow_checkin_outside_location',
+    header: 'นอกสถานที่ได้',
+    width: 110,
+    align: 'center',
+    // ปิดตัวแม่ = WFH ดับตาม (สิทธิ์ย่อย)
+    parse: (raw) => {
+      const v = parseTick(raw)
+      if (v === undefined) return undefined
+      return v
+        ? { allow_checkin_outside_location: true }
+        : { allow_checkin_outside_location: false, wfh_eligible: false }
+    },
+  },
+  {
+    key: 'wfh_eligible',
+    header: 'WFH ได้',
+    width: 90,
+    align: 'center',
+    // ติ๊ก WFH = ต้องออกนอกรัศมีได้ก่อน — เปิดตัวแม่ให้เอง
+    parse: (raw) => {
+      const v = parseTick(raw)
+      if (v === undefined) return undefined
+      return v
+        ? { wfh_eligible: true, allow_checkin_outside_location: true }
+        : { wfh_eligible: false }
     },
   },
 ]
@@ -339,6 +377,8 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
           full_name: r.full_name,
           nickname: r.nickname,
           name_verified: r.name_verified,
+          allow_checkin_outside_location: r.allow_checkin_outside_location,
+          wfh_eligible: r.wfh_eligible,
           company_id: r.company_id,
           job_function_id: r.job_function_id,
           employment_type: r.employment_type,
@@ -495,6 +535,48 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         >
           <Check size={14} /> ยืนยันวันที่เดิม
         </Button>
+        <div className="w-40">
+          <SelectMenu
+            disabled={!selected.size}
+            value={null}
+            placeholder="→ นอกสถานที่ได้?"
+            options={[
+              { value: 'y', label: 'ติ๊ก: นอกสถานที่ได้' },
+              { value: 'n', label: 'เอาออก (WFH ดับตาม)' },
+            ]}
+            searchThreshold={99}
+            onChange={(v) => {
+              if (!v) return
+              patch(
+                selected,
+                v === 'y'
+                  ? { allow_checkin_outside_location: true }
+                  : { allow_checkin_outside_location: false, wfh_eligible: false }
+              )
+            }}
+          />
+        </div>
+        <div className="w-36">
+          <SelectMenu
+            disabled={!selected.size}
+            value={null}
+            placeholder="→ WFH ได้?"
+            options={[
+              { value: 'y', label: 'ติ๊ก: WFH ได้' },
+              { value: 'n', label: 'เอาออก' },
+            ]}
+            searchThreshold={99}
+            onChange={(v) => {
+              if (!v) return
+              patch(
+                selected,
+                v === 'y'
+                  ? { wfh_eligible: true, allow_checkin_outside_location: true }
+                  : { wfh_eligible: false }
+              )
+            }}
+          />
+        </div>
 
         <div className="ml-auto flex items-center gap-2">
           {dirtyIds.size > 0 && (
@@ -804,6 +886,42 @@ function Cell({
             className={`${base} text-right font-mono tabular-nums ${
               row.base_salary === null ? 'border-red-300 bg-red-50' : 'border-transparent'
             }`}
+          />
+        </td>
+      )
+
+    case 'allow_checkin_outside_location':
+      return (
+        <td className="px-2 py-1 text-center">
+          <input
+            type="checkbox"
+            checked={row.allow_checkin_outside_location}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? { allow_checkin_outside_location: true }
+                  : { allow_checkin_outside_location: false, wfh_eligible: false }
+              )
+            }
+            className="h-4 w-4 accent-red-600"
+          />
+        </td>
+      )
+
+    case 'wfh_eligible':
+      return (
+        <td className="px-2 py-1 text-center">
+          <input
+            type="checkbox"
+            checked={row.wfh_eligible}
+            disabled={!row.allow_checkin_outside_location}
+            title={
+              row.allow_checkin_outside_location
+                ? undefined
+                : 'ต้องติ๊ก "นอกสถานที่ได้" ก่อน'
+            }
+            onChange={(e) => onChange({ wfh_eligible: e.target.checked })}
+            className="h-4 w-4 accent-red-600 disabled:opacity-30"
           />
         </td>
       )

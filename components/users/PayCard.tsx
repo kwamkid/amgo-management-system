@@ -1,5 +1,7 @@
 'use client'
 
+import { Skeleton } from '@/components/shared'
+
 // กล่องค่าตอบแทนของพนักงาน 1 คน — เงินเดือนพื้นฐาน + รายได้พิเศษ
 //
 // ── ใช้ 2 ที่ ─────────────────────────────────────────────────────────
@@ -1064,9 +1066,7 @@ function ImportItemsModal({
           size="md"
         />
 
-        {sourceId && sourceItems === null && (
-          <p className="py-2 text-sm text-gray-400">กำลังโหลด...</p>
-        )}
+        {sourceId && sourceItems === null && <Skeleton bare rows={2} />}
 
         {sourceItems?.length === 0 && (
           <p className="py-2 text-sm text-gray-400">คนนี้ไม่มีรายได้พิเศษ</p>

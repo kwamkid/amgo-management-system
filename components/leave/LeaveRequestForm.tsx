@@ -75,6 +75,17 @@ interface LeaveRequestFormProps {
   onSuccess?: () => void;
 }
 
+/** นับวันทำงาน จ–ศ ในช่วง — ใช้ตัดสินเกณฑ์ใบรับรองแพทย์ตาม ม.32 (ตั้งแต่ 3 วันทำงาน) */
+function countWeekdays(start: Date | string, end: Date | string): number {
+  const last = new Date(end);
+  let n = 0;
+  for (const d = new Date(start); d <= last; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) n++;
+  }
+  return n;
+}
+
 export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const { createLeaveRequest, quota, loading } = useLeave();
   const [totalDays, setTotalDays] = useState(0);
@@ -118,13 +129,12 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     if (watchStartDate && watchEndDate) {
       const days = calculateLeaveDays(watchStartDate, watchEndDate);
       setTotalDays(days);
-      
-      // Check if medical certificate warning needed (not required)
-      if (watchType === 'sick' && days > LEAVE_RULES.sick.requireCertificate) {
-        setRequireCertificate(true);
-      } else {
-        setRequireCertificate(false);
-      }
+
+      // ใบรับรองแพทย์นับเฉพาะ "วันทำงาน" ตามกฎหมาย (ม.32: ตั้งแต่ 3 วันทำงานขึ้นไป)
+      // นับ จ–ศ แบบปลอดภัย — คนกะหมุนเวียนอาจนับต่ำกว่าจริง ซึ่งผ่อนให้พนักงาน
+      // ไม่มีทางบังคับเกินที่กฎหมายให้อำนาจ
+      const workdays = countWeekdays(watchStartDate, watchEndDate);
+      setRequireCertificate(watchType === 'sick' && workdays >= 3);
     }
   }, [watchStartDate, watchEndDate, watchType]);
 
@@ -203,6 +213,15 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   };
 
   const onSubmit = async (values: FormData) => {
+    // บังคับตามกฎหมาย: ลาป่วยตั้งแต่ 3 วันทำงานขึ้นไป ต้องมีใบรับรองแพทย์
+    if (requireCertificate && !(values.attachments?.length)) {
+      form.setError('attachments', {
+        message:
+          'ลาป่วยตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์ (พ.ร.บ.คุ้มครองแรงงาน พ.ศ. 2541 มาตรา 32)',
+      });
+      return;
+    }
+
     // Validate first
     const validation = validateLeaveRequest(values.type, values.startDate, values.isUrgent);
     
@@ -451,10 +470,19 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       <Alert variant="warning">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
-                          ลาป่วยเกิน {LEAVE_RULES.sick.requireCertificate} วัน แนะนำให้แนบใบรับรองแพทย์
+                          ลาป่วย<b>ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์</b>{' '}
+                          ตามพระราชบัญญัติคุ้มครองแรงงาน พ.ศ. 2541 มาตรา 32{' '}
+                          <a
+                            href="https://www.mol.go.th/forums/topic/ลาป่วยกรณีต้องใช้ใบรับรองแพทย์"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium underline"
+                          >
+                            อ่านข้อกฎหมาย (กระทรวงแรงงาน)
+                          </a>
                           {(form.watch('attachments')?.length ?? 0) === 0 && (
                             <span className="block mt-1 font-medium">
-                              ⚠️ ยังไม่มีใบรับรองแพทย์ - สามารถส่งคำขอได้แต่อาจถูกขอเอกสารเพิ่มเติมภายหลัง
+                              ⚠️ ยังไม่ได้แนบใบรับรองแพทย์ — ส่งคำขอไม่ได้จนกว่าจะแนบ
                             </span>
                           )}
                         </AlertDescription>

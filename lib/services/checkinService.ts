@@ -75,6 +75,10 @@ function toRecord(r: Row): CheckInRecord {
 
 const sb = () => createClient()
 
+// กติกาคิดชั่วโมงเมื่อเช็คอินแบบไม่มีสาขา (นอกสถานที่/WFH):
+// ไม่มี cap เวลาปิดร้าน · หักพัก 1 ชม. เมื่อทำเกิน 4 ชม. · เกิน 8 ชม./วัน = OT
+const OFFSITE_HOURS_RULES = { workingHours: {} as Record<string, never>, breakHours: 1 }
+
 /**
  * ทับ userName (snapshot ชื่อจริงตอนเช็คอิน) ด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
  * อ่านโปรไฟล์คนอื่นไม่ได้ (RLS) ก็คงชื่อเดิมไว้
@@ -117,10 +121,33 @@ export async function createCheckIn(
     primaryLocationId: string | null
     primaryLocationName?: string
     checkinType: 'onsite' | 'offsite' | 'wfh'
-    selectedShift?: { id?: string; name?: string; startTime?: string; endTime?: string }
+    selectedShift?: {
+      id?: string
+      name?: string
+      startTime?: string
+      endTime?: string
+      graceMinutes?: number
+    }
   }
 ): Promise<string> {
   const now = new Date()
+
+  // สายรู้ได้ทันทีตอนเช็คอิน — เทียบกับเวลาเริ่มกะ + ช่วงผ่อนผัน
+  // (เดิมเขียน false ตายตัวแล้วไม่มีใครแก้ทีหลัง → รายงานสายว่างทั้งระบบ)
+  let isLate = false
+  let lateMinutes = 0
+  if (data.selectedShift?.startTime) {
+    const [h, m] = data.selectedShift.startTime.split(':').map(Number)
+    const shiftStart = new Date(now)
+    shiftStart.setHours(h, m, 0, 0)
+    const raw = Math.floor((now.getTime() - shiftStart.getTime()) / 60_000)
+    const grace = data.selectedShift.graceMinutes ?? 15
+    // |raw| เกิน 12 ชม. = กะข้ามคืน/ข้อมูลเพี้ยน — ไม่ตีสาย
+    if (raw > grace && raw < 720) {
+      isLate = true
+      lateMinutes = raw
+    }
+  }
 
   const { data: row, error } = await sb()
     .from('checkins')
@@ -150,8 +177,8 @@ export async function createCheckIn(
       break_hours: 0,
 
       status: 'checked-in',
-      is_late: false,
-      late_minutes: 0,
+      is_late: isLate,
+      late_minutes: lateMinutes,
       note: data.note ?? null,
     })
     .select('id')
@@ -171,30 +198,27 @@ export async function checkOut(userId: string, checkoutData: CheckOutData): Prom
   const checkinTime = new Date(active.checkinTime)
   const checkoutTime = new Date()
 
-  const calc = location
-    ? calculateWorkingHours(
-        checkinTime,
-        checkoutTime,
-        location,
-        active.selectedShift
-          ? {
-              startTime: active.shiftStartTime!,
-              endTime: active.shiftEndTime!,
-              graceMinutes: 15,
-            }
-          : undefined,
-        false
-      )
-    : {
-        regularHours: 0,
-        overtimeHours: 0,
-        totalHours: 0,
-        breakHours: 0,
-        isLate: active.isLate,
-        lateMinutes: active.lateMinutes,
-        isEarlyCheckout: false,
-        isOvernightShift: false,
+  const shiftInfo = active.selectedShift
+    ? {
+        startTime: active.shiftStartTime!,
+        endTime: active.shiftEndTime!,
+        graceMinutes: 15,
       }
+    : undefined
+
+  // ไม่มีสาขา (นอกสถานที่/WFH) ก็ต้องได้ชั่วโมง/OT — ใช้กติกากลางแทนของสาขา
+  // (เดิมคืน 0 หมด ทำให้คนทำงานที่บ้านไม่มีชั่วโมงและ OT หาย)
+  const calcBase = calculateWorkingHours(
+    checkinTime,
+    checkoutTime,
+    location ?? OFFSITE_HOURS_RULES,
+    shiftInfo,
+    false
+  )
+  // ไม่มีกะให้เทียบ → คงสถานะสายที่คิดไว้ตอนเช็คอิน
+  const calc = shiftInfo
+    ? calcBase
+    : { ...calcBase, isLate: active.isLate, lateMinutes: active.lateMinutes }
 
   const needsApproval = location
     ? needsOvertimeApproval(checkoutTime, location, checkinTime)
@@ -211,6 +235,8 @@ export async function checkOut(userId: string, checkoutData: CheckOutData): Prom
       overtime_hours: calc.overtimeHours,
       break_hours: calc.breakHours,
       status: needsApproval ? 'pending' : 'completed',
+      is_late: calc.isLate,
+      late_minutes: calc.lateMinutes,
       is_overnight_shift: calc.isOvernightShift,
       needs_overtime_approval: needsApproval,
       checkout_note: checkoutData.note ?? null,
@@ -384,23 +410,15 @@ export async function manualCheckout(
   const location = rec.primary_location_id ? await getLocation(rec.primary_location_id) : null
   const checkinTime = new Date(rec.checkin_time!)
 
-  const calc = location
-    ? calculateWorkingHours(
-        checkinTime,
-        checkoutTime,
-        location,
-        rec.shift_start_time && rec.shift_end_time
-          ? { startTime: rec.shift_start_time, endTime: rec.shift_end_time, graceMinutes: 15 }
-          : undefined,
-        approveOvertime // ไม่อนุมัติ = ชั่วโมงที่เกินเวลาปิดไม่ถูกนับเป็นโอที
-      )
-    : {
-        regularHours: 0,
-        overtimeHours: 0,
-        totalHours: 0,
-        breakHours: 0,
-        isOvernightShift: false,
-      }
+  const calc = calculateWorkingHours(
+    checkinTime,
+    checkoutTime,
+    location ?? OFFSITE_HOURS_RULES, // ไม่มีสาขา (นอกสถานที่/WFH) ใช้กติกากลาง
+    rec.shift_start_time && rec.shift_end_time
+      ? { startTime: rec.shift_start_time, endTime: rec.shift_end_time, graceMinutes: 15 }
+      : undefined,
+    approveOvertime // ไม่อนุมัติ = ชั่วโมงที่เกินเวลาปิดไม่ถูกนับเป็นโอที
+  )
 
   const { error } = await client
     .from('checkins')

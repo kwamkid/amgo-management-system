@@ -2,6 +2,7 @@
 
 'use client'
 
+
 import { use } from 'react'
 import { useInfluencer } from '@/hooks/useInfluencers'
 import { useRouter } from 'next/navigation'
@@ -100,16 +101,7 @@ export default function InfluencerDetailPage({
     return `${age} ปี`
   }
 
-  if (loading && !influencer) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-          <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading && !influencer) return <TechLoader />
 
   if (error || !influencer) {
     return (

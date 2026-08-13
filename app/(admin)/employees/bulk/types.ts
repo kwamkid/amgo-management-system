@@ -33,6 +33,9 @@ export type BulkRow = {
   days_per_week: number | null
   payroll_cycle: string | null
   base_salary: number | null
+  /** เช็คอินนอกรัศมีสาขาได้ · WFH เป็นสิทธิ์ย่อย (เปิดได้เมื่อตัวแรกเปิด) */
+  allow_checkin_outside_location: boolean
+  wfh_eligible: boolean
 }
 
 export type SaveResult = {

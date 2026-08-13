@@ -92,6 +92,9 @@ export async function saveBulk(rows: BulkRow[]): Promise<SaveResult> {
         end_date: ENDED_STATUSES.includes(r.employment_status) ? r.end_date : null,
         days_per_week: r.days_per_week,
         payroll_cycle: r.payroll_cycle,
+        allow_checkin_outside_location: r.allow_checkin_outside_location,
+        // WFH เป็นสิทธิ์ย่อยของนอกสถานที่ — ปิดตัวแม่แล้วต้องดับตาม
+        wfh_eligible: r.allow_checkin_outside_location ? r.wfh_eligible : false,
       })
       .eq('id', r.id)
       .select('id')

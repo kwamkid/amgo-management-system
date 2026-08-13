@@ -33,6 +33,9 @@ export const DATE_RANGE_PRESETS = [
   { key: 'lastWeek', label: 'สัปดาห์ที่แล้ว' },
   { key: 'thisMonth', label: 'เดือนนี้' },
   { key: 'lastMonth', label: 'เดือนที่แล้ว' },
+  { key: 'last3Months', label: '3 เดือนที่ผ่านมา' },
+  { key: 'thisYear', label: 'ทั้งปี' },
+  { key: 'lastYear', label: 'ปีที่แล้ว' },
 ]
 
 export function getPresetDates(key: string): { start: Date; end: Date } {
@@ -58,6 +61,15 @@ export function getPresetDates(key: string): { start: Date; end: Date } {
       const lm = subMonths(now, 1)
       return { start: startOfMonth(lm), end: endOfMonth(lm) }
     }
+    // นับเดือนปัจจุบันเป็นเดือนที่ 3 — ต้นเดือนของ 2 เดือนก่อน ถึงสิ้นเดือนนี้
+    case 'last3Months': return { start: startOfMonth(subMonths(now, 2)), end: endOfMonth(now) }
+    case 'thisYear':
+      return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31) }
+    case 'lastYear':
+      return {
+        start: new Date(now.getFullYear() - 1, 0, 1),
+        end: new Date(now.getFullYear() - 1, 11, 31),
+      }
     default: return { start: now, end: now }
   }
 }
@@ -223,9 +235,13 @@ export function DateRangePicker({ startDate, endDate, onChange, className }: Dat
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={cn('justify-start font-normal h-[42px]', className)}>
-          <CalendarIcon className="mr-2 h-3.5 w-3.5 text-gray-400 shrink-0" />
-          <span>{displayText}</span>
+        <Button
+          variant="outline"
+          className={cn('h-[42px] min-w-0 justify-start overflow-hidden font-normal', className)}
+        >
+          <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-gray-400" />
+          {/* จอแคบข้อความช่วงวันยาวกว่ากล่อง — ตัดท้ายด้วย … แทนที่จะทะลุออก */}
+          <span className="min-w-0 truncate text-sm">{displayText}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>

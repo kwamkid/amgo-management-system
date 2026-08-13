@@ -2,10 +2,13 @@
 
 'use client'
 
+import { Skeleton } from '@/components/shared'
+
 import { useEffect, useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { HelpTooltip } from '@/components/aoo'
+import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -156,18 +159,7 @@ export default function ReportResults({
           <TabsContent value="daily" className="mt-4">
             {loadingPage ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <div className="inline-flex items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                      <span className="ml-3 text-gray-600">กำลังโหลดข้อมูล...</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Skeleton loader */}
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
-                ))}
+                <Skeleton rows={10} />
               </div>
             ) : (
               <>
@@ -673,9 +665,7 @@ function DaySlotGrid({
   }, [filters, reloadKey])
 
   if (!filters) return null
-  if (loading || !rows) {
-    return <div className="py-10 text-center text-sm text-gray-500">กำลังโหลดตารางวัน...</div>
-  }
+  if (loading || !rows) return <Skeleton rows={10} />
 
   // รายการวันในช่วง (ตัดที่วันนี้ — วันอนาคตยังไม่มีอะไรให้ดู)
   // เทียบเป็นวันล้วน ไม่ใช่ Date ตรง ๆ — เวลาที่ติดมากับ filters ทำให้วันสุดท้ายหลุด
@@ -687,7 +677,7 @@ function DaySlotGrid({
     days.push(format(d, 'yyyy-MM-dd'))
   }
 
-  type Cell = { status: string; late: boolean; note: string; hours: number }
+  type Cell = { status: string; late: boolean; note: string; hours: number; ctype?: string; loc?: string; inAt?: string; outAt?: string; lateMin?: number }
   const byUser = new Map<
     string,
     { userId: string; name: string; cells: Map<string, Cell>; sum: DaySlotSummary }
@@ -703,7 +693,17 @@ function DaySlotGrid({
       }
       byUser.set(r.userId, u)
     }
-    u.cells.set(r.date, { status: r.status, late: r.isLate, note: r.note || '', hours: r.totalHours })
+    u.cells.set(r.date, {
+      status: r.status,
+      late: r.isLate,
+      note: r.note || '',
+      hours: r.totalHours,
+      ctype: r.checkinType,
+      loc: r.locationName,
+      inAt: r.firstCheckIn,
+      outAt: r.lastCheckOut,
+      lateMin: r.lateMinutes,
+    })
   }
 
   // คนขาดมากอยู่บนสุด — เหมือนแท็บสรุป
@@ -711,22 +711,44 @@ function DaySlotGrid({
     (a, b) => b.sum.absent - a.sum.absent || a.name.localeCompare(b.name, 'th')
   )
 
+  // จุดนอกสถานที่กดเปิดแผนที่ได้ — พิกัดไม่ได้ติดมากับรายงาน จึงไปดึงจากเช็คอินตอนกด
+  // (เปิดแท็บก่อน await — ไม่งั้น popup blocker กันการเปิดหลัง async)
+  const openCheckinMap = async (userId: string, date: string) => {
+    const win = window.open('about:blank', '_blank')
+    const { data } = await createClient()
+      .from('checkins')
+      .select('checkin_lat, checkin_lng')
+      .eq('user_id', userId)
+      .eq('work_date', date)
+      .order('checkin_time')
+      .limit(1)
+      .maybeSingle()
+    if (data && win) win.location.href = `https://maps.google.com/?q=${data.checkin_lat},${data.checkin_lng}`
+    else win?.close()
+  }
+
+  // สีของ "มา" แยกตามที่เช็คอิน — เจ้าของขอให้เห็นจากสีเลยว่าเข้าสาขาหรือนอกสถานที่
+  const presenceClass = (c: Cell): string =>
+    c.ctype === 'offsite' ? 'bg-purple-500' : c.ctype === 'wfh' ? 'bg-teal-600' : 'bg-green-500'
+
   const cellClass = (c?: Cell): string => {
     if (!c) return 'bg-gray-50'
     if (c.status === 'absent') return 'bg-red-500'
     if (c.status === 'late') return 'bg-amber-400'
-    if (c.status === 'normal') return 'bg-green-500'
+    if (c.status === 'normal') return presenceClass(c)
     // holiday รวม ลา/วันหยุดตามตาราง/ไม่ต้องเช็คอิน — แยกด้วยหมายเหตุ
-    if (c.hours > 0) return 'bg-green-500 ring-1 ring-green-700' // มาทำงานวันหยุด
-    if (c.note.includes('ลา')) return 'bg-sky-400'
+    if (c.hours > 0) return `${presenceClass(c)} ring-1 ring-green-800` // มาทำงานวันหยุด
+    if (c.note.includes('ลา')) return 'bg-sky-500'
     return 'bg-gray-200'
   }
 
   const legend = [
-    ['bg-green-500', 'มาทำงาน'],
+    ['bg-green-500', 'มาทำงาน (สาขา)'],
+    ['bg-purple-500', 'นอกสถานที่'],
+    ['bg-teal-600', 'ทำงานที่บ้าน'],
     ['bg-amber-400', 'มาสาย'],
     ['bg-red-500', 'ขาด'],
-    ['bg-sky-400', 'ลา'],
+    ['bg-sky-500', 'ลา'],
     ['bg-gray-200', 'วันหยุด/ไม่ต้องเช็คอิน'],
   ] as const
 
@@ -742,16 +764,16 @@ function DaySlotGrid({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-100">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 min-w-44 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-left font-medium text-gray-600">
+              <th className="sticky left-0 z-10 w-44 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-left font-medium text-gray-600">
                 พนักงาน
               </th>
               {days.map((d) => (
                 <th
                   key={d}
-                  className="w-8 border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
+                  className="border-b border-gray-100 bg-gray-50 px-0.5 py-1 text-center font-normal text-gray-400"
                 >
                   <span className="block text-[10px] leading-tight">
                     {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
@@ -759,9 +781,7 @@ function DaySlotGrid({
                   <span className="block leading-tight">{Number(d.slice(8))}</span>
                 </th>
               ))}
-              {/* คอลัมน์ว่างดูดพื้นที่เหลือ — วันชิดซ้ายเสมอ ไม่ถูกเกลี่ยเต็มจอ */}
-              <th className="w-full border-b border-gray-100 bg-gray-50" />
-              <th className="border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600">
+              <th className="w-28 border-b border-gray-100 bg-gray-50 px-2 py-1.5 text-center font-medium text-gray-600">
                 มา/ขาด
               </th>
             </tr>
@@ -790,15 +810,57 @@ function DaySlotGrid({
                       <HelpTooltip
                         variant="tooltip"
                         delay={100}
-                        content={`${format(new Date(d), 'dd MMM', { locale: th })}${c ? ` · ${c.status === 'absent' ? 'ขาด' : c.status === 'late' ? 'มาสาย' : c.status === 'normal' ? 'มาทำงาน' : c.note || 'วันหยุด'}` : ''}`}
+                        content={(() => {
+                          const dateStr = format(new Date(d), 'dd MMM', { locale: th })
+                          if (!c) return dateStr
+                          if (c.status === 'absent') return `${dateStr} · ขาด`
+                          const present = c.status === 'normal' || c.status === 'late' || c.hours > 0
+                          if (!present) return `${dateStr} · ${c.note || 'วันหยุด'}`
+                          const where =
+                            c.ctype === 'offsite'
+                              ? 'นอกสถานที่'
+                              : c.ctype === 'wfh'
+                                ? 'ทำงานที่บ้าน'
+                                : c.loc || 'สาขา'
+                          const lateTxt =
+                            c.status === 'late'
+                              ? `มาสาย${c.lateMin ? ` ${c.lateMin} นาที` : ''}`
+                              : 'มาทำงาน'
+                          // 2 บรรทัด: สถานะ · เวลา — อ่านแยกกันง่ายกว่ายัดบรรทัดเดียว
+                          return (
+                            <span className="block text-left leading-5">
+                              <span className="block">
+                                {dateStr} · {lateTxt} · {where}
+                              </span>
+                              {c.inAt && (
+                                <span className="block opacity-75">
+                                  เข้า {c.inAt}
+                                  {c.outAt ? ` – ออก ${c.outAt}` : ' (ยังไม่เช็คเอาท์)'}
+                                </span>
+                              )}
+                              {c.ctype === 'offsite' && (
+                                <span className="block opacity-75">กดจุดเพื่อเปิดแผนที่</span>
+                              )}
+                            </span>
+                          )
+                        })()}
                         triggerStyle={{ borderBottom: 'none', cursor: 'default', display: 'inline-flex' }}
                       >
-                        <span className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)}`} />
+                        <span
+                          onClick={
+                            c?.ctype === 'offsite' ? () => openCheckinMap(p.userId, d) : undefined
+                          }
+                          title={c?.ctype === 'offsite' ? 'เปิดแผนที่จุดเช็คอิน' : undefined}
+                          className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)} ${
+                            c?.ctype === 'offsite'
+                              ? 'cursor-pointer hover:ring-2 hover:ring-purple-300'
+                              : ''
+                          }`}
+                        />
                       </HelpTooltip>
                     </td>
                   )
                 })}
-                <td />
                 {(() => {
                   // คู่เลขต้องบวกกันได้เท่าวันที่แสดงของคนนั้น (30/31 ถ้าดูทั้งเดือน)
                   // "ไม่มา" รวมทุกอย่างที่ไม่ได้มา — แตกให้ดูข้างล่างว่าเป็นขาดจริง/ลา/หยุดกี่วัน

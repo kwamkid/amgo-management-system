@@ -41,7 +41,7 @@ export default async function BulkEditPage() {
     sb
       .from('users')
       .select(
-        'id, full_name, nickname, name_verified, line_display_name, role, company_id, job_function_id, employment_type, employment_status, start_date, start_date_verified, end_date, days_per_week, payroll_cycle'
+        'id, full_name, nickname, name_verified, line_display_name, role, company_id, job_function_id, employment_type, employment_status, start_date, start_date_verified, end_date, days_per_week, payroll_cycle, allow_checkin_outside_location, wfh_eligible'
       )
       .is('deleted_at', null)
       .eq('is_system', false)
@@ -82,6 +82,8 @@ export default async function BulkEditPage() {
     full_name: u.full_name,
     nickname: u.nickname,
     name_verified: u.name_verified,
+    allow_checkin_outside_location: u.allow_checkin_outside_location ?? false,
+    wfh_eligible: u.wfh_eligible ?? false,
     line_display_name: u.line_display_name,
     role: u.role,
     company_id: u.company_id,

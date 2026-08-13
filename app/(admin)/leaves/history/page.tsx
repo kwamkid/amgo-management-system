@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button as AooButton } from '@/components/aoo'
-import { PageHeader } from '@/components/shared'
+import { Skeleton, PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -265,7 +265,7 @@ export default function LeaveHistoryPage() {
       {loading ? (
         <Card className="border-0 shadow-md">
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">กำลังโหลด...</p>
+            <Skeleton />
           </CardContent>
         </Card>
       ) : filteredLeaves.length === 0 ? (

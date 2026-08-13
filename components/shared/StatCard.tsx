@@ -32,6 +32,7 @@ export function StatCard({
   tone = 'default',
   hint,
   onClick,
+  selected,
 }: {
   label: ReactNode
   value: ReactNode
@@ -42,6 +43,8 @@ export function StatCard({
   /** บรรทัดเล็กใต้ตัวเลข ใช้บอกที่มา */
   hint?: ReactNode
   onClick?: () => void
+  /** การ์ดที่กำลังใช้กรองอยู่ — ขึ้นกรอบสีตาม tone (ใช้คู่กับ onClick) */
+  selected?: boolean
 }) {
   const t = TONES[tone]
   const Tag = onClick ? 'button' : 'div'
@@ -50,9 +53,10 @@ export function StatCard({
     <Tag
       onClick={onClick}
       data-button-fx={onClick ? 'ghost' : undefined}
-      className={`flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left ${
-        onClick ? 'w-full' : ''
-      }`}
+      className={`flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-left ${
+        selected ? 'border-transparent' : 'border-gray-200'
+      } ${onClick ? 'w-full' : ''}`}
+      style={selected ? { boxShadow: `inset 0 0 0 2px ${t.icon}` } : undefined}
     >
       <div className="min-w-0">
         <p className="truncate text-sm text-gray-500">{label}</p>

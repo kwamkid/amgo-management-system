@@ -156,7 +156,17 @@ export default function LeaveRequestPage() {
                 <div className="font-medium text-amber-900">ลาป่วย</div>
                 <ul className="space-y-1 text-amber-800 ml-4">
                   <li>• สามารถลาย้อนหลังได้</li>
-                  <li>• ลาเกิน 2 วัน ต้องแนบใบรับรองแพทย์</li>
+                  <li>
+                    • ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์{' '}
+                    <a
+                      href="https://www.mol.go.th/forums/topic/ลาป่วยกรณีต้องใช้ใบรับรองแพทย์"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      (พ.ร.บ.คุ้มครองแรงงาน ม.32)
+                    </a>
+                  </li>
                   <li>• ไม่คิดค่าปรับหากลาด่วน</li>
                 </ul>
               </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowDown, ArrowUp, ChevronsUpDown, Inbox } from 'lucide-react'
+import Skeleton from './Skeleton'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -120,19 +121,7 @@ export default function DataTable<T>({
     else setInternalSort(next)
   }
 
-  if (loading) {
-    return (
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex gap-4 border-b border-gray-100 p-4 last:border-0">
-            {columns.slice(0, 4).map((c) => (
-              <div key={c.key} className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
-            ))}
-          </div>
-        ))}
-      </div>
-    )
-  }
+  if (loading) return <Skeleton />
 
   if (!rows.length) {
     return (

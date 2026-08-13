@@ -32,6 +32,10 @@ import {
   Home,
   Wallet,
   TrendingUp,
+  FlaskConical,
+  CupSoda,
+  BookOpen,
+  History,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -92,6 +96,17 @@ const navSections: NavSection[] = [
           { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
           { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
+        ],
+      },
+      {
+        label: 'การผลิต',
+        icon: icon(FlaskConical),
+        // 'production' = ตำแหน่งพนักงานฝ่ายผลิต (ADAY FRESH) — เจ้าของสั่งให้ HR ไม่เห็น
+        roles: ['admin', 'production'],
+        subItems: [
+          { label: 'ผสมวันนี้', href: '/production', icon: subIcon(CupSoda) },
+          { label: 'สูตรน้ำ', href: '/production/recipes', icon: subIcon(BookOpen) },
+          { label: 'ประวัติการผลิต', href: '/production/history', icon: subIcon(History) },
         ],
       },
     ],
@@ -163,8 +178,12 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
 
   const userRole = userData?.role || 'employee'
   // นอกจาก role แล้ว บางตำแหน่งได้สิทธิ์พิเศษ — แทนเป็น key เสมือนในลิสต์เดียวกัน
-  // (delivery = ตำแหน่งติดธง sees_delivery เช่น Call Center)
-  const roleKeys = [userRole, ...(userData?.seesDelivery ? ['delivery'] : [])]
+  // (delivery = ตำแหน่งติดธง sees_delivery เช่น Call Center · production = ฝ่ายผลิต ADF)
+  const roleKeys = [
+    userRole,
+    ...(userData?.seesDelivery ? ['delivery'] : []),
+    ...(userData?.jobFunctionCode === 'production' ? ['production'] : []),
+  ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 
   // กางเมนูแม่ให้เองเมื่อเข้าหน้าลูก — ไม่งั้นผู้ใช้ไม่รู้ว่าตัวเองอยู่ตรงไหน

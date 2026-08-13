@@ -1,42 +1,24 @@
 // lib/discord/webhook.ts
+//
+// ⚠️ ไฟล์นี้รันฝั่งเบราว์เซอร์ (เรียกจาก hooks ตอนเช็คอิน/ขอลา) — ห้ามอ่าน
+// webhook URL ตรงนี้: URL เป็นความลับใน app_config (is_secret, อ่านได้เฉพาะ
+// hr/admin) พนักงานทั่วไปอ่านไม่ได้ → เคยทำแจ้งเตือนเงียบหายทั้งบริษัท
+// ตั้งแต่ 8 ส.ค. 69 (ของแอดมินยังออก เลยดูเหมือนดับๆ ติดๆ)
+//
+// ทางเดินจริง: ประกอบ embed ที่นี่ → POST /api/discord/send → server อ่าน
+// URL ด้วยสิทธิ์ระบบ + เช็คสวิตช์เปิด/ปิดรายประเภท แล้วค่อยยิงเข้า Discord
 
-import axios from 'axios'
-import { 
-  DiscordWebhookPayload, 
-  DiscordEmbed,
-  NotificationEvent, 
-  WebhookChannel,
-  EmbedColors 
-} from '@/types/discord'
-import { createClient } from '@/lib/supabase/client'
 import {
-  loadDiscordSettings,
-  type DiscordSettings,
-} from './settings'
+  DiscordWebhookPayload,
+  DiscordEmbed,
+  NotificationEvent,
+  WebhookChannel,
+  EmbedColors
+} from '@/types/discord'
+import type { DiscordSettings } from './settings'
 import { safeFormatDate, formatDateRange } from '@/lib/utils/date'
 
-// ของเดิมอ่านการตั้งค่าใหม่ทุกครั้งที่จะส่ง 1 ข้อความ (2 ครั้งจริง ๆ:
-// เช็คว่าเปิดไหม + หา URL) — แจ้งเตือนรัวๆ ตอนเช้าคือยิง query ซ้ำเป็นสิบ
-// เก็บไว้ในหน่วยความจำสั้น ๆ พอ ตั้งค่าไม่ได้เปลี่ยนบ่อย
-let cached: { at: number; settings: DiscordSettings } | null = null
-const CACHE_MS = 60_000
-
-async function settings(): Promise<DiscordSettings> {
-  if (cached && Date.now() - cached.at < CACHE_MS) return cached.settings
-  const loaded = await loadDiscordSettings(createClient())
-  cached = { at: Date.now(), settings: loaded }
-  return loaded
-}
-
-async function getWebhookUrl(channel: WebhookChannel): Promise<string | null> {
-  const s = await settings()
-  return s.webhooks[channel as keyof DiscordSettings['webhooks']] || null
-}
-
-async function isNotificationEnabled(type: string): Promise<boolean> {
-  const s = await settings()
-  return s.notifications[type as keyof DiscordSettings['notifications']] !== false
-}
+type NotifyType = keyof DiscordSettings['notifications']
 
 // Helper function to get leave type emoji and label
 function getLeaveTypeInfo(type: string): { emoji: string; label: string; color: number } {
@@ -54,23 +36,21 @@ function getLeaveTypeInfo(type: string): { emoji: string; label: string; color: 
 
 export class DiscordWebhook {
   private channel: WebhookChannel
+  private notifyType?: NotifyType
 
-  constructor(channel: WebhookChannel) {
+  constructor(channel: WebhookChannel, notifyType?: NotifyType) {
     this.channel = channel
+    this.notifyType = notifyType
   }
 
   async send(payload: DiscordWebhookPayload): Promise<boolean> {
     try {
-      // Get webhook URL from database instead of config
-      const webhookUrl = await getWebhookUrl(this.channel)
-      
-      if (!webhookUrl) {
-        console.log(`Webhook URL not configured for channel: ${this.channel}`)
-        return false
-      }
-
-      await axios.post(webhookUrl, payload)
-      return true
+      const res = await fetch('/api/discord/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: this.channel, type: this.notifyType, payload }),
+      })
+      return res.ok
     } catch (error) {
       console.error('Discord webhook error:', error)
       return false
@@ -88,11 +68,7 @@ export class DiscordWebhook {
 
 // Notification handlers
 export async function sendCheckInNotification(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('checkIn')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
+  const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN, 'checkIn')
 
   const { checkinType, lat, lng } = event.data || {}
   const isOffsite = checkinType === 'offsite'
@@ -139,11 +115,7 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 }
 
 export async function sendCheckOutNotification(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('checkOut')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN)
+  const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN, 'checkOut')
   const { totalHours, overtime } = event.data || {}
 
   const embed: DiscordEmbed = {
@@ -180,11 +152,7 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
 }
 
 export async function sendLeaveRequestNotification(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('leaveRequest')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE, 'leaveRequest')
   const { leaveType, startDate, endDate, totalDays, reason, isUrgent } = event.data || {}
   
   const leaveInfo = getLeaveTypeInfo(leaveType)
@@ -232,11 +200,8 @@ export async function sendLeaveRequestNotification(event: NotificationEvent) {
 }
 
 export async function sendLeaveApprovalNotification(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('leaveApproval')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  // ผล อนุมัติ/ไม่อนุมัติ ใช้สวิตช์เดียวกับคำขอลา — settings ไม่มีคีย์แยก
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE, 'leaveRequest')
   const { leaveType, startDate, endDate, approvedBy } = event.data || {}
   
   const leaveInfo = getLeaveTypeInfo(leaveType)
@@ -271,11 +236,7 @@ export async function sendLeaveApprovalNotification(event: NotificationEvent) {
 }
 
 export async function sendLeaveRejectionNotification(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('leaveRejection')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.LEAVE)
+  const webhook = new DiscordWebhook(WebhookChannel.LEAVE, 'leaveRequest')
   const { leaveType, startDate, endDate, rejectedBy, reason } = event.data || {}
   
   const leaveInfo = getLeaveTypeInfo(leaveType)
@@ -315,11 +276,7 @@ export async function sendLeaveRejectionNotification(event: NotificationEvent) {
 }
 
 export async function sendLateNotification(lateUsers: any[]) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('late')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+  const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'late')
   
   const embed: DiscordEmbed = {
     title: '⚠️ พนักงานมาสาย',
@@ -337,11 +294,7 @@ export async function sendLateNotification(lateUsers: any[]) {
 }
 
 export async function sendOvertimeAlert(event: NotificationEvent) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('overtime')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+  const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'overtime')
   const { hours, isOvernight } = event.data || {}
   
   const embed: DiscordEmbed = {
@@ -377,11 +330,7 @@ export async function sendDailySummary(data: {
   absent: number
   onLeave: number
 }) {
-  // Check if notification is enabled
-  const enabled = await isNotificationEnabled('dailySummary')
-  if (!enabled) return false
-
-  const webhook = new DiscordWebhook(WebhookChannel.HR)
+  const webhook = new DiscordWebhook(WebhookChannel.HR, 'dailySummary')
   
   const embed: DiscordEmbed = {
     title: '📊 สรุปการมาทำงานประจำวัน',
@@ -422,6 +371,3 @@ export async function sendDailySummary(data: {
 
   return webhook.sendEmbed(embed)
 }
-
-// Export helper functions for external use
-export { getWebhookUrl, isNotificationEnabled }

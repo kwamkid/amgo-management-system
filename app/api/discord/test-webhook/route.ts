@@ -3,9 +3,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import axios from 'axios'
 import { EmbedColors } from '@/types/discord'
+import { createServerSupabase } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
+    // route นี้ยิงข้อความไป URL ที่ผู้เรียกส่งมาเอง — เปิดไว้เฉยๆ = open relay
+    // หน้าตั้งค่า Discord เป็นของ hr/admin อยู่แล้ว จำกัดตามนั้น
+    const sb = await createServerSupabase()
+    const {
+      data: { user },
+    } = await sb.auth.getUser()
+    const role = (user?.app_metadata as { role?: string } | undefined)?.role
+    if (!user || !['hr', 'admin'].includes(role ?? '')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { webhookUrl, type } = await request.json()
     
     if (!webhookUrl) {

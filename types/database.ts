@@ -1847,6 +1847,253 @@ export type Database = {
           },
         ]
       }
+      production_batch_bottles: {
+        Row: {
+          batch_id: string
+          count: number
+          id: string
+          label: string
+          ml: number
+        }
+        Insert: {
+          batch_id: string
+          count: number
+          id?: string
+          label: string
+          ml: number
+        }
+        Update: {
+          batch_id?: string
+          count?: number
+          id?: string
+          label?: string
+          ml?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batch_bottles_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_batch_items: {
+        Row: {
+          actual_qty: number
+          batch_id: string
+          id: string
+          is_yield_base: boolean
+          name: string
+          planned_qty: number
+          sort_order: number
+          unit: string
+        }
+        Insert: {
+          actual_qty: number
+          batch_id: string
+          id?: string
+          is_yield_base?: boolean
+          name: string
+          planned_qty: number
+          sort_order?: number
+          unit: string
+        }
+        Update: {
+          actual_qty?: number
+          batch_id?: string
+          id?: string
+          is_yield_base?: boolean
+          name?: string
+          planned_qty?: number
+          sort_order?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_batches: {
+        Row: {
+          batch_date: string
+          created_at: string
+          id: string
+          liters_planned: number
+          made_by: string | null
+          note: string
+          output_ml: number
+          recipe_id: string | null
+          recipe_name: string
+          yield_base_kg: number | null
+          yield_percent: number | null
+        }
+        Insert: {
+          batch_date: string
+          created_at?: string
+          id?: string
+          liters_planned: number
+          made_by?: string | null
+          note?: string
+          output_ml?: number
+          recipe_id?: string | null
+          recipe_name: string
+          yield_base_kg?: number | null
+          yield_percent?: number | null
+        }
+        Update: {
+          batch_date?: string
+          created_at?: string
+          id?: string
+          liters_planned?: number
+          made_by?: string | null
+          note?: string
+          output_ml?: number
+          recipe_id?: string | null
+          recipe_name?: string
+          yield_base_kg?: number | null
+          yield_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batches_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "production_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_bottle_sizes: {
+        Row: {
+          id: string
+          is_active: boolean
+          label: string
+          ml: number
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          label: string
+          ml: number
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          label?: string
+          ml?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      production_recipe_items: {
+        Row: {
+          id: string
+          is_yield_base: boolean
+          name: string
+          qty_per_liter: number
+          recipe_id: string
+          sort_order: number
+          unit: string
+        }
+        Insert: {
+          id?: string
+          is_yield_base?: boolean
+          name: string
+          qty_per_liter: number
+          recipe_id: string
+          sort_order?: number
+          unit?: string
+        }
+        Update: {
+          id?: string
+          is_yield_base?: boolean
+          name?: string
+          qty_per_liter?: number
+          recipe_id?: string
+          sort_order?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_recipe_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "production_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_recipes: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          note: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          note?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          note?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_recipes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_recipes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand_id: string
@@ -2981,6 +3228,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
+      is_production_staff: { Args: never; Returns: boolean }
       months_of_service: { Args: { p_start: string }; Returns: number }
       pay_items_total: {
         Args: { p_date: string; p_user_id: string }

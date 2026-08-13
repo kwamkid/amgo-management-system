@@ -73,20 +73,22 @@ export function useAuth() {
       return
     }
 
-    // สิทธิ์พิเศษตามตำแหน่ง — ตอนนี้มีเรื่องเดียว: ตำแหน่งไหนเห็นเมนูงานส่งของ
+    // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
     let seesDelivery = false
+    let jobFunctionCode: string | undefined
     if (row.job_function_id) {
       const { data: jf } = await sb
         .from('job_functions')
-        .select('sees_delivery')
+        .select('sees_delivery, code')
         .eq('id', row.job_function_id)
         .maybeSingle()
       seesDelivery = jf?.sees_delivery ?? false
+      jobFunctionCode = jf?.code ?? undefined
     }
 
     setState({
       user: authUser,
-      userData: { ...mapUser(row, (locs ?? []).map((l) => l.location_id)), seesDelivery },
+      userData: { ...mapUser(row, (locs ?? []).map((l) => l.location_id)), seesDelivery, jobFunctionCode },
       loading: false,
       error: null,
     })

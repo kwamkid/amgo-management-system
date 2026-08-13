@@ -227,7 +227,7 @@ export class DiscordNotificationService {
     deadline: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.CAMPAIGN)
+      const webhook = new DiscordWebhook(WebhookChannel.CAMPAIGN, 'campaignUpdates')
       
       await webhook.send({
         embeds: [{
@@ -277,7 +277,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const displayName = data.influencerNickname 
         ? `${data.influencerName} (@${data.influencerNickname})`
@@ -329,7 +329,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const displayName = data.influencerNickname 
         ? `${data.influencerName} (@${data.influencerNickname})`
@@ -374,7 +374,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const displayName = data.influencerNickname 
         ? `${data.influencerName} (@${data.influencerNickname})`
@@ -423,7 +423,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const displayName = data.influencerNickname 
         ? `${data.influencerName} (@${data.influencerNickname})`
@@ -474,7 +474,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       await webhook.send({
         embeds: [{
@@ -519,7 +519,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const successRate = Math.round((data.approvedCount / data.totalInfluencers) * 100)
       
@@ -561,7 +561,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       await webhook.send({
         embeds: [{
@@ -597,7 +597,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       const urgency = data.daysLeft <= 1 ? '🚨' : data.daysLeft <= 3 ? '⚠️' : '⏰'
       
@@ -642,7 +642,7 @@ export class DiscordNotificationService {
     timestamp: Date
   }) {
     try {
-      const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+      const webhook = new DiscordWebhook(WebhookChannel.ALERTS, 'campaignUpdates')
       
       await webhook.send({
         embeds: [{

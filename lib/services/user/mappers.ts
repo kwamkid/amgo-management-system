@@ -39,6 +39,8 @@ export interface UserData {
   otEligible?: boolean | null
   /** เห็นเมนูงานส่งของ (มาจาก job_functions.sees_delivery — useAuth เติมให้ตอนล็อกอิน) */
   seesDelivery?: boolean
+  /** code ของตำแหน่ง (job_functions.code — useAuth เติมให้ตอนล็อกอิน) ใช้ gate เมนูเฉพาะตำแหน่ง เช่น production */
+  jobFunctionCode?: string
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean

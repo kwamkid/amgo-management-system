@@ -122,7 +122,15 @@ export default function DeliveryMapPage() {
     return `${year}-${month}-${day}`
   }
   
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString(new Date()))
+  // รับ ?date=YYYY-MM-DD&driver=<id> — ลิงก์ "ดูแผนที่" จากหน้า Performance การส่งของ
+  // (อ่านจาก window ตรง ๆ ตอน init — useSearchParams ต้องมี Suspense ครอบ ยุ่งกว่าโดยไม่จำเป็น)
+  const urlParam = (key: string) =>
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get(key) : null
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = urlParam('date')
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : getLocalDateString(new Date())
+  })
   const [selectedPoint, setSelectedPoint] = useState<DeliveryMapPoint | null>(null)
   // แผนที่มี 2 ตัว (desktop/mobile — อีกตัวแค่ถูกซ่อนด้วย CSS แต่ยัง mount อยู่)
   // ต้องแยก state และสั่งทั้งคู่ — เดิมใช้ตัวเดียว ตัวที่โหลดทีหลัง (มักเป็นตัวที่ซ่อน)
@@ -137,7 +145,7 @@ export default function DeliveryMapPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showMobileList, setShowMobileList] = useState(false)
   const [activeView, setActiveView] = useState<'map' | 'list'>('map') // For mobile
-  const [selectedDriver, setSelectedDriver] = useState<string>('all')
+  const [selectedDriver, setSelectedDriver] = useState<string>(() => urlParam('driver') || 'all')
   const [showRoutes, setShowRoutes] = useState(true)
 
   const { mapPoints, loading, deleteDeliveryPoint, refetch } = useDeliveryMap(selectedDate)

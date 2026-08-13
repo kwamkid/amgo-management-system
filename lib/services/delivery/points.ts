@@ -329,3 +329,106 @@ export const getDeliveryRangeSummary = async (
     counts,
   }
 }
+
+/* ------------------------------------------------------------------ *
+ *  Performance การส่งของ — สถิติรายคนขับรายวัน คิดจากจุดเช็คอินส่งจริง
+ *  ระยะทางเป็นผลรวม "เส้นตรงระหว่างจุดตามลำดับเวลา" — ต่ำกว่าระยะขับจริงเสมอ
+ * ------------------------------------------------------------------ */
+export interface DeliveryDayPerf {
+  day: string         // YYYY-MM-DD (เวลาไทย)
+  points: number
+  firstAt: string     // HH:MM เวลาไทย — เช็คอินจุดแรก
+  lastAt: string      // จุดสุดท้าย
+  spanMinutes: number // จากจุดแรกถึงจุดสุดท้าย
+  distanceKm: number
+}
+
+export interface DriverPerf {
+  driverId: string
+  name: string
+  days: DeliveryDayPerf[]
+}
+
+const distKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const rad = Math.PI / 180
+  const s =
+    Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lng - a.lng) * rad) / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(s))
+}
+
+export const getDeliveryPerformance = async (
+  start: string,
+  end: string
+): Promise<DriverPerf[]> => {
+  const startIso = new Date(`${start}T00:00:00+07:00`).toISOString()
+  const endIso = new Date(new Date(`${end}T00:00:00+07:00`).getTime() + 86_400_000).toISOString()
+
+  // PostgREST ตัดผลที่ 1,000 แถวเงียบ ๆ — ไล่เก็บเป็นช่วงจนหมด
+  type Row = {
+    driver_id: string
+    driver_name: string
+    check_in_time: string
+    lat: number
+    lng: number
+  }
+  const rows: Row[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb()
+      .from('delivery_points')
+      .select('driver_id, driver_name, check_in_time, lat, lng')
+      .gte('check_in_time', startIso)
+      .lt('check_in_time', endIso)
+      .order('check_in_time')
+      .range(from, from + 999)
+    if (error) throw new Error(`ดึงข้อมูล performance ส่งของไม่สำเร็จ: ${error.message}`)
+    rows.push(...((data ?? []) as Row[]))
+    if (!data || data.length < 1000) break
+  }
+
+  const { getDisplayNames } = await import('../user/queries')
+  const names = await getDisplayNames([...new Set(rows.map((r) => r.driver_id))])
+
+  // จัดกลุ่ม คน → วัน (rows เรียงตามเวลาแล้วจาก order ข้างบน)
+  const byDriver = new Map<string, Map<string, Row[]>>()
+  for (const r of rows) {
+    const day = new Date(new Date(r.check_in_time).getTime() + 7 * 3_600_000)
+      .toISOString()
+      .slice(0, 10)
+    if (!byDriver.has(r.driver_id)) byDriver.set(r.driver_id, new Map())
+    const days = byDriver.get(r.driver_id)!
+    if (!days.has(day)) days.set(day, [])
+    days.get(day)!.push(r)
+  }
+
+  const hhmm = (iso: string) =>
+    new Date(new Date(iso).getTime() + 7 * 3_600_000).toISOString().slice(11, 16)
+
+  const out: DriverPerf[] = []
+  byDriver.forEach((daysMap, driverId) => {
+    const days: DeliveryDayPerf[] = []
+    daysMap.forEach((pts, day) => {
+      let dist = 0
+      for (let i = 1; i < pts.length; i++) dist += distKm(pts[i - 1], pts[i])
+      const span =
+        (new Date(pts[pts.length - 1].check_in_time).getTime() -
+          new Date(pts[0].check_in_time).getTime()) /
+        60000
+      days.push({
+        day,
+        points: pts.length,
+        firstAt: hhmm(pts[0].check_in_time),
+        lastAt: hhmm(pts[pts.length - 1].check_in_time),
+        spanMinutes: Math.round(span),
+        distanceKm: Math.round(dist * 10) / 10,
+      })
+    })
+    days.sort((a, b) => a.day.localeCompare(b.day))
+    out.push({
+      driverId,
+      name: names.get(driverId) || rows.find((r) => r.driver_id === driverId)?.driver_name || '',
+      days,
+    })
+  })
+  return out.sort((a, b) => a.name.localeCompare(b.name, 'th'))
+}

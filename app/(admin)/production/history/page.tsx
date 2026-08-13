@@ -139,7 +139,7 @@ export default function ProductionHistoryPage() {
     },
     {
       key: 'yield',
-      header: 'Yield %',
+      header: '% น้ำที่ได้ (yield)',
       align: 'right',
       cell: (b) =>
         b.yieldPercent === null ? (
@@ -148,7 +148,7 @@ export default function ProductionHistoryPage() {
           <span className="tabular-nums font-semibold text-red-600">{b.yieldPercent}%</span>
         ),
       sortValue: (b) => b.yieldPercent ?? -1,
-      mobileLabel: 'yield',
+      mobileLabel: '% น้ำที่ได้',
     },
     {
       key: 'by',
@@ -188,7 +188,7 @@ export default function ProductionHistoryPage() {
             <StatCard label="ได้น้ำรวม (ลิตร)" value={totals.liters.toLocaleString()} />
             <StatCard label="ขวดรวม" value={totals.bottles.toLocaleString()} />
             <StatCard
-              label="Yield เฉลี่ย"
+              label="% น้ำที่ได้เฉลี่ย (yield)"
               value={totals.avgYield === null ? '—' : `${totals.avgYield}%`}
               tone={totals.avgYield === null ? undefined : 'danger'}
             />
@@ -221,6 +221,13 @@ export default function ProductionHistoryPage() {
           }
         >
           <div className="space-y-4 text-sm">
+            {selected.juiceBrix !== null && (
+              <div className="rounded-lg bg-sky-50 p-3 text-sky-800">
+                วัดได้: น้ำคั้น{' '}
+                <strong className="tabular-nums">{selected.juiceLiters?.toLocaleString()} ลิตร</strong>
+                {' '}· Brix <strong className="tabular-nums">{selected.juiceBrix}</strong>
+              </div>
+            )}
             <div>
               <div className="mb-1 font-semibold text-gray-700">
                 ส่วนผสม (แผน {selected.litersPlanned.toLocaleString()} ลิตร)
@@ -282,9 +289,9 @@ export default function ProductionHistoryPage() {
 
             {selected.yieldPercent !== null && (
               <div className="rounded-lg bg-gray-50 p-3">
-                วัตถุดิบหลัก {selected.yieldBaseKg?.toLocaleString()} กก. → ได้น้ำ{' '}
+                ผลไม้ {selected.yieldBaseKg?.toLocaleString()} กก. → ได้น้ำ{' '}
                 {(selected.outputMl / 1000).toLocaleString()} ลิตร ={' '}
-                <strong className="text-red-600">yield {selected.yieldPercent}%</strong>
+                <strong className="text-red-600">ได้น้ำ {selected.yieldPercent}% ของผลไม้</strong> (yield)
               </div>
             )}
 

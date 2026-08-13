@@ -32,13 +32,49 @@ export interface RecipeItem {
   isYieldBase: boolean
 }
 
+export type RecipeType = 'fixed' | 'brix'
+
 export interface Recipe {
   id: string
   name: string
   note: string
   isActive: boolean
   updatedAt: string
+  /** fixed = ส่วนผสมต่อ 1 ลิตร · brix = วัดค่าน้ำคั้นก่อนแล้วคำนวณของที่เติม */
+  recipeType: RecipeType
+  /** เป้าความหวานของน้ำขาย (สูตร brix) */
+  targetBrix: number | null
+  /** ความหวานน้ำเชื่อมที่ใช้เติม (สูตร brix) */
+  syrupBrix: number
+  /** ขั้นตอนการทำ — ข้อความ fix แสดงในหน้าผสม */
+  steps: string
+  /** fixed: ต่อ 1 ลิตร · brix: ของที่เติมต่อลิตรน้ำสุดท้าย (เช่น เกลือ) */
   items: RecipeItem[]
+}
+
+/**
+ * คำนวณของที่ต้องเติมจากค่า Brix ที่วัดได้ (สมดุลความหวานมาตรฐาน)
+ * - หวานเกินเป้า → เติมน้ำเปล่าเจือจาง
+ * - หวานไม่ถึงเป้า → เติมน้ำเชื่อม (ความหวาน syrupBrix)
+ * ตัวเลขเป็นค่าประมาณ (Brix เป็น % โดยน้ำหนัก แต่หน้างานตวงเป็นลิตร)
+ */
+export function brixMix(juiceLiters: number, juiceBrix: number, targetBrix: number, syrupBrix: number) {
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  if (juiceLiters <= 0 || juiceBrix <= 0 || targetBrix <= 0) {
+    return { waterLiters: 0, syrupLiters: 0, totalLiters: r2(juiceLiters) }
+  }
+  let waterLiters = 0
+  let syrupLiters = 0
+  if (juiceBrix > targetBrix) {
+    waterLiters = (juiceLiters * (juiceBrix - targetBrix)) / targetBrix
+  } else if (juiceBrix < targetBrix && syrupBrix > targetBrix) {
+    syrupLiters = (juiceLiters * (targetBrix - juiceBrix)) / (syrupBrix - targetBrix)
+  }
+  return {
+    waterLiters: r2(waterLiters),
+    syrupLiters: r2(syrupLiters),
+    totalLiters: r2(juiceLiters + waterLiters + syrupLiters),
+  }
 }
 
 export interface BottleSize {
@@ -72,6 +108,9 @@ export interface ProductionBatch {
   outputMl: number
   yieldBaseKg: number | null
   yieldPercent: number | null
+  /** ค่าที่วัดตอนผสม (สูตร brix) */
+  juiceLiters: number | null
+  juiceBrix: number | null
   madeBy: string | null
   madeByName: string
   note: string
@@ -82,6 +121,16 @@ export interface ProductionBatch {
 /** แปลงปริมาณเป็น กก. สำหรับคิด yield — หน่วยที่ไม่ใช่น้ำหนักไม่นับ */
 export const toKg = (qty: number, unit: string): number =>
   unit === 'kg' ? qty : unit === 'g' ? qty / 1000 : 0
+
+/**
+ * แตกขั้นตอนการทำเป็นรายขั้น — บรรทัดละขั้น ระบบใส่หมายเลขให้ตอนแสดงผลเสมอ
+ * (เจ้าของสั่ง: บังคับ number bullet) ถ้าผู้ใช้พิมพ์ "1." / "2)" มาเอง ตัดทิ้งกันเลขซ้ำ
+ */
+export const stepLines = (steps: string): string[] =>
+  steps
+    .split('\n')
+    .map((l) => l.trim().replace(/^\d+\s*[.)]\s*/, ''))
+    .filter(Boolean)
 
 /** เลือกหน่วยให้อ่านง่าย — 30000 g กลายเป็น 30 kg, 1500 ml เป็น 1.5 l */
 export function smartQty(qty: number, unit: RecipeUnit): { qty: number; unit: RecipeUnit } {
@@ -95,7 +144,7 @@ export function smartQty(qty: number, unit: RecipeUnit): { qty: number; unit: Re
 export async function getRecipes(includeInactive = false): Promise<Recipe[]> {
   let q = sb()
     .from('production_recipes')
-    .select('id, name, note, is_active, updated_at, production_recipe_items(id, name, qty_per_liter, unit, is_yield_base, sort_order)')
+    .select('id, name, note, is_active, updated_at, recipe_type, target_brix, syrup_brix, steps, production_recipe_items(id, name, qty_per_liter, unit, is_yield_base, sort_order)')
     .order('sort_order')
     .order('name')
   if (!includeInactive) q = q.eq('is_active', true)
@@ -107,6 +156,10 @@ export async function getRecipes(includeInactive = false): Promise<Recipe[]> {
     note: r.note,
     isActive: r.is_active,
     updatedAt: r.updated_at,
+    recipeType: (r.recipe_type as RecipeType) ?? 'fixed',
+    targetBrix: r.target_brix === null ? null : Number(r.target_brix),
+    syrupBrix: Number(r.syrup_brix ?? 65),
+    steps: r.steps ?? '',
     items: [...r.production_recipe_items]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((i) => ({
@@ -124,15 +177,28 @@ export async function saveRecipe(data: {
   id?: string
   name: string
   note: string
+  recipeType: RecipeType
+  targetBrix: number | null
+  syrupBrix: number
+  steps: string
   items: RecipeItem[]
   updatedBy: string
 }): Promise<string> {
   const client = sb()
+  const fields = {
+    name: data.name,
+    note: data.note,
+    recipe_type: data.recipeType,
+    target_brix: data.recipeType === 'brix' ? data.targetBrix : null,
+    syrup_brix: data.syrupBrix,
+    steps: data.steps,
+    updated_by: data.updatedBy,
+  }
   let recipeId = data.id
   if (recipeId) {
     const { error } = await client
       .from('production_recipes')
-      .update({ name: data.name, note: data.note, updated_by: data.updatedBy, updated_at: new Date().toISOString() })
+      .update({ ...fields, updated_at: new Date().toISOString() })
       .eq('id', recipeId)
     if (error) throw error
     const { error: delErr } = await client.from('production_recipe_items').delete().eq('recipe_id', recipeId)
@@ -140,7 +206,7 @@ export async function saveRecipe(data: {
   } else {
     const { data: row, error } = await client
       .from('production_recipes')
-      .insert({ name: data.name, note: data.note, updated_by: data.updatedBy })
+      .insert(fields)
       .select('id')
       .single()
     if (error) throw error
@@ -208,12 +274,16 @@ export async function createBatch(data: {
   madeBy: string
   items: BatchItemInput[]
   bottles: BatchBottleInput[]
+  /** สูตร brix: กก.ผลไม้ที่ใช้จริง (กรอกตรง) — สูตร fixed คิดจาก item ที่ติ๊กแทน */
+  yieldBaseKg?: number
+  juiceLiters?: number
+  juiceBrix?: number
 }): Promise<void> {
   const client = sb()
   const outputMl = data.bottles.reduce((s, b) => s + b.ml * b.count, 0)
-  const yieldBaseKg = data.items
-    .filter((i) => i.isYieldBase)
-    .reduce((s, i) => s + toKg(i.actualQty, i.unit), 0)
+  const yieldBaseKg =
+    data.yieldBaseKg ??
+    data.items.filter((i) => i.isYieldBase).reduce((s, i) => s + toKg(i.actualQty, i.unit), 0)
   const yieldPercent = yieldBaseKg > 0 ? Math.round((outputMl / 1000 / yieldBaseKg) * 1000) / 10 : null
 
   const { data: batch, error } = await client
@@ -226,6 +296,8 @@ export async function createBatch(data: {
       output_ml: outputMl,
       yield_base_kg: yieldBaseKg > 0 ? yieldBaseKg : null,
       yield_percent: yieldPercent,
+      juice_liters: data.juiceLiters ?? null,
+      juice_brix: data.juiceBrix ?? null,
       made_by: data.madeBy,
       note: data.note,
     })
@@ -260,7 +332,7 @@ export async function createBatch(data: {
 export async function getBatches(start: string, end: string): Promise<ProductionBatch[]> {
   const { data, error } = await sb()
     .from('production_batches')
-    .select('id, batch_date, created_at, recipe_id, recipe_name, liters_planned, output_ml, yield_base_kg, yield_percent, made_by, note, production_batch_items(name, unit, planned_qty, actual_qty, is_yield_base, sort_order), production_batch_bottles(label, ml, count)')
+    .select('id, batch_date, created_at, recipe_id, recipe_name, liters_planned, output_ml, yield_base_kg, yield_percent, juice_liters, juice_brix, made_by, note, production_batch_items(name, unit, planned_qty, actual_qty, is_yield_base, sort_order), production_batch_bottles(label, ml, count)')
     .gte('batch_date', start)
     .lte('batch_date', end)
     .order('batch_date', { ascending: false })
@@ -279,6 +351,8 @@ export async function getBatches(start: string, end: string): Promise<Production
     outputMl: r.output_ml,
     yieldBaseKg: r.yield_base_kg === null ? null : Number(r.yield_base_kg),
     yieldPercent: r.yield_percent === null ? null : Number(r.yield_percent),
+    juiceLiters: r.juice_liters === null ? null : Number(r.juice_liters),
+    juiceBrix: r.juice_brix === null ? null : Number(r.juice_brix),
     madeBy: r.made_by,
     madeByName: (r.made_by && names.get(r.made_by)) || '—',
     note: r.note,

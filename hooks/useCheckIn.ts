@@ -230,7 +230,8 @@ export function useCheckIn(): UseCheckInReturn {
       try {
         await DiscordNotificationService.notifyCheckIn(
           userData.id!,
-          userData.fullName,
+          // ชื่อจริง (ชื่อเล่น) — เจ้าของจำพนักงานได้แต่ชื่อเล่น
+          userData.displayName || userData.fullName,
           primaryLocation?.name || 'เช็คอินนอกสถานที่',
           userData.linePictureUrl,
           checkinType,
@@ -325,7 +326,8 @@ export function useCheckIn(): UseCheckInReturn {
       try {
         await DiscordNotificationService.notifyCheckOut(
           userData.id,
-          userData.fullName,
+          // ชื่อจริง (ชื่อเล่น) — เหมือนฝั่งเช็คอิน
+          userData.displayName || userData.fullName,
           Math.round(hoursWorked * 10) / 10,
           Math.round(overtime * 10) / 10,
           userData.linePictureUrl

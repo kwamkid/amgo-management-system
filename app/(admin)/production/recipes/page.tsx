@@ -11,8 +11,8 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Checkbox, Input, Modal, SelectMenu, Textarea, Toggle } from '@/components/aoo'
-import { PageHeader, TechLoader } from '@/components/shared'
+import { Button, Input, Modal, SelectMenu, Textarea, Toggle } from '@/components/aoo'
+import { PageHeader, SectionCard, Segmented, TechLoader } from '@/components/shared'
 import {
   getBottleSizes,
   getRecipes,
@@ -20,10 +20,12 @@ import {
   saveRecipe,
   setBottleSizeActive,
   setRecipeActive,
+  stepLines,
   UNIT_TH,
   type BottleSize,
   type Recipe,
   type RecipeItem,
+  type RecipeType,
   type RecipeUnit,
 } from '@/lib/services/productionService'
 
@@ -38,7 +40,32 @@ interface Draft {
   id?: string
   name: string
   note: string
+  recipeType: RecipeType
+  targetBrix: string
+  syrupBrix: string
+  steps: string
   items: RecipeItem[]
+}
+
+const draftFrom = (r: Recipe): Draft => ({
+  id: r.id,
+  name: r.name,
+  note: r.note,
+  recipeType: r.recipeType,
+  targetBrix: r.targetBrix === null ? '' : String(r.targetBrix),
+  syrupBrix: String(r.syrupBrix),
+  steps: r.steps,
+  items: r.items.map((i) => ({ ...i })),
+})
+
+const NEW_DRAFT: Draft = {
+  name: '',
+  note: '',
+  recipeType: 'brix',
+  targetBrix: '',
+  syrupBrix: '65',
+  steps: '',
+  items: [{ ...EMPTY_ITEM }],
 }
 
 export default function ProductionRecipesPage() {
@@ -76,14 +103,22 @@ export default function ProductionRecipesPage() {
   const submitRecipe = async () => {
     if (!draft || !userData?.id) return
     const items = draft.items.filter((i) => i.name.trim() && i.qtyPerLiter > 0)
+    const targetBrix = parseFloat(draft.targetBrix) || 0
     if (!draft.name.trim()) return showToast('ใส่ชื่อสูตรก่อน', 'error')
-    if (items.length === 0) return showToast('ใส่ส่วนผสมอย่างน้อย 1 ตัว', 'error')
+    if (draft.recipeType === 'fixed' && items.length === 0)
+      return showToast('ใส่ส่วนผสมอย่างน้อย 1 ตัว', 'error')
+    if (draft.recipeType === 'brix' && targetBrix <= 0)
+      return showToast('ใส่เป้า Brix ของน้ำขายก่อน', 'error')
     setSaving(true)
     try {
       await saveRecipe({
         id: draft.id,
         name: draft.name.trim(),
         note: draft.note.trim(),
+        recipeType: draft.recipeType,
+        targetBrix: targetBrix > 0 ? targetBrix : null,
+        syrupBrix: parseFloat(draft.syrupBrix) || 65,
+        steps: stepLines(draft.steps).join('\n'),
         items,
         updatedBy: userData.id!,
       })
@@ -119,14 +154,14 @@ export default function ProductionRecipesPage() {
   const visibleRecipes = isAdmin ? recipes : recipes.filter((r) => r.isActive)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         icon={BookOpen}
         title="สูตรน้ำ"
         description="ส่วนผสมต่อน้ำ 1 ลิตร — หน้าผสมจะคูณขยายตามจำนวนลิตรให้เอง"
         actions={
           isAdmin ? (
-            <Button type="button" onClick={() => setDraft({ name: '', note: '', items: [{ ...EMPTY_ITEM }] })}>
+            <Button type="button" onClick={() => setDraft({ ...NEW_DRAFT, items: [{ ...EMPTY_ITEM }] })}>
               <Plus size={16} className="mr-1" /> เพิ่มสูตร
             </Button>
           ) : undefined
@@ -141,19 +176,24 @@ export default function ProductionRecipesPage() {
 
       <div className="space-y-3">
         {visibleRecipes.map((r) => (
-          <section
-            key={r.id}
-            className={`rounded-xl border bg-white p-4 ${r.isActive ? 'border-gray-200' : 'border-gray-200 opacity-60'}`}
-          >
+          <SectionCard key={r.id} className={r.isActive ? '' : 'opacity-60'}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-base font-semibold text-gray-900">
                   {r.name}
+                  <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+                    {r.recipeType === 'brix' ? `วัด Brix · เป้า ${r.targetBrix ?? '?'}` : 'สูตรคงที่ /ลิตร'}
+                  </span>
                   {!r.isActive && (
                     <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ปิดใช้</span>
                   )}
                 </div>
                 {r.note && <p className="mt-0.5 text-sm text-gray-500">{r.note}</p>}
+                {r.steps && (
+                  <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">
+                    วิธีทำ {stepLines(r.steps).length} ขั้น: 1. {stepLines(r.steps)[0]}…
+                  </p>
+                )}
               </div>
               {isAdmin && (
                 <div className="flex shrink-0 items-center gap-2">
@@ -161,7 +201,7 @@ export default function ProductionRecipesPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setDraft({ id: r.id, name: r.name, note: r.note, items: r.items.map((i) => ({ ...i })) })}
+                    onClick={() => setDraft(draftFrom(r))}
                   >
                     <Pencil size={14} className="mr-1" /> แก้ไข
                   </Button>
@@ -192,13 +232,13 @@ export default function ProductionRecipesPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </SectionCard>
         ))}
       </div>
 
       {/* ขนาดขวด — ใช้ในหน้าผสมตอนกรอกจำนวนขวดที่ได้ */}
       {isAdmin && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4">
+        <SectionCard>
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold text-gray-700">ขนาดขวด</div>
             <Button type="button" variant="ghost" size="sm" onClick={() => setBottleDraft({ label: '', ml: '' })}>
@@ -226,7 +266,7 @@ export default function ProductionRecipesPage() {
               </div>
             ))}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Modal แก้สูตร */}
@@ -253,6 +293,68 @@ export default function ProductionRecipesPage() {
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               placeholder="ชื่อสูตร เช่น น้ำส้มคั้น 100%"
             />
+
+            <div>
+              <div className="mb-1 text-xs font-semibold text-gray-500">ประเภทสูตร</div>
+              <Segmented
+                value={draft.recipeType}
+                onChange={(v) => setDraft({ ...draft, recipeType: v as RecipeType })}
+                options={[
+                  { value: 'brix', label: 'วัด Brix ก่อนผสม' },
+                  { value: 'fixed', label: 'สูตรคงที่ ต่อ 1 ลิตร' },
+                ]}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                {draft.recipeType === 'brix'
+                  ? 'เช่น น้ำส้ม — วัด Brix น้ำคั้นก่อน ระบบคำนวณน้ำเปล่า/น้ำเชื่อมให้ถึงเป้า'
+                  : 'เช่น น้ำเก๊กฮวย — ส่วนผสมตายตัวต่อน้ำ 1 ลิตร ระบบคูณขยายตามที่ผสม'}
+              </p>
+            </div>
+
+            {draft.recipeType === 'brix' && (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <div className="mb-1 text-xs font-semibold text-gray-500">เป้า Brix น้ำขาย *</div>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={draft.targetBrix}
+                    onChange={(e) => setDraft({ ...draft, targetBrix: e.target.value })}
+                    placeholder="เช่น 12"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="mb-1 text-xs font-semibold text-gray-500">Brix น้ำเชื่อมที่ใช้เติม</div>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={draft.syrupBrix}
+                    onChange={(e) => setDraft({ ...draft, syrupBrix: e.target.value })}
+                    placeholder="65"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="mb-1 text-xs font-semibold text-gray-500">ขั้นตอนการทำ</div>
+              <Textarea
+                value={draft.steps}
+                onChange={(e) => setDraft({ ...draft, steps: e.target.value })}
+                placeholder={
+                  draft.recipeType === 'brix'
+                    ? 'คั้นส้ม กรองกาก\nวัด Brix แล้วกรอกในหน้าผสม\nเติมน้ำ/น้ำเชื่อม/เกลือตามที่ระบบคำนวณ คนให้เข้ากัน\nเทใส่ขวด ปิดฝา แช่เย็นทันที'
+                    : 'ต้มน้ำให้เดือด ใส่ดอกเก๊กฮวย ต้ม 15 นาที\nกรองดอกทิ้ง เติมน้ำตาลตามสูตร คนให้ละลาย\nพักให้เย็น เทใส่ขวด'
+                }
+                rows={5}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                พิมพ์บรรทัดละ 1 ขั้น — ระบบใส่หมายเลข 1 2 3 ให้เองตอนแสดง (ไม่ต้องพิมพ์เลข)
+              </p>
+            </div>
+
             <Textarea
               value={draft.note}
               onChange={(e) => setDraft({ ...draft, note: e.target.value })}
@@ -260,7 +362,11 @@ export default function ProductionRecipesPage() {
               rows={2}
             />
 
-            <div className="text-xs font-semibold text-gray-500">ส่วนผสมต่อน้ำ 1 ลิตร</div>
+            <div className="text-xs font-semibold text-gray-500">
+              {draft.recipeType === 'brix'
+                ? 'ของที่เติมเพิ่มต่อน้ำ 1 ลิตรสุดท้าย (เช่น เกลือ) — ไม่มีก็เว้นว่างได้'
+                : 'ส่วนผสมต่อน้ำ 1 ลิตร'}
+            </div>
             <div className="space-y-2">
               {draft.items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -271,8 +377,8 @@ export default function ProductionRecipesPage() {
                       items[idx] = { ...item, name: e.target.value }
                       setDraft({ ...draft, items })
                     }}
-                    placeholder="ชื่อ เช่น ส้ม"
-                    className="flex-1"
+                    placeholder={draft.recipeType === 'brix' ? 'เช่น เกลือ' : 'เช่น ดอกเก๊กฮวย'}
+                    className="min-w-0 flex-1"
                   />
                   <Input
                     type="number"
@@ -285,33 +391,24 @@ export default function ProductionRecipesPage() {
                       setDraft({ ...draft, items })
                     }}
                     placeholder="ปริมาณ"
-                    className="w-24 text-right"
+                    className="w-20 shrink-0 text-right"
                   />
-                  <SelectMenu
-                    value={item.unit}
-                    options={UNIT_OPTIONS}
-                    onChange={(v) => {
-                      const items = [...draft.items]
-                      items[idx] = { ...item, unit: (v as RecipeUnit) ?? 'g' }
-                      setDraft({ ...draft, items })
-                    }}
-                    size="sm"
-                    className="w-24"
-                  />
-                  <label className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-gray-600">
-                    <Checkbox
-                      checked={item.isYieldBase}
+                  {/* ปุ่ม SelectMenu ตั้ง width:100% inline — ต้องครอบกล่องกว้างคงที่ไว้คุมแทน */}
+                  <div className="w-20 shrink-0">
+                    <SelectMenu
+                      value={item.unit}
+                      options={UNIT_OPTIONS}
                       onChange={(v) => {
                         const items = [...draft.items]
-                        items[idx] = { ...item, isYieldBase: v }
+                        items[idx] = { ...item, unit: (v as RecipeUnit) ?? 'g' }
                         setDraft({ ...draft, items })
                       }}
+                      size="md"
                     />
-                    yield
-                  </label>
+                  </div>
                   <button
                     type="button"
-                    className="text-gray-300 hover:text-red-500"
+                    className="shrink-0 text-gray-300 hover:text-red-500"
                     onClick={() => setDraft({ ...draft, items: draft.items.filter((_, i) => i !== idx) })}
                     aria-label="ลบส่วนผสม"
                   >
@@ -328,9 +425,6 @@ export default function ProductionRecipesPage() {
             >
               <Plus size={14} className="mr-1" /> เพิ่มส่วนผสม
             </Button>
-            <p className="text-xs text-gray-400">
-              ติ๊ก &ldquo;yield&rdquo; ที่วัตถุดิบหลัก (เช่น ส้ม) — ระบบจะคิด % น้ำที่ได้จาก กก. ของตัวนั้น
-            </p>
           </div>
         </Modal>
       )}

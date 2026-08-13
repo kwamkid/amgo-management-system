@@ -1925,6 +1925,8 @@ export type Database = {
           batch_date: string
           created_at: string
           id: string
+          juice_brix: number | null
+          juice_liters: number | null
           liters_planned: number
           made_by: string | null
           note: string
@@ -1938,6 +1940,8 @@ export type Database = {
           batch_date: string
           created_at?: string
           id?: string
+          juice_brix?: number | null
+          juice_liters?: number | null
           liters_planned: number
           made_by?: string | null
           note?: string
@@ -1951,6 +1955,8 @@ export type Database = {
           batch_date?: string
           created_at?: string
           id?: string
+          juice_brix?: number | null
+          juice_liters?: number | null
           liters_planned?: number
           made_by?: string | null
           note?: string
@@ -2053,7 +2059,11 @@ export type Database = {
           is_active: boolean
           name: string
           note: string
+          recipe_type: string
           sort_order: number
+          steps: string
+          syrup_brix: number
+          target_brix: number | null
           updated_at: string
           updated_by: string | null
         }
@@ -2063,7 +2073,11 @@ export type Database = {
           is_active?: boolean
           name: string
           note?: string
+          recipe_type?: string
           sort_order?: number
+          steps?: string
+          syrup_brix?: number
+          target_brix?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -2073,7 +2087,11 @@ export type Database = {
           is_active?: boolean
           name?: string
           note?: string
+          recipe_type?: string
           sort_order?: number
+          steps?: string
+          syrup_brix?: number
+          target_brix?: number | null
           updated_at?: string
           updated_by?: string | null
         }

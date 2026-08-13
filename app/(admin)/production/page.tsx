@@ -2,8 +2,11 @@
 
 // ผสมวันนี้ — หน้าหลักฝ่ายผลิต ADAY FRESH (Min/แตน ใช้บนมือถือ)
 //
-// เลือกสูตร → ใส่จำนวนลิตร → ระบบกางปริมาณส่วนผสมทันที (เครื่องคิดสูตร)
-// ผสมเสร็จกรอก "ใช้จริง" + จำนวนขวดที่ได้ → บันทึก = ได้ yield % อัตโนมัติ
+// สูตร 2 แบบ (ตาม workflow จริงของโรงงาน):
+// - brix  (น้ำส้ม): วัด Brix น้ำคั้นก่อน → ระบบคำนวณน้ำเปล่า/น้ำเชื่อมให้ถึง
+//   เป้าความหวาน + ของเติมต่อลิตร (เกลือ) → ผสม → เทใส่ขวด
+// - fixed (น้ำเก๊กฮวย): ส่วนผสมตายตัวต่อ 1 ลิตร ระบบคูณขยายตามที่จะผสม
+// ทั้งคู่มี "วิธีทำ" ข้อความ fix จากหน้าสูตร โชว์ให้เห็นตอนผสมทุกครั้ง
 //
 // ออกแบบให้ง่ายที่สุด: ตัวเลขใหญ่ ภาษาน้อย ปุ่มโต — ผู้ใช้หลักเป็นคนพม่า
 
@@ -11,25 +14,35 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { CupSoda, RotateCcw } from 'lucide-react'
+import { CupSoda, ListChecks, RotateCcw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Button, Input, Textarea } from '@/components/aoo'
-import { PageHeader, TechLoader } from '@/components/shared'
+import { PageHeader, SectionCard, TechLoader } from '@/components/shared'
 import {
+  brixMix,
   createBatch,
   getBatches,
   getBottleSizes,
   getRecipes,
   smartQty,
+  stepLines,
   toKg,
   UNIT_TH,
   type BottleSize,
   type ProductionBatch,
   type Recipe,
+  type RecipeUnit,
 } from '@/lib/services/productionService'
 
 const LITER_CHIPS = [10, 20, 30, 50, 100]
+
+interface MixRow {
+  name: string
+  planned: number
+  unit: RecipeUnit
+  isYieldBase: boolean
+}
 
 export default function ProductionMixPage() {
   const router = useRouter()
@@ -41,7 +54,10 @@ export default function ProductionMixPage() {
   const [todayBatches, setTodayBatches] = useState<ProductionBatch[]>([])
 
   const [recipeId, setRecipeId] = useState<string | null>(null)
-  const [liters, setLiters] = useState('')
+  const [liters, setLiters] = useState('')          // สูตร fixed: จะผสมกี่ลิตร
+  const [fruitKg, setFruitKg] = useState('')        // สูตร brix: ใช้ผลไม้ไปกี่ กก. (ไว้คิด yield)
+  const [juiceLiters, setJuiceLiters] = useState('') // สูตร brix: คั้นได้กี่ลิตร
+  const [juiceBrix, setJuiceBrix] = useState('')     // สูตร brix: Brix ที่วัดได้
   const [actuals, setActuals] = useState<Record<number, string>>({})
   const [counts, setCounts] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
@@ -71,21 +87,47 @@ export default function ProductionMixPage() {
   }, [canSee])
 
   const recipe = recipes?.find((r) => r.id === recipeId) ?? null
+  const isBrix = recipe?.recipeType === 'brix'
   const litersNum = parseFloat(liters) || 0
+  const fruitKgNum = parseFloat(fruitKg) || 0
+  const juiceLNum = parseFloat(juiceLiters) || 0
+  const juiceBNum = parseFloat(juiceBrix) || 0
 
-  // ปริมาณตามสูตร × ลิตรที่จะผสม — แปลงหน่วยให้อ่านง่าย (30000 g → 30 กก.)
-  const rows = useMemo(() => {
-    if (!recipe || litersNum <= 0) return []
+  // สูตร brix: คำนวณน้ำเปล่า/น้ำเชื่อมจากค่าที่วัด
+  const mix = useMemo(() => {
+    if (!recipe || recipe.recipeType !== 'brix' || juiceLNum <= 0 || juiceBNum <= 0) return null
+    return brixMix(juiceLNum, juiceBNum, recipe.targetBrix ?? 0, recipe.syrupBrix)
+  }, [recipe, juiceLNum, juiceBNum])
+
+  /** ลิตรน้ำสุดท้ายที่กำลังทำ — fixed ตามที่กรอก · brix ตามที่คำนวณ */
+  const effLiters = isBrix ? (mix?.totalLiters ?? 0) : litersNum
+
+  const rows = useMemo<MixRow[]>(() => {
+    if (!recipe) return []
+    if (recipe.recipeType === 'brix') {
+      if (!mix) return []
+      const out: MixRow[] = []
+      if (mix.waterLiters > 0)
+        out.push({ name: 'น้ำเปล่า', planned: mix.waterLiters, unit: 'l', isYieldBase: false })
+      if (mix.syrupLiters > 0)
+        out.push({ name: `น้ำเชื่อม (Brix ${recipe.syrupBrix})`, planned: mix.syrupLiters, unit: 'l', isYieldBase: false })
+      for (const item of recipe.items) {
+        const s = smartQty(item.qtyPerLiter * mix.totalLiters, item.unit)
+        out.push({ name: item.name, planned: s.qty, unit: s.unit, isYieldBase: false })
+      }
+      return out
+    }
+    if (litersNum <= 0) return []
     return recipe.items.map((item) => {
       const s = smartQty(item.qtyPerLiter * litersNum, item.unit)
       return { name: item.name, planned: s.qty, unit: s.unit, isYieldBase: item.isYieldBase }
     })
-  }, [recipe, litersNum])
+  }, [recipe, litersNum, mix])
 
-  // เปลี่ยนสูตร/จำนวนลิตร = ค่าใช้จริงกลับไปตามสูตร
+  // เปลี่ยนสูตร/ค่าที่กรอก = ค่าใช้จริงกลับไปตามคำนวณ
   useEffect(() => {
     setActuals({})
-  }, [recipeId, liters])
+  }, [recipeId, liters, juiceLiters, juiceBrix])
 
   const actualOf = (idx: number) => {
     const v = actuals[idx]
@@ -94,40 +136,55 @@ export default function ProductionMixPage() {
   }
 
   const outputMl = bottleSizes.reduce((s, b) => s + b.ml * (parseInt(counts[b.id] || '0') || 0), 0)
-  const yieldBaseKg = rows.reduce((s, r, i) => s + (r.isYieldBase ? toKg(actualOf(i), r.unit) : 0), 0)
-  const yieldPercent = yieldBaseKg > 0 && outputMl > 0 ? Math.round((outputMl / 1000 / yieldBaseKg) * 1000) / 10 : null
+  // yield: brix = กก.ผลไม้ที่กรอกตรง ๆ · fixed = รวมจาก item ที่ติ๊กคิด yield
+  const yieldBaseKg = isBrix
+    ? fruitKgNum
+    : rows.reduce((s, r, i) => s + (r.isYieldBase ? toKg(actualOf(i), r.unit) : 0), 0)
+  const yieldPercent =
+    yieldBaseKg > 0 && outputMl > 0 ? Math.round((outputMl / 1000 / yieldBaseKg) * 1000) / 10 : null
+
+  const readyToMix = isBrix ? mix !== null : litersNum > 0
 
   const reset = () => {
     setRecipeId(null)
     setLiters('')
+    setFruitKg('')
+    setJuiceLiters('')
+    setJuiceBrix('')
     setActuals({})
     setCounts({})
     setNote('')
   }
 
   const save = async () => {
-    if (!recipe || litersNum <= 0 || !userData?.id) return
+    if (!recipe || !readyToMix || !userData?.id) return
     setSaving(true)
     try {
+      const items = rows.map((r, i) => ({
+        name: r.name,
+        unit: r.unit,
+        plannedQty: r.planned,
+        actualQty: actualOf(i),
+        isYieldBase: r.isYieldBase,
+      }))
       await createBatch({
         batchDate: today,
         recipeId: recipe.id,
         recipeName: recipe.name,
-        litersPlanned: litersNum,
+        litersPlanned: effLiters,
         note: note.trim(),
         madeBy: userData.id!,
-        items: rows.map((r, i) => ({
-          name: r.name,
-          unit: r.unit,
-          plannedQty: r.planned,
-          actualQty: actualOf(i),
-          isYieldBase: r.isYieldBase,
-        })),
+        items: isBrix
+          ? [{ name: 'น้ำคั้นที่วัดได้', unit: 'l', plannedQty: juiceLNum, actualQty: juiceLNum, isYieldBase: false }, ...items]
+          : items,
         bottles: bottleSizes.map((b) => ({
           label: b.label,
           ml: b.ml,
           count: parseInt(counts[b.id] || '0') || 0,
         })),
+        yieldBaseKg: isBrix && fruitKgNum > 0 ? fruitKgNum : undefined,
+        juiceLiters: isBrix ? juiceLNum : undefined,
+        juiceBrix: isBrix ? juiceBNum : undefined,
       })
       showToast('บันทึกการผสมแล้ว', 'success')
       reset()
@@ -142,8 +199,10 @@ export default function ProductionMixPage() {
   if (!userData || recipes === null) return <TechLoader />
   if (!canSee) return null
 
+  const bigInput = 'w-24 text-center text-lg font-semibold'
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <PageHeader
         icon={CupSoda}
         title="ผสมวันนี้"
@@ -151,8 +210,7 @@ export default function ProductionMixPage() {
       />
 
       {/* 1) เลือกสูตร — ปุ่มโตกดง่ายบนมือถือ */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="mb-3 text-sm font-semibold text-gray-700">1 · เลือกสูตร</div>
+      <SectionCard title="1 · เลือกสูตร">
         {recipes.length === 0 ? (
           <p className="text-sm text-gray-500">
             ยังไม่มีสูตร — ให้แอดมินเพิ่มที่หน้า &ldquo;สูตรน้ำ&rdquo; ก่อน
@@ -164,23 +222,25 @@ export default function ProductionMixPage() {
                 key={r.id}
                 type="button"
                 onClick={() => setRecipeId(r.id)}
-                className={`rounded-xl border-2 px-3 py-4 text-center text-base font-semibold transition-colors ${
+                className={`rounded-xl border-2 px-3 py-4 text-center transition-colors ${
                   recipeId === r.id
                     ? 'border-red-500 bg-red-50 text-red-700'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {r.name}
+                <span className="block text-base font-semibold">{r.name}</span>
+                <span className="mt-0.5 block text-[11px] text-gray-400">
+                  {r.recipeType === 'brix' ? `วัด Brix · เป้า ${r.targetBrix ?? '?'}` : 'สูตรคงที่'}
+                </span>
               </button>
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      {/* 2) จำนวนลิตร */}
-      {recipe && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="mb-3 text-sm font-semibold text-gray-700">2 · ผสมกี่ลิตร</div>
+      {/* 2) fixed: ผสมกี่ลิตร · brix: กรอกค่าที่วัด */}
+      {recipe && !isBrix && (
+        <SectionCard title="2 · ผสมกี่ลิตร">
           <div className="flex flex-wrap items-center gap-2">
             <Input
               type="number"
@@ -207,18 +267,74 @@ export default function ProductionMixPage() {
               </button>
             ))}
           </div>
-        </section>
+        </SectionCard>
       )}
 
-      {/* 3) ตารางส่วนผสม — ตามสูตรตัวใหญ่ + ช่องใช้จริง */}
-      {recipe && litersNum > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="mb-1 text-sm font-semibold text-gray-700">
-            3 · ส่วนผสมสำหรับ {litersNum} ลิตร
+      {recipe && isBrix && (
+        <SectionCard
+          title="2 · วัดค่าก่อนผสม"
+          description="ชั่งผลไม้ที่ใช้ · คั้นแล้ววัดปริมาณ + Brix ของน้ำคั้น"
+        >
+          <div className="grid grid-cols-3 gap-3">
+            <label className="block">
+              <span className="mb-1 block text-xs text-gray-500">ใช้ผลไม้ไป</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={fruitKg}
+                onChange={(e) => setFruitKg(e.target.value)}
+                placeholder="0"
+                className="text-center text-lg font-semibold"
+              />
+              <span className="mt-1 block text-center text-xs text-gray-400">กก.</span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-gray-500">น้ำคั้นที่ได้</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={juiceLiters}
+                onChange={(e) => setJuiceLiters(e.target.value)}
+                placeholder="0"
+                className="text-center text-lg font-semibold"
+              />
+              <span className="mt-1 block text-center text-xs text-gray-400">ลิตร</span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-gray-500">Brix ที่วัดได้</span>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={juiceBrix}
+                onChange={(e) => setJuiceBrix(e.target.value)}
+                placeholder="0"
+                className="text-center text-lg font-semibold"
+              />
+              <span className="mt-1 block text-center text-xs text-gray-400">
+                เป้า {recipe.targetBrix ?? '?'}
+              </span>
+            </label>
           </div>
-          <p className="mb-3 text-xs text-gray-400">
-            ถ้าใช้ของจริงไม่เท่าสูตร (เช่น ชั่งส้มได้ไม่พอดี) แก้ตัวเลขในช่อง &ldquo;ใช้จริง&rdquo;
-          </p>
+        </SectionCard>
+      )}
+
+      {/* 3) ของที่ต้องเติม/ส่วนผสม — ตามคำนวณตัวใหญ่ + ช่องใช้จริง */}
+      {recipe && readyToMix && (
+        <SectionCard
+          title={
+            isBrix
+              ? `3 · ของที่ต้องเติม (จะได้น้ำประมาณ ${effLiters.toLocaleString()} ลิตร)`
+              : `3 · ส่วนผสมสำหรับ ${effLiters.toLocaleString()} ลิตร`
+          }
+          description={
+            isBrix && mix && mix.waterLiters === 0 && mix.syrupLiters === 0
+              ? 'Brix ตรงเป้าพอดี — ไม่ต้องเติมน้ำ/น้ำเชื่อม'
+              : 'ถ้าใช้ของจริงไม่เท่าที่คำนวณ แก้ตัวเลขในช่อง “ใช้จริง”'
+          }
+        >
           <div className="divide-y divide-gray-100">
             {rows.map((r, i) => (
               <div key={i} className="flex items-center gap-3 py-3">
@@ -245,20 +361,38 @@ export default function ProductionMixPage() {
                     onChange={(e) => setActuals((p) => ({ ...p, [i]: e.target.value }))}
                     placeholder={String(r.planned)}
                     aria-label={`${r.name} ใช้จริง`}
-                    className="w-24 text-center text-lg font-semibold"
+                    className={bigInput}
                   />
                   <span className="w-10 text-xs text-gray-500">{UNIT_TH[r.unit]}</span>
                 </div>
               </div>
             ))}
+            {rows.length === 0 && (
+              <p className="py-2 text-sm text-gray-400">สูตรนี้ไม่มีของต้องเติมเพิ่ม</p>
+            )}
           </div>
-        </section>
+        </SectionCard>
+      )}
+
+      {/* วิธีทำ — ข้อความ fix จากหน้าสูตร บังคับแสดงเป็นข้อมีหมายเลขเสมอ */}
+      {recipe && readyToMix && recipe.steps && (
+        <SectionCard title={<span className="flex items-center gap-1.5"><ListChecks size={16} /> วิธีทำ</span>}>
+          <ol className="space-y-2.5">
+            {stepLines(recipe.steps).map((step, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-600">
+                  {i + 1}
+                </span>
+                <span className="text-[15px] leading-6 text-gray-800">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </SectionCard>
       )}
 
       {/* 4) ขวดที่ได้ */}
-      {recipe && litersNum > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="mb-3 text-sm font-semibold text-gray-700">4 · กรอกได้กี่ขวด</div>
+      {recipe && readyToMix && (
+        <SectionCard title="4 · กรอกได้กี่ขวด">
           <div className="space-y-2">
             {bottleSizes.map((b) => (
               <div key={b.id} className="flex items-center gap-3">
@@ -271,7 +405,7 @@ export default function ProductionMixPage() {
                   onChange={(e) => setCounts((p) => ({ ...p, [b.id]: e.target.value }))}
                   placeholder="0"
                   aria-label={`จำนวนขวด ${b.label}`}
-                  className="w-24 text-center text-lg font-semibold"
+                  className={bigInput}
                 />
                 <span className="w-10 text-xs text-gray-500">ขวด</span>
               </div>
@@ -283,13 +417,13 @@ export default function ProductionMixPage() {
             <div>
               ได้น้ำรวม{' '}
               <strong className="tabular-nums">{(outputMl / 1000).toLocaleString()} ลิตร</strong>
-              {' '}(แผน {litersNum} ลิตร)
+              {' '}(คำนวณไว้ {effLiters.toLocaleString()} ลิตร)
             </div>
             {yieldPercent !== null && (
               <div className="mt-1">
-                วัตถุดิบหลัก <strong className="tabular-nums">{yieldBaseKg.toLocaleString()} กก.</strong>
-                {' '}→ yield{' '}
-                <strong className="tabular-nums text-red-600">{yieldPercent}%</strong>
+                ผลไม้ <strong className="tabular-nums">{yieldBaseKg.toLocaleString()} กก.</strong>
+                {' '}→ ได้น้ำคิดเป็น{' '}
+                <strong className="tabular-nums text-red-600">{yieldPercent}%</strong> (yield)
               </div>
             )}
           </div>
@@ -310,18 +444,17 @@ export default function ProductionMixPage() {
               type="button"
               className="h-12 flex-1 text-base"
               onClick={save}
-              disabled={saving || litersNum <= 0}
+              disabled={saving || !readyToMix}
             >
               {saving ? 'กำลังบันทึก…' : 'บันทึกการผสม'}
             </Button>
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* ที่บันทึกไปแล้ววันนี้ — ให้เห็นว่าลงระบบจริง */}
       {todayBatches.length > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="mb-2 text-sm font-semibold text-gray-700">บันทึกแล้ววันนี้</div>
+        <SectionCard title="บันทึกแล้ววันนี้">
           <div className="divide-y divide-gray-100">
             {todayBatches.map((b) => (
               <div key={b.id} className="flex items-center justify-between py-2 text-sm">
@@ -337,7 +470,7 @@ export default function ProductionMixPage() {
               </div>
             ))}
           </div>
-        </section>
+        </SectionCard>
       )}
     </div>
   )

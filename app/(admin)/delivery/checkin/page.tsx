@@ -36,16 +36,18 @@ export default function DeliveryCheckInPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const { createDeliveryPoint } = useDeliveryPoints()
-  const { 
-    isCapturing, 
-    stream, 
-    capturedPhoto, 
-    startCamera, 
-    capturePhoto, 
-    reset 
+  const {
+    isCapturing,
+    stream,
+    capturedPhoto,
+    startCamera,
+    capturePhoto,
+    setPhotoFromFile,
+    reset
   } = useCameraCapture()
-  
+
   const videoRef = useRef<HTMLVideoElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -66,6 +68,8 @@ export default function DeliveryCheckInPage() {
   useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream
+      // iOS/WebView บางตัวไม่เริ่มเล่นเองแม้มี autoPlay — สั่งเล่นตรงๆ ไม่งั้นภาพดำ กดถ่ายไม่ได้
+      videoRef.current.play().catch(() => {})
     }
   }, [stream])
 
@@ -240,15 +244,37 @@ export default function DeliveryCheckInPage() {
           <CardContent>
             <div className="space-y-4">
               {!capturedPhoto && !isCapturing && (
-                <Button
-                  type="button"
-                  onClick={startCamera}
-                  className="w-full"
-                  size="lg"
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  เปิดกล้องถ่ายรูป
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    onClick={startCamera}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Camera className="w-5 h-5 mr-2" />
+                    เปิดกล้องถ่ายรูป
+                  </Button>
+                  {/* ทางสำรองเมื่อเบราว์เซอร์ถูกบล็อกสิทธิ์กล้อง — เรียกแอปกล้องของเครื่องแทน */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) setPhotoFromFile(f)
+                      e.target.value = ''
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full text-center text-sm text-gray-500 underline"
+                  >
+                    กล้องไม่ขึ้น? ถ่ายด้วยแอปกล้องของเครื่อง
+                  </button>
+                </>
               )}
 
               {isCapturing && (

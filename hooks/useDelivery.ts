@@ -345,6 +345,11 @@ export const useCameraCapture = () => {
   // Capture photo
   const capturePhoto = (videoElement: HTMLVideoElement): string | null => {
     try {
+      // มือถือบางเครื่องภาพยังไม่มา (videoWidth = 0) — ถ่ายไปได้แต่รูปเปล่า
+      if (!videoElement.videoWidth || !videoElement.videoHeight) {
+        showToast('ภาพจากกล้องยังไม่ขึ้น รอสักครู่แล้วกดใหม่', 'error')
+        return null
+      }
       const canvas = document.createElement('canvas')
       canvas.width = videoElement.videoWidth
       canvas.height = videoElement.videoHeight
@@ -364,6 +369,27 @@ export const useCameraCapture = () => {
       showToast('เกิดข้อผิดพลาดในการถ่ายรูป', 'error')
       return null
     }
+  }
+
+  // ทางสำรอง: รูปจากแอปกล้องของเครื่อง (<input capture>) — ใช้ได้แม้เบราว์เซอร์ถูกบล็อกสิทธิ์กล้อง
+  const setPhotoFromFile = (file: File) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, 1600 / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height)
+      setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.85))
+      URL.revokeObjectURL(url)
+      stopCamera()
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      showToast('อ่านไฟล์รูปไม่ได้ ลองถ่ายใหม่', 'error')
+    }
+    img.src = url
   }
 
   // Reset
@@ -386,6 +412,7 @@ export const useCameraCapture = () => {
     startCamera,
     stopCamera,
     capturePhoto,
+    setPhotoFromFile,
     reset
   }
 }

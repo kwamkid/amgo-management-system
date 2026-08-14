@@ -11,7 +11,6 @@ import {
   AttendanceReportData,
   AttendanceReportFilters,
   AttendanceReportResponse,
-  getAttendanceReportPaginated,
   getAttendanceReportForExport,
 } from '@/lib/services/reportService'
 import { exportDetailedReport, exportByEmployeeReport, exportPayrollReport } from '@/lib/services/excelExportService'
@@ -42,6 +41,8 @@ export default function CheckInReportPage() {
 
   // States
   const [reportData, setReportData] = useState<AttendanceReportData[]>([])
+  // แถวเต็มช่วงหลังกรองคน/สาขา (รวมวันขาด) — แท็บตารางวันใช้ ไม่ต้อง query เอง
+  const [fullData, setFullData] = useState<AttendanceReportData[]>([])
   const [summaryData, setSummaryData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -49,57 +50,31 @@ export default function CheckInReportPage() {
   const [pagination, setPagination] = useState<AttendanceReportResponse['pagination'] | undefined>()
   const [pageSize, setPageSize] = useState(50)
 
-  // Store the current filters for pagination
-  const [currentFilters, setCurrentFilters] = useState<AttendanceReportFilters | null>(null)
-
   // Handle report generation with pagination
   const handleGenerateReport = (
     data: AttendanceReportData[],
     summary: any[],
     newFilters: AttendanceReportFilters,
-    paginationInfo?: AttendanceReportResponse['pagination']
+    paginationInfo?: AttendanceReportResponse['pagination'],
+    full?: AttendanceReportData[]
   ) => {
     setReportData(data)
+    setFullData(full ?? data)
     setSummaryData(summary)
     setFilters(newFilters)
-    setCurrentFilters(newFilters)
     setPagination(paginationInfo)
     setLoading(false)
   }
 
-  // Handle page change
+  // เปลี่ยนหน้า/ขนาดหน้า = ตัดหน้าจาก cache ในเบราว์เซอร์ — ไม่ query ใหม่
+  // (__generateReport ของ ReportFilters จะ query เฉพาะตอนช่วงวันที่เปลี่ยน/บังคับ)
   const handlePageChange = async (page: number) => {
-    if (!currentFilters) return
-    try {
-      setLoading(true)
-      const response = await getAttendanceReportPaginated({ ...currentFilters, page })
-      setReportData(response.data)
-      setSummaryData(response.summary || [])
-      setPagination(response.pagination)
-    } catch (error: any) {
-      showToast(error.message || 'เกิดข้อผิดพลาดในการเปลี่ยนหน้า', 'error')
-    } finally {
-      setLoading(false)
-    }
+    ;(window as any).__generateReport?.(page)
   }
 
-  // Handle page size change - re-fetch with new size
-  const handlePageSizeChange = async (newSize: number) => {
+  const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize)
-    if (!currentFilters) return
-    try {
-      setLoading(true)
-      const updatedFilters = { ...currentFilters, pageSize: newSize, page: 1 }
-      const response = await getAttendanceReportPaginated(updatedFilters)
-      setReportData(response.data)
-      setSummaryData(response.summary || [])
-      setPagination(response.pagination)
-      setCurrentFilters(updatedFilters)
-    } catch (error: any) {
-      showToast(error.message || 'เกิดข้อผิดพลาด', 'error')
-    } finally {
-      setLoading(false)
-    }
+    ;(window as any).__generateReport?.(1, newSize)
   }
 
   // Export to Excel
@@ -221,6 +196,7 @@ export default function CheckInReportPage() {
       {/* Results with Pagination */}
       <ReportResults
         reportData={reportData}
+        fullData={fullData}
         summaryData={summaryData}
         loading={loading}
         filters={filters}
@@ -228,8 +204,10 @@ export default function CheckInReportPage() {
         onPageChange={handlePageChange}
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
-        // HR เติมวันทำงานแล้วดึงหน้าปัจจุบันใหม่ — ตัวเลขวันขาด/วันมาอัปเดตทันที
-        onDataChanged={() => handlePageChange(pagination?.currentPage ?? 1)}
+        // HR เติมวัน/แก้ตารางเวรแล้ว ข้อมูลใน DB เปลี่ยน — บังคับดึงก้อนใหม่ (force)
+        onDataChanged={() =>
+          (window as any).__generateReport?.(pagination?.currentPage ?? 1, undefined, true)
+        }
       />
     </div>
   )

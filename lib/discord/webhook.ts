@@ -26,6 +26,7 @@ type NotifyType = keyof DiscordSettings['notifications']
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.amgovenger.com'
 const NOTI_ICONS = {
   checkIn: `${APP_URL}/discord/checkin.png`,
+  checkInWfh: `${APP_URL}/discord/checkin-wfh.png`,
   checkOut: `${APP_URL}/discord/checkout.png`,
   offsite: `${APP_URL}/discord/offsite.png`,
   leaveRequest: `${APP_URL}/discord/leave-request.png`,
@@ -38,7 +39,7 @@ const NOTI_ICONS = {
 const GRID_COLORS = {
   onsite: 0x22c55e, // เขียว — มาทำงาน (สาขา)
   offsite: 0xa855f7, // ม่วง — นอกสถานที่
-  wfh: 0x0d9488, // teal — ทำงานที่บ้าน
+  wfh: 0xec4899, // ชมพู — WFH (เดิม teal มันเขียวจนแยกกับสาขาไม่ออก — เจ้าของทัก 15 ส.ค.)
   late: 0xfbbf24, // เหลือง — มาสาย
   absent: 0xef4444, // แดง — ขาด (ใช้กับเช็คเอาท์/ไม่อนุมัติด้วย)
   leave: 0x0ea5e9, // ฟ้า — ลา
@@ -108,10 +109,12 @@ export async function sendCheckInNotification(event: NotificationEvent) {
   const isWfh = checkinType === 'wfh'
 
   const embed: DiscordEmbed = {
-    // สีตาม legend ตารางวัน: เขียวสาขา · ม่วงนอกสถานที่ · teal ที่บ้าน
-    title: isOffsite ? '🟣 เช็คอิน · นอกสถานที่' : isWfh ? '🏠 เช็คอิน · ทำงานที่บ้าน' : '🟢 เช็คอิน',
-    // รูปใหญ่มุมขวา: ป้ายเขียวลูกศรเข้าประตู — คนละภาพกับเช็คเอาท์ชัด ๆ
-    thumbnail: { url: isOffsite ? NOTI_ICONS.offsite : NOTI_ICONS.checkIn },
+    // สีตาม legend ตารางวัน: เขียวสาขา · ม่วงนอกสถานที่ · ชมพู WFH
+    title: isOffsite ? '🟣 เช็คอิน · นอกสถานที่' : isWfh ? '🩷 เช็คอิน · WFH' : '🟢 เช็คอิน',
+    // รูปใหญ่มุมขวา: ป้ายลูกศรเข้าประตู เขียว=สาขา ชมพู=WFH — คนละภาพกับเช็คเอาท์ชัด ๆ
+    thumbnail: {
+      url: isOffsite ? NOTI_ICONS.offsite : isWfh ? NOTI_ICONS.checkInWfh : NOTI_ICONS.checkIn,
+    },
     image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,

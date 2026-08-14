@@ -4,7 +4,7 @@
 
 import { Skeleton } from '@/components/shared'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { HelpTooltip } from '@/components/aoo'
@@ -32,7 +32,6 @@ import {
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
 import { backfillWorkDay } from '@/lib/services/checkinService'
 import UserScheduleDialog from '@/components/users/UserScheduleDialog'
-import { getAttendanceReportForExport } from '@/lib/services/reportService'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Input } from '@/components/ui/input'
@@ -40,6 +39,8 @@ import { Textarea } from '@/components/ui/textarea'
 
 interface ReportResultsProps {
   reportData: AttendanceReportData[]
+  /** แถวเต็มช่วงหลังกรองคน/สาขา (รวมวันขาด ทุกหน้า) — แท็บตารางวันใช้ ไม่ต้อง query เอง */
+  fullData: AttendanceReportData[]
   summaryData: any[]
   loading: boolean
   filters: AttendanceReportFilters | null
@@ -53,6 +54,7 @@ interface ReportResultsProps {
 
 export default function ReportResults({
   reportData,
+  fullData,
   summaryData,
   loading,
   filters,
@@ -71,7 +73,6 @@ export default function ReportResults({
   const [backfillFor, setBackfillFor] = useState<AttendanceReportData | null>(null)
   // กดชื่อพนักงาน → แก้ตารางวันทำงาน (วันทำงาน/สัปดาห์ · วันหยุดประจำ) ได้ตรงนั้นเลย
   const [scheduleFor, setScheduleFor] = useState<{ userId: string; name: string } | null>(null)
-  const [scheduleReload, setScheduleReload] = useState(0)
   const openSchedule = canBackfill
     ? (userId: string, name: string) => setScheduleFor({ userId, name })
     : undefined
@@ -103,7 +104,7 @@ export default function ReportResults({
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Clock className="w-12 h-12 text-gray-400 mb-4" />
           <p className="text-gray-500 text-center">
-            เลือกช่วงเวลาและกดปุ่ม "ดูข้อมูล" เพื่อดูรายงาน
+            เลือกช่วงเวลาด้านบน — ระบบดึงข้อมูลให้อัตโนมัติ
           </p>
         </CardContent>
       </Card>
@@ -148,7 +149,8 @@ export default function ReportResults({
             {activeTab === 'calendar' && (
               <DaySlotGrid
                 filters={filters}
-                reloadKey={scheduleReload}
+                rows={fullData}
+                summaryData={summaryData}
                 onNameClick={openSchedule}
               />
             )}
@@ -203,8 +205,7 @@ export default function ReportResults({
           name={scheduleFor.name}
           onClose={() => {
             setScheduleFor(null)
-            // ตารางเวรเปลี่ยน = มา/ขาดเปลี่ยน — ดึงรายงานใหม่ทั้งตารางวันและแท็บอื่น
-            setScheduleReload((k) => k + 1)
+            // ตารางเวรเปลี่ยน = มา/ขาดเปลี่ยน — หน้าแม่บังคับดึงก้อนใหม่ (force)
             onDataChanged?.()
           }}
         />
@@ -616,56 +617,30 @@ type DaySlotSummary = { present: number; absent: number; leave: number; total: n
 
 function DaySlotGrid({
   filters,
-  reloadKey = 0,
+  rows,
+  summaryData,
   onNameClick,
 }: {
   filters: AttendanceReportFilters | null
-  /** bump เมื่อแก้ตารางเวรเสร็จ — ให้ดึงข้อมูลใหม่ */
-  reloadKey?: number
+  /** แถวเต็มช่วงหลังกรองคน/สาขา (รวมวันขาด) — มาจาก cache เดียวกับแท็บอื่น ไม่ query เอง */
+  rows: AttendanceReportData[]
+  summaryData: any[]
   onNameClick?: (userId: string, name: string) => void
 }) {
-  const [rows, setRows] = useState<AttendanceReportData[] | null>(null)
-  const [sumByUser, setSumByUser] = useState<Map<string, DaySlotSummary>>(new Map())
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!filters) return
-    let cancelled = false
-    setLoading(true)
-    // ดึงทั้งช่วง (ไม่ใช่หน้าเดียว) และเอาวันขาด/วันหยุดมาด้วย
-    getAttendanceReportForExport({
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      userIds: filters.userIds,
-      locationId: filters.locationId,
-      showOnlyPresent: false,
-    })
-      .then((r) => {
-        if (cancelled) return
-        setRows(r.data)
-        // เลขใช้ของแท็บสรุป — คิดกะหมุนเวียน/เลื่อนวันหยุดให้แล้ว
-        setSumByUser(
-          new Map(
-            (r.summary || []).map((x) => [
-              x.userId,
-              {
-                present: x.presentDays,
-                absent: x.absentDays,
-                leave: x.leaveDays ?? 0,
-                total: x.totalDays,
-              },
-            ])
-          )
-        )
-      })
-      .finally(() => !cancelled && setLoading(false))
-    return () => {
-      cancelled = true
-    }
-  }, [filters, reloadKey])
+  // เลขใช้ของแท็บสรุป — คิดกะหมุนเวียน/เลื่อนวันหยุดให้แล้ว
+  const sumByUser = new Map<string, DaySlotSummary>(
+    (summaryData || []).map((x: any) => [
+      x.userId,
+      {
+        present: x.presentDays,
+        absent: x.absentDays,
+        leave: x.leaveDays ?? 0,
+        total: x.totalDays,
+      },
+    ])
+  )
 
   if (!filters) return null
-  if (loading || !rows) return <Skeleton rows={10} />
 
   // แสดงคอลัมน์เต็มช่วงที่เลือก (ทั้งเดือน 30-31 วัน · ก.พ. = สิ้นเดือนจริง) —
   // ตารางกว้างคงที่ ไม่ขยับทุกวัน วันอนาคตเว้นช่องว่างไว้ (เจ้าของขอ 14 ส.ค. 69)
@@ -729,8 +704,10 @@ function DaySlotGrid({
   }
 
   // สีของ "มา" แยกตามที่เช็คอิน — เจ้าของขอให้เห็นจากสีเลยว่าเข้าสาขาหรือนอกสถานที่
+  // WFH เป็นชมพูสด #ec4899 (สีเดียวกับการ์ด Discord) — ต้องเขียนตรง ๆ เพราะ
+  // theme กลางแปลง bg-pink-* เป็น plum ม่วงเข้ม เลยเคยดูเป็นม่วงทั้งที่ตั้งใจให้ชมพู
   const presenceClass = (c: Cell): string =>
-    c.ctype === 'offsite' ? 'bg-purple-500' : c.ctype === 'wfh' ? 'bg-teal-600' : 'bg-green-500'
+    c.ctype === 'offsite' ? 'bg-purple-500' : c.ctype === 'wfh' ? 'bg-[#ec4899]' : 'bg-green-500'
 
   const cellClass = (c?: Cell): string => {
     if (!c) return 'bg-gray-50'
@@ -774,7 +751,7 @@ function DaySlotGrid({
   const legend = [
     ['bg-green-500', 'มาทำงาน (สาขา)'],
     ['bg-purple-500', 'นอกสถานที่'],
-    ['bg-teal-600', 'ทำงานที่บ้าน'],
+    ['bg-[#ec4899]', 'WFH'],
     ['bg-amber-400', 'มาสาย'],
     ['bg-red-500', 'ขาด'],
     ['bg-sky-500', 'ลา'],

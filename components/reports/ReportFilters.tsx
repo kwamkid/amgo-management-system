@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
-import { Filter, Loader2, Users, Search, X, MapPin, Check } from 'lucide-react'
+import { Loader2, Users, Search, MapPin, Check } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,8 +26,11 @@ import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
+import { createClient } from '@/lib/supabase/client'
 import {
-  getAttendanceReportPaginated,
+  getReportDataset,
+  buildReportView,
+  type ReportDataset,
   AttendanceReportData,
   AttendanceReportFilters,
   AttendanceReportResponse
@@ -38,7 +41,9 @@ interface ReportFiltersProps {
     data: AttendanceReportData[],
     summary: any[],
     filters: AttendanceReportFilters,
-    pagination?: AttendanceReportResponse['pagination']
+    pagination?: AttendanceReportResponse['pagination'],
+    /** แถวเต็มช่วงหลังกรองคน/สาขา (รวมวันขาด) — ให้แท็บตารางวันใช้โดยไม่ต้อง query เอง */
+    fullRows?: AttendanceReportData[]
   ) => void
   onLoadingChange: (loading: boolean) => void
   pageSize: number
@@ -60,7 +65,6 @@ export default function ReportFilters({
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
 
   const [selectedLocation, setSelectedLocation] = useState<string>('')
-  const [onlyPresent, setOnlyPresent] = useState(false)
 
   const [openLocationSelect, setOpenLocationSelect] = useState(false)
   const [userSearchTerm, setUserSearchTerm] = useState('')
@@ -71,47 +75,83 @@ export default function ReportFilters({
     ? locations.filter(l => l.name.toLowerCase().includes(locationSearchTerm.toLowerCase()))
     : locations
 
+  // ก้อนข้อมูลเต็มช่วง (ไม่กรองคน/สาขา) — ดึงครั้งเดียวต่อช่วงวันที่ แล้วกรองสดในเบราว์เซอร์
+  const datasetRef = React.useRef<{ key: string; dataset: ReportDataset } | null>(null)
 
+  // สาขา → รายชื่อคนที่สังกัด (user_allowed_locations) — ตารางเล็ก ดึงครั้งเดียวพอ
+  const [usersByLocation, setUsersByLocation] = useState<Map<string, Set<string>>>(new Map())
+  useEffect(() => {
+    createClient()
+      .from('user_allowed_locations')
+      .select('user_id, location_id')
+      .then(({ data }) => {
+        const m = new Map<string, Set<string>>()
+        for (const r of data ?? []) {
+          if (!m.has(r.location_id)) m.set(r.location_id, new Set())
+          m.get(r.location_id)!.add(r.user_id)
+        }
+        setUsersByLocation(m)
+      })
+  }, [])
 
+  /** กรอง+ตัดหน้า จากก้อน cache — งานในเบราว์เซอร์ล้วน ๆ เร็วพอทำทุกตัวอักษรที่พิมพ์ */
+  const applyView = (page: number, size: number = pageSize) => {
+    const cached = datasetRef.current
+    if (!cached) return
 
-  const generateReport = async (page: number = 1) => {
+    // พิมพ์ชื่อ = กรองทุกคนที่ชื่อ/ชื่อเล่น/เบอร์เข้าเค้า — ว่าง = ทั้งหมด
+    const q = userSearchTerm.trim().toLowerCase()
+    const matchedIds = q
+      ? users
+          .filter(
+            (u) =>
+              u.fullName?.toLowerCase().includes(q) ||
+              u.nickname?.toLowerCase().includes(q) ||
+              u.phone?.includes(q)
+          )
+          .map((u) => u.id!)
+      : []
+
+    const view = buildReportView(cached.dataset, {
+      // พิมพ์แล้วไม่เจอใคร = ผลว่าง (ไม่ toast — เดี๋ยวพิมพ์ต่อก็เจอ)
+      userIds: q ? (matchedIds.length ? matchedIds : ['__none__']) : undefined,
+      locationUserIds: selectedLocation ? (usersByLocation.get(selectedLocation) ?? new Set()) : null,
+      page,
+      pageSize: size,
+    })
+
+    const filters: AttendanceReportFilters = {
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      userIds: matchedIds.length > 0 ? matchedIds : undefined,
+      locationId: selectedLocation || undefined,
+      page,
+      pageSize: size,
+      // แสดงทุกวันเสมอ — วันขาดคือสิ่งที่ HR ต้องเห็น (checkbox เฉพาะวันที่มา ถูกถอดแล้ว)
+      showOnlyPresent: false,
+    }
+
+    onGenerateReport(view.data, view.summary || [], filters, view.pagination, view.fullRows)
+  }
+
+  const generateReport = async (page: number = 1, size?: number, force = false) => {
+    const key = `${startDate}|${endDate}`
+
+    // ช่วงวันที่เดิม + มี cache = ไม่ต้อง query — กรองจากของที่มีทันที
+    if (!force && datasetRef.current?.key === key) {
+      applyView(page, size)
+      return
+    }
+
     try {
       setLoading(true)
       onLoadingChange(true)
-
-      // พิมพ์ชื่อ = กรองทุกคนที่ชื่อ/ชื่อเล่น/เบอร์เข้าเค้า — ว่าง = ทั้งหมด
-      const q = userSearchTerm.trim().toLowerCase()
-      const matchedIds = q
-        ? users
-            .filter(
-              (u) =>
-                u.fullName?.toLowerCase().includes(q) ||
-                u.nickname?.toLowerCase().includes(q) ||
-                u.phone?.includes(q)
-            )
-            .map((u) => u.id!)
-        : []
-      if (q && matchedIds.length === 0) {
-        showToast('ไม่พบพนักงานชื่อนี้', 'error')
-        setLoading(false)
-        onLoadingChange(false)
-        return
-      }
-
-      const filters: AttendanceReportFilters = {
+      const dataset = await getReportDataset({
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        userIds: matchedIds.length > 0 ? matchedIds : undefined,
-        locationId: selectedLocation || undefined,
-        page,
-        pageSize,
-        // ค่าเริ่มต้นแสดงทุกวัน — วันขาดคือสิ่งที่ HR ต้องเห็น ไม่ใช่สิ่งที่ถูกซ่อน
-        showOnlyPresent: onlyPresent,
-      } as AttendanceReportFilters
-
-      const response = await getAttendanceReportPaginated(filters)
-      onGenerateReport(response.data, response.summary || [], filters, response.pagination)
-      showToast('ดึงข้อมูลสำเร็จ', 'success')
+      })
+      datasetRef.current = { key, dataset }
+      applyView(page, size)
     } catch (error: any) {
       showToast(error.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error')
     } finally {
@@ -120,12 +160,29 @@ export default function ReportFilters({
     }
   }
 
-  // Expose generateReport to parent via window (for page-size-change re-fetch)
+  // เลือกช่วงเวลาแล้วดึงเลย — ไม่มีปุ่ม "ดูข้อมูล" แล้ว (เจ้าของสั่ง 15 ส.ค. 69)
+  // ครอบคลุมโหลดครั้งแรกด้วย (เดือนปัจจุบัน) · หน่วงกันยิงซ้ำตอน picker เซ็ตวันสองครั้ง
+  React.useEffect(() => {
+    const t = setTimeout(() => generateReport(1), 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate])
+
+  // เปลี่ยนตัวกรองคน/สาขา → กรองสดจาก cache ทันที ไม่มี query เกิดขึ้นเลย
+  // หน่วงนิดเดียวกันงานถี่ตอนพิมพ์รัว
+  React.useEffect(() => {
+    if (!datasetRef.current) return
+    const t = setTimeout(() => applyView(1), 150)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userSearchTerm, selectedLocation])
+
+  // Expose generateReport to parent via window (เปลี่ยนหน้า/ขนาดหน้า/บังคับดึงใหม่หลังแก้ข้อมูล)
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__generateReport = generateReport
     }
-  }, [startDate, endDate, userSearchTerm, selectedLocation, pageSize, onlyPresent])
+  }, [startDate, endDate, userSearchTerm, selectedLocation, pageSize, users, usersByLocation])
 
   const useLocationCombobox = locations.length > 7
   const selectedLocationName = locations.find(l => l.id === selectedLocation)?.name
@@ -136,8 +193,8 @@ export default function ReportFilters({
         <CardTitle className="text-base">ตัวกรองข้อมูล</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Date + Location + User + Button row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        {/* Date + Location + User — ไม่มีปุ่มดูข้อมูล: เปลี่ยนอะไรระบบอัปเดตให้เอง */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           {/* Date range picker */}
           <div>
             <Label className="text-gray-500 mb-1">ช่วงเวลา</Label>
@@ -216,7 +273,7 @@ export default function ReportFilters({
             )}
           </div>
 
-          {/* User filter — พิมพ์ค้นตรง ๆ (เจ้าของสั่งเลิกใช้ dropdown เลือกคน) */}
+          {/* User filter — พิมพ์แล้วกรองสดทันทีจากข้อมูลที่ดึงไว้ ไม่ยิง query */}
           <div>
             <Label className="text-gray-500 mb-1">พนักงาน</Label>
             <div className="relative">
@@ -224,41 +281,15 @@ export default function ReportFilters({
               <input
                 value={userSearchTerm}
                 onChange={(e) => setUserSearchTerm(e.target.value)}
-                placeholder="พิมพ์ชื่อ/ชื่อเล่น — ว่าง = ทั้งหมด"
+                placeholder="พิมพ์ชื่อ/ชื่อเล่น — กรองทันที · ว่าง = ทั้งหมด"
                 className="h-[42px] w-full rounded-md border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-red-400"
               />
+              {loading && (
+                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+              )}
             </div>
           </div>
-
-          {/* Generate button + checkbox — คอลัมน์สุดท้าย อยู่บรรทัดเดียวกับ input ทั้งแถว */}
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => generateReport(1)}
-              disabled={loading}
-              className="shrink-0 bg-gradient-to-r from-red-500 to-rose-600 h-[42px] px-5"
-            >
-              {loading ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />กำลังดึงข้อมูล...</>
-              ) : (
-                <><Filter className="w-4 h-4 mr-2" />ดูข้อมูล</>
-              )}
-            </Button>
-            <label
-              className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-gray-600"
-              title="ซ่อนวันขาด/วันหยุด เหลือเฉพาะวันที่มาทำงานจริง"
-            >
-              <input
-                type="checkbox"
-                checked={onlyPresent}
-                onChange={(e) => setOnlyPresent(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 accent-red-600"
-              />
-              เฉพาะวันที่มา
-            </label>
-          </div>
         </div>
-
-
       </CardContent>
     </Card>
   )

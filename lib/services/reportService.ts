@@ -140,7 +140,7 @@ function buildNote(r: ReportRow): string {
     parts.push(Number(r.total_hours) > 0 ? 'มาทำงานวันหยุด — เลื่อนไปหยุดวันอื่น' : 'วันหยุดตามตาราง')
   else if (r.status === 'not_tracked') parts.push('ไม่ต้องเช็คอิน')
   else if (r.status === 'not_scheduled') parts.push('หยุดหมุนเวียน')
-  if (r.checkin_type === 'wfh') parts.push('ทำงานที่บ้าน')
+  if (r.checkin_type === 'wfh') parts.push('WFH')
   else if (r.checkin_type === 'offsite') parts.push('เช็คอินนอกสถานที่')
   return parts.join(' · ')
 }
@@ -216,6 +216,71 @@ async function fetchReportAll(
 async function daysPerWeekMap(): Promise<Map<string, number | null>> {
   const { data } = await sb().from('users').select('id, days_per_week')
   return new Map((data ?? []).map((u) => [u.id, u.days_per_week]))
+}
+
+/* ------------------------------------------------------------------ *
+ *  โหมด cache ฝั่งเบราว์เซอร์ — ดึง "ก้อนเต็มช่วง ไม่กรองคน/สาขา" ครั้งเดียว
+ *  แล้วให้ตัวกรอง สถานที่/พนักงาน/เฉพาะวันที่มา + การตัดหน้า ทำในเบราว์เซอร์
+ *  → พิมพ์ชื่อแล้วผลขึ้นทันที ไม่ยิง query ใหม่ (query ใหม่เฉพาะเปลี่ยนช่วงวันที่)
+ * ------------------------------------------------------------------ */
+export interface ReportDataset {
+  rows: AttendanceReportData[]
+  daysPerWeek: Map<string, number | null>
+}
+
+export async function getReportDataset(range: {
+  startDate: Date
+  endDate: Date
+}): Promise<ReportDataset> {
+  const [{ rows }, dpw] = await Promise.all([
+    fetchReportAll({ startDate: range.startDate, endDate: range.endDate, showOnlyPresent: false }),
+    daysPerWeekMap(),
+  ])
+  return { rows, daysPerWeek: dpw }
+}
+
+/** กรอง + สรุป + ตัดหน้า จากก้อน cache — งานล้วน ๆ ในเบราว์เซอร์ ไม่แตะฐานข้อมูล */
+export function buildReportView(
+  dataset: ReportDataset,
+  opts: {
+    userIds?: string[]
+    /** คนที่สังกัดสาขาที่เลือก (จาก user_allowed_locations) — ไม่ส่ง = ไม่กรองสาขา */
+    locationUserIds?: Set<string> | null
+    onlyPresent?: boolean
+    page: number
+    pageSize: number
+  }
+): AttendanceReportResponse & { fullRows: AttendanceReportData[] } {
+  let rows = dataset.rows
+  if (opts.locationUserIds) rows = rows.filter((r) => opts.locationUserIds!.has(r.userId))
+  if (opts.userIds?.length) {
+    const ids = new Set(opts.userIds)
+    rows = rows.filter((r) => ids.has(r.userId))
+  }
+
+  // สรุป + ตารางวัน คิดจากทุกวันของคนที่กรองไว้ (รวมวันขาด) —
+  // ติ๊ก "เฉพาะวันที่มา" มีผลแค่ซ่อนแถวในแท็บรายวัน
+  const fullRows = rows
+  const summary = getAttendanceSummary(fullRows, dataset.daysPerWeek)
+
+  const dailyRows = opts.onlyPresent ? rows.filter((r) => r.status !== 'absent') : rows
+  const total = dailyRows.length
+  const totalPages = Math.max(1, Math.ceil(total / opts.pageSize))
+  const page = Math.min(Math.max(1, opts.page), totalPages)
+
+  return {
+    data: dailyRows.slice((page - 1) * opts.pageSize, page * opts.pageSize),
+    summary,
+    fullRows,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalRecords: total,
+      pageSize: opts.pageSize,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  }
 }
 
 /* ------------------------------------------------------------------ */

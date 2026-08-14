@@ -211,7 +211,7 @@ export function useCheckIn(): UseCheckInReturn {
       // else: offsite remains null and empty array
 
       // Create check-in
-      await checkinService.createCheckIn({
+      const newCheckinId = await checkinService.createCheckIn({
         userId: userData.id!,
         userName: userData.fullName,
         userAvatar: userData.linePictureUrl,
@@ -225,7 +225,15 @@ export function useCheckIn(): UseCheckInReturn {
         note: locationCheckResult.reason,
         checkinPhotoUrl: photoUrl,
       })
-      
+
+      // ตรวจหลังบ้าน: เครื่องนี้เช็คอินให้คนอื่นวันนี้ด้วยไหม (จับกดแทนกัน)
+      // fire-and-forget — พลาดก็ไม่กวนการเช็คอิน
+      fetch('/api/checkin/device-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkinId: newCheckinId }),
+      }).catch(() => {})
+
       // Send Discord notification (no toast if fails)
       try {
         await DiscordNotificationService.notifyCheckIn(
@@ -273,47 +281,33 @@ export function useCheckIn(): UseCheckInReturn {
         }
       }
 
-      // ── Location guard: must checkout at the same location you checked in ──
-      // Onsite employees must checkout at the specific location they checked in at
-      // to prevent hour inflation (check in at office, go home, checkout from home)
-      // Exception: employees with allowCheckInOutsideLocation can checkout anywhere
-      if (
-        currentCheckIn.checkinType === 'onsite' &&
-        !userData.allowCheckInOutsideLocation
-      ) {
-        if (!pos) {
-          showToast('กรุณาเปิด GPS เพื่อเช็คเอาท์', 'error')
-          return
-        }
-
-        // Check against the specific location they checked in at (not just any allowed location)
-        const checkInLocationId = currentCheckIn.primaryLocationId
-        const allowedIds = checkInLocationId
-          ? [checkInLocationId]
-          : (userData.allowedLocationIds || [])
-
-        const locationCheck = locationDetectionService.checkUserLocation(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          locations,
-          allowedIds,
-          false // no outside-location override
-        )
-
-        if (!locationCheck.canCheckIn) {
-          const locationName = currentCheckIn.primaryLocationName || locationCheck.nearestLocation?.name || 'สถานที่ทำงาน'
-          const distanceText = locationCheck.nearestLocation ? ` (ห่าง ${locationCheck.nearestLocation.distance} ม.)` : ''
-          showToast(`ต้องเช็คเอาท์ที่ ${locationName}${distanceText}`, 'error')
-          return
-        }
+      // ── เช็คเอาท์นอกพื้นที่: ไม่บล็อก แต่ checkOut ฝั่ง service จะตัดชั่วโมง ──
+      // ที่เวลาเลิกงานปกติ + ไม่มี OT (เจ้าของเลือก 14 ส.ค. 69 — บล็อกแล้วคนลืม
+      // จะติดค้างเช็คเอาท์ไม่ได้เลย) — GPS จึงต้องมีเพื่อให้ระบบรู้ระยะ
+      if (currentCheckIn.checkinType === 'onsite' && !pos) {
+        showToast('กรุณาเปิด GPS เพื่อเช็คเอาท์', 'error')
+        return
       }
-      // ──────────────────────────────────────────────────────────────────────
 
       const hours = await checkinService.checkOut(userData.id, {
         lat: pos?.coords.latitude,
         lng: pos?.coords.longitude,
         note
       })
+
+      // เช็คเอาท์ไกลจากสาขา — บอกพนักงานตรง ๆ + แจ้งห้อง alerts ให้ HR เห็น
+      if (hours.farKm > 0) {
+        showToast(
+          `เช็คเอาท์นอกพื้นที่ (ห่าง ${hours.farKm} กม.) — ระบบนับชั่วโมงถึงเวลาเลิกงานเท่านั้น`,
+          'error'
+        )
+        DiscordNotificationService.notifyFarCheckout(
+          userData.displayName || userData.fullName,
+          currentCheckIn.primaryLocationName || 'สาขา',
+          hours.farKm,
+          userData.linePictureUrl
+        )
+      }
 
       // Send Discord notification (no toast if fails)
       try {
@@ -332,7 +326,7 @@ export function useCheckIn(): UseCheckInReturn {
         console.error('Discord notification failed:', err)
       }
       
-      showToast('เช็คเอาท์สำเร็จ', 'success')
+      if (!hours.farKm) showToast('เช็คเอาท์สำเร็จ', 'success')
       setCurrentCheckIn(null)
     } catch (err) {
       console.error('Check-out error:', err)

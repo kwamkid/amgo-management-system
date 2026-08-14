@@ -4,19 +4,17 @@
 // ทำงานฝั่ง server ด้วยสิทธิ์ที่ข้าม RLS (ไม่มีผู้ใช้ล็อกอินตอน cron ทำงาน)
 // ของเดิมที่ใช้ Firestore ลบทิ้งแล้ว — ย้อนดูได้ใน git history
 //
-// ── เปลี่ยนนโยบายจากของเดิม ────────────────────────────────────────────
-// ของเดิม "เดา" เวลาเลิกงานให้ (ใช้เวลาปิดกะ หรือ 18:00 หรือ +8 ชม.)
-// แล้วบันทึกเป็นชั่วโมงทำงานจริง
+// ── นโยบายปัจจุบัน (เจ้าของสั่ง 14 ส.ค. 69) ───────────────────────────
+// ลืมเช็คเอาท์ = ปิดให้ที่ "เวลาเลิกงานปกติ" (จบกะถ้ามีกะ · ไม่มีกะ = 18:00
+// หรือเข้า+8 ชม.) แล้ว **คิดชั่วโมงถึงแค่ตรงนั้น ไม่มี OT** + ติดธง
+// hours_status = 'needs_review' ให้ HR เห็นในรายงานและแก้ได้
 //
-// ผลที่เกิดขึ้นจริงในข้อมูลที่ย้ายมา: แถวที่ระบบปิดให้เฉลี่ย 15.4 ชม.
-// สูงสุด 26.55 ชม. — ตัวเลขพวกนี้ไหลเข้าไปคิดค่าแรงโดยไม่มีใครทัก
-//
-// รอบนี้ปิดกะให้เหมือนเดิม (ไม่งั้นเช็คอินวันถัดไปไม่ได้) แต่
-//   · ชั่วโมง = 0
-//   · hours_status = 'needs_review'
-// ให้ HR มาตัดสินเอง — ชั่วโมงทำงานคือเงิน ระบบไม่ควรเดาแทนคน
+// ต่างจากยุค Firebase ที่เดาเวลาแล้วบันทึกเวลาที่ผ่านไปจริงทั้งดุ้น
+// (เฉลี่ย 15.4 ชม. สูงสุด 26.55 ชม. ไหลเข้าค่าแรง) — การตัดที่เวลาเลิกงาน
+// ปกติไม่มีทางเกิน 1 วันงาน จึงบันทึกชั่วโมงได้โดยไม่เปิดช่องปั๊มชั่วโมง
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { calculateWorkingHours } from './workingHoursService'
 
 /** ลืมเช็คเอาท์เกินกี่ชั่วโมงถึงถือว่าลืมจริง (ไม่ใช่กะยาว) */
 const FORGOT_AFTER_HOURS = 12
@@ -34,7 +32,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
   // ตารางแบนหาได้ทีเดียวจากเวลาเช็คอิน
   const { data: stale, error } = await sb
     .from('checkins')
-    .select('id, user_id, user_name, checkin_time, shift_end_time')
+    .select('id, user_id, user_name, checkin_time, shift_end_time, primary_location_id')
     .eq('status', 'checked-in')
     .is('checkout_time', null)
     .lt('checkin_time', cutoff.toISOString())
@@ -51,6 +49,24 @@ export async function autoCheckoutPendingRecords(): Promise<{
       const checkinTime = new Date(rec.checkin_time!)
       const checkoutTime = guessCheckoutTime(checkinTime, rec.shift_end_time)
 
+      // ชั่วโมงคิดถึงเวลาเลิกงานปกติ (หักพักตามสาขา) — OT ไม่มีเด็ดขาด
+      let breakHours = 1
+      if (rec.primary_location_id) {
+        const { data: loc } = await sb
+          .from('locations')
+          .select('break_hours')
+          .eq('id', rec.primary_location_id)
+          .maybeSingle()
+        if (loc) breakHours = Number(loc.break_hours ?? 1)
+      }
+      const calc = calculateWorkingHours(
+        checkinTime,
+        checkoutTime,
+        { workingHours: {}, breakHours },
+        undefined,
+        false
+      )
+
       const { error: updErr } = await sb
         .from('checkins')
         .update({
@@ -60,13 +76,13 @@ export async function autoCheckoutPendingRecords(): Promise<{
           forgot_checkout: true,
           auto_checkout_at: new Date().toISOString(),
           auto_checkout_note:
-            'ระบบปิดกะให้เพราะลืมเช็คเอาท์ — เวลาเลิกงานยังไม่ยืนยัน รอ HR ตรวจ',
+            '[ลืมเช็คเอาท์ — ระบบปิดให้ที่เวลาเลิกงาน ไม่มี OT] HR แก้ได้ถ้าทำงานจริงเลยเวลา',
 
-          // ตั้งใจไม่ใส่ชั่วโมง — ดูหมายเหตุหัวไฟล์
-          regular_hours: 0,
-          overtime_hours: 0,
-          break_hours: 0,
-          hours_status: 'needs_review',
+          regular_hours: calc.regularHours,
+          overtime_hours: 0, // ตัดก่อนถึง OT — กติกาเจ้าของ 14 ส.ค. 69
+          break_hours: calc.breakHours,
+          needs_overtime_approval: false,
+          hours_status: 'needs_review', // ธงให้ HR เห็นในรายงาน
         })
         .eq('id', rec.id)
         .eq('status', 'checked-in') // กันชนกับกรณีเขาเพิ่งกดเช็คเอาท์เอง
@@ -97,7 +113,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
 }
 
 /**
- * เวลาปิดกะที่บันทึกไว้ — เป็นแค่ค่าตั้งต้นให้ HR แก้ ไม่ได้เอาไปคิดชั่วโมง
+ * เวลาเลิกงานปกติที่ใช้ปิดกะ + คิดชั่วโมง — จบกะ > 18:00 > เข้า+8 ชม.
  */
 function guessCheckoutTime(checkinTime: Date, shiftEndTime: string | null): Date {
   const out = new Date(checkinTime)

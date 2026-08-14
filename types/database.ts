@@ -459,6 +459,7 @@ export type Database = {
           checkout_note: string | null
           checkout_time: string | null
           created_at: string
+          device_id: string | null
           forgot_checkout: boolean
           hours_status: string
           id: string
@@ -504,6 +505,7 @@ export type Database = {
           checkout_note?: string | null
           checkout_time?: string | null
           created_at?: string
+          device_id?: string | null
           forgot_checkout?: boolean
           hours_status?: string
           id?: string
@@ -549,6 +551,7 @@ export type Database = {
           checkout_note?: string | null
           checkout_time?: string | null
           created_at?: string
+          device_id?: string | null
           forgot_checkout?: boolean
           hours_status?: string
           id?: string

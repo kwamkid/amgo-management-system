@@ -22,8 +22,9 @@ import type {
 } from '@/types/checkin'
 import type { Database } from '@/types/database'
 import { format } from 'date-fns'
-import { calculateWorkingHours, needsOvertimeApproval } from './workingHoursService'
+import { calculateWorkingHours, needsOvertimeApproval, distanceMeters, normalEndTime } from './workingHoursService'
 import { getLocation } from './locationService'
+import { getDeviceId } from '@/lib/utils/device'
 
 type Row = Database['public']['Tables']['checkins']['Row']
 
@@ -180,6 +181,7 @@ export async function createCheckIn(
       is_late: isLate,
       late_minutes: lateMinutes,
       note: data.note ?? null,
+      device_id: getDeviceId(), // จับเครื่องเดียวเช็คอินหลายคน
     })
     .select('id')
     .single()
@@ -207,7 +209,7 @@ export async function resolveOtEligible(userId: string): Promise<boolean> {
 export async function checkOut(
   userId: string,
   checkoutData: CheckOutData
-): Promise<{ totalHours: number; overtimeHours: number }> {
+): Promise<{ totalHours: number; overtimeHours: number; farKm: number }> {
   const active = await getActiveCheckIn(userId)
   if (!active) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
 
@@ -215,6 +217,28 @@ export async function checkOut(
 
   const checkinTime = new Date(active.checkinTime)
   const checkoutTime = new Date()
+
+  // ── เช็คเอาท์ไกลจากสาขาที่เช็คอิน = ตัดชั่วโมงที่เวลาเลิกงานปกติ ──────
+  // เจ้าของสั่ง 14 ส.ค. 69: กันเคส "เช็คอินที่งาน กลับไปเช็คเอาท์ที่บ้าน
+  // เพื่อปั๊มชั่วโมง" — ไม่บล็อก (คนลืมจะติดค้าง) แต่ชั่วโมงนับถึงเวลาเลิกงาน
+  // เท่านั้น และไม่เกิด OT (OT อยู่หลังเวลาเลิกงาน โดนตัดก่อนพอดี)
+  // ใช้เฉพาะเช็คอินที่สาขา — offsite/WFH ไม่มีจุดอ้างอิงให้เทียบ
+  // เผื่อ GPS แกว่ง 300 ม. นอกรัศมีถึงนับว่า "ไกล"
+  let farKm = 0
+  let effectiveCheckout = checkoutTime
+  if (
+    active.checkinType === 'onsite' &&
+    location &&
+    checkoutData.lat != null &&
+    checkoutData.lng != null
+  ) {
+    const dist = distanceMeters(location.lat, location.lng, checkoutData.lat, checkoutData.lng)
+    if (dist > location.radius + 300) {
+      farKm = Math.round(dist / 100) / 10
+      const cap = normalEndTime(checkinTime, active.shiftEndTime, location.breakHours)
+      if (cap < checkoutTime) effectiveCheckout = cap
+    }
+  }
 
   const shiftInfo = active.selectedShift
     ? {
@@ -228,17 +252,21 @@ export async function checkOut(
   // (เดิมคืน 0 หมด ทำให้คนทำงานที่บ้านไม่มีชั่วโมงและ OT หาย)
   const calcBase = calculateWorkingHours(
     checkinTime,
-    checkoutTime,
+    effectiveCheckout,
     location ?? OFFSITE_HOURS_RULES,
     shiftInfo,
     false
   )
   // ไม่มีกะให้เทียบ → คงสถานะสายที่คิดไว้ตอนเช็คอิน
-  const calc = shiftInfo
+  const calcRaw = shiftInfo
     ? calcBase
     : { ...calcBase, isLate: active.isLate, lateMinutes: active.lateMinutes }
+  // เช็คเอาท์ไกล = ไม่มี OT เด็ดขาด (กันเศษ OT จากการปัดเวลา)
+  const calc = farKm
+    ? { ...calcRaw, overtimeHours: 0, totalHours: calcRaw.regularHours }
+    : calcRaw
 
-  const needsApproval = location
+  const needsApproval = location && !farKm
     ? needsOvertimeApproval(checkoutTime, location, checkinTime)
     : false
 
@@ -257,7 +285,13 @@ export async function checkOut(
       late_minutes: calc.lateMinutes,
       is_overnight_shift: calc.isOvernightShift,
       needs_overtime_approval: needsApproval,
-      checkout_note: checkoutData.note ?? null,
+      checkout_note:
+        [
+          farKm ? `[เช็คเอาท์นอกพื้นที่ ${farKm} กม. — ตัดชั่วโมงที่เวลาเลิกงาน]` : '',
+          checkoutData.note ?? '',
+        ]
+          .filter(Boolean)
+          .join(' ') || null,
       hours_status: 'original',
     })
     .eq('id', active.id!)
@@ -265,7 +299,7 @@ export async function checkOut(
   if (error) throw new Error(`เช็คเอาท์ไม่สำเร็จ: ${error.message}`)
 
   // ส่งเลขที่คำนวณจริงกลับไปให้ noti — ไม่ต้องคิดเองจากเวลาดิบอีก
-  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours }
+  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours, farKm }
 }
 
 /* ------------------------------------------------------------------ *

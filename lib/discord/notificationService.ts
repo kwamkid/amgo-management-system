@@ -161,6 +161,15 @@ export class DiscordNotificationService {
     }
   }
   
+  // เช็คเอาท์นอกพื้นที่ — ตัดชั่วโมงแล้วแจ้งให้ HR เห็น
+  static async notifyFarCheckout(userName: string, locationName: string, km: number, userAvatar?: string) {
+    try {
+      await webhookHandlers.sendFarCheckoutAlert({ userName, userAvatar, locationName, km })
+    } catch (error) {
+      console.error('Failed to send far-checkout alert:', error)
+    }
+  }
+
   // Send overtime alert
   static async notifyOvertime(
     userId: string,

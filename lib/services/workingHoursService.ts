@@ -18,6 +18,35 @@ interface WorkingHoursCalculation {
 /**
  * Calculate working hours between check-in and check-out
  */
+/** ระยะเมตรระหว่างพิกัด (haversine) — ใช้เช็คว่าเช็คเอาท์ไกลจากสาขาไหม */
+export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const a =
+    Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2
+  return Math.round(2 * 6371000 * Math.asin(Math.sqrt(a)))
+}
+
+/**
+ * เวลาเลิกงานปกติของการเช็คอินครั้งนี้ — ใช้เป็นเพดานตัดชั่วโมง
+ * (เช็คเอาท์นอกพื้นที่ / ลืมเช็คเอาท์ — เจ้าของสั่ง 14 ส.ค. 69: ตัดก่อนถึง OT)
+ * มีกะ = เวลาจบกะ · ไม่มีกะ = เวลาเข้า + งานมาตรฐาน 8 ชม. + พัก
+ */
+export function normalEndTime(
+  checkinTime: Date,
+  shiftEndTime?: string | null,
+  breakHours: number = 1
+): Date {
+  if (shiftEndTime) {
+    const [h, m] = shiftEndTime.split(':').map(Number)
+    const end = new Date(checkinTime)
+    end.setHours(h, m, 0, 0)
+    if (end < checkinTime) end.setDate(end.getDate() + 1) // กะข้ามคืน
+    return end
+  }
+  return new Date(checkinTime.getTime() + (8 + breakHours) * 3600_000)
+}
+
 export function calculateWorkingHours(
   checkinTime: Date,
   checkoutTime: Date,

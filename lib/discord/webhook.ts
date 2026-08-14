@@ -33,6 +33,17 @@ const NOTI_ICONS = {
   leaveRejected: `${APP_URL}/discord/leave-rejected.png`,
 } as const
 
+// สีการ์ดชุดเดียวกับ legend ตารางวันของหน้ารายงาน (เจ้าของขอ 14 ส.ค. 69) —
+// เห็นแถบสีใน Discord ปุ๊บรู้สถานะเดียวกับที่เห็นในรายงาน ไม่ต้องจำสองชุด
+const GRID_COLORS = {
+  onsite: 0x22c55e, // เขียว — มาทำงาน (สาขา)
+  offsite: 0xa855f7, // ม่วง — นอกสถานที่
+  wfh: 0x0d9488, // teal — ทำงานที่บ้าน
+  late: 0xfbbf24, // เหลือง — มาสาย
+  absent: 0xef4444, // แดง — ขาด (ใช้กับเช็คเอาท์/ไม่อนุมัติด้วย)
+  leave: 0x0ea5e9, // ฟ้า — ลา
+} as const
+
 // คนที่ต้องถูก tag เมื่อมีคำขอลาใหม่ — เจ้าของระบุ 14 ส.ค. 69:
 // กอล์ฟ (ผู้บริหาร) · หน่อย (HR) · อุ้ย (HR) — id จาก users.discord_user_id
 const LEAVE_APPROVER_MENTIONS =
@@ -94,9 +105,11 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 
   const { checkinType, lat, lng } = event.data || {}
   const isOffsite = checkinType === 'offsite'
+  const isWfh = checkinType === 'wfh'
 
   const embed: DiscordEmbed = {
-    title: isOffsite ? '🟡 เช็คอิน · นอกสถานที่' : '🟢 เช็คอิน',
+    // สีตาม legend ตารางวัน: เขียวสาขา · ม่วงนอกสถานที่ · teal ที่บ้าน
+    title: isOffsite ? '🟣 เช็คอิน · นอกสถานที่' : isWfh ? '🏠 เช็คอิน · ทำงานที่บ้าน' : '🟢 เช็คอิน',
     // รูปใหญ่มุมขวา: ป้ายเขียวลูกศรเข้าประตู — คนละภาพกับเช็คเอาท์ชัด ๆ
     thumbnail: { url: isOffsite ? NOTI_ICONS.offsite : NOTI_ICONS.checkIn },
     image: CARD_WIDTH_SPACER,
@@ -104,8 +117,9 @@ export async function sendCheckInNotification(event: NotificationEvent) {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    description: isOffsite ? undefined : `ที่ **${event.locationName}**`,
-    color: isOffsite ? EmbedColors.WARNING : EmbedColors.SUCCESS,
+    // wfh ไม่มีสาขา — locationName เป็นค่า fallback ไม่ต้องโชว์
+    description: isOffsite || isWfh ? undefined : `ที่ **${event.locationName}**`,
+    color: isOffsite ? GRID_COLORS.offsite : isWfh ? GRID_COLORS.wfh : GRID_COLORS.onsite,
     fields: [
       {
         name: 'เวลา',
@@ -151,7 +165,7 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    color: EmbedColors.DANGER,
+    color: GRID_COLORS.absent,
     fields: [
       {
         name: 'เวลาทำงาน',
@@ -178,6 +192,25 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
   })
 }
 
+/** เช็คเอาท์นอกพื้นที่ — แจ้งเข้าห้อง alerts ให้ HR/เจ้าของเห็นทันที */
+export async function sendFarCheckoutAlert(data: {
+  userName: string
+  userAvatar?: string
+  locationName: string
+  km: number
+}) {
+  const webhook = new DiscordWebhook(WebhookChannel.ALERTS)
+  return webhook.sendEmbed({
+    title: '⚠️ เช็คเอาท์นอกพื้นที่',
+    author: { name: data.userName, icon_url: data.userAvatar || undefined },
+    description: `เช็คอินที่ **${data.locationName}** แต่เช็คเอาท์ห่างออกไป **${data.km} กม.** — ระบบตัดชั่วโมงที่เวลาเลิกงานให้แล้ว (ไม่มี OT)`,
+    color: GRID_COLORS.late,
+    image: CARD_WIDTH_SPACER,
+    footer: { text: 'AMGO Check-in System' },
+    timestamp: new Date().toISOString(),
+  })
+}
+
 export async function sendLeaveRequestNotification(event: NotificationEvent) {
   const webhook = new DiscordWebhook(WebhookChannel.LEAVE, 'leaveRequest')
   const { leaveType, startDate, endDate, totalDays, reason, isUrgent } = event.data || {}
@@ -185,15 +218,15 @@ export async function sendLeaveRequestNotification(event: NotificationEvent) {
   const leaveInfo = getLeaveTypeInfo(leaveType)
 
   const embed: DiscordEmbed = {
-    title: `🟠 ขอ${leaveInfo.label}${isUrgent ? ' · ด่วน' : ''}`,
-    // ปฏิทินส้ม = รออนุมัติ — ชุดเดียวกับป้ายเช็คอิน/เช็คเอาท์
+    title: `🔵 ขอ${leaveInfo.label}${isUrgent ? ' · ด่วน' : ''}`,
+    // การ์ดฟ้า = ลา (สีเดียวกับจุดลาในตารางวัน)
     thumbnail: { url: NOTI_ICONS.leaveRequest },
     image: CARD_WIDTH_SPACER,
     author: {
       name: event.userName,
       icon_url: event.userAvatar || undefined
     },
-    color: 0xe67e22,
+    color: GRID_COLORS.leave,
     fields: [
       {
         name: '📅 วันที่ลา',

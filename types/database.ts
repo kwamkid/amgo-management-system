@@ -2377,6 +2377,253 @@ export type Database = {
           },
         ]
       }
+      srp_brand_access: {
+        Row: {
+          brand_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srp_brand_access_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "srp_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "srp_brand_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "srp_brand_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "srp_brand_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "srp_brand_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      srp_brand_channels: {
+        Row: {
+          brand_id: string
+          commission_pct: number
+          created_at: string
+          dc_pct: number
+          gp_pct: number
+          id: string
+          name: string
+          pc_pct: number
+          promo_pct: number
+          service_fee_pct: number
+          shipping_thb: number
+          sort_order: number
+          transaction_fee_pct: number
+          type: string
+        }
+        Insert: {
+          brand_id: string
+          commission_pct?: number
+          created_at?: string
+          dc_pct?: number
+          gp_pct?: number
+          id?: string
+          name: string
+          pc_pct?: number
+          promo_pct?: number
+          service_fee_pct?: number
+          shipping_thb?: number
+          sort_order?: number
+          transaction_fee_pct?: number
+          type: string
+        }
+        Update: {
+          brand_id?: string
+          commission_pct?: number
+          created_at?: string
+          dc_pct?: number
+          gp_pct?: number
+          id?: string
+          name?: string
+          pc_pct?: number
+          promo_pct?: number
+          service_fee_pct?: number
+          shipping_thb?: number
+          sort_order?: number
+          transaction_fee_pct?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srp_brand_channels_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "srp_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      srp_brands: {
+        Row: {
+          created_at: string
+          default_multiplier: number
+          eur_to_thb: number
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          platform_markup_pct: number
+          updated_at: string
+          usd_to_thb: number
+          vat: number
+        }
+        Insert: {
+          created_at?: string
+          default_multiplier?: number
+          eur_to_thb?: number
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          platform_markup_pct?: number
+          updated_at?: string
+          usd_to_thb?: number
+          vat?: number
+        }
+        Update: {
+          created_at?: string
+          default_multiplier?: number
+          eur_to_thb?: number
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          platform_markup_pct?: number
+          updated_at?: string
+          usd_to_thb?: number
+          vat?: number
+        }
+        Relationships: []
+      }
+      srp_products: {
+        Row: {
+          brand_id: string
+          category: string
+          created_at: string
+          fob_eur: number
+          fob_usd: number
+          freight_do: number
+          id: string
+          image_url: string
+          import_tax_pct: number
+          is_active: boolean
+          last_edited_at: string | null
+          last_edited_by: string
+          multiplier: number
+          name: string
+          notes: string
+          our_price_thb: number
+          platform_price_thb: number
+          shipping_cost: number
+          sku: string
+          sort_order: number
+          srp_eur: number
+          srp_usd: number
+        }
+        Insert: {
+          brand_id: string
+          category?: string
+          created_at?: string
+          fob_eur?: number
+          fob_usd?: number
+          freight_do?: number
+          id?: string
+          image_url?: string
+          import_tax_pct?: number
+          is_active?: boolean
+          last_edited_at?: string | null
+          last_edited_by?: string
+          multiplier?: number
+          name?: string
+          notes?: string
+          our_price_thb?: number
+          platform_price_thb?: number
+          shipping_cost?: number
+          sku?: string
+          sort_order?: number
+          srp_eur?: number
+          srp_usd?: number
+        }
+        Update: {
+          brand_id?: string
+          category?: string
+          created_at?: string
+          fob_eur?: number
+          fob_usd?: number
+          freight_do?: number
+          id?: string
+          image_url?: string
+          import_tax_pct?: number
+          is_active?: boolean
+          last_edited_at?: string | null
+          last_edited_by?: string
+          multiplier?: number
+          name?: string
+          notes?: string
+          our_price_thb?: number
+          platform_price_thb?: number
+          shipping_cost?: number
+          sku?: string
+          sort_order?: number
+          srp_eur?: number
+          srp_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srp_products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "srp_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submissions: {
         Row: {
           campaign_id: string
@@ -3296,6 +3543,7 @@ export type Database = {
         Args: { p_user_id: string; p_year: number }
         Returns: number
       }
+      srp_role: { Args: { b_id: string }; Returns: string }
       sum_total_hours: {
         Args: never
         Returns: {

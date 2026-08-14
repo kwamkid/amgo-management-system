@@ -6,14 +6,18 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Menu, ChevronDown } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Menu, ChevronDown, Eye } from 'lucide-react'
 import { signOutBoth } from '@/lib/auth/dual-session'
 import { UserData } from '@/hooks/useAuth'
 import UserAvatar from '@/components/shared/UserAvatar'
 import { ActionMenu } from '@/components/aoo'
+import { getViewAs, setViewAs, VIEW_AS_PRESETS } from '@/lib/utils/viewAs'
 
 interface NavbarProps {
   userData?: UserData | null
+  /** สิทธิ์จริงของคนล็อกอิน — แอดมินเท่านั้นที่เห็นปุ่มสลับมุมมอง */
+  realRole?: string | null
   onMenuClick?: () => void
   sidebarOpen?: boolean
 }
@@ -27,8 +31,24 @@ const ROLE_LABEL: Record<string, string> = {
   employee: 'พนักงาน',
 }
 
-export default function Navbar({ userData, onMenuClick }: NavbarProps) {
+export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps) {
   const router = useRouter()
+
+  // ── แอดมิน: ดูระบบในมุมมองสิทธิ์อื่น (เครื่องมือทดสอบ) ──────────────
+  // useAuth เป็น hook แยกต่อ component ไม่มี context กลาง — สลับแล้วโหลดหน้าใหม่
+  // ทุกจุดจะได้ค่าตรงกัน · จำลองแค่หน้าจอ ข้อมูลจริงยังคุมด้วย RLS ตามสิทธิ์จริง
+  const [viewAs, setView] = useState('off')
+  useEffect(() => setView(getViewAs()), [])
+  const preset = VIEW_AS_PRESETS.find((p) => p.value === viewAs) ?? VIEW_AS_PRESETS[0]
+  const previewing = viewAs !== 'off'
+  // สลับเป็นมุมมองอื่นแล้วพากลับหน้าหลักเสมอ — ถ้าอยู่หน้าที่สิทธิ์นั้นเข้าไม่ได้
+  // (เช่นแอดมินยืนอยู่หน้า SRP แล้วสลับเป็นฝ่ายบุคคล) จะโดนเด้งไปหน้า
+  // "ไม่มีสิทธิ์เข้าถึง" ซึ่งอยู่นอกเลย์เอาต์ = ไม่มีเมนูให้เดินต่อ
+  const pickView = (v: string) => {
+    setViewAs(v)
+    if (v === 'off') window.location.reload()
+    else window.location.href = '/dashboard'
+  }
 
   const handleLogout = async () => {
     try {
@@ -63,7 +83,34 @@ export default function Navbar({ userData, onMenuClick }: NavbarProps) {
         className="h-8 w-auto lg:hidden"
       />
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1.5">
+        {realRole === 'admin' && (
+          <ActionMenu
+            minWidth={280}
+            items={VIEW_AS_PRESETS.map((p) => ({
+              label: p.value === viewAs ? `✓ ${p.label}` : p.label,
+              onSelect: () => pickView(p.value),
+            }))}
+            trigger={({ onClick, open }) => (
+              <button
+                onClick={onClick}
+                aria-expanded={open}
+                title="ดูระบบในมุมมองของสิทธิ์อื่น (จำลองหน้าจอเท่านั้น)"
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+                  previewing
+                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Eye size={14} />
+                <span className="hidden sm:block">
+                  {previewing ? `กำลังดูแบบ: ${preset.label}` : 'ดูมุมมองสิทธิ์'}
+                </span>
+                <ChevronDown size={13} className="opacity-60" />
+              </button>
+            )}
+          />
+        )}
         <ActionMenu
           minWidth={200}
           items={[

@@ -41,6 +41,8 @@ export interface UserData {
   seesDelivery?: boolean
   /** code ของตำแหน่ง (job_functions.code — useAuth เติมให้ตอนล็อกอิน) ใช้ gate เมนูเฉพาะตำแหน่ง เช่น production */
   jobFunctionCode?: string
+  /** มีสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์ (useAuth เติมให้ · แอดมิน = true เสมอ) */
+  hasSrpAccess?: boolean
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean

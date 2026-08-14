@@ -1,13 +1,29 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldX, Home, ArrowLeft } from 'lucide-react'
+import { getViewAs } from '@/lib/utils/viewAs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function UnauthorizedPage() {
   const router = useRouter()
+
+  // หน้านี้อยู่นอกเลย์เอาต์หลัก = ไม่มีเมนูให้เดินต่อ
+  // แอดมินที่กำลังทดสอบมุมมองสิทธิ์อื่นจึงไม่ควรมาค้างที่นี่ — เด้งกลับหน้าหลัก
+  // ไปเลย จะได้ไล่ดูเมนูของสิทธิ์นั้นต่อได้ (มุมมองที่เลือกไว้ยังคงอยู่)
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (getViewAs() !== 'off') {
+      router.replace('/dashboard')
+      return
+    }
+    setReady(true)
+  }, [router])
+
+  if (!ready) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4">

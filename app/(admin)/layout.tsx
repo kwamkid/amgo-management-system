@@ -19,7 +19,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userData } = useAuth();
+  const { userData, realRole } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
 
@@ -77,6 +77,7 @@ export default function AdminLayout({
           <div className="flex min-w-0 flex-1 flex-col">
             <Navbar
               userData={userData}
+              realRole={realRole}
               onMenuClick={() => setDrawerOpen(true)}
             />
 

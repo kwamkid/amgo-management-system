@@ -36,6 +36,7 @@ import {
   CupSoda,
   BookOpen,
   History,
+  Calculator,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -97,6 +98,13 @@ const navSections: NavSection[] = [
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
           { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
         ],
+      },
+      {
+        label: 'SRP Calculator',
+        icon: icon(Calculator),
+        // 'srp' = ได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ) — สิทธิ์รายคนรายแบรนด์
+        roles: ['admin', 'srp'],
+        href: '/srp',
       },
       {
         label: 'การผลิต',
@@ -178,11 +186,13 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
 
   const userRole = userData?.role || 'employee'
   // นอกจาก role แล้ว บางตำแหน่งได้สิทธิ์พิเศษ — แทนเป็น key เสมือนในลิสต์เดียวกัน
-  // (delivery = ตำแหน่งติดธง sees_delivery เช่น Call Center · production = ฝ่ายผลิต ADF)
+  // (delivery = ตำแหน่งติดธง sees_delivery เช่น Call Center · production = ฝ่ายผลิต ADF
+  //  · srp = ได้รับสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์)
   const roleKeys = [
     userRole,
     ...(userData?.seesDelivery ? ['delivery'] : []),
     ...(userData?.jobFunctionCode === 'production' ? ['production'] : []),
+    ...(userData?.hasSrpAccess ? ['srp'] : []),
   ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 

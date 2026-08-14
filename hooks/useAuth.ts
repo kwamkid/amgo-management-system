@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { mapUser, type UserData } from '@/lib/services/user/mappers'
+import { applyViewAs } from '@/lib/utils/viewAs'
 
 // การแปลงแถว users → UserData ย้ายไปอยู่ที่ lib/services/user/mappers.ts แล้ว
 // เพราะ userService ต้องใช้ตัวเดียวกัน — เดิมแปลงคนละที่แล้วไม่ตรงกัน
@@ -23,6 +24,8 @@ interface AuthState {
   userData: UserData | null
   loading: boolean
   error: string | null
+  /** สิทธิ์จริงตามฐานข้อมูล — ต่างจาก userData.role เมื่อแอดมินสลับ "ดูในมุมมองอื่น" */
+  realRole: UserData['role'] | null
 }
 
 export function useAuth() {
@@ -31,11 +34,12 @@ export function useAuth() {
     userData: null,
     loading: true,
     error: null,
+    realRole: null,
   })
 
   const load = useCallback(async (authUser: User | null) => {
     if (!authUser) {
-      setState({ user: null, userData: null, loading: false, error: null })
+      setState({ user: null, userData: null, loading: false, error: null, realRole: null })
       return
     }
 
@@ -52,12 +56,13 @@ export function useAuth() {
         userData: null,
         loading: false,
         error: 'เกิดข้อผิดพลาดในการดึงข้อมูล',
+        realRole: null,
       })
       return
     }
 
     if (!row || row.deleted_at) {
-      setState({ user: null, userData: null, loading: false, error: 'ไม่พบข้อมูลผู้ใช้' })
+      setState({ user: null, userData: null, loading: false, error: 'ไม่พบข้อมูลผู้ใช้', realRole: null })
       return
     }
 
@@ -68,6 +73,7 @@ export function useAuth() {
         userData: null,
         loading: false,
         error: ended ? 'บัญชีนี้สิ้นสุดการเป็นพนักงานแล้ว' : 'บัญชีของคุณยังไม่ได้รับการอนุมัติ',
+        realRole: null,
       })
       await sb.auth.signOut()
       return
@@ -86,11 +92,29 @@ export function useAuth() {
       jobFunctionCode = jf?.code ?? undefined
     }
 
+    // เมนู SRP Calculator — เห็นเมื่อได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ)
+    let hasSrpAccess = row.role === 'admin'
+    if (!hasSrpAccess) {
+      const { count } = await sb
+        .from('srp_brand_access')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', row.id)
+      hasSrpAccess = (count ?? 0) > 0
+    }
+
+    // แอดมินสลับดูมุมมองสิทธิ์อื่นได้ (เครื่องมือทดสอบ) — จำลองแค่หน้าจอ ไม่ใช่สิทธิ์จริง
+    const real = {
+      ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
+      seesDelivery,
+      jobFunctionCode,
+      hasSrpAccess,
+    }
     setState({
       user: authUser,
-      userData: { ...mapUser(row, (locs ?? []).map((l) => l.location_id)), seesDelivery, jobFunctionCode },
+      userData: applyViewAs(real),
       loading: false,
       error: null,
+      realRole: real.role,
     })
   }, [])
 

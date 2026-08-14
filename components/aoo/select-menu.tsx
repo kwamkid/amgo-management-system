@@ -159,9 +159,22 @@ export function SelectMenu({
     }
   }, [open, close])
 
+  // โฟกัสช่องค้นหาทันทีที่เมนูกางออก — พิมพ์ได้เลยไม่ต้องกดซ้ำ
+  //
+  // ⚠️ ต้องรอ pos ก่อน: แผงเมนูวาดเมื่อคำนวณตำแหน่งเสร็จ (pos && createPortal)
+  // ถ้าดูแค่ open ตอนนั้น searchRef ยังว่าง โฟกัสหลุดไปเฉย ๆ
+  // focusedOnce กันโฟกัสซ้ำตอน pos ถูกคำนวณใหม่ (เลื่อนจอ/ปรับขนาด)
+  const focusedOnce = useRef(false)
   useEffect(() => {
-    if (open && showSearch) searchRef.current?.focus()
-  }, [open, showSearch])
+    if (!open) {
+      focusedOnce.current = false
+      return
+    }
+    if (showSearch && pos && !focusedOnce.current) {
+      searchRef.current?.focus()
+      focusedOnce.current = true
+    }
+  }, [open, showSearch, pos])
 
   // เปิดมาให้เคอร์เซอร์อยู่ที่ตัวที่เลือกไว้ ไม่ใช่บนสุดเสมอ
   useEffect(() => {

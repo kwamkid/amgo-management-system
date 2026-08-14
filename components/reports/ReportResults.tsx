@@ -667,13 +667,14 @@ function DaySlotGrid({
   if (!filters) return null
   if (loading || !rows) return <Skeleton rows={10} />
 
-  // รายการวันในช่วง (ตัดที่วันนี้ — วันอนาคตยังไม่มีอะไรให้ดู)
+  // แสดงคอลัมน์เต็มช่วงที่เลือก (ทั้งเดือน 30-31 วัน · ก.พ. = สิ้นเดือนจริง) —
+  // ตารางกว้างคงที่ ไม่ขยับทุกวัน วันอนาคตเว้นช่องว่างไว้ (เจ้าของขอ 14 ส.ค. 69)
+  // ข้อมูลวันอนาคตไม่ถูกดึงอยู่แล้ว (fetch ตัด p_to ที่วันนี้) — ว่างที่ระดับช่องพอ
   // เทียบเป็นวันล้วน ไม่ใช่ Date ตรง ๆ — เวลาที่ติดมากับ filters ทำให้วันสุดท้ายหลุด
   const today = format(new Date(), 'yyyy-MM-dd')
   const endStr = format(filters.endDate, 'yyyy-MM-dd')
-  const lastDay = endStr < today ? endStr : today
   const days: string[] = []
-  for (let d = new Date(filters.startDate); format(d, 'yyyy-MM-dd') <= lastDay; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(filters.startDate); format(d, 'yyyy-MM-dd') <= endStr; d.setDate(d.getDate() + 1)) {
     days.push(format(d, 'yyyy-MM-dd'))
   }
 
@@ -842,6 +843,17 @@ function DaySlotGrid({
                 </td>
                 {days.map((d) => {
                   const c = p.cells.get(d)
+                  // วันอนาคต = ช่องว่างเปล่า ไม่มีจุด ไม่มี tooltip
+                  if (d > today) {
+                    return (
+                      <td
+                        key={d}
+                        className={`px-0.5 py-1 text-center ${
+                          monthStart(d) ? 'border-l-2 border-l-gray-100' : ''
+                        }`}
+                      />
+                    )
+                  }
                   return (
                     <td
                       key={d}

@@ -72,12 +72,14 @@ export function juiceMix(totalLiters: number, measuredBrix: number, targetBrix: 
   const waterMl = Math.max(0, totalMl - juiceMl - sugarG)
   const syrupG = sugarG * 2
   const waterSyrupMl = Math.max(0, waterMl - sugarG)
+  // ตัวเลขตรงชีทสูตรจริงเป๊ะ ทศนิยม 2 ตำแหน่ง (1,743.75 g / 9,506.25 ml)
+  // — เจ้าของขอ 14 ส.ค. 69 อย่าปัดทิ้ง หน้างานตวงตามนี้เลย
   return {
     juiceLiters: r2(juiceMl / 1000),
-    sugarG: Math.round(sugarG),
-    waterLiters: r2(waterMl / 1000),
-    syrupG: Math.round(syrupG),
-    waterSyrupLiters: r2(waterSyrupMl / 1000),
+    sugarG: r2(sugarG),
+    waterMl: r2(waterMl),
+    syrupG: r2(syrupG),
+    waterSyrupMl: r2(waterSyrupMl),
   }
 }
 

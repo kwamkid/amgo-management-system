@@ -114,12 +114,13 @@ export default function ProductionMixPage() {
       const out: MixRow[] = [
         { name: 'น้ำส้มคั้นสด', planned: mix.juiceLiters, unit: 'l', isYieldBase: false },
       ]
+      // ตัวเลขชุดเดียวกับชีทสูตรจริง: กรัม/มล. ทศนิยมเต็ม ไม่ปัดทิ้ง (เจ้าของขอ)
       if (sweetMode === 'sugar') {
         if (mix.sugarG > 0) out.push({ name: 'น้ำตาล', planned: mix.sugarG, unit: 'g', isYieldBase: false })
-        out.push({ name: 'น้ำดื่มสะอาด', planned: mix.waterLiters, unit: 'l', isYieldBase: false })
+        out.push({ name: 'น้ำดื่มสะอาด', planned: mix.waterMl, unit: 'ml', isYieldBase: false })
       } else {
         if (mix.syrupG > 0) out.push({ name: 'น้ำเชื่อม', planned: mix.syrupG, unit: 'g', isYieldBase: false })
-        out.push({ name: 'น้ำดื่มสะอาด', planned: mix.waterSyrupLiters, unit: 'l', isYieldBase: false })
+        out.push({ name: 'น้ำดื่มสะอาด', planned: mix.waterSyrupMl, unit: 'ml', isYieldBase: false })
       }
       for (const item of recipe.items) {
         const s = smartQty(item.qtyPerLiter * (planTotalMl / 1000), item.unit)

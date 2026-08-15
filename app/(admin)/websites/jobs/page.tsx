@@ -10,7 +10,7 @@
 //
 // งานทุกชนิดเข้าคิวเสมอ ไม่ยิงตรง — โฮสต์เดียวกันรันทีละงานเท่านั้น (กันโหลดพุ่ง)
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
@@ -120,6 +120,7 @@ export default function WebJobsPage() {
     if (userData && !canSee) router.push('/unauthorized')
   }, [userData, canSee, router])
 
+  /** โหลดใหม่ทั้งก้อน — ใช้ตอนเปิดหน้าและหลังกดสั่งงาน */
   const load = useCallback(() => {
     getSites().then(setSites).catch((e) => showToast(e.message, 'error'))
     getHosts().then(setHosts).catch(() => {})
@@ -128,12 +129,39 @@ export default function WebJobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // รอบตามคิว — ถามแค่คิวกับประวัติงาน (ไม่กี่สิบแถว) แล้วค่อยดึงเว็บทั้ง 50 ตัวใหม่
+  // เฉพาะตอนมีงานเพิ่งเสร็จ · ของเดิมยิงทั้ง 4 ก้อนทุก 15 วิ ตลอดเวลาที่เปิดแท็บทิ้งไว้
+  const lastFinished = useRef('')
+  const tick = useCallback(async () => {
+    const [q, j] = await Promise.all([getQueueStatus(), getJobs({ limit: 40 })])
+    setQueue(q)
+    setJobs(j)
+    const newest = j.reduce((m, x) => (x.finishedAt && x.finishedAt > m ? x.finishedAt : m), '')
+    if (newest !== lastFinished.current) {
+      lastFinished.current = newest
+      getSites().then(setSites).catch(() => {})
+    }
+  }, [])
+
+  // ให้ตัวจับเวลาอ่านสถานะคิวล่าสุดได้ โดยไม่ต้องตั้ง interval ใหม่ทุกครั้งที่คิวเปลี่ยน
+  const queueBusy = queue.queued + queue.running > 0
+  const queueBusyRef = useRef(false)
+  useEffect(() => {
+    queueBusyRef.current = queueBusy
+  }, [queueBusy])
+
   useEffect(() => {
     if (!canSee) return
     load()
-    const t = setInterval(load, 15000) // คิวเดินเบื้องหลัง — รีเฟรชเองจะได้เห็นความคืบหน้า
+    let n = 0
+    const t = setInterval(() => {
+      if (document.hidden) return // สลับแท็บออกไปทำอย่างอื่น = ไม่ยิงเลย
+      n++
+      // มีงานเดินอยู่ = ทุก 10 วิ · คิวว่าง = ทุก 60 วิ พอให้เห็นงานที่ cron สั่งเอง
+      if (queueBusyRef.current || n % 6 === 0) tick()
+    }, 10_000)
     return () => clearInterval(t)
-  }, [canSee, load])
+  }, [canSee, load, tick])
 
   /** เฉพาะเว็บที่สั่งงานได้จริง (ยังดูแลอยู่ + รู้ path บนโฮสต์) */
   const workable = useMemo(
@@ -392,7 +420,11 @@ export default function WebJobsPage() {
         <StatCard
           label="เว็บที่ดูแลอยู่"
           value={stats.total}
-          hint={`ในคิวตอนนี้ ${queue.queued + queue.running} งาน`}
+          hint={
+            queueBusy
+              ? `กำลังเดินคิว ${queue.queued + queue.running} งาน · หน้านี้อัปเดตเองทุก 10 วิ`
+              : 'คิวว่าง'
+          }
         />
         <StatCard
           label="ค้างอัปเดตปลั๊กอิน"

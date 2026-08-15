@@ -61,10 +61,16 @@ export async function GET(request: NextRequest) {
       type: 'plugin_check',
       host_id: s.host_id,
       site_id: s.id,
-      triggered_by: 'cron',
+      // ค่าที่ constraint ยอมรับมีแค่ 'user' กับ 'schedule' — ห้ามใส่ 'cron'
+      triggered_by: 'schedule',
     }))
   )
-  if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 })
+  if (jErr) {
+    // สร้าง batch ไปแล้วแต่ใส่งานไม่สำเร็จ = เหลือ batch เปล่าค้างในประวัติ
+    // เก็บกวาดเองก่อนตอบ error (เคยค้าง 2 ใบตอน triggered_by ผิดค่า)
+    await sb.from('web_run_batches').delete().eq('id', batch.id)
+    return NextResponse.json({ error: jErr.message }, { status: 500 })
+  }
 
   return NextResponse.json({
     success: true,

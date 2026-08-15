@@ -3810,6 +3810,7 @@ export type Database = {
           last_scan_at: string | null
           last_scan_status: string
           pending_plugin_count: number
+          plugin_count: number
           public_html_path: string | null
           http_status: number | null
           id: string
@@ -3850,6 +3851,7 @@ export type Database = {
           last_scan_at?: string | null
           last_scan_status?: string
           pending_plugin_count?: number
+          plugin_count?: number
           public_html_path?: string | null
           http_status?: number | null
           id?: string
@@ -3890,6 +3892,7 @@ export type Database = {
           last_scan_at?: string | null
           last_scan_status?: string
           pending_plugin_count?: number
+          plugin_count?: number
           public_html_path?: string | null
           http_status?: number | null
           id?: string

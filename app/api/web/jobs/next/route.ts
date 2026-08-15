@@ -99,7 +99,12 @@ async function savePlugins(sb: Admin, siteId: string, list: WpPlugin[], version:
   }
   await sb
     .from('web_sites')
-    .update({ plugins_checked_at: now, wp_version: version, pending_plugin_count: pending.length })
+    .update({
+      plugins_checked_at: now,
+      wp_version: version,
+      pending_plugin_count: pending.length,
+      plugin_count: list.length,
+    })
     .eq('id', siteId)
 
   return pending

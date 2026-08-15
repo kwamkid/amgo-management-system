@@ -79,6 +79,8 @@ export interface WebSite {
   hostName?: string
   publicHtmlPath: string
   pendingPluginCount: number
+  /** ปลั๊กอินทั้งหมดที่ติดตั้ง — ใช้คู่กับ pendingPluginCount เป็น "ค้าง/ทั้งหมด" */
+  pluginCount: number
   lastScanStatus: 'ok' | 'suspect' | 'fail' | 'unknown'
   lastScanAt: string | null
   lastBackupAt: string | null
@@ -177,6 +179,7 @@ const toSite = (r: SiteRow): WebSite => ({
   hostName: ((r.web_hosts as { name?: string } | null)?.name as string) ?? '',
   publicHtmlPath: (r.public_html_path as string) ?? '',
   pendingPluginCount: (r.pending_plugin_count as number) ?? 0,
+  pluginCount: (r.plugin_count as number) ?? 0,
   lastScanStatus: (r.last_scan_status as WebSite['lastScanStatus']) ?? 'unknown',
   lastScanAt: (r.last_scan_at as string) ?? null,
   lastBackupAt: (r.last_backup_at as string) ?? null,
@@ -676,13 +679,42 @@ export async function getJobs(opts: { batchId?: string; limit?: number } = {}): 
   return (data ?? []).map(toJob)
 }
 
-/** งานที่ยังไม่จบ — ใช้โชว์ว่าคิวเดินอยู่ */
-export async function getQueueStatus(): Promise<{ queued: number; running: number }> {
-  const [{ count: queued }, { count: running }] = await Promise.all([
-    sb().from('web_jobs').select('id', { count: 'exact', head: true }).eq('status', 'queued'),
-    sb().from('web_jobs').select('id', { count: 'exact', head: true }).eq('status', 'running'),
-  ])
-  return { queued: queued ?? 0, running: running ?? 0 }
+export interface ActiveJob {
+  siteId: string | null
+  hostId: string | null
+  type: WebJob['type']
+  status: 'queued' | 'running'
+}
+
+/**
+ * งานที่ยังไม่จบ — คืนรายตัวไม่ใช่แค่จำนวน เพราะหน้าเว็บต้องรู้ว่า
+ * "เว็บไหนกำลังมีงานค้างอยู่" เพื่อปิดปุ่มกันกดซ้ำระหว่างรอคิว
+ * (งานค้างมีไม่เกินหลักร้อย ดึงทั้งแถวถูกกว่ายิง count 2 รอบ)
+ */
+export async function getQueueStatus(): Promise<{
+  queued: number
+  running: number
+  active: ActiveJob[]
+}> {
+  const { data, error } = await sb()
+    .from('web_jobs')
+    .select('site_id, host_id, type, status')
+    .in('status', ['queued', 'running'])
+    .limit(1000)
+  if (error) throw error
+
+  const active: ActiveJob[] = (data ?? []).map((r) => ({
+    siteId: (r.site_id as string) ?? null,
+    hostId: (r.host_id as string) ?? null,
+    type: r.type as WebJob['type'],
+    status: r.status as 'queued' | 'running',
+  }))
+
+  return {
+    queued: active.filter((a) => a.status === 'queued').length,
+    running: active.filter((a) => a.status === 'running').length,
+    active,
+  }
 }
 
 /* ── ตัวช่วย ────────────────────────────────────────────────────────── */

@@ -21,6 +21,7 @@ import {
   scanSite,
   updatePlugins,
   type SshTarget,
+  type WpPlugin,
 } from '@/lib/services/web/wpCli'
 
 export const maxDuration = 60
@@ -30,7 +31,7 @@ type Admin = ReturnType<typeof createAdminClient>
 type Job = {
   id: string
   batch_id: string | null
-  type: 'scan' | 'plugin_update' | 'backup' | 'discover'
+  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
   host_id: string | null
   site_id: string | null
 }
@@ -77,26 +78,16 @@ async function runDiscover(sb: Admin, job: Job) {
   }
 }
 
-async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: string) {
-  const before = await listPlugins(target, path)
-  const pending = before.filter((p) => p.update === 'available')
-
-  let log = ''
-  if (pending.length) {
-    const res = await updatePlugins(target, path, 'all')
-    log = (res.out + res.err).slice(-4000)
-  }
-
-  const after = await listPlugins(target, path)
-  const stillPending = after.filter((p) => p.update === 'available')
-  const version = await coreVersion(target, path).catch(() => '')
+/** เก็บรายชื่อปลั๊กอินลงฐานข้อมูล + คืนจำนวนที่ค้างอัปเดต (ใช้ร่วมกันทั้งตรวจและอัปเดต) */
+async function savePlugins(sb: Admin, siteId: string, list: WpPlugin[], version: string) {
   const now = new Date().toISOString()
+  const pending = list.filter((p) => p.update === 'available')
 
-  await sb.from('web_plugins').delete().eq('site_id', job.site_id!)
-  if (after.length) {
+  await sb.from('web_plugins').delete().eq('site_id', siteId)
+  if (list.length) {
     await sb.from('web_plugins').insert(
-      after.map((p) => ({
-        site_id: job.site_id!,
+      list.map((p) => ({
+        site_id: siteId,
         slug: p.name,
         name: p.name,
         version: p.version ?? '',
@@ -108,8 +99,47 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
   }
   await sb
     .from('web_sites')
-    .update({ plugins_checked_at: now, wp_version: version, pending_plugin_count: stillPending.length })
-    .eq('id', job.site_id!)
+    .update({ plugins_checked_at: now, wp_version: version, pending_plugin_count: pending.length })
+    .eq('id', siteId)
+
+  return pending
+}
+
+/**
+ * ตรวจอย่างเดียว ไม่แตะอะไรบนเว็บ — ปลอดภัยพอให้ cron รันทั้งฟลีตทุกคืน
+ * ต่างจาก plugin_update ที่สั่ง `wp plugin update` ของจริง
+ */
+async function runPluginCheck(sb: Admin, job: Job, target: SshTarget, path: string) {
+  const list = await listPlugins(target, path)
+  const version = await coreVersion(target, path).catch(() => '')
+  const pending = await savePlugins(sb, job.site_id!, list, version)
+
+  return {
+    log: pending.length
+      ? pending.map((p) => `${p.name} ${p.version} → ${p.update_version ?? 'ใหม่กว่า'}`).join('\n')
+      : 'ปลั๊กอินครบทุกตัว',
+    summary: {
+      total: list.length,
+      pending: pending.length,
+      pendingNames: pending.map((p) => p.name),
+      wpVersion: version,
+    },
+  }
+}
+
+async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: string) {
+  const before = await listPlugins(target, path)
+  const pending = before.filter((p) => p.update === 'available')
+
+  let log = ''
+  if (pending.length) {
+    const res = await updatePlugins(target, path, 'all')
+    log = (res.out + res.err).slice(-4000)
+  }
+
+  const after = await listPlugins(target, path)
+  const version = await coreVersion(target, path).catch(() => '')
+  const stillPending = await savePlugins(sb, job.site_id!, after, version)
 
   const updated = pending
     .filter((p) => !stillPending.some((s) => s.name === p.name))
@@ -197,9 +227,14 @@ async function runJob(sb: Admin, job: Job) {
   if (!host) throw new Error('เว็บนี้ยังไม่ได้ผูกโฮสต์')
 
   const target = await targetForHost(sb, host)
+  if (job.type === 'plugin_check') return runPluginCheck(sb, job, target, site.public_html_path)
   if (job.type === 'plugin_update') return runPluginUpdate(sb, job, target, site.public_html_path)
   if (job.type === 'scan') return runScan(sb, job, target, site.public_html_path, site.site_name)
-  return runBackup(sb, job, target, site.public_html_path, host.backup_keep)
+  if (job.type === 'backup') return runBackup(sb, job, target, site.public_html_path, host.backup_keep)
+
+  // ห้ามมี fallback เป็นงานใดงานหนึ่ง — ถ้าเพิ่มชนิดงานใหม่ในฐานข้อมูลก่อนโค้ดขึ้น
+  // production เวอร์ชันเก่าจะหยิบไปทำเป็นงานนั้นแทน (เกือบเกิดจริงกับ plugin_check)
+  throw new Error(`ยังไม่รองรับงานชนิด "${job.type}" — โค้ดฝั่งเซิร์ฟเวอร์อาจยังไม่ได้ deploy`)
 }
 
 /** ปิดงาน + เดินตัวนับของ batch (ครบแล้วปิด batch + สรุปเข้า Discord) */
@@ -238,13 +273,13 @@ async function finish(sb: Admin, job: Job, ok: boolean, log: string, summary: un
 
   if (complete) {
     const label =
-      batch.type === 'plugin_update'
-        ? 'อัปเดตปลั๊กอิน'
-        : batch.type === 'scan'
-          ? 'สแกนมัลแวร์'
-          : batch.type === 'backup'
-            ? 'สำรองข้อมูล'
-            : 'สำรวจรายชื่อเว็บ'
+      ({
+        plugin_update: 'อัปเดตปลั๊กอิน',
+        plugin_check: 'ตรวจปลั๊กอิน',
+        scan: 'สแกนมัลแวร์',
+        backup: 'สำรองข้อมูล',
+        discover: 'สำรวจรายชื่อเว็บ',
+      })[batch.type as Job['type']] ?? batch.type
     await sendWebAlert({
       title: `✅ ${label} ครบทุกเว็บแล้ว`,
       description: `สำเร็จ ${done} · ล้มเหลว ${failed} (ทั้งหมด ${batch.total_jobs})`,

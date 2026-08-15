@@ -3799,6 +3799,7 @@ export type Database = {
           domain_registrar: string | null
           domain_self_registered: boolean
           down_since: string | null
+          page_issue: string | null
           hosting_account: string | null
           hosting_expires_at: string | null
           hosting_provider: string | null
@@ -3838,6 +3839,7 @@ export type Database = {
           domain_registrar?: string | null
           domain_self_registered?: boolean
           down_since?: string | null
+          page_issue?: string | null
           hosting_account?: string | null
           hosting_expires_at?: string | null
           hosting_provider?: string | null
@@ -3877,6 +3879,7 @@ export type Database = {
           domain_registrar?: string | null
           domain_self_registered?: boolean
           down_since?: string | null
+          page_issue?: string | null
           hosting_account?: string | null
           hosting_expires_at?: string | null
           hosting_provider?: string | null

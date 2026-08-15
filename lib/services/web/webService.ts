@@ -46,7 +46,7 @@ export interface WebHost {
 export interface WebJob {
   id: string
   batchId: string | null
-  type: 'scan' | 'plugin_update' | 'backup' | 'discover'
+  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
   status: 'queued' | 'running' | 'done' | 'failed'
   hostId: string | null
   siteId: string | null
@@ -105,6 +105,8 @@ export interface WebSite {
   lastCheckedAt: string | null
   lastUpAt: string | null
   downSince: string | null
+  /** อาการที่อ่านได้จากเนื้อหาหน้า เช่น critical_error, blank_page — null = ปกติ */
+  pageIssue: string | null
   notes: string
   /** สรุปจากบิล — เติมให้เฉพาะตอนดึงรายการ */
   unpaidCount?: number
@@ -201,6 +203,7 @@ const toSite = (r: SiteRow): WebSite => ({
   lastCheckedAt: (r.last_checked_at as string) ?? null,
   lastUpAt: (r.last_up_at as string) ?? null,
   downSince: (r.down_since as string) ?? null,
+  pageIssue: (r.page_issue as string) ?? null,
   notes: (r.notes as string) ?? '',
 })
 

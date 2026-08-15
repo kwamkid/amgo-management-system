@@ -2,7 +2,7 @@
 //
 // สั่งงานทั้งฟลีต — สร้าง batch 1 อัน + job ทีละเว็บ (ไม่ยิงเข้าโฮสต์ตรงนี้)
 //
-//   POST { type: 'plugin_update' | 'scan' | 'backup' | 'discover', siteIds?, hostId? }
+//   POST { type: 'plugin_update' | 'plugin_check' | 'scan' | 'backup' | 'discover', siteIds?, hostId? }
 //
 // ไม่ระบุ siteIds = ทำทุกเว็บที่ยังดูแลอยู่และผูกโฮสต์ไว้แล้ว
 // type 'discover' เป็นงานระดับโฮสต์ (1 job ต่อ 1 โฮสต์) ไม่ใช่ต่อเว็บ
@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase } from '@/lib/supabase/server'
 
-type JobType = 'scan' | 'plugin_update' | 'backup' | 'discover'
+type JobType = 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
 
 export async function POST(request: NextRequest) {
   const sb = await createServerSupabase()
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   const type = body.type
-  if (!type || !['scan', 'plugin_update', 'backup', 'discover'].includes(type)) {
+  if (!type || !['scan', 'plugin_update', 'plugin_check', 'backup', 'discover'].includes(type)) {
     return NextResponse.json({ error: 'ไม่รู้จักงานประเภทนี้' }, { status: 400 })
   }
 

@@ -27,11 +27,17 @@ openssl rand -hex 32
 
 ### โดเมน
 
-ต้องเป็นโดเมนจริงที่เปิดจากอินเทอร์เน็ตได้
-`NEXT_PUBLIC_APP_URL` ตอนนี้ยังเป็น ngrok (`https://amgo.ngrok.app`) ซึ่ง**ใช้กับ cron ไม่ได้**
-เพราะต้องเปิดเครื่องค้างไว้ตลอด — รอ deploy ขึ้นโดเมนจริงก่อนแล้วค่อยตั้ง
+โดเมนจริงคือ **`https://app.amgovenger.com`** (ตั้งใน Vercel ตั้งแต่ 9 ส.ค. 69)
+ทุก URL ในเอกสารนี้ใช้โดเมนนี้ตรง ๆ ก๊อปวางที่ cron-job.org ได้เลย
 
-ในเอกสารนี้แทนโดเมนจริงด้วย `https://โดเมนของคุณ`
+เช็คว่าพร้อมตั้ง cron หรือยัง — ยิงเปล่า ๆ โดยไม่ใส่รหัส ต้องได้ `401`:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nightly
+```
+
+ได้ `401` = ขึ้นแล้วและด่านรหัสทำงาน (ตรวจล่าสุด 16 ส.ค. 69 ครบทั้ง 5 endpoint)
+ได้ `404` = ยังไม่ได้ deploy · ได้ `200` = **อันตราย** แปลว่าไม่ได้ตั้ง `CRON_SECRET` ใครก็ยิงงานได้
 
 ---
 
@@ -44,7 +50,7 @@ openssl rand -hex 32
 | ช่อง | ค่า |
 |---|---|
 | Title | `AMGO — ปิดกะอัตโนมัติ` |
-| URL | `https://โดเมนของคุณ/api/cron/auto-checkout` |
+| URL | `https://app.amgovenger.com/api/cron/auto-checkout` |
 | Schedule | Every day at **23:59** |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
@@ -67,7 +73,7 @@ openssl rand -hex 32
 | ช่อง | ค่า |
 |---|---|
 | Title | `AMGO — ลบรูปเก่า 60 วัน` |
-| URL | `https://โดเมนของคุณ/api/cron/cleanup-photos` |
+| URL | `https://app.amgovenger.com/api/cron/cleanup-photos` |
 | Schedule | Every day at **03:30** |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
@@ -91,7 +97,7 @@ openssl rand -hex 32
 | ช่อง | ค่า |
 |---|---|
 | Title | `AMGO — ตัดยอดเงินเดือน` |
-| URL | `https://โดเมนของคุณ/api/cron/payroll-cutoff` |
+| URL | `https://app.amgovenger.com/api/cron/payroll-cutoff` |
 | Schedule | Every day at **23:30** |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
@@ -125,7 +131,7 @@ openssl rand -hex 32
 | ช่อง | ค่า |
 |---|---|
 | Title | `AMGO — ตรวจเว็บประจำคืน` |
-| URL | `https://โดเมนของคุณ/api/web/nightly` |
+| URL | `https://app.amgovenger.com/api/web/nightly` |
 | Schedule | Every day at **01:00** |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
@@ -157,7 +163,7 @@ openssl rand -hex 32
 | ช่อง | ค่า |
 |---|---|
 | Title | `AMGO — ไล่คิวงานเว็บ` |
-| URL | `https://โดเมนของคุณ/api/web/jobs/next` |
+| URL | `https://app.amgovenger.com/api/web/jobs/next` |
 | Schedule | Every **2 minutes** |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
@@ -193,7 +199,7 @@ x-cron-secret: <รหัส>
 **ทางสุดท้ายจริง ๆ** ถ้าใส่ header ไม่ได้เลย ต่อท้าย URL ได้:
 
 ```
-https://โดเมนของคุณ/api/cron/auto-checkout?secret=<รหัส>
+https://app.amgovenger.com/api/cron/auto-checkout?secret=<รหัส>
 ```
 
 ⚠️ วิธีนี้รหัสจะติดอยู่ใน log ทั้งฝั่ง cron-job.org (เก็บประวัติการเรียกให้ดูย้อนหลัง)
@@ -206,19 +212,19 @@ https://โดเมนของคุณ/api/cron/auto-checkout?secret=<รห�
 ```bash
 # ปิดกะอัตโนมัติ
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
-  https://โดเมนของคุณ/api/cron/auto-checkout | jq
+  https://app.amgovenger.com/api/cron/auto-checkout | jq
 
 # ลบรูปเก่า
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
-  https://โดเมนของคุณ/api/cron/cleanup-photos | jq
+  https://app.amgovenger.com/api/cron/cleanup-photos | jq
 
 # ต่อคิวตรวจเว็บประจำคืน
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
-  https://โดเมนของคุณ/api/web/nightly | jq
+  https://app.amgovenger.com/api/web/nightly | jq
 
 # ไล่คิว (เรียกซ้ำจนกว่าคิวจะหมด)
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
-  https://โดเมนของคุณ/api/web/jobs/next | jq
+  https://app.amgovenger.com/api/web/jobs/next | jq
 ```
 
 ควรได้ `{"success": true, ...}`
@@ -243,7 +249,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" \
 
 ```bash
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
-  "https://โดเมนของคุณ/api/cron/cleanup-photos?limit=2000" | jq
+  "https://app.amgovenger.com/api/cron/cleanup-photos?limit=2000" | jq
 ```
 
 ---

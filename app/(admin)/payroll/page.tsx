@@ -176,10 +176,16 @@ export default function PayrollPage() {
   const save = async () => {
     try {
       setSaving(true)
-      await savePayroll(month, rows, userData!.id!)
-      showToast('บันทึกสรุปเงินเดือนแล้ว', 'success')
+      const { saved, locked } = await savePayroll(month, rows, userData!.id!)
+      // แถวที่ยังไม่ถึงวันตัดยอดไม่ถูกบันทึก — ต้องบอก ไม่ใช่เงียบ ๆ
+      showToast(
+        locked
+          ? `บันทึก ${saved} แถว · อีก ${locked} แถวยังไม่ถึงวันตัดยอด ยังไม่บันทึก`
+          : 'บันทึกสรุปเงินเดือนแล้ว',
+        locked ? 'error' : 'success'
+      )
       setDirty(false)
-      setRows((prev) => prev.map((r) => ({ ...r, saved: true })))
+      setRows((prev) => prev.map((r) => (r.cutoffPassed ? { ...r, saved: true } : r)))
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
@@ -235,6 +241,21 @@ export default function PayrollPage() {
 
   const grandTotal = useMemo(() => visible.reduce((s, r) => s + payrollTotal(r), 0), [visible])
 
+  // ช่วงงานของงวดนี้ แยกตามรอบจ่าย — c28 กับ c4 อยู่หน้าเดียวกันแต่คนละช่วงวัน
+  // ต้องโชว์ ไม่งั้นอ่านเลขวันทำงานแล้วไม่รู้ว่านับจากช่วงไหน (เจ้าของทัก 15 ส.ค. 69)
+  const cycleSummary = useMemo(() => {
+    const byCycle = new Map<string, { row: PayrollRow; people: number }>()
+    for (const r of rows) {
+      if (!r.isPrimary) continue
+      const hit = byCycle.get(r.cycle)
+      if (hit) hit.people++
+      else byCycle.set(r.cycle, { row: r, people: 1 })
+    }
+    return [...byCycle.values()].sort((a, b) => b.people - a.people)
+  }, [rows])
+
+  const anySaveable = cycleSummary.some((c) => c.row.cutoffPassed)
+
   if (loading && rows.length === 0) return <TechLoader />
 
   const num = (v: number) => (Number.isFinite(v) ? v : 0)
@@ -268,7 +289,16 @@ export default function PayrollPage() {
             <Button variant="secondary" size="sm" onClick={exportCsv}>
               <Download size={15} /> ไฟล์โอนธนาคาร
             </Button>
-            <Button size="sm" onClick={save} disabled={saving || !dirty}>
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={saving || !dirty || !anySaveable}
+              title={
+                anySaveable
+                  ? undefined
+                  : 'งวดนี้ยังไม่ถึงวันตัดยอด — ตัวเลขวันทำงาน/โอทียังไม่ครบ'
+              }
+            >
               <Save size={15} /> {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </Button>
           </>
@@ -299,6 +329,25 @@ export default function PayrollPage() {
             แก้แล้ว ยังไม่บันทึก
           </span>
         )}
+        {/* ตัดยอดก่อนวันจ่าย ~3 วัน เอาไว้ทำ report (กติกาเจ้าของ 15 ส.ค. 69) */}
+        {cycleSummary.map(({ row, people }) => (
+          <span
+            key={row.cycle}
+            className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+              row.cutoffPassed ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800'
+            }`}
+            title={
+              row.cutoffPassed
+                ? 'ตัดยอดแล้ว — แก้ตัวเลขได้ตามปกติ'
+                : 'ยังไม่ถึงวันตัดยอด ตัวเลขยังไม่ครบ จึงยังบันทึกไม่ได้'
+            }
+          >
+            {row.cutoffPassed ? '' : '🔒 '}
+            จ่าย {format(row.payDate, 'd MMM', { locale: th })} · นับงาน{' '}
+            {format(row.windowFrom, 'd MMM', { locale: th })}–
+            {format(row.windowTo, 'd MMM', { locale: th })} · {people} คน
+          </span>
+        ))}
 
         {/* ตัวกรอง — มีผลกับตาราง ยอดรวม และไฟล์โอนธนาคาร */}
         <div className="ml-auto flex flex-wrap items-center gap-2">

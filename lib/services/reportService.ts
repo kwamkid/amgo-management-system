@@ -20,6 +20,7 @@
 // 3. วันลาแยกออกจาก "ขาดงาน" แล้ว — ของเดิมมองเป็นขาดงานเหมือนกันหมด
 
 import { createClient } from '@/lib/supabase/client'
+import type { Db } from '@/lib/supabase/db'
 import { format } from 'date-fns'
 
 export interface AttendanceReportData {
@@ -187,11 +188,12 @@ async function fetchReport(
  * ทุกรอบ — ดูทั้งปีคือคำนวณซ้ำ ~10 รอบ จนชน statement timeout ตอนคนใช้พร้อมกัน
  */
 async function fetchReportAll(
-  filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>
+  filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>,
+  client?: Db
 ): Promise<{ rows: AttendanceReportData[]; total: number }> {
   const endCapped = filters.endDate > new Date() ? new Date() : filters.endDate
 
-  const { data, error } = await sb().rpc('attendance_report_json', {
+  const { data, error } = await (client ?? sb()).rpc('attendance_report_json', {
     p_from: ymd(filters.startDate),
     p_to: ymd(endCapped),
     p_user_ids: filters.userIds?.length ? filters.userIds : undefined,
@@ -203,7 +205,7 @@ async function fetchReportAll(
 
   const raw = (data ?? []) as ReportRow[]
   const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(raw.map((r) => r.user_id))
+  const names = await getDisplayNames(raw.map((r) => r.user_id), client)
   const rows = raw.map((r) => {
     const row = toReportData(r)
     row.userName = names.get(r.user_id) || row.userName
@@ -213,8 +215,8 @@ async function fetchReportAll(
 }
 
 /** วันทำงาน/สัปดาห์ของแต่ละคน — ใช้คิดวันขาดของกะหมุนเวียน */
-async function daysPerWeekMap(): Promise<Map<string, number | null>> {
-  const { data } = await sb().from('users').select('id, days_per_week')
+async function daysPerWeekMap(client?: Db): Promise<Map<string, number | null>> {
+  const { data } = await (client ?? sb()).from('users').select('id, days_per_week')
   return new Map((data ?? []).map((u) => [u.id, u.days_per_week]))
 }
 
@@ -317,9 +319,14 @@ export async function getAttendanceReportPaginated(
 }
 
 export async function getAttendanceReportForExport(
-  filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>
+  filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>,
+  /** ส่ง client ฝั่ง server มาได้ — งาน cron ไม่มี session ให้ RLS ใช้ */
+  client?: Db
 ): Promise<AttendanceReportResponse> {
-  const [{ rows: filtered }, dpw] = await Promise.all([fetchReportAll(filters), daysPerWeekMap()])
+  const [{ rows: filtered }, dpw] = await Promise.all([
+    fetchReportAll(filters, client),
+    daysPerWeekMap(client),
+  ])
 
   return {
     data: filtered,

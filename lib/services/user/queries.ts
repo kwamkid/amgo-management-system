@@ -8,6 +8,7 @@
 // Postgres ค้นด้วย ilike ได้ตรง ๆ และแบ่งหน้าด้วย range()
 
 import { createClient } from '@/lib/supabase/client'
+import type { Db } from '@/lib/supabase/db'
 import type { User } from '@/types/user'
 import { attachLocations, mapUser, type UserRow, type UserData } from './mappers'
 
@@ -32,11 +33,14 @@ async function locationsFor(userIds: string[]) {
  * เก็บไว้ตอนเกิดเหตุการณ์ — snapshot เป็นชื่อจริงล้วนและไม่อัปเดตตามโปรไฟล์
  * คนอ่านหน้าจอจำกันด้วยชื่อเล่น
  */
-export async function getDisplayNames(userIds: string[]): Promise<Map<string, string>> {
+export async function getDisplayNames(
+  userIds: string[],
+  client?: Db
+): Promise<Map<string, string>> {
   const ids = [...new Set(userIds.filter(Boolean))]
   if (!ids.length) return new Map()
 
-  const { data } = await sb().from('users').select('id, full_name, display_name').in('id', ids)
+  const { data } = await (client ?? sb()).from('users').select('id, full_name, display_name').in('id', ids)
   return new Map((data ?? []).map((u) => [u.id, u.display_name || u.full_name]))
 }
 

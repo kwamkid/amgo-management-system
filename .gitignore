@@ -45,3 +45,6 @@ next-env.d.ts
 
 # เอกสารวางแผนย้ายระบบ — ไม่ต้องขึ้น repo
 /MIGRATION_PLAN.md
+
+# Codex CLI — เก็บ token ของผู้ใช้ ห้ามขึ้น git
+.codex/

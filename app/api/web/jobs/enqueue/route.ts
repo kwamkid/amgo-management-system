@@ -79,6 +79,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // กดสั่งเว็บเดียว = เจตนาชัดว่า "เอาเว็บนี้แหละ" ให้ลองใหม่หมดแม้เคยยอมแพ้ไปแล้ว
+  // (ใช้เป็นทางกลับเข้าระบบหลังต่ออายุ license ปลั๊กอิน pro)
+  const force = body.siteIds?.length === 1
+
   // สั่งอัปเดตทั้งกลุ่ม = ทำเฉพาะเว็บที่ยังค้างจริง ๆ
   // เว็บที่ตรวจแล้วปลั๊กอินครบ ไม่ต้องเสีย SSH ไปเปิดดูซ้ำ
   // (เว็บที่ยังไม่เคยตรวจปล่อยผ่าน — ไม่รู้ว่าค้างหรือไม่ ต้องเข้าไปดูก่อน)
@@ -124,6 +128,7 @@ export async function POST(request: NextRequest) {
       host_id: s.host_id,
       site_id: s.id,
       triggered_by: 'user',
+      force,
     }))
   )
   if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 })

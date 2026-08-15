@@ -167,9 +167,12 @@ function summaryText(job: WebJob): string {
   if (job.type === 'plugin_update') {
     const updated = (s.pluginsUpdated as string[]) ?? []
     const pending = (s.stillPending as string[]) ?? []
-    const more = s.continued ? ` · เหลือ ${pending.length} ตัว ต่อคิวแล้ว` : ''
+    const gaveUp = (s.gaveUp as string[]) ?? []
+    const more =
+      (s.continued ? ` · เหลือ ${pending.length} ตัว ต่อคิวแล้ว` : '') +
+      (gaveUp.length ? ` · เลิกลอง ${gaveUp.length} ตัว: ${gaveUp.join(', ')}` : '')
     if (updated.length) return `อัปเดต ${updated.length} ตัว: ${updated.join(', ')}${more}`
-    return pending.length ? `ยังค้าง ${pending.length} ตัว${more}` : 'ไม่มีอะไรค้าง'
+    return pending.length || gaveUp.length ? `ยังค้าง ${pending.length} ตัว${more}` : 'ไม่มีอะไรค้าง'
   }
   if (job.type === 'scan') {
     const f = (s.findings as string[]) ?? []
@@ -473,14 +476,27 @@ export default function WebJobsPage() {
             delay={300}
             triggerStyle={PLAIN_TRIGGER}
             content={
-              s.pendingPluginCount > 0
-                ? `ค้างอัปเดต ${s.pendingPluginCount} ตัว จากทั้งหมด ${s.pluginCount} · ตรวจล่าสุด ${fmt(s.pluginsCheckedAt)}`
-                : `ปลั๊กอิน ${s.pluginCount} ตัว ใหม่ล่าสุดทั้งหมด · ตรวจล่าสุด ${fmt(s.pluginsCheckedAt)}`
+              (s.pendingPluginCount > 0
+                ? `ค้างอัปเดต ${s.pendingPluginCount} ตัว จากทั้งหมด ${s.pluginCount}`
+                : `ปลั๊กอิน ${s.pluginCount} ตัว ใหม่ล่าสุดทั้งหมด`) +
+              (s.blockedPluginCount
+                ? ` · อีก ${s.blockedPluginCount} ตัวระบบอัปเดตให้ไม่ได้ ต้องทำมือ (มักเป็นตัว pro ที่ license หมด)`
+                : '') +
+              ` · ตรวจล่าสุด ${fmt(s.pluginsCheckedAt)}`
             }
           >
-            {/* ไม่มีอะไรค้าง = บอกเป็นคำ อ่านแล้วจบ ไม่ต้องแปล "0/27" ในหัวอีกที */}
-            <span className={`rounded-md px-2 py-0.5 font-medium tabular-nums ${chip}`}>
-              {s.pendingPluginCount > 0 ? `${s.pendingPluginCount}/${s.pluginCount}` : 'UTD'}
+            <span className="inline-flex items-center gap-1">
+              {/* ไม่มีอะไรค้าง = บอกเป็นคำ อ่านแล้วจบ ไม่ต้องแปล "0/27" ในหัวอีกที */}
+              <span className={`rounded-md px-2 py-0.5 font-medium tabular-nums ${chip}`}>
+                {s.pendingPluginCount > 0 ? `${s.pendingPluginCount}/${s.pluginCount}` : 'UTD'}
+              </span>
+              {/* แยกกองให้ชัด — ของที่ระบบทำต่อได้ กับของที่ต้องคนตัดสินใจ
+                  ต้องการการกระทำคนละแบบ ปนกันแล้วสีเหลืองจะไม่มีความหมาย */}
+              {s.blockedPluginCount > 0 && (
+                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+                  ทำมือ {s.blockedPluginCount}
+                </span>
+              )}
             </span>
           </HelpTooltip>
         )
@@ -553,8 +569,12 @@ export default function WebJobsPage() {
               const mine = act?.type === type
               const running = mine && act?.status === 'running'
               // ปลั๊กอินครบแล้วก็ไม่มีอะไรให้อัปเดต — ปิดปุ่มไปเลย กันกดแล้วงงว่าไม่เกิดอะไร
+              // แต่ถ้ามีตัว "ทำมือ" ค้างอยู่ ยังต้องกดได้ เพราะนี่คือทางลองใหม่หลังต่ออายุ license
               const nothingToDo =
-                type === 'plugin_update' && !!s.pluginsCheckedAt && s.pendingPluginCount === 0
+                type === 'plugin_update' &&
+                !!s.pluginsCheckedAt &&
+                s.pendingPluginCount === 0 &&
+                s.blockedPluginCount === 0
               return (
                 <HelpTooltip
                   key={type}
@@ -570,7 +590,9 @@ export default function WebJobsPage() {
                         ? `เว็บนี้มีงานค้างอยู่ รอให้เสร็จก่อน`
                         : nothingToDo
                           ? 'ปลั๊กอินครบทุกตัวแล้ว ไม่มีอะไรต้องอัปเดต'
-                          : `${label} — ${help}`
+                          : type === 'plugin_update' && s.blockedPluginCount > 0
+                            ? `ลองใหม่ทุกตัว รวม ${s.blockedPluginCount} ตัวที่เคยอัปเดตไม่ผ่าน (กดหลังต่ออายุ license)`
+                            : `${label} — ${help}`
                   }
                 >
                   <Button

@@ -3535,6 +3535,7 @@ export type Database = {
           attempts: number
           batch_id: string | null
           finished_at: string | null
+          force: boolean
           host_id: string | null
           id: string
           queued_at: string
@@ -3550,6 +3551,7 @@ export type Database = {
           attempts?: number
           batch_id?: string | null
           finished_at?: string | null
+          force?: boolean
           host_id?: string | null
           id?: string
           queued_at?: string
@@ -3565,6 +3567,7 @@ export type Database = {
           attempts?: number
           batch_id?: string | null
           finished_at?: string | null
+          force?: boolean
           host_id?: string | null
           id?: string
           queued_at?: string
@@ -3707,6 +3710,47 @@ export type Database = {
           },
         ]
       }
+      web_plugin_blocks: {
+        Row: {
+          created_at: string
+          fails: number
+          id: string
+          last_error: string | null
+          last_tried_at: string | null
+          name: string
+          site_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          fails?: number
+          id?: string
+          last_error?: string | null
+          last_tried_at?: string | null
+          name?: string
+          site_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          fails?: number
+          id?: string
+          last_error?: string | null
+          last_tried_at?: string | null
+          name?: string
+          site_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_plugin_blocks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       web_plugins: {
         Row: {
           checked_at: string
@@ -3810,6 +3854,7 @@ export type Database = {
           last_scan_at: string | null
           last_scan_status: string
           pending_plugin_count: number
+          blocked_plugin_count: number
           plugin_count: number
           public_html_path: string | null
           http_status: number | null
@@ -3851,6 +3896,7 @@ export type Database = {
           last_scan_at?: string | null
           last_scan_status?: string
           pending_plugin_count?: number
+          blocked_plugin_count?: number
           plugin_count?: number
           public_html_path?: string | null
           http_status?: number | null
@@ -3892,6 +3938,7 @@ export type Database = {
           last_scan_at?: string | null
           last_scan_status?: string
           pending_plugin_count?: number
+          blocked_plugin_count?: number
           plugin_count?: number
           public_html_path?: string | null
           http_status?: number | null

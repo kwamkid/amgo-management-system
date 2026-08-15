@@ -34,6 +34,8 @@ type Job = {
   type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
   host_id: string | null
   site_id: string | null
+  /** ผู้ใช้กดสั่งเว็บนี้เอง = ขอลองอัปเดตใหม่ทุกตัว ไม่สนประวัติที่เคยยอมแพ้ */
+  force: boolean
 }
 
 /* ── งานแต่ละชนิด ───────────────────────────────────────────────────── */
@@ -78,10 +80,28 @@ async function runDiscover(sb: Admin, job: Job) {
   }
 }
 
-/** เก็บรายชื่อปลั๊กอินลงฐานข้อมูล + คืนจำนวนที่ค้างอัปเดต (ใช้ร่วมกันทั้งตรวจและอัปเดต) */
+/** ปลั๊กอินที่พลาดครบ 2 ครั้งแล้ว = เลิกพยายาม ต้องให้คนไปทำเอง */
+const GIVE_UP_AFTER = 2
+
+type Block = { slug: string; fails: number }
+
+async function blocksFor(sb: Admin, siteId: string): Promise<Block[]> {
+  const { data } = await sb.from('web_plugin_blocks').select('slug, fails').eq('site_id', siteId)
+  return (data ?? []) as Block[]
+}
+
+/**
+ * เก็บรายชื่อปลั๊กอินลงฐานข้อมูล + คืนจำนวนที่ค้างอัปเดต (ใช้ร่วมกันทั้งตรวจและอัปเดต)
+ *
+ * ตัวที่ยอมแพ้แล้วไม่นับเป็น "ค้าง" — ไม่งั้นเว็บนั้นจะเหลืองตลอดกาลทั้งที่
+ * เจ้าของตั้งใจไม่ต่ออายุ license เอง แล้วสุดท้ายจะเลิกมองสีเหลืองไปเลย
+ */
 async function savePlugins(sb: Admin, siteId: string, list: WpPlugin[], version: string) {
   const now = new Date().toISOString()
-  const pending = list.filter((p) => p.update === 'available')
+  const blocks = await blocksFor(sb, siteId)
+  const givenUp = new Set(blocks.filter((b) => b.fails >= GIVE_UP_AFTER).map((b) => b.slug))
+  const pending = list.filter((p) => p.update === 'available' && !givenUp.has(p.name))
+  const blockedNow = list.filter((p) => p.update === 'available' && givenUp.has(p.name))
 
   await sb.from('web_plugins').delete().eq('site_id', siteId)
   if (list.length) {
@@ -104,6 +124,7 @@ async function savePlugins(sb: Admin, siteId: string, list: WpPlugin[], version:
       wp_version: version,
       pending_plugin_count: pending.length,
       plugin_count: list.length,
+      blocked_plugin_count: blockedNow.length,
     })
     .eq('id', siteId)
 
@@ -145,34 +166,81 @@ const UPDATE_BUDGET_MS = 38_000
 
 async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: string) {
   const before = await listPlugins(target, path)
-  const pending = before.filter((p) => p.update === 'available')
 
-  let log = ''
+  // เจ้าของกดสั่งเว็บนี้เอง = ขอลองใหม่ทุกตัว ล้างประวัติที่เคยยอมแพ้ทิ้ง
+  // (เผื่อเพิ่งต่ออายุ license มา)
+  if (job.force) await sb.from('web_plugin_blocks').delete().eq('site_id', job.site_id!)
+
+  const blocks = await blocksFor(sb, job.site_id!)
+  const failsOf = new Map(blocks.map((b) => [b.slug, b.fails]))
+  const skipped = before.filter(
+    (p) => p.update === 'available' && (failsOf.get(p.name) ?? 0) >= GIVE_UP_AFTER
+  )
+  const pending = before.filter(
+    (p) => p.update === 'available' && (failsOf.get(p.name) ?? 0) < GIVE_UP_AFTER
+  )
+
+  let log = skipped.length
+    ? `⏭️ ข้าม ${skipped.length} ตัวที่เคยอัปเดตไม่สำเร็จ ${GIVE_UP_AFTER} ครั้ง: ${skipped
+        .map((p) => p.name)
+        .join(', ')}\n`
+    : ''
   let ranOut = false
   const deadline = Date.now() + UPDATE_BUDGET_MS
+  const tried: string[] = []
+  /** ข้อความที่ WP-CLI ตอบกลับต่อปลั๊กอิน — เก็บไว้ให้คนอ่านว่าทำไมอัปเดตไม่ได้ */
+  const errors = new Map<string, string>()
   for (const p of pending) {
     if (Date.now() > deadline) {
       ranOut = true
       log += `\n⏳ หมดเวลารอบนี้ เหลืออีก ${pending.length - pending.indexOf(p)} ตัว — ต่อคิวให้แล้ว`
       break
     }
+    tried.push(p.name)
     try {
       const res = await updatePlugins(target, path, p.name)
       log += (res.out + res.err).slice(-1500)
+      errors.set(p.name, (res.err || res.out).trim().slice(-300))
     } catch (e) {
       // ตัวเดียวพังไม่ควรล้มทั้งใบ — จดไว้แล้วไปตัวถัดไป
       log += `\n❌ ${p.name}: ${(e as Error).message}`
+      errors.set(p.name, (e as Error).message.slice(-300))
     }
   }
   log = log.slice(-6000)
 
   const after = await listPlugins(target, path)
   const version = await coreVersion(target, path).catch(() => '')
-  const stillPending = await savePlugins(sb, job.site_id!, after, version)
 
-  const updated = pending
-    .filter((p) => !stillPending.some((s) => s.name === p.name))
-    .map((p) => p.name)
+  // ตัวที่ลองแล้วยังค้างอยู่ = พลาด · ตัวที่หายไปจากรายการค้าง = สำเร็จ
+  const stillAvailable = new Set(
+    after.filter((p) => p.update === 'available').map((p) => p.name)
+  )
+  const updated = tried.filter((n) => !stillAvailable.has(n))
+  const failedNames = tried.filter((n) => stillAvailable.has(n))
+
+  // สำเร็จแล้วล้างประวัติทิ้ง — เผื่อครั้งหน้าจะได้เริ่มนับใหม่
+  if (updated.length) {
+    await sb.from('web_plugin_blocks').delete().eq('site_id', job.site_id!).in('slug', updated)
+  }
+
+  // พลาด = นับเพิ่ม ครบ 2 ครั้งเมื่อไหร่รอบหน้าจะข้ามเอง
+  for (const n of failedNames) {
+    const prev = failsOf.get(n) ?? 0
+    await sb.from('web_plugin_blocks').upsert(
+      {
+        site_id: job.site_id!,
+        slug: n,
+        name: n,
+        fails: prev + 1,
+        last_error: errors.get(n) ?? null,
+        last_tried_at: new Date().toISOString(),
+      },
+      { onConflict: 'site_id,slug' }
+    )
+  }
+
+  const stillPending = await savePlugins(sb, job.site_id!, after, version)
 
   if (updated.length) {
     await sb.from('web_site_logs').insert({
@@ -217,6 +285,8 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
       stillPending: stillPending.map((p) => p.name),
       total: after.length,
       continued: ranOut && stillPending.length > 0,
+      // ตัวที่พลาดครบโควตาแล้ว — รอบหน้าจะไม่ยุ่งอีก ต้องคนไปจัดการเอง
+      gaveUp: failedNames.filter((n) => (failsOf.get(n) ?? 0) + 1 >= GIVE_UP_AFTER),
     },
     // ล้มเหลวจริง = สั่งไปแล้วไม่ขยับเลยสักตัว (ถ้าหมดเวลาแต่ทำได้บ้างไม่นับ)
     failed: pending.length > 0 && updated.length === 0 && !ranOut,

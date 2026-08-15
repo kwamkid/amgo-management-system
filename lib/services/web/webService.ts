@@ -81,6 +81,8 @@ export interface WebSite {
   pendingPluginCount: number
   /** ปลั๊กอินทั้งหมดที่ติดตั้ง — ใช้คู่กับ pendingPluginCount เป็น "ค้าง/ทั้งหมด" */
   pluginCount: number
+  /** ปลั๊กอินที่ระบบอัปเดตให้ไม่ได้ ต้องทำมือ (มักเป็นตัว pro ที่ license หมด) */
+  blockedPluginCount: number
   lastScanStatus: 'ok' | 'suspect' | 'fail' | 'unknown'
   lastScanAt: string | null
   lastBackupAt: string | null
@@ -180,6 +182,7 @@ const toSite = (r: SiteRow): WebSite => ({
   publicHtmlPath: (r.public_html_path as string) ?? '',
   pendingPluginCount: (r.pending_plugin_count as number) ?? 0,
   pluginCount: (r.plugin_count as number) ?? 0,
+  blockedPluginCount: (r.blocked_plugin_count as number) ?? 0,
   lastScanStatus: (r.last_scan_status as WebSite['lastScanStatus']) ?? 'unknown',
   lastScanAt: (r.last_scan_at as string) ?? null,
   lastBackupAt: (r.last_backup_at as string) ?? null,

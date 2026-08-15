@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   // ── งานระดับเว็บ ──
   let sq = admin
     .from('web_sites')
-    .select('id, host_id, public_html_path')
+    .select('id, host_id, public_html_path, pending_plugin_count, plugins_checked_at')
     .eq('is_active', true)
     .not('host_id', 'is', null)
   if (body.siteIds?.length) sq = sq.in('id', body.siteIds)
@@ -71,12 +71,43 @@ export async function POST(request: NextRequest) {
   const { data: sites, error } = await sq
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const usable = (sites ?? []).filter((s) => s.public_html_path)
+  let usable = (sites ?? []).filter((s) => s.public_html_path)
   if (!usable.length) {
     return NextResponse.json(
       { error: 'ยังไม่มีเว็บที่ผูกโฮสต์ + รู้ path — กด "สแกนรายชื่อเว็บ" ที่หน้าโฮสต์ก่อน' },
       { status: 400 }
     )
+  }
+
+  // สั่งอัปเดตทั้งกลุ่ม = ทำเฉพาะเว็บที่ยังค้างจริง ๆ
+  // เว็บที่ตรวจแล้วปลั๊กอินครบ ไม่ต้องเสีย SSH ไปเปิดดูซ้ำ
+  // (เว็บที่ยังไม่เคยตรวจปล่อยผ่าน — ไม่รู้ว่าค้างหรือไม่ ต้องเข้าไปดูก่อน)
+  const skippedUpToDate =
+    type === 'plugin_update' && !body.siteIds?.length
+      ? (() => {
+          const before = usable.length
+          usable = usable.filter((s) => !s.plugins_checked_at || (s.pending_plugin_count ?? 0) > 0)
+          return before - usable.length
+        })()
+      : 0
+
+  // กันสั่งซ้ำ — เว็บที่มีงานชนิดเดียวกันค้างอยู่แล้วไม่ต้องต่อคิวอีกใบ
+  const { data: pending } = await admin
+    .from('web_jobs')
+    .select('site_id')
+    .eq('type', type)
+    .in('status', ['queued', 'running'])
+    .not('site_id', 'is', null)
+  const already = new Set((pending ?? []).map((j) => j.site_id))
+  const before = usable.length
+  usable = usable.filter((s) => !already.has(s.id))
+  const skippedQueued = before - usable.length
+
+  if (!usable.length) {
+    const why = skippedQueued
+      ? 'ทุกเว็บที่เลือกมีงานชนิดนี้ค้างอยู่แล้ว'
+      : 'ไม่มีเว็บที่ต้องอัปเดต — ปลั๊กอินครบทุกตัวแล้ว'
+    return NextResponse.json({ success: true, jobs: 0, skippedUpToDate, skippedQueued, message: why })
   }
 
   const { data: batch, error: bErr } = await admin
@@ -97,5 +128,11 @@ export async function POST(request: NextRequest) {
   )
   if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 })
 
-  return NextResponse.json({ success: true, batchId: batch.id, jobs: usable.length })
+  return NextResponse.json({
+    success: true,
+    batchId: batch.id,
+    jobs: usable.length,
+    skippedUpToDate,
+    skippedQueued,
+  })
 }

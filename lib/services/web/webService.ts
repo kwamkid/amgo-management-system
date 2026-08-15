@@ -614,7 +614,15 @@ export async function enqueueJobs(body: {
   type: WebJob['type']
   siteIds?: string[]
   hostId?: string
-}): Promise<{ batchId: string; jobs: number }> {
+}): Promise<{
+  batchId?: string
+  jobs: number
+  /** ข้ามเพราะปลั๊กอินครบอยู่แล้ว */
+  skippedUpToDate?: number
+  /** ข้ามเพราะมีงานชนิดเดียวกันค้างคิวอยู่ */
+  skippedQueued?: number
+  message?: string
+}> {
   const res = await fetch('/api/web/jobs/enqueue', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

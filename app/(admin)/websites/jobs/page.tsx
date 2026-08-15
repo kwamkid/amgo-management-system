@@ -86,6 +86,13 @@ const ROW_ACTIONS = [
   },
 ] as const
 
+/**
+ * ล้างสไตล์ default ของ HelpTooltip (เส้นประใต้ข้อความ + cursor: help)
+ * ส่ง {} ไม่พอ เพราะข้างในเป็น { ...default, ...ที่ส่งมา } ต้องเขียนทับทีละค่า
+ * — ไม่งั้นเส้นประจะลากใต้ปุ่มทั้งแถวจนดูเหมือนเป็นปุ่มเดียว
+ */
+const PLAIN_TRIGGER = { borderBottom: 'none', cursor: 'inherit', display: 'inline-flex' } as const
+
 /** ปุ่มสั่งงานทั้งแท็บ — เรียงตามความปลอดภัย ตรวจก่อน แก้ทีหลัง */
 const FLEET_ACTIONS = [
   { type: 'plugin_check', Icon: ListChecks, label: 'ตรวจปลั๊กอิน' },
@@ -160,8 +167,9 @@ function summaryText(job: WebJob): string {
   if (job.type === 'plugin_update') {
     const updated = (s.pluginsUpdated as string[]) ?? []
     const pending = (s.stillPending as string[]) ?? []
-    if (updated.length) return `อัปเดต ${updated.length} ตัว: ${updated.join(', ')}`
-    return pending.length ? `ยังค้าง ${pending.length} ตัว` : 'ไม่มีอะไรค้าง'
+    const more = s.continued ? ` · เหลือ ${pending.length} ตัว ต่อคิวแล้ว` : ''
+    if (updated.length) return `อัปเดต ${updated.length} ตัว: ${updated.join(', ')}${more}`
+    return pending.length ? `ยังค้าง ${pending.length} ตัว${more}` : 'ไม่มีอะไรค้าง'
   }
   if (job.type === 'scan') {
     const f = (s.findings as string[]) ?? []
@@ -322,9 +330,21 @@ export default function WebJobsPage() {
     try {
       // ไม่ระบุมา = ทำกับเว็บในแท็บที่เปิดอยู่ (แท็บ "ทุกเว็บ" = ทั้งฟลีต)
       const siteIds = opts?.siteIds ?? (tab === 'all' ? undefined : tabSites.map((s) => s.id))
-      const { jobs: n } = await enqueueJobs({ type, hostId: opts?.hostId, siteIds })
+      const r = await enqueueJobs({ type, hostId: opts?.hostId, siteIds })
       const where = opts?.label ?? (tab === 'all' ? 'ทั้งฟลีต' : tab)
-      showToast(`เข้าคิวแล้ว ${n} เว็บ — ${where}`, 'success')
+
+      // บอกให้ตรงกับที่เกิดขึ้นจริง — สั่ง 49 แล้วเข้าคิว 32 ต้องรู้ว่าอีก 17 หายไปไหน
+      const skipped = [
+        r.skippedUpToDate ? `ข้าม ${r.skippedUpToDate} เว็บที่ปลั๊กอินครบแล้ว` : '',
+        r.skippedQueued ? `ข้าม ${r.skippedQueued} เว็บที่มีงานค้างอยู่` : '',
+      ].filter(Boolean)
+
+      if (!r.jobs) showToast(r.message ?? 'ไม่มีเว็บที่ต้องทำ', 'success')
+      else
+        showToast(
+          `เข้าคิวแล้ว ${r.jobs} เว็บ — ${where}${skipped.length ? ` · ${skipped.join(' · ')}` : ''}`,
+          'success'
+        )
       load()
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -364,7 +384,7 @@ export default function WebJobsPage() {
               <HelpTooltip
                 variant="tooltip"
                 delay={200}
-                triggerStyle={{ display: 'inline-flex' }}
+                triggerStyle={PLAIN_TRIGGER}
                 content={`${HEALTH[h].label} — ${healthReason(s)}`}
               >
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${HEALTH[h].bar}`} />
@@ -420,7 +440,7 @@ export default function WebJobsPage() {
           <HelpTooltip
             variant="tooltip"
             delay={300}
-            triggerStyle={{}}
+            triggerStyle={PLAIN_TRIGGER}
             content={`ใช้เวลาโหลด ${(ms / 1000).toFixed(2)} วินาที · ตอบกลับ ${s.httpStatus ?? '—'} · เช็คล่าสุด ${fmt(s.lastCheckedAt)}`}
           >
             <span className="inline-flex items-center gap-2">
@@ -451,7 +471,7 @@ export default function WebJobsPage() {
           <HelpTooltip
             variant="tooltip"
             delay={300}
-            triggerStyle={{}}
+            triggerStyle={PLAIN_TRIGGER}
             content={
               s.pendingPluginCount > 0
                 ? `ค้างอัปเดต ${s.pendingPluginCount} ตัว จากทั้งหมด ${s.pluginCount} · ตรวจล่าสุด ${fmt(s.pluginsCheckedAt)}`
@@ -528,16 +548,19 @@ export default function WebJobsPage() {
         // (คิวเดินทีละงานต่อโฮสต์ กดเพิ่มไปก็แค่ต่อแถวยาวขึ้น)
         const act = activeBySite.get(s.id)
         return (
-          <div className="flex justify-end gap-0.5">
+          <div className="flex justify-end gap-1.5">
             {ROW_ACTIONS.map(({ type, Icon, label, help }) => {
               const mine = act?.type === type
               const running = mine && act?.status === 'running'
+              // ปลั๊กอินครบแล้วก็ไม่มีอะไรให้อัปเดต — ปิดปุ่มไปเลย กันกดแล้วงงว่าไม่เกิดอะไร
+              const nothingToDo =
+                type === 'plugin_update' && !!s.pluginsCheckedAt && s.pendingPluginCount === 0
               return (
                 <HelpTooltip
                   key={type}
                   variant="tooltip"
                   delay={300}
-                  triggerStyle={{}}
+                  triggerStyle={PLAIN_TRIGGER}
                   content={
                     mine
                       ? running
@@ -545,14 +568,16 @@ export default function WebJobsPage() {
                         : `${label} — เข้าคิวแล้ว รอโฮสต์ว่าง`
                       : act
                         ? `เว็บนี้มีงานค้างอยู่ รอให้เสร็จก่อน`
-                        : `${label} — ${help}`
+                        : nothingToDo
+                          ? 'ปลั๊กอินครบทุกตัวแล้ว ไม่มีอะไรต้องอัปเดต'
+                          : `${label} — ${help}`
                   }
                 >
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="secondary"
                     aria-label={`${label} ${s.siteName}`}
-                    disabled={busy === s.id || !!act}
+                    disabled={busy === s.id || !!act || nothingToDo}
                     onClick={(e) => {
                       e.stopPropagation()
                       fire(type, { siteIds: [s.id], label: s.siteName })
@@ -710,8 +735,8 @@ export default function WebJobsPage() {
             สั่งงานกับ <strong className="text-gray-800">{tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab}</strong>{' '}
             ({tabSites.length} เว็บ)
           </span>
-          {/* คิวยังเดินอยู่ = ปิดปุ่มทั้งแถบ กันสั่งทับซ้อนกันจนไม่รู้ว่ารอบไหนเป็นรอบไหน
-              ชนิดงานที่กำลังเดินจะขึ้น spinner ให้เห็นว่าที่กดไปเมื่อกี้กำลังทำอยู่ */}
+          {/* ปิดเฉพาะปุ่มของงานชนิดที่กำลังเดินอยู่ ไม่ปิดทั้งแถบ — ระหว่างรออัปเดต
+              ยังต้องสั่งสแกนหรือสำรองได้ · งานซ้ำถูกกรองที่ฝั่งเซิร์ฟเวอร์อยู่แล้ว */}
           <span className="flex flex-wrap gap-2">
             {FLEET_ACTIONS.map(({ type, Icon, label }, i) => {
               const mine = activeTypes.has(type)
@@ -720,7 +745,7 @@ export default function WebJobsPage() {
                   key={type}
                   variant={i === 0 ? 'primary' : 'secondary'}
                   onClick={() => fire(type)}
-                  disabled={!!busy || queueBusy}
+                  disabled={!!busy || mine}
                 >
                   {mine ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
                   {mine ? `${label} — กำลังทำ` : label}
@@ -732,7 +757,8 @@ export default function WebJobsPage() {
         <p className="mt-2 text-xs text-gray-400">
           ปุ่มทำกับ &quot;แท็บที่เปิดอยู่&quot; เท่านั้น · <strong>ตรวจปลั๊กอิน</strong> แค่ดูว่าค้างกี่ตัว
           ไม่แตะเว็บเลย รันทั้งฟลีตได้สบาย ส่วน <strong>อัปเดตปลั๊กอิน</strong> แก้ของจริง
-          ลองแท็บแพลนเล็ก ๆ ก่อน · งานเข้าคิวแล้วระบบทยอยทำทีละเว็บต่อโฮสต์ จบรอบสรุปเข้า Discord
+          และทำเฉพาะเว็บที่ยังค้างจริง ๆ (เว็บที่ขึ้น UTD ถูกข้ามอัตโนมัติ) ลองแท็บแพลนเล็ก ๆ ก่อน ·
+          งานเข้าคิวแล้วระบบทยอยทำทีละเว็บต่อโฮสต์ จบรอบสรุปเข้า Discord
         </p>
       </SectionCard>
 

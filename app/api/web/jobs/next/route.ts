@@ -132,15 +132,39 @@ async function runPluginCheck(sb: Admin, job: Job, target: SshTarget, path: stri
   }
 }
 
+/**
+ * อัปเดตทีละตัวจนกว่าจะหมดเวลา แล้วต่อคิวใบใหม่ให้ตัวที่เหลือ
+ *
+ * เดิมสั่ง `wp plugin update --all` รวดเดียว — เว็บที่ค้าง 11 ตัวใช้เวลาเกิน
+ * timeout ของ SSH (45 วิ) เลยล้มทั้งใบและไม่ได้อัปเดตอะไรเลยสักตัว
+ * ซึ่งดันเป็นเว็บที่ต้องการอัปเดตมากที่สุด (15 ส.ค. 69 aplussme.com)
+ *
+ * ทำทีละตัวแทน: ตัวไหนเสร็จก็เสร็จจริง ไม่ต้องเริ่มใหม่ทั้งชุด
+ */
+const UPDATE_BUDGET_MS = 38_000
+
 async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: string) {
   const before = await listPlugins(target, path)
   const pending = before.filter((p) => p.update === 'available')
 
   let log = ''
-  if (pending.length) {
-    const res = await updatePlugins(target, path, 'all')
-    log = (res.out + res.err).slice(-4000)
+  let ranOut = false
+  const deadline = Date.now() + UPDATE_BUDGET_MS
+  for (const p of pending) {
+    if (Date.now() > deadline) {
+      ranOut = true
+      log += `\n⏳ หมดเวลารอบนี้ เหลืออีก ${pending.length - pending.indexOf(p)} ตัว — ต่อคิวให้แล้ว`
+      break
+    }
+    try {
+      const res = await updatePlugins(target, path, p.name)
+      log += (res.out + res.err).slice(-1500)
+    } catch (e) {
+      // ตัวเดียวพังไม่ควรล้มทั้งใบ — จดไว้แล้วไปตัวถัดไป
+      log += `\n❌ ${p.name}: ${(e as Error).message}`
+    }
   }
+  log = log.slice(-6000)
 
   const after = await listPlugins(target, path)
   const version = await coreVersion(target, path).catch(() => '')
@@ -158,11 +182,44 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
     })
   }
 
+  // ยังเหลือของค้างเพราะหมดเวลา — ต่อคิวใบใหม่ให้ cron รอบหน้าทำต่อ
+  // ไม่นับเป็นล้มเหลว เพราะรอบนี้ก็อัปเดตไปได้จริงหลายตัว
+  if (ranOut && stillPending.length) {
+    await sb.from('web_jobs').insert({
+      batch_id: job.batch_id,
+      type: 'plugin_update',
+      host_id: job.host_id,
+      site_id: job.site_id,
+      triggered_by: 'user',
+    })
+
+    // ต้องบวกยอดรวมของ batch ด้วย ไม่งั้น done+failed จะไม่มีวันถึง total_jobs
+    // แล้ว batch ค้างไม่ปิด สรุปเข้า Discord ไม่ออกสักที
+    if (job.batch_id) {
+      const { data: b } = await sb
+        .from('web_run_batches')
+        .select('total_jobs')
+        .eq('id', job.batch_id)
+        .single()
+      if (b) {
+        await sb
+          .from('web_run_batches')
+          .update({ total_jobs: b.total_jobs + 1 })
+          .eq('id', job.batch_id)
+      }
+    }
+  }
+
   return {
     log: log || 'ไม่มีปลั๊กอินค้างอัปเดต',
-    summary: { pluginsUpdated: updated, stillPending: stillPending.map((p) => p.name), total: after.length },
-    // อัปเดตไม่ผ่าน = ยังค้างเท่าเดิมทั้งที่สั่งไปแล้ว
-    failed: pending.length > 0 && updated.length === 0,
+    summary: {
+      pluginsUpdated: updated,
+      stillPending: stillPending.map((p) => p.name),
+      total: after.length,
+      continued: ranOut && stillPending.length > 0,
+    },
+    // ล้มเหลวจริง = สั่งไปแล้วไม่ขยับเลยสักตัว (ถ้าหมดเวลาแต่ทำได้บ้างไม่นับ)
+    failed: pending.length > 0 && updated.length === 0 && !ranOut,
   }
 }
 

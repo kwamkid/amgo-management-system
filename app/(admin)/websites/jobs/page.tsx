@@ -341,6 +341,7 @@ export default function WebJobsPage() {
       const skipped = [
         r.skippedUpToDate ? `ข้าม ${r.skippedUpToDate} เว็บที่ปลั๊กอินครบแล้ว` : '',
         r.skippedQueued ? `ข้าม ${r.skippedQueued} เว็บที่มีงานค้างอยู่` : '',
+        r.skippedRecent ? `ข้าม ${r.skippedRecent} เว็บที่เพิ่งทำไป` : '',
       ].filter(Boolean)
 
       if (!r.jobs) showToast(r.message ?? 'ไม่มีเว็บที่ต้องทำ', 'success')

@@ -624,6 +624,8 @@ export async function enqueueJobs(body: {
   skippedUpToDate?: number
   /** ข้ามเพราะมีงานชนิดเดียวกันค้างคิวอยู่ */
   skippedQueued?: number
+  /** ข้ามเพราะเพิ่งทำไปไม่นาน (กันกดรัว ๆ) */
+  skippedRecent?: number
   message?: string
 }> {
   const res = await fetch('/api/web/jobs/enqueue', {

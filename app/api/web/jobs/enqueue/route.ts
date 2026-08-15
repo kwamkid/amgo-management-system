@@ -16,6 +16,15 @@ import { createServerSupabase } from '@/lib/supabase/server'
 
 type JobType = 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
 
+/**
+ * เพิ่งทำเสร็จไปไม่ถึงเท่านี้ = ไม่ต้องทำซ้ำ
+ *
+ * งานพวกนี้ต้อง SSH เข้าเครื่องจริงทุกครั้ง กดรัว ๆ แล้วทำซ้ำคือเปลืองเปล่า
+ * และทำให้คิวยาวจนงานของเว็บอื่นรอนาน · 10 นาทีสั้นพอที่ถ้าตั้งใจสั่งใหม่จริง
+ * ก็ไม่ต้องรอนาน แต่ยาวพอกันการกดพลาดซ้ำ ๆ
+ */
+const COOLDOWN_MINUTES = 10
+
 export async function POST(request: NextRequest) {
   const sb = await createServerSupabase()
   const {
@@ -107,11 +116,35 @@ export async function POST(request: NextRequest) {
   usable = usable.filter((s) => !already.has(s.id))
   const skippedQueued = before - usable.length
 
+  // ช่วงพักหลังเพิ่งทำเสร็จ — กันกดรัว ๆ ซ้ำงานที่เพิ่งทำไปเมื่อกี้
+  // ของเดิมกันได้แค่ "ระหว่างยังไม่เสร็จ" พองานจบปุ๊บก็กดซ้ำได้ทันที
+  const since = new Date(Date.now() - COOLDOWN_MINUTES * 60_000).toISOString()
+  const { data: recent } = await admin
+    .from('web_jobs')
+    .select('site_id')
+    .eq('type', type)
+    .eq('status', 'done')
+    .gte('finished_at', since)
+    .not('site_id', 'is', null)
+  const justDone = new Set((recent ?? []).map((j) => j.site_id))
+  const beforeCooldown = usable.length
+  usable = usable.filter((s) => !justDone.has(s.id))
+  const skippedRecent = beforeCooldown - usable.length
+
   if (!usable.length) {
-    const why = skippedQueued
-      ? 'ทุกเว็บที่เลือกมีงานชนิดนี้ค้างอยู่แล้ว'
-      : 'ไม่มีเว็บที่ต้องอัปเดต — ปลั๊กอินครบทุกตัวแล้ว'
-    return NextResponse.json({ success: true, jobs: 0, skippedUpToDate, skippedQueued, message: why })
+    const why = skippedRecent
+      ? `เพิ่งทำไปเมื่อไม่ถึง ${COOLDOWN_MINUTES} นาทีที่แล้ว ไม่ต้องทำซ้ำ`
+      : skippedQueued
+        ? 'ทุกเว็บที่เลือกมีงานชนิดนี้ค้างอยู่แล้ว'
+        : 'ไม่มีเว็บที่ต้องอัปเดต — ปลั๊กอินครบทุกตัวแล้ว'
+    return NextResponse.json({
+      success: true,
+      jobs: 0,
+      skippedUpToDate,
+      skippedQueued,
+      skippedRecent,
+      message: why,
+    })
   }
 
   const { data: batch, error: bErr } = await admin
@@ -139,5 +172,6 @@ export async function POST(request: NextRequest) {
     jobs: usable.length,
     skippedUpToDate,
     skippedQueued,
+    skippedRecent,
   })
 }

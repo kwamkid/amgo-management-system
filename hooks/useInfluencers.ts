@@ -1,7 +1,7 @@
 // hooks/useInfluencers.ts
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { DocumentSnapshot } from 'firebase/firestore'
+import type { InfluencerCursor } from '@/lib/services/influencerService'
 import { useToast } from '@/hooks/useToast'
 import { useAuth } from '@/hooks/useAuth'
 import * as influencerService from '@/lib/services/influencerService'
@@ -24,7 +24,7 @@ export const useInfluencers = (options?: UseInfluencersOptions) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
-  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null)
+  const [lastDoc, setLastDoc] = useState<InfluencerCursor>(null)
   const { showToast } = useToast()
   const { userData } = useAuth()
   

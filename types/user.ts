@@ -109,10 +109,11 @@ export interface UserStatistics {
   }
 }
 
-// Extended Firebase User with role and additional properties from our User type
-import { User as FirebaseUser } from 'firebase/auth';
+// ผู้ใช้ที่ล็อกอินอยู่ + ข้อมูลจากตาราง users ของเรา
+// (เดิม extend User ของ Firebase — ถอด Firebase ออกแล้ว 15 ส.ค. 69)
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export interface AuthUser extends FirebaseUser {
+export interface AuthUser extends SupabaseUser {
   // Essential fields from User type
   role: 'admin' | 'hr' | 'manager' | 'employee' | 'driver'
   fullName?: string

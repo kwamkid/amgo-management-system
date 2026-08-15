@@ -1,324 +1,140 @@
-// ========== FILE: lib/services/submissionService.ts ==========
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+// lib/services/submissionService.ts
+//
+// งานที่อินฟลูส่งเข้ามาผ่านลิงก์เฉพาะตัว — ย้ายจาก Firestore มา Supabase (15 ส.ค. 69)
+//
+// ลิงก์ส่งงาน (code) เก็บอยู่ที่ campaign_influencers.submission_link
+// ตัวงานที่ส่ง + ลิงก์ผลงาน อยู่ที่ submissions / submitted_links
+// ของเดิมยัดทุกอย่างไว้ใน array ของเอกสารแคมเปญ ซึ่งค้นด้วย code ไม่ได้ตรง ๆ
+// (โค้ดเก่าต้องดึงแคมเปญมาทั้งคอลเล็กชันแล้วไล่หา) — ของใหม่ query ตรงจบ
+
+import { createClient } from '@/lib/supabase/client'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
 
-const SUBMISSIONS_COLLECTION = 'submissions'
-const CAMPAIGNS_COLLECTION = 'campaigns'
+const sb = () => createClient()
 
-// Get submission by code
+export interface SubmissionLink {
+  id?: string
+  url: string
+  platform?: string
+  addedAt?: Date | string
+}
+
+/* ── อ่านด้วยลิงก์ส่งงาน ─────────────────────────────────────────────── */
+
 export const getSubmissionByCode = async (code: string) => {
-  try {
-    // Find campaign with this submission link
-    const campaignsQuery = query(
-      collection(db, CAMPAIGNS_COLLECTION),
-      where('influencers', 'array-contains-any', [
-        { submissionLink: code }
-      ])
+  const { data: ci, error } = await sb()
+    .from('campaign_influencers')
+    .select(
+      'campaign_id, influencer_id, submission_status, campaigns(name, description, deadline), influencers(full_name, nickname)'
     )
-    
-    const campaignsSnapshot = await getDocs(campaignsQuery)
-    
-    // Search through campaigns to find the matching submission link
-    let campaign = null
-    let influencerData = null
-    let campaignId = null
-    
-    for (const doc of campaignsSnapshot.docs) {
-      const data = doc.data()
-      const influencer = data.influencers?.find(
-        (inf: any) => inf.submissionLink === code
-      )
-      
-      if (influencer) {
-        campaignId = doc.id
-        campaign = {
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          deadline: data.deadline,
-          influencerId: influencer.influencerId,
-          influencerName: influencer.influencerName,
-          influencerNickname: influencer.influencerNickname
-        }
-        influencerData = influencer
-        break
-      }
-    }
-    
-    if (!campaign) {
-      // Try alternative search method
-      const allCampaigns = await getDocs(collection(db, CAMPAIGNS_COLLECTION))
-      
-      for (const doc of allCampaigns.docs) {
-        const data = doc.data()
-        const influencer = data.influencers?.find(
-          (inf: any) => inf.submissionLink === code
-        )
-        
-        if (influencer) {
-          campaignId = doc.id
-          campaign = {
-            id: doc.id,
-            name: data.name,
-            description: data.description,
-            deadline: data.deadline,
-            influencerId: influencer.influencerId,
-            influencerName: influencer.influencerName,
-            influencerNickname: influencer.influencerNickname
-          }
-          influencerData = influencer
-          break
-        }
-      }
-    }
-    
-    if (!campaign) {
-      return null
-    }
-    
-    // Return data with influencer's current status from campaign
-    return {
-      campaign,
-      submission: {
-        status: influencerData?.submissionStatus || 'pending',
-        isDraft: false,
-        links: influencerData?.submittedLinks || [],
-        reviewNotes: influencerData?.reviewNotes,
-        reviewedAt: influencerData?.reviewedAt,
-        reviewedBy: influencerData?.reviewedBy
-      }
-    }
-  } catch (error) {
-    console.error('Error getting submission:', error)
-    throw error
+    .eq('submission_link', code)
+    .maybeSingle()
+  if (error) throw error
+  if (!ci) return null
+
+  const campaign = ci.campaigns as { name?: string; description?: string; deadline?: string } | null
+  const influencer = ci.influencers as { full_name?: string; nickname?: string } | null
+
+  const { data: sub } = await sb()
+    .from('submissions')
+    .select('*, submitted_links(id, url, platform, added_at)')
+    .eq('code', code)
+    .maybeSingle()
+
+  return {
+    campaign: {
+      id: ci.campaign_id,
+      name: campaign?.name ?? '',
+      description: campaign?.description ?? '',
+      deadline: campaign?.deadline ? new Date(campaign.deadline) : undefined,
+      influencerId: ci.influencer_id,
+      influencerName: influencer?.full_name ?? '',
+      influencerNickname: influencer?.nickname ?? '',
+    },
+    submission: {
+      status: sub?.status ?? ci.submission_status ?? 'pending',
+      isDraft: sub?.is_draft ?? false,
+      links: ((sub?.submitted_links as { id: string; url: string; platform: string | null; added_at: string }[]) ?? []).map(
+        (l) => ({ id: l.id, url: l.url, platform: l.platform ?? '', addedAt: new Date(l.added_at) })
+      ),
+      reviewNotes: sub?.review_notes ?? undefined,
+      reviewedAt: sub?.reviewed_at ? new Date(sub.reviewed_at) : undefined,
+      reviewedBy: sub?.reviewed_by ?? undefined,
+    },
   }
 }
 
-// Save submission (draft or final)
-export const saveSubmission = async (
-  code: string,
-  links: any[],
-  isDraft: boolean
-) => {
-  try {
-    const data = await getSubmissionByCode(code)
-    if (!data) throw new Error('Invalid submission code')
-    
-    // Get current submission data to check status
-    const currentData = await getSubmissionByCode(code)
-    const currentSubmission = currentData?.submission
-    
-    const submissionData = {
-      code,
-      campaignId: data.campaign.id,
-      campaignName: data.campaign.name,
-      influencerId: data.campaign.influencerId,
-      influencerName: data.campaign.influencerName,
-      links: links.map(link => ({
-        id: link.id,
-        url: link.url,
-        platform: link.platform,
-        addedAt: new Date()
-      })),
-      isDraft,
-      status: isDraft ? 'pending' : (currentSubmission?.status === 'revision' ? 'resubmitted' : 'submitted'),
-      lastSavedAt: serverTimestamp(),
-      submittedAt: isDraft ? null : serverTimestamp()
-    }
-    
-    // Check if submission exists
-    const submissionQuery = query(
-      collection(db, SUBMISSIONS_COLLECTION),
-      where('code', '==', code)
-    )
-    
-    const existing = await getDocs(submissionQuery)
-    
-    if (existing.empty) {
-      // Create new
-      await addDoc(collection(db, SUBMISSIONS_COLLECTION), submissionData)
-    } else {
-      // Update existing
-      await updateDoc(doc(db, SUBMISSIONS_COLLECTION, existing.docs[0].id), submissionData)
-    }
-    
-    // Update campaign influencer status
-    await updateCampaignInfluencerStatus(
-      data.campaign.id,
-      data.campaign.influencerId,
+/* ── บันทึก/ส่งงาน ───────────────────────────────────────────────────── */
+
+export const saveSubmission = async (code: string, links: SubmissionLink[], isDraft: boolean) => {
+  const data = await getSubmissionByCode(code)
+  if (!data) throw new Error('ลิงก์ส่งงานไม่ถูกต้อง')
+
+  const wasRevision = data.submission.status === 'revision'
+  const status = isDraft ? 'pending' : wasRevision ? 'resubmitted' : 'submitted'
+  const now = new Date().toISOString()
+
+  const { data: row, error } = await sb()
+    .from('submissions')
+    .upsert(
       {
-        submissionStatus: isDraft ? 'pending' : (currentSubmission?.status === 'revision' ? 'resubmitted' : 'submitted'),
-        submittedAt: isDraft ? null : new Date(),
-        submittedLinks: links
-      }
+        code,
+        campaign_id: data.campaign.id,
+        campaign_name: data.campaign.name,
+        influencer_id: data.campaign.influencerId,
+        influencer_name: data.campaign.influencerName,
+        is_draft: isDraft,
+        status,
+        last_saved_at: now,
+        submitted_at: isDraft ? null : now,
+        updated_at: now,
+      },
+      { onConflict: 'code' }
     )
-    
-    // Check if we need to update campaign status
-    if (!isDraft) {
-      await checkAndUpdateCampaignStatus(data.campaign.id)
-      
-      // Send Discord notification for new submission
-      const isResubmission = currentSubmission?.status === 'revision'
-      
-      if (isResubmission) {
-        await DiscordNotificationService.notifyResubmission({
-          campaignName: data.campaign.name,
-          influencerName: data.campaign.influencerName,
-          influencerNickname: data.campaign.influencerNickname,
-          submissionCount: links.length,
-          timestamp: new Date()
-        })
-      } else {
-        await DiscordNotificationService.notifySubmission({
-          campaignId: data.campaign.id,
-          campaignName: data.campaign.name,
-          influencerName: data.campaign.influencerName,
-          influencerNickname: data.campaign.influencerNickname,
-          submissionCount: links.length,
-          timestamp: new Date()
-        })
-      }
-    }
-    
-    return true
-  } catch (error) {
-    console.error('Error saving submission:', error)
-    throw error
-  }
-}
+    .select('id')
+    .single()
+  if (error) throw error
 
-// Submit final
-export const submitFinal = async (code: string, links: any[]) => {
-  return saveSubmission(code, links, false)
-}
-
-// Update campaign influencer status
-const updateCampaignInfluencerStatus = async (
-  campaignId: string,
-  influencerId: string,
-  updates: any
-) => {
-  try {
-    const campaignRef = doc(db, CAMPAIGNS_COLLECTION, campaignId)
-    const campaignSnap = await getDoc(campaignRef)
-    
-    if (!campaignSnap.exists()) {
-      throw new Error('Campaign not found')
-    }
-    
-    const campaignData = campaignSnap.data()
-    
-    // Filter out undefined values from updates
-    const cleanUpdates: any = {}
-    Object.keys(updates).forEach(key => {
-      if (updates[key] !== undefined) {
-        cleanUpdates[key] = updates[key]
-      }
-    })
-    
-    const updatedInfluencers = campaignData.influencers.map((inf: any) => 
-      inf.influencerId === influencerId
-        ? { ...inf, ...cleanUpdates }
-        : inf
+  // ลิงก์ผลงาน — แทนที่ทั้งชุดทุกครั้งที่บันทึก (เหมือนเขียนทับ array เดิม)
+  await sb().from('submitted_links').delete().eq('submission_id', row.id)
+  if (links.length) {
+    await sb().from('submitted_links').insert(
+      links.map((l) => ({
+        submission_id: row.id,
+        url: l.url,
+        platform: l.platform ?? '',
+        added_at: now,
+      }))
     )
-    
-    await updateDoc(campaignRef, {
-      influencers: updatedInfluencers,
-      updatedAt: serverTimestamp()
-    })
-    
-    return true
-  } catch (error) {
-    console.error('Error updating campaign:', error)
-    throw error
   }
+
+  await sb()
+    .from('campaign_influencers')
+    .update({ submission_status: status })
+    .eq('campaign_id', data.campaign.id)
+    .eq('influencer_id', data.campaign.influencerId)
+
+  if (!isDraft) {
+    await checkAndUpdateCampaignStatus(data.campaign.id)
+    const payload = {
+      campaignName: data.campaign.name,
+      influencerName: data.campaign.influencerName,
+      influencerNickname: data.campaign.influencerNickname,
+      submissionCount: links.length,
+      timestamp: new Date(),
+    }
+    if (wasRevision) await DiscordNotificationService.notifyResubmission(payload)
+    else await DiscordNotificationService.notifySubmission({ campaignId: data.campaign.id, ...payload })
+  }
+
+  return true
 }
 
-// Check and update campaign status based on influencers' statuses
-const checkAndUpdateCampaignStatus = async (campaignId: string) => {
-  try {
-    const campaignRef = doc(db, CAMPAIGNS_COLLECTION, campaignId)
-    const campaignSnap = await getDoc(campaignRef)
-    
-    if (!campaignSnap.exists()) return
-    
-    const campaignData = campaignSnap.data()
-    const currentStatus = campaignData.status
-    
-    // Count statuses
-    const statusCounts = {
-      pending: 0,
-      submitted: 0,
-      revision: 0,
-      resubmitted: 0,
-      approved: 0,
-      cancelled: 0
-    }
-    
-    campaignData.influencers?.forEach((inf: any) => {
-      const status = inf.submissionStatus as keyof typeof statusCounts
-      if (statusCounts[status] !== undefined) {
-        statusCounts[status]++
-      }
-    })
-    
-    // Determine new campaign status
-    let newStatus = currentStatus
-    
-    // If any submissions are waiting for review (submitted or resubmitted)
-    if (statusCounts.submitted > 0 || statusCounts.resubmitted > 0) {
-      newStatus = 'reviewing'
-    }
-    // If all submissions need revision (no pending reviews)
-    else if (statusCounts.revision > 0 && statusCounts.submitted === 0 && statusCounts.resubmitted === 0) {
-      newStatus = 'revising'
-    }
-    // If all are approved or cancelled
-    else if (campaignData.influencers?.every((inf: any) => 
-      ['approved', 'cancelled'].includes(inf.submissionStatus)
-    )) {
-      newStatus = 'completed'
-    }
-    // If no submissions yet
-    else if (statusCounts.pending === campaignData.influencers?.length) {
-      newStatus = 'active'
-    }
-    
-    // Update status if changed
-    if (newStatus !== currentStatus) {
-      await updateDoc(campaignRef, {
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      })
-      
-      // Send Discord notification for status change to revising
-      if (newStatus === 'revising' && currentStatus === 'reviewing') {
-        const revisingCount = statusCounts.revision
-        await DiscordNotificationService.notifyCampaignRevising({
-          campaignName: campaignData.name,
-          revisingCount,
-          totalInfluencers: campaignData.influencers?.length || 0,
-          timestamp: new Date()
-        })
-      }
-    }
-  } catch (error) {
-    console.error('Error updating campaign status:', error)
-  }
-}
+export const submitFinal = async (code: string, links: SubmissionLink[]) =>
+  saveSubmission(code, links, false)
 
-// Review submission (approve/reject)
+/* ── ตรวจงาน ─────────────────────────────────────────────────────────── */
+
 export const reviewSubmission = async (
   campaignId: string,
   influencerId: string,
@@ -326,98 +142,68 @@ export const reviewSubmission = async (
   reviewerName: string,
   notes?: string
 ) => {
-  try {
-    const newStatus = action === 'approve' ? 'approved' : 'revision'
-    
-    // Update influencer status in campaign
-    await updateCampaignInfluencerStatus(
-      campaignId,
-      influencerId,
-      {
-        submissionStatus: newStatus,
-        reviewedAt: new Date(),
-        reviewedBy: reviewerName,
-        ...(notes && { reviewNotes: notes })
-      }
-    )
-    
-    // Get campaign data for notification
-    const campaignDoc = await getDoc(doc(db, CAMPAIGNS_COLLECTION, campaignId))
-    const campaignData = campaignDoc.data()
-    const influencer = campaignData?.influencers?.find(
-      (inf: any) => inf.influencerId === influencerId
-    )
-    
-    // Send Discord notification
-    if (action === 'approve') {
-      await DiscordNotificationService.notifySubmissionApproved({
-        campaignName: campaignData?.name || '',
-        influencerName: influencer?.influencerName || '',
-        influencerNickname: influencer?.influencerNickname,
-        approvedBy: reviewerName,
-        timestamp: new Date()
-      })
-    } else {
-      await DiscordNotificationService.notifySubmissionRejected({
-        campaignName: campaignData?.name || '',
-        influencerName: influencer?.influencerName || '',
-        influencerNickname: influencer?.influencerNickname,
-        rejectedBy: reviewerName,
-        reason: notes || 'ไม่ระบุ',
-        timestamp: new Date()
-      })
-    }
-    
-    // Check and update campaign status
-    await checkAndUpdateCampaignStatus(campaignId)
-    
-    // Check if campaign is completed
-    await checkCampaignCompletion(campaignId)
-    
-    return true
-  } catch (error) {
-    console.error('Error reviewing submission:', error)
-    throw error
+  const newStatus = action === 'approve' ? 'approved' : 'revision'
+  const now = new Date().toISOString()
+
+  await sb()
+    .from('campaign_influencers')
+    .update({ submission_status: newStatus })
+    .eq('campaign_id', campaignId)
+    .eq('influencer_id', influencerId)
+
+  await sb()
+    .from('submissions')
+    .update({
+      status: newStatus,
+      review_notes: notes ?? null,
+      reviewed_at: now,
+      reviewed_by: reviewerName,
+      updated_at: now,
+    })
+    .eq('campaign_id', campaignId)
+    .eq('influencer_id', influencerId)
+
+  const { data: camp } = await sb().from('campaigns').select('name').eq('id', campaignId).maybeSingle()
+  const { data: inf } = await sb()
+    .from('influencers')
+    .select('full_name, nickname')
+    .eq('id', influencerId)
+    .maybeSingle()
+
+  const base = {
+    campaignName: camp?.name ?? '',
+    influencerName: inf?.full_name ?? '',
+    influencerNickname: inf?.nickname ?? undefined,
+    timestamp: new Date(),
   }
+  if (action === 'approve') {
+    await DiscordNotificationService.notifySubmissionApproved({ ...base, approvedBy: reviewerName })
+  } else {
+    await DiscordNotificationService.notifySubmissionRejected({
+      ...base,
+      rejectedBy: reviewerName,
+      reason: notes || 'ไม่ระบุ',
+    })
+  }
+
+  await checkAndUpdateCampaignStatus(campaignId)
+  return true
 }
 
-// Check if campaign is completed
-const checkCampaignCompletion = async (campaignId: string) => {
-  try {
-    const campaignRef = doc(db, CAMPAIGNS_COLLECTION, campaignId)
-    const campaignSnap = await getDoc(campaignRef)
-    
-    if (!campaignSnap.exists()) return
-    
-    const campaignData = campaignSnap.data()
-    
-    // Check if all influencers have been reviewed
-    const allReviewed = campaignData.influencers?.every((inf: any) => 
-      ['approved', 'cancelled'].includes(inf.submissionStatus)
-    )
-    
-    // Update status to completed if all are reviewed
-    if (allReviewed && ['reviewing', 'revising'].includes(campaignData.status)) {
-      await updateDoc(campaignRef, {
-        status: 'completed',
-        completedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      })
-      
-      // Send completion notification
-      const approvedCount = campaignData.influencers?.filter(
-        (inf: any) => inf.submissionStatus === 'approved'
-      ).length || 0
-      
-      await DiscordNotificationService.notifyCampaignCompleted({
-        campaignName: campaignData.name,
-        totalInfluencers: campaignData.influencers?.length || 0,
-        approvedCount,
-        completedBy: 'System',
-        timestamp: new Date()
-      })
-    }
-  } catch (error) {
-    console.error('Error checking campaign completion:', error)
+/** ทุกคนส่งครบ+ผ่านหมด = ปิดแคมเปญให้อัตโนมัติ (กติกาเดิม) */
+const checkAndUpdateCampaignStatus = async (campaignId: string) => {
+  const { data: rows } = await sb()
+    .from('campaign_influencers')
+    .select('submission_status')
+    .eq('campaign_id', campaignId)
+  if (!rows?.length) return
+
+  const all = rows.map((r) => r.submission_status)
+  const done = all.every((s) => s === 'approved')
+  if (done) {
+    await sb()
+      .from('campaigns')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', campaignId)
   }
 }

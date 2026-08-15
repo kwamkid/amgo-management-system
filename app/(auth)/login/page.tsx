@@ -40,8 +40,8 @@ function LoginForm() {
       setDevLoading(true)
       const res = await fetch('/api/auth/dev-login', { method: 'POST' })
       if (!res.ok) throw new Error('Dev login failed')
-      const { tokenHash, firebaseToken } = await res.json()
-      await signInBoth({ tokenHash, firebaseToken })
+      const { tokenHash } = await res.json()
+      await signInBoth({ tokenHash })
       router.push('/dashboard')
       router.refresh()
     } catch (err) {

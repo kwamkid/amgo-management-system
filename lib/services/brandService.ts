@@ -1,108 +1,85 @@
-// ========== FILE: lib/services/brandService.ts ==========
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  writeBatch
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+// lib/services/brandService.ts
+//
+// แบรนด์ของโมดูลอินฟลูเอนเซอร์ — ย้ายจาก Firestore มา Supabase (15 ส.ค. 69)
+// หน้าตา API เหมือนเดิมทุกฟังก์ชัน หน้าจอที่เรียกอยู่จึงไม่ต้องแก้
+
+import { createClient } from '@/lib/supabase/client'
 import { Brand } from '@/types/influencer'
+import type { Database } from '@/types/database'
 
-const COLLECTION_NAME = 'brands'
+const sb = () => createClient()
 
-// Get all brands
+type Row = {
+  id: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+const toBrand = (r: Row): Brand =>
+  ({
+    id: r.id,
+    name: r.name,
+    description: r.description ?? '',
+    logoUrl: r.logo_url ?? '',
+    isActive: r.is_active,
+    createdAt: new Date(r.created_at),
+    updatedAt: new Date(r.updated_at),
+  }) as Brand
+
 export const getBrands = async (includeInactive = false): Promise<Brand[]> => {
-  try {
-    let q = query(collection(db, COLLECTION_NAME), orderBy('name'))
-    
-    if (!includeInactive) {
-      q = query(q, where('isActive', '==', true))
-    }
-    
-    const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate()
-    } as Brand))
-  } catch (error) {
-    console.error('Error getting brands:', error)
-    throw error
-  }
+  let q = sb().from('brands').select('*').order('name')
+  if (!includeInactive) q = q.eq('is_active', true)
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []).map((r) => toBrand(r as Row))
 }
 
-// Get single brand
 export const getBrand = async (brandId: string): Promise<Brand | null> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, brandId)
-    const docSnap = await getDoc(docRef)
-    
-    if (!docSnap.exists()) {
-      return null
-    }
-    
-    return {
-      id: docSnap.id,
-      ...docSnap.data(),
-      createdAt: docSnap.data().createdAt?.toDate(),
-      updatedAt: docSnap.data().updatedAt?.toDate()
-    } as Brand
-  } catch (error) {
-    console.error('Error getting brand:', error)
-    throw error
-  }
+  const { data, error } = await sb().from('brands').select('*').eq('id', brandId).maybeSingle()
+  if (error) throw error
+  return data ? toBrand(data as Row) : null
 }
 
-// Create brand
-export const createBrand = async (data: Omit<Brand, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-  try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...data,
-      isActive: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+export const createBrand = async (
+  data: Omit<Brand, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  const { data: row, error } = await sb()
+    .from('brands')
+    .insert({
+      name: data.name,
+      description: data.description ?? null,
+      logo_url: (data as { logoUrl?: string }).logoUrl ?? null,
+      is_active: true,
     })
-    return docRef.id
-  } catch (error) {
-    console.error('Error creating brand:', error)
-    throw error
-  }
+    .select('id')
+    .single()
+  if (error) throw error
+  return row.id
 }
 
-// Update brand
 export const updateBrand = async (brandId: string, data: Partial<Brand>): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, brandId)
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error updating brand:', error)
-    throw error
+  const patch: Database['public']['Tables']['brands']['Update'] = {
+    updated_at: new Date().toISOString(),
   }
+  if (data.name !== undefined) patch.name = data.name
+  if (data.description !== undefined) patch.description = data.description
+  if ((data as { logoUrl?: string }).logoUrl !== undefined)
+    patch.logo_url = (data as { logoUrl?: string }).logoUrl
+  if (data.isActive !== undefined) patch.is_active = data.isActive
+
+  const { error } = await sb().from('brands').update(patch).eq('id', brandId)
+  if (error) throw error
 }
 
-// Delete brand (soft delete)
+/** ลบแบบนุ่ม — ปิดใช้งานไว้ ไม่ลบจริง (แคมเปญเก่ายังอ้างถึงอยู่) */
 export const deleteBrand = async (brandId: string): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, brandId)
-    await updateDoc(docRef, {
-      isActive: false,
-      updatedAt: serverTimestamp()
-    })
-  } catch (error) {
-    console.error('Error deleting brand:', error)
-    throw error
-  }
+  const { error } = await sb()
+    .from('brands')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('id', brandId)
+  if (error) throw error
 }
-

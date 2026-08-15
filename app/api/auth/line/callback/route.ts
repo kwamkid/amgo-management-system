@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { adminAuth } from '@/lib/firebase/admin'
 import {
   createSessionToken,
   emailForLine,
@@ -10,23 +9,9 @@ import {
 import { createRegisterTicket } from '@/lib/supabase/register-ticket'
 
 /**
- * ออก custom token ของ Firebase ควบไปด้วยระหว่างช่วงย้ายระบบ
- * หน้าเก่ายังอ่าน Firestore ซึ่ง rules บังคับว่าต้องมี session
- * 🗑️ ลบทิ้งเมื่อย้าย service ครบ (ดู lib/auth/dual-session.ts)
- */
-async function legacyFirebaseToken(lineUserId: string, role: string) {
-  try {
-    return await adminAuth.createCustomToken(lineUserId, { lineUserId, role })
-  } catch (e) {
-    console.warn('ออก Firebase token ไม่ได้ หน้าเก่าอาจโหลดข้อมูลไม่ขึ้น:', e)
-    return null
-  }
-}
-
-/**
  * LINE Login callback → Supabase session
  *
- * ของเดิมออก Firebase custom token ตัวนี้เปลี่ยนมาออก token_hash ของ Supabase
+ * ออก token_hash ของ Supabase
  * แล้วให้หน้า /auth/verify แลกเป็น session (เก็บใน cookie ฝั่ง client)
  */
 export async function GET(request: NextRequest) {
@@ -69,10 +54,9 @@ export async function GET(request: NextRequest) {
           needs_approval: false,
         })
         const hash = await createSessionToken(uid, emailForLine(profile.userId))
-        const fb = await legacyFirebaseToken(profile.userId, 'admin')
         return NextResponse.redirect(
           new URL(
-            `/auth/verify?token_hash=${hash}&firstLogin=true${fb ? `&fb=${fb}` : ''}`,
+            `/auth/verify?token_hash=${hash}&firstLogin=true`,
             appUrl
           )
         )
@@ -127,7 +111,6 @@ export async function GET(request: NextRequest) {
 
     await ensureAuthUser(profile, user.role)
     const hash = await createSessionToken(user.id, emailForLine(profile.userId))
-    const fb = await legacyFirebaseToken(profile.userId, user.role)
 
     // ยังทำสิ่งที่ต้องทำก่อนใช้งานไม่ครบ ก็พาไปหน้ารายการก่อน
     // (ชื่อจริง+ชื่อเล่น · Discord — ดู lib/todo/tasks.ts)
@@ -141,7 +124,7 @@ export async function GET(request: NextRequest) {
     const next = user.is_system || (nameDone && discordDone) ? '' : '&next=/setup'
 
     return NextResponse.redirect(
-      new URL(`/auth/verify?token_hash=${hash}${fb ? `&fb=${fb}` : ''}${next}`, appUrl)
+      new URL(`/auth/verify?token_hash=${hash}${next}`, appUrl)
     )
   } catch (err) {
     console.error('LINE callback error:', err)

@@ -2636,6 +2636,9 @@ export type Database = {
           is_draft: boolean
           last_saved_at: string | null
           status: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           submitted_at: string | null
           updated_at: string
         }
@@ -2650,6 +2653,9 @@ export type Database = {
           is_draft?: boolean
           last_saved_at?: string | null
           status?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -2664,6 +2670,9 @@ export type Database = {
           is_draft?: boolean
           last_saved_at?: string | null
           status?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -3330,6 +3339,640 @@ export type Database = {
           },
         ]
       }
+      web_bills: {
+        Row: {
+          bill_domain: boolean
+          course_id: string | null
+          created_at: string
+          domain_amount: number
+          hosting_amount: number
+          id: string
+          paid_at: string | null
+          paid_scope: string
+          period_end: string | null
+          period_start: string | null
+          renewed_registrar: string | null
+          site_id: string
+          status: string
+          year: number
+        }
+        Insert: {
+          bill_domain?: boolean
+          course_id?: string | null
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          paid_at?: string | null
+          paid_scope?: string
+          period_end?: string | null
+          period_start?: string | null
+          renewed_registrar?: string | null
+          site_id: string
+          status?: string
+          year: number
+        }
+        Update: {
+          bill_domain?: boolean
+          course_id?: string | null
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          paid_at?: string | null
+          paid_scope?: string
+          period_end?: string | null
+          period_start?: string | null
+          renewed_registrar?: string | null
+          site_id?: string
+          status?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_bills_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "web_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_bills_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_host_secrets: {
+        Row: {
+          host_id: string
+          ssh_password: string | null
+          ssh_private_key: string | null
+          ssh_passphrase: string | null
+          updated_at: string
+        }
+        Insert: {
+          host_id: string
+          ssh_password?: string | null
+          ssh_private_key?: string | null
+          ssh_passphrase?: string | null
+          updated_at?: string
+        }
+        Update: {
+          host_id?: string
+          ssh_password?: string | null
+          ssh_private_key?: string | null
+          ssh_passphrase?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_host_secrets_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: true
+            referencedRelation: "web_hosts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_ssh_keys: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          passphrase: string | null
+          private_key: string
+          provider: string
+          public_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          passphrase?: string | null
+          private_key: string
+          provider?: string
+          public_key?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          passphrase?: string | null
+          private_key?: string
+          provider?: string
+          public_key?: string
+        }
+        Relationships: []
+      }
+      web_hosts: {
+        Row: {
+          backup_keep: number
+          created_at: string
+          domains_path: string
+          hardened: boolean
+          has_password: boolean
+          is_own_business: boolean
+          plan_expires_at: string | null
+          has_key: boolean
+          id: string
+          key_id: string | null
+          is_active: boolean
+          last_discovered_at: string | null
+          name: string
+          notes: string | null
+          provider: string
+          ssh_host: string
+          ssh_port: number
+          ssh_user: string
+        }
+        Insert: {
+          backup_keep?: number
+          created_at?: string
+          domains_path?: string
+          hardened?: boolean
+          has_password?: boolean
+          is_own_business?: boolean
+          plan_expires_at?: string | null
+          has_key?: boolean
+          id?: string
+          key_id?: string | null
+          is_active?: boolean
+          last_discovered_at?: string | null
+          name: string
+          notes?: string | null
+          provider?: string
+          ssh_host: string
+          ssh_port?: number
+          ssh_user: string
+        }
+        Update: {
+          backup_keep?: number
+          created_at?: string
+          domains_path?: string
+          hardened?: boolean
+          has_password?: boolean
+          is_own_business?: boolean
+          plan_expires_at?: string | null
+          has_key?: boolean
+          id?: string
+          key_id?: string | null
+          is_active?: boolean
+          last_discovered_at?: string | null
+          name?: string
+          notes?: string | null
+          provider?: string
+          ssh_host?: string
+          ssh_port?: number
+          ssh_user?: string
+        }
+        Relationships: []
+      }
+      web_jobs: {
+        Row: {
+          attempts: number
+          batch_id: string | null
+          finished_at: string | null
+          host_id: string | null
+          id: string
+          queued_at: string
+          raw_log: string | null
+          site_id: string | null
+          started_at: string | null
+          status: string
+          summary: Json | null
+          triggered_by: string
+          type: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id?: string | null
+          finished_at?: string | null
+          host_id?: string | null
+          id?: string
+          queued_at?: string
+          raw_log?: string | null
+          site_id?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          triggered_by?: string
+          type: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string | null
+          finished_at?: string | null
+          host_id?: string | null
+          id?: string
+          queued_at?: string
+          raw_log?: string | null
+          site_id?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          triggered_by?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_jobs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "web_run_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_jobs_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "web_hosts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_jobs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_run_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          done_jobs: number
+          failed_jobs: number
+          finished_at: string | null
+          id: string
+          total_jobs: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          done_jobs?: number
+          failed_jobs?: number
+          finished_at?: string | null
+          id?: string
+          total_jobs?: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          done_jobs?: number
+          failed_jobs?: number
+          finished_at?: string | null
+          id?: string
+          total_jobs?: number
+          type?: string
+        }
+        Relationships: []
+      }
+      web_false_positives: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          path_pattern: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          path_pattern: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          path_pattern?: string
+        }
+        Relationships: []
+      }
+      web_courses: {
+        Row: {
+          created_at: string
+          domain_amount: number
+          hosting_amount: number
+          id: string
+          name: string
+          period_end: string | null
+          period_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          name: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          name?: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Relationships: []
+      }
+      web_owners: {
+        Row: {
+          added_at: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_owners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_plugins: {
+        Row: {
+          checked_at: string
+          id: string
+          name: string
+          new_version: string | null
+          site_id: string
+          slug: string
+          status: string
+          version: string
+        }
+        Insert: {
+          checked_at?: string
+          id?: string
+          name?: string
+          new_version?: string | null
+          site_id: string
+          slug: string
+          status?: string
+          version?: string
+        }
+        Update: {
+          checked_at?: string
+          id?: string
+          name?: string
+          new_version?: string | null
+          site_id?: string
+          slug?: string
+          status?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_plugins_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_site_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          message: string
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_site_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_site_logs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_sites: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          domain_expires_at: string | null
+          domain_registered_at: string | null
+          domain_registrar: string | null
+          domain_self_registered: boolean
+          down_since: string | null
+          hosting_account: string | null
+          hosting_expires_at: string | null
+          hosting_provider: string | null
+          host_id: string | null
+          is_own_business: boolean
+          last_backup_at: string | null
+          last_backup_file: string | null
+          last_scan_at: string | null
+          last_scan_status: string
+          pending_plugin_count: number
+          public_html_path: string | null
+          http_status: number | null
+          id: string
+          is_active: boolean
+          last_checked_at: string | null
+          last_up_at: string | null
+          notes: string | null
+          plugins_checked_at: string | null
+          response_ms: number | null
+          site_name: string
+          ssh_host: string | null
+          ssh_path: string | null
+          ssh_port: number
+          ssh_user: string | null
+          ssl_expires_at: string | null
+          student_contact: string | null
+          student_name: string | null
+          updated_at: string
+          wp_admin_url: string | null
+          wp_version: string | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          domain_expires_at?: string | null
+          domain_registered_at?: string | null
+          domain_registrar?: string | null
+          domain_self_registered?: boolean
+          down_since?: string | null
+          hosting_account?: string | null
+          hosting_expires_at?: string | null
+          hosting_provider?: string | null
+          host_id?: string | null
+          is_own_business?: boolean
+          last_backup_at?: string | null
+          last_backup_file?: string | null
+          last_scan_at?: string | null
+          last_scan_status?: string
+          pending_plugin_count?: number
+          public_html_path?: string | null
+          http_status?: number | null
+          id?: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_up_at?: string | null
+          notes?: string | null
+          plugins_checked_at?: string | null
+          response_ms?: number | null
+          site_name: string
+          ssh_host?: string | null
+          ssh_path?: string | null
+          ssh_port?: number
+          ssh_user?: string | null
+          ssl_expires_at?: string | null
+          student_contact?: string | null
+          student_name?: string | null
+          updated_at?: string
+          wp_admin_url?: string | null
+          wp_version?: string | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          domain_expires_at?: string | null
+          domain_registered_at?: string | null
+          domain_registrar?: string | null
+          domain_self_registered?: boolean
+          down_since?: string | null
+          hosting_account?: string | null
+          hosting_expires_at?: string | null
+          hosting_provider?: string | null
+          host_id?: string | null
+          is_own_business?: boolean
+          last_backup_at?: string | null
+          last_backup_file?: string | null
+          last_scan_at?: string | null
+          last_scan_status?: string
+          pending_plugin_count?: number
+          public_html_path?: string | null
+          http_status?: number | null
+          id?: string
+          is_active?: boolean
+          last_checked_at?: string | null
+          last_up_at?: string | null
+          notes?: string | null
+          plugins_checked_at?: string | null
+          response_ms?: number | null
+          site_name?: string
+          ssh_host?: string | null
+          ssh_path?: string | null
+          ssh_port?: number
+          ssh_user?: string | null
+          ssl_expires_at?: string | null
+          student_contact?: string | null
+          student_name?: string | null
+          updated_at?: string
+          wp_admin_url?: string | null
+          wp_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_sites_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "web_hosts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_sites_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "web_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_slips: {
+        Row: {
+          bill_id: string
+          id: string
+          qr_raw: string | null
+          read_ref: string | null
+          site_id: string
+          slip_image_url: string
+          uploaded_at: string
+          verify_result: string
+        }
+        Insert: {
+          bill_id: string
+          id?: string
+          qr_raw?: string | null
+          read_ref?: string | null
+          site_id: string
+          slip_image_url: string
+          uploaded_at?: string
+          verify_result?: string
+        }
+        Update: {
+          bill_id?: string
+          id?: string
+          qr_raw?: string | null
+          read_ref?: string | null
+          site_id?: string
+          slip_image_url?: string
+          uploaded_at?: string
+          verify_result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_slips_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "web_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_slips_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       employee_directory: {
@@ -3501,6 +4144,11 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: never; Returns: boolean }
+      is_web_owner: { Args: never; Returns: boolean }
+      web_claim_jobs: {
+        Args: { p_limit?: number }
+        Returns: Database["public"]["Tables"]["web_jobs"]["Row"][]
+      }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }
       months_of_service: { Args: { p_start: string }; Returns: number }

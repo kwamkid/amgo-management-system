@@ -64,5 +64,7 @@ export function applyViewAs(user: UserData): UserData {
     seesDelivery: preset.seesDelivery ?? false,
     jobFunctionCode: preset.jobFunctionCode,
     hasSrpAccess: preset.hasSrpAccess ?? false,
+    // เมนูส่วนตัว (ดูแลเว็บไซต์) ไม่โผล่ในมุมมองจำลอง — ไม่มีสิทธิ์ไหนเห็นนอกจากเจ้าของ
+    hasWebAccess: false,
   }
 }

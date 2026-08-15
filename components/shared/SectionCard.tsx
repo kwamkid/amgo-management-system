@@ -20,7 +20,11 @@ export default function SectionCard({
 }) {
   return (
     <section className={`rounded-xl border border-gray-100 bg-white p-5 shadow-sm ${className}`}>
-      {title && <p className={`text-sm font-semibold text-gray-700 ${description ? 'mb-1' : 'mb-3'}`}>{title}</p>}
+      {/* เป็น div ไม่ใช่ p — หลายหน้าส่งแถวหัวข้อที่มีปุ่ม/ป้ายเข้ามา ถ้าเป็น p
+          แล้วมี div ซ้อนข้างในจะเป็น HTML ที่ไม่ถูกต้อง (React ฟ้อง hydration error) */}
+      {title && (
+        <div className={`text-sm font-semibold text-gray-700 ${description ? 'mb-1' : 'mb-3'}`}>{title}</div>
+      )}
       {description && <p className="mb-3 text-xs text-gray-400">{description}</p>}
       {children}
     </section>

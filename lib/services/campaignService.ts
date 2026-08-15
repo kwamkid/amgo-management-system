@@ -1,313 +1,289 @@
-// ========== FILE: lib/services/campaignService.ts ==========
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-  writeBatch,
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { 
-  Campaign, 
-  CampaignStatus, 
+// lib/services/campaignService.ts
+//
+// แคมเปญ — ย้ายจาก Firestore มา Supabase (15 ส.ค. 69)
+//
+// ของเดิมเก็บ influencers/brands/products เป็น array ในเอกสารแคมเปญ
+// ของใหม่แยกเป็นตารางเชื่อม campaign_influencers / campaign_brands /
+// campaign_products แล้วประกอบกลับเป็นรูปแบบเดิมให้หน้าจอ (ไม่ต้องแก้หน้า)
+
+import { createClient } from '@/lib/supabase/client'
+import type { Database } from '@/types/database'
+import {
+  Campaign,
+  CampaignStatus,
   CampaignInfluencer,
-  CreateCampaignData 
+  CreateCampaignData,
 } from '@/types/influencer'
 
-const COLLECTION_NAME = 'campaigns'
+const sb = () => createClient()
 
-// Get all campaigns
+const SELECT = `*,
+  campaign_influencers(influencer_id, assigned_at, submission_status, submission_link,
+    influencers(full_name, nickname)),
+  campaign_brands(brand_id),
+  campaign_products(product_id)`
+
+type CiRow = {
+  influencer_id: string
+  assigned_at: string
+  submission_status: string
+  submission_link: string | null
+  influencers?: { full_name?: string; nickname?: string } | null
+}
+
+const toCampaign = (r: Record<string, unknown>): Campaign =>
+  ({
+    id: r.id as string,
+    name: (r.name as string) ?? '',
+    description: (r.description as string) ?? '',
+    briefFileUrl: (r.brief_file_url as string) ?? '',
+    trackingUrl: (r.tracking_url as string) ?? '',
+    budget: (r.budget as number) ?? null,
+    currency: (r.currency as string) ?? 'THB',
+    startDate: r.start_date ? new Date(r.start_date as string) : undefined,
+    deadline: r.deadline ? new Date(r.deadline as string) : undefined,
+    status: r.status as CampaignStatus,
+    createdBy: (r.created_by as string) ?? '',
+    createdByName: (r.created_by_name as string) ?? '',
+    createdAt: r.created_at ? new Date(r.created_at as string) : undefined,
+    updatedAt: r.updated_at ? new Date(r.updated_at as string) : undefined,
+    brands: ((r.campaign_brands as { brand_id: string }[]) ?? []).map((b) => b.brand_id),
+    products: ((r.campaign_products as { product_id: string }[]) ?? []).map((p) => p.product_id),
+    influencers: ((r.campaign_influencers as CiRow[]) ?? []).map((i) => ({
+      influencerId: i.influencer_id,
+      influencerName: i.influencers?.full_name ?? '',
+      influencerNickname: i.influencers?.nickname ?? '',
+      assignedAt: new Date(i.assigned_at),
+      submissionStatus: i.submission_status,
+      submissionLink: i.submission_link ?? '',
+    })),
+  }) as unknown as Campaign
+
+/* ── อ่าน ────────────────────────────────────────────────────────────── */
+
 export const getCampaigns = async (
   status?: CampaignStatus,
   createdBy?: string
 ): Promise<Campaign[]> => {
-  try {
-    let q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'))
-    
-    if (status) {
-      q = query(q, where('status', '==', status))
-    }
-    
-    if (createdBy) {
-      q = query(q, where('createdBy', '==', createdBy))
-    }
-    
-    const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      startDate: doc.data().startDate?.toDate?.() || doc.data().startDate,
-      deadline: doc.data().deadline?.toDate?.() || doc.data().deadline,
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate()
-    } as Campaign))
-  } catch (error) {
-    console.error('Error getting campaigns:', error)
-    throw error
-  }
+  let q = sb().from('campaigns').select(SELECT).order('created_at', { ascending: false })
+  if (status) q = q.eq('status', status)
+  if (createdBy) q = q.eq('created_by', createdBy)
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []).map((r) => toCampaign(r as Record<string, unknown>))
 }
 
-// Get single campaign
 export const getCampaign = async (campaignId: string): Promise<Campaign | null> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, campaignId)
-    const docSnap = await getDoc(docRef)
-    
-    if (!docSnap.exists()) {
-      return null
-    }
-    
-    const data = docSnap.data()
-    return {
-      id: docSnap.id,
-      ...data,
-      startDate: data.startDate?.toDate?.() || data.startDate,
-      deadline: data.deadline?.toDate?.() || data.deadline,
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate()
-    } as Campaign
-  } catch (error) {
-    console.error('Error getting campaign:', error)
-    throw error
-  }
+  const { data, error } = await sb().from('campaigns').select(SELECT).eq('id', campaignId).maybeSingle()
+  if (error) throw error
+  return data ? toCampaign(data as Record<string, unknown>) : null
 }
 
-// Create campaign
-export const createCampaign = async (
-  data: CreateCampaignData,
-  createdBy: string,
-  createdByName: string
-): Promise<string> => {
-  try {
-    // Import influencer service
-    const { getInfluencer } = await import('./influencerService')
-    
-    // Prepare influencer assignments with names
-    const influencers: CampaignInfluencer[] = await Promise.all(
-      data.influencerIds.map(async (influencerId) => {
-        const influencer = await getInfluencer(influencerId)
-        return {
-          influencerId,
-          influencerName: influencer?.fullName || 'Unknown',
-          influencerNickname: influencer?.nickname,
-          assignedAt: new Date(),
-          submissionStatus: 'pending' as const,
-          submissionLink: generateSubmissionLink(influencerId)
-        }
-      })
-    )
-    
-    const campaignData = {
-      name: data.name,
-      description: data.description,
-      briefFileUrl: data.briefFileUrl || null,
-      trackingUrl: data.trackingUrl || null,
-      budget: data.budget || null,
-      currency: 'THB',
-      startDate: data.startDate,
-      deadline: data.deadline,
-      influencers,
-      brands: data.brandIds,
-      products: data.productIds,
-      status: 'active' as CampaignStatus,
-      createdBy,
-      createdByName,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }
-    
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), campaignData)
-    return docRef.id
-  } catch (error) {
-    console.error('Error creating campaign:', error)
-    throw error
-  }
+export const getCampaignsByInfluencer = async (influencerId: string): Promise<Campaign[]> => {
+  const { data: ids, error } = await sb()
+    .from('campaign_influencers')
+    .select('campaign_id')
+    .eq('influencer_id', influencerId)
+  if (error) throw error
+  const list = (ids ?? []).map((r) => r.campaign_id)
+  if (!list.length) return []
+
+  const { data, error: e2 } = await sb()
+    .from('campaigns')
+    .select(SELECT)
+    .in('id', list)
+    .order('created_at', { ascending: false })
+  if (e2) throw e2
+  return (data ?? []).map((r) => toCampaign(r as Record<string, unknown>))
 }
 
-// Update campaign
-export const updateCampaign = async (
-  campaignId: string,
-  data: Partial<Campaign>
-): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, campaignId)
-    
-    // Clean data - remove undefined values
-    const cleanData: any = {}
-    
-    Object.keys(data).forEach(key => {
-      const value = data[key as keyof Campaign]
-      // Only include fields that are not undefined
-      if (value !== undefined) {
-        cleanData[key] = value
-      }
-    })
-    
-    // Ensure updatedAt is always included
-    cleanData.updatedAt = serverTimestamp()
-    
-    await updateDoc(docRef, cleanData)
-  } catch (error) {
-    console.error('Error updating campaign:', error)
-    throw error
-  }
-}
+/* ── เขียน ───────────────────────────────────────────────────────────── */
 
-// Update campaign status
-export const updateCampaignStatus = async (
-  campaignId: string,
-  status: CampaignStatus
-): Promise<void> => {
-  try {
-    await updateCampaign(campaignId, { status })
-  } catch (error) {
-    console.error('Error updating campaign status:', error)
-    throw error
-  }
-}
-
-// Cancel campaign
-export const cancelCampaign = async (campaignId: string): Promise<void> => {
-  try {
-    await updateCampaignStatus(campaignId, 'cancelled')
-  } catch (error) {
-    console.error('Error cancelling campaign:', error)
-    throw error
-  }
-}
-
-// Add influencer to campaign
-export const addInfluencerToCampaign = async (
-  campaignId: string,
-  influencer: CampaignInfluencer
-): Promise<void> => {
-  try {
-    const campaign = await getCampaign(campaignId)
-    if (!campaign) throw new Error('Campaign not found')
-    
-    const influencers = [...(campaign.influencers || []), influencer]
-    await updateCampaign(campaignId, { influencers })
-  } catch (error) {
-    console.error('Error adding influencer to campaign:', error)
-    throw error
-  }
-}
-
-// Remove influencer from campaign
-export const removeInfluencerFromCampaign = async (
-  campaignId: string,
-  influencerId: string
-): Promise<void> => {
-  try {
-    const campaign = await getCampaign(campaignId)
-    if (!campaign) throw new Error('Campaign not found')
-    
-    const influencers = (campaign.influencers || []).filter(
-      i => i.influencerId !== influencerId
-    )
-    await updateCampaign(campaignId, { influencers })
-  } catch (error) {
-    console.error('Error removing influencer from campaign:', error)
-    throw error
-  }
-}
-
-// Update influencer submission status
-export const updateInfluencerSubmission = async (
-  campaignId: string,
-  influencerId: string,
-  updates: Partial<CampaignInfluencer>
-): Promise<void> => {
-  try {
-    const campaign = await getCampaign(campaignId)
-    if (!campaign) throw new Error('Campaign not found')
-    
-    const influencers = (campaign.influencers || []).map(inf => 
-      inf.influencerId === influencerId 
-        ? { ...inf, ...updates }
-        : inf
-    )
-    
-    await updateCampaign(campaignId, { influencers })
-  } catch (error) {
-    console.error('Error updating influencer submission:', error)
-    throw error
-  }
-}
-
-// Get campaigns by influencer
-export const getCampaignsByInfluencer = async (
-  influencerId: string
-): Promise<Campaign[]> => {
-  try {
-    const allCampaigns = await getCampaigns()
-    return allCampaigns.filter(campaign => 
-      campaign.influencers?.some(inf => inf.influencerId === influencerId)
-    )
-  } catch (error) {
-    console.error('Error getting campaigns by influencer:', error)
-    throw error
-  }
-}
-
-// Generate unique submission link
+/** ลิงก์ส่งงานของอินฟลูแต่ละคน — รูปแบบเดิมจากระบบ Firestore */
 function generateSubmissionLink(influencerId: string): string {
   const timestamp = Date.now().toString(36)
   const random = Math.random().toString(36).substring(2, 8)
   return `${timestamp}-${random}-${influencerId.substring(0, 8)}`
 }
 
-// Delete campaign (hard delete - admin only)
-export const deleteCampaign = async (campaignId: string): Promise<void> => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, campaignId)
-    await deleteDoc(docRef)
-  } catch (error) {
-    console.error('Error deleting campaign:', error)
-    throw error
-  }
-}
+const dateOnly = (d: unknown) =>
+  d instanceof Date ? d.toISOString().slice(0, 10) : String(d ?? '').slice(0, 10)
 
-// Get campaign statistics
-export const getCampaignStats = async () => {
-  try {
-    const campaigns = await getCampaigns()
-    
-    const stats = {
-      total: campaigns.length,
-      byStatus: {
-        pending: 0,
-        active: 0,
-        reviewing: 0,
-        revising: 0,
-        completed: 0,
-        cancelled: 0
-      },
-      totalInfluencers: 0,
-      totalBudget: 0
-    }
-    
-    campaigns.forEach(campaign => {
-      stats.byStatus[campaign.status]++
-      stats.totalInfluencers += campaign.influencers?.length || 0
-      stats.totalBudget += campaign.budget || 0
+export const createCampaign = async (
+  data: CreateCampaignData,
+  createdBy: string,
+  createdByName: string
+): Promise<string> => {
+  const { data: row, error } = await sb()
+    .from('campaigns')
+    .insert({
+      name: data.name,
+      description: data.description ?? '',
+      brief_file_url: data.briefFileUrl || undefined,
+      tracking_url: data.trackingUrl || undefined,
+      budget: data.budget ?? undefined,
+      currency: 'THB',
+      start_date: dateOnly(data.startDate),
+      deadline: dateOnly(data.deadline),
+      status: 'active',
+      created_by: createdBy || undefined,
+      created_by_name: createdByName || undefined,
     })
-    
-    return stats
-  } catch (error) {
-    console.error('Error getting campaign stats:', error)
-    throw error
+    .select('id')
+    .single()
+  if (error) throw error
+  const id = row.id as string
+
+  if (data.brandIds?.length)
+    await sb().from('campaign_brands').insert(data.brandIds.map((b) => ({ campaign_id: id, brand_id: b })))
+  if (data.productIds?.length)
+    await sb()
+      .from('campaign_products')
+      .insert(data.productIds.map((p) => ({ campaign_id: id, product_id: p })))
+  if (data.influencerIds?.length)
+    await sb()
+      .from('campaign_influencers')
+      .insert(
+        data.influencerIds.map((influencerId) => ({
+          campaign_id: id,
+          influencer_id: influencerId,
+          submission_status: 'pending',
+          submission_link: generateSubmissionLink(influencerId),
+        }))
+      )
+
+  return id
+}
+
+export const updateCampaign = async (campaignId: string, data: Partial<Campaign>): Promise<void> => {
+  const patch: Database['public']['Tables']['campaigns']['Update'] = {
+    updated_at: new Date().toISOString(),
+  }
+  if (data.name !== undefined) patch.name = data.name
+  if (data.description !== undefined) patch.description = data.description
+  if (data.briefFileUrl !== undefined) patch.brief_file_url = data.briefFileUrl
+  if (data.trackingUrl !== undefined) patch.tracking_url = data.trackingUrl
+  if (data.budget !== undefined) patch.budget = data.budget ?? undefined
+  if (data.startDate !== undefined) patch.start_date = dateOnly(data.startDate)
+  if (data.deadline !== undefined) patch.deadline = dateOnly(data.deadline)
+  if (data.status !== undefined) patch.status = data.status
+
+  const { error } = await sb().from('campaigns').update(patch).eq('id', campaignId)
+  if (error) throw error
+
+  // ชุดความสัมพันธ์ — ส่งมาเมื่อไหร่ถือว่าแทนที่ทั้งชุด (เหมือนเขียนทับ array เดิม)
+  if (data.brands) {
+    await sb().from('campaign_brands').delete().eq('campaign_id', campaignId)
+    if (data.brands.length)
+      await sb()
+        .from('campaign_brands')
+        .insert(data.brands.map((b) => ({ campaign_id: campaignId, brand_id: b })))
+  }
+  if (data.products) {
+    await sb().from('campaign_products').delete().eq('campaign_id', campaignId)
+    if (data.products.length)
+      await sb()
+        .from('campaign_products')
+        .insert(data.products.map((p) => ({ campaign_id: campaignId, product_id: p })))
+  }
+  if (data.influencers) {
+    await sb().from('campaign_influencers').delete().eq('campaign_id', campaignId)
+    if (data.influencers.length)
+      await sb()
+        .from('campaign_influencers')
+        .insert(
+          data.influencers.map((i) => ({
+            campaign_id: campaignId,
+            influencer_id: i.influencerId,
+            assigned_at: (i.assignedAt instanceof Date
+              ? i.assignedAt
+              : new Date(i.assignedAt ?? Date.now())
+            ).toISOString(),
+            submission_status: i.submissionStatus ?? 'pending',
+            submission_link: i.submissionLink || generateSubmissionLink(i.influencerId),
+          }))
+        )
   }
 }
 
+export const updateCampaignStatus = async (
+  campaignId: string,
+  status: CampaignStatus
+): Promise<void> => {
+  const { error } = await sb()
+    .from('campaigns')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', campaignId)
+  if (error) throw error
+}
 
+export const cancelCampaign = async (campaignId: string): Promise<void> =>
+  updateCampaignStatus(campaignId, 'cancelled' as CampaignStatus)
 
+export const deleteCampaign = async (campaignId: string): Promise<void> => {
+  const { error } = await sb().from('campaigns').delete().eq('id', campaignId)
+  if (error) throw error
+}
 
+export const addInfluencerToCampaign = async (
+  campaignId: string,
+  influencer: CampaignInfluencer
+): Promise<void> => {
+  const { error } = await sb()
+    .from('campaign_influencers')
+    .upsert(
+      {
+        campaign_id: campaignId,
+        influencer_id: influencer.influencerId,
+        submission_status: influencer.submissionStatus ?? 'pending',
+        submission_link: influencer.submissionLink || generateSubmissionLink(influencer.influencerId),
+      },
+      { onConflict: 'campaign_id,influencer_id' }
+    )
+  if (error) throw error
+}
+
+export const removeInfluencerFromCampaign = async (
+  campaignId: string,
+  influencerId: string
+): Promise<void> => {
+  const { error } = await sb()
+    .from('campaign_influencers')
+    .delete()
+    .eq('campaign_id', campaignId)
+    .eq('influencer_id', influencerId)
+  if (error) throw error
+}
+
+export const updateInfluencerSubmission = async (
+  campaignId: string,
+  influencerId: string,
+  updates: Partial<CampaignInfluencer>
+): Promise<void> => {
+  const patch: Database['public']['Tables']['campaign_influencers']['Update'] = {}
+  if (updates.submissionStatus !== undefined) patch.submission_status = updates.submissionStatus
+  if (updates.submissionLink !== undefined) patch.submission_link = updates.submissionLink
+  if (!Object.keys(patch).length) return
+
+  const { error } = await sb()
+    .from('campaign_influencers')
+    .update(patch)
+    .eq('campaign_id', campaignId)
+    .eq('influencer_id', influencerId)
+  if (error) throw error
+}
+
+/* ── สถิติ ───────────────────────────────────────────────────────────── */
+
+export const getCampaignStats = async () => {
+  const { data, error } = await sb().from('campaigns').select('status, budget')
+  if (error) throw error
+  const rows = data ?? []
+  return {
+    total: rows.length,
+    active: rows.filter((r) => r.status === 'active').length,
+    completed: rows.filter((r) => r.status === 'completed').length,
+    cancelled: rows.filter((r) => r.status === 'cancelled').length,
+    totalBudget: rows.reduce((s, r) => s + (Number(r.budget) || 0), 0),
+  }
+}

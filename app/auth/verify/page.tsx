@@ -23,7 +23,7 @@ function VerifyAuth() {
       }
 
       try {
-        await signInBoth({ tokenHash, firebaseToken: params.get('fb') })
+        await signInBoth({ tokenHash })
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         console.error(msg)

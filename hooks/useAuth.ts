@@ -102,12 +102,21 @@ export function useAuth() {
       hasSrpAccess = (count ?? 0) > 0
     }
 
+    // เมนูดูแลเว็บไซต์ลูกค้า — งานส่วนตัวของเจ้าของ ไม่ผูกกับ role
+    // (แอดมินคนอื่นก็ไม่เห็น ต้องมีชื่อใน web_owners เท่านั้น)
+    const { count: webCount } = await sb
+      .from('web_owners')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('user_id', row.id)
+    const hasWebAccess = (webCount ?? 0) > 0
+
     // แอดมินสลับดูมุมมองสิทธิ์อื่นได้ (เครื่องมือทดสอบ) — จำลองแค่หน้าจอ ไม่ใช่สิทธิ์จริง
     const real = {
       ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
       seesDelivery,
       jobFunctionCode,
       hasSrpAccess,
+      hasWebAccess,
     }
     setState({
       user: authUser,

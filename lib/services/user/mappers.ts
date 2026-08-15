@@ -43,6 +43,8 @@ export interface UserData {
   jobFunctionCode?: string
   /** มีสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์ (useAuth เติมให้ · แอดมิน = true เสมอ) */
   hasSrpAccess?: boolean
+  /** อยู่ในรายชื่อ web_owners — เมนูดูแลเว็บไซต์ลูกค้า (งานส่วนตัว แอดมินคนอื่นไม่เห็น) */
+  hasWebAccess?: boolean
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean

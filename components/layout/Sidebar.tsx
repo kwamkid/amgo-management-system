@@ -37,6 +37,11 @@ import {
   BookOpen,
   History,
   Calculator,
+  Globe,
+  Receipt,
+  Layers,
+  ListChecks,
+  Server,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
@@ -117,6 +122,19 @@ const navSections: NavSection[] = [
           { label: 'ประวัติการผลิต', href: '/production/history', icon: subIcon(History) },
         ],
       },
+      {
+        label: 'AOO Website',
+        icon: icon(Globe),
+        // งานส่วนตัวของเจ้าของ — ไม่มี 'admin' ในลิสต์โดยตั้งใจ ต้องมีชื่อใน web_owners เท่านั้น
+        roles: ['website'],
+        subItems: [
+          { label: 'รายการเว็บ', href: '/websites', icon: subIcon(Globe) },
+          { label: 'สั่งงานทั้งฟลีต', href: '/websites/jobs', icon: subIcon(ListChecks) },
+          { label: 'โฮสต์', href: '/websites/hosts', icon: subIcon(Server) },
+          { label: 'สลิปรอตรวจ', href: '/websites/slips', icon: subIcon(Receipt) },
+          { label: 'รุ่น/คอร์ส', href: '/websites/courses', icon: subIcon(Layers) },
+        ],
+      },
     ],
   },
   {
@@ -193,6 +211,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     ...(userData?.seesDelivery ? ['delivery'] : []),
     ...(userData?.jobFunctionCode === 'production' ? ['production'] : []),
     ...(userData?.hasSrpAccess ? ['srp'] : []),
+    ...(userData?.hasWebAccess ? ['website'] : []),
   ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 

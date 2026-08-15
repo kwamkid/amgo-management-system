@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createSessionToken, emailForLine } from '@/lib/supabase/line-auth'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
 
 /**
  * เข้าระบบเป็น admin สำหรับตอนพัฒนา — ไม่ต้องผ่าน LINE
@@ -73,41 +72,8 @@ export async function POST() {
 
     const tokenHash = await createSessionToken(user.id, email)
 
-    // ── ชั่วคราว: session ฝั่ง Firebase ให้หน้าที่ยังไม่ได้ย้ายอ่าน Firestore ได้
-    let firebaseToken: string | null = null
-    try {
-      try {
-        await adminAuth.getUser(DEV_LINE_ID)
-      } catch {
-        await adminAuth.createUser({ uid: DEV_LINE_ID, displayName: 'Dev Admin' })
-      }
-      await adminAuth.setCustomUserClaims(DEV_LINE_ID, { role: 'admin', isActive: true })
 
-      const ref = adminDb.collection('users').doc(DEV_LINE_ID)
-      if (!(await ref.get()).exists) {
-        await ref.set({
-          lineUserId: DEV_LINE_ID,
-          lineDisplayName: 'Dev Admin',
-          linePictureUrl: '',
-          fullName: 'Dev Admin',
-          phone: '',
-          role: 'admin',
-          isActive: true,
-          needsApproval: false,
-          permissionGroupId: null,
-          allowedLocationIds: [],
-          allowCheckInOutsideLocation: true,
-        })
-      }
-      firebaseToken = await adminAuth.createCustomToken(DEV_LINE_ID, {
-        lineUserId: DEV_LINE_ID,
-        role: 'admin',
-      })
-    } catch (e) {
-      console.warn('เตรียม Firebase session ไม่สำเร็จ:', e)
-    }
-
-    return NextResponse.json({ tokenHash, firebaseToken })
+    return NextResponse.json({ tokenHash })
   } catch (err) {
     console.error('dev-login error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })

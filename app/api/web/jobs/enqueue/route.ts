@@ -132,11 +132,16 @@ export async function POST(request: NextRequest) {
   const skippedRecent = beforeCooldown - usable.length
 
   if (!usable.length) {
-    const why = skippedRecent
-      ? `เพิ่งทำไปเมื่อไม่ถึง ${COOLDOWN_MINUTES} นาทีที่แล้ว ไม่ต้องทำซ้ำ`
-      : skippedQueued
-        ? 'ทุกเว็บที่เลือกมีงานชนิดนี้ค้างอยู่แล้ว'
-        : 'ไม่มีเว็บที่ต้องอัปเดต — ปลั๊กอินครบทุกตัวแล้ว'
+    // บอกให้ครบทุกเหตุ ไม่ใช่เลือกมาบรรทัดเดียว — กดปุ่มรวมแล้วไม่มีอะไรเกิดขึ้น
+    // ต้องรู้ว่าเพราะเว็บอยู่ในคิวอยู่แล้วกี่ตัว เพิ่งทำไปกี่ตัว ครบอยู่แล้วกี่ตัว
+    const reasons = [
+      skippedQueued ? `${skippedQueued} เว็บมีงานนี้ค้างคิวอยู่แล้ว` : '',
+      skippedRecent ? `${skippedRecent} เว็บเพิ่งทำไปไม่ถึง ${COOLDOWN_MINUTES} นาที` : '',
+      skippedUpToDate ? `${skippedUpToDate} เว็บปลั๊กอินครบแล้ว` : '',
+    ].filter(Boolean)
+    const why = reasons.length
+      ? `ไม่มีเว็บที่ต้องทำเพิ่ม — ${reasons.join(' · ')}`
+      : 'ไม่มีเว็บที่ต้องทำ'
     return NextResponse.json({
       success: true,
       jobs: 0,

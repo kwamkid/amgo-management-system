@@ -42,6 +42,7 @@ import {
   getHosts,
   getJobs,
   getQueueStatus,
+  getLatestJob,
   getSites,
   runQueueNow,
   type ActiveJob,
@@ -78,7 +79,7 @@ const TYPE_LABEL: Record<WebJob['type'], string> = {
  */
 const ROW_ACTIONS = [
   { type: 'plugin_update', Icon: Puzzle, label: 'อัปเดต', help: 'สั่งอัปเดตปลั๊กอินที่ค้างทั้งหมดจริง' },
-  { type: 'scan', Icon: ShieldCheck, label: 'สแกน', help: 'ไล่หาไฟล์ที่เข้าข่ายมัลแวร์ (อ่านอย่างเดียว)' },
+  { type: 'scan', Icon: ShieldCheck, label: 'Malware', help: 'ไล่หาไฟล์ที่เข้าข่ายมัลแวร์ (อ่านอย่างเดียว)' },
   {
     type: 'backup',
     Icon: Download,
@@ -413,6 +414,21 @@ export default function WebJobsPage() {
     }
   }
 
+  /** เปิดรายละเอียดผลสแกนล่าสุดของเว็บนั้น (ดึงแยก เพราะประวัติหน้าเว็บมีแค่ 40 แถว) */
+  const [openingScan, setOpeningScan] = useState('')
+  const openScan = async (s: WebSite) => {
+    setOpeningScan(s.id)
+    try {
+      const j = await getLatestJob(s.id, 'scan')
+      if (j) setDetail(j)
+      else showToast('ยังไม่มีผลสแกนที่บันทึกไว้ — ลองสั่งสแกนใหม่', 'error')
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setOpeningScan('')
+    }
+  }
+
   const runNow = async () => {
     setBusy('run')
     try {
@@ -482,39 +498,55 @@ export default function WebJobsPage() {
     },
     {
       key: 'up',
-      header: 'โหลด',
+      header: 'สถานะเว็บ',
       align: 'right',
       hideOnMobile: true,
+      width: 150,
       sortValue: (s) => (s.downSince ? 999999 : (s.responseMs ?? 999998)),
+      // 2 บรรทัด: บนบอก "ใช้ได้ไหม/เร็วแค่ไหน" ล่างบอก "ข้อมูลนี้สดแค่ไหน"
+      // เวลาเช็คต้องเห็นด้วยตา ไม่ใช่ซ่อนใน tooltip — ตัวเลขที่ไม่รู้ว่าของเมื่อไหร่ เชื่อไม่ได้
       cell: (s) => {
+        const when = s.lastCheckedAt ? (
+          <p className="mt-0.5 text-xs text-gray-400">เช็ค {fmt(s.lastCheckedAt)}</p>
+        ) : null
+
         if (s.downSince)
           return (
-            <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.suspect.chip}`}>ล่ม</span>
+            <div>
+              <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.suspect.chip}`}>
+                ล่ม
+              </span>
+              {when}
+            </div>
           )
-        if (!s.lastCheckedAt) return <span className="text-gray-300">—</span>
+        if (!s.lastCheckedAt) return <span className="text-gray-300">ยังไม่เคยเช็ค</span>
+
         const ms = s.responseMs ?? 0
         // เกิน 3 วิ = ผู้ใช้เริ่มรู้สึกช้า · เกิน 6 วิ = คนส่วนใหญ่กดปิดไปแล้ว
         // หลอดเต็ม = 8 วิ กวาดตาลงมาทั้งคอลัมน์แล้วเห็นเลยว่าเว็บไหนช้ากว่าเพื่อน
         const bar = ms > 6000 ? HEALTH.suspect.bar : ms > 3000 ? HEALTH.pending.bar : HEALTH.clean.bar
         return (
-          <HelpTooltip
-            variant="tooltip"
-            delay={300}
-            triggerStyle={PLAIN_TRIGGER}
-            content={`ใช้เวลาโหลด ${(ms / 1000).toFixed(2)} วินาที · ตอบกลับ ${s.httpStatus ?? '—'} · เช็คล่าสุด ${fmt(s.lastCheckedAt)}`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <span className="h-1.5 w-14 overflow-hidden rounded-full bg-gray-100">
-                <span
-                  className={`block h-full rounded-full ${bar}`}
-                  style={{ width: `${Math.max(6, Math.min(100, (ms / 8000) * 100))}%` }}
-                />
+          <div>
+            <HelpTooltip
+              variant="tooltip"
+              delay={300}
+              triggerStyle={PLAIN_TRIGGER}
+              content={`เปิดได้ปกติ · ตอบกลับ ${s.httpStatus ?? '—'} · ใช้เวลาโหลด ${(ms / 1000).toFixed(2)} วินาที`}
+            >
+              <span className="inline-flex items-center gap-2">
+                <span className="h-1.5 w-12 overflow-hidden rounded-full bg-gray-100">
+                  <span
+                    className={`block h-full rounded-full ${bar}`}
+                    style={{ width: `${Math.max(6, Math.min(100, (ms / 8000) * 100))}%` }}
+                  />
+                </span>
+                <span className="w-11 text-right tabular-nums text-gray-600">
+                  {(ms / 1000).toFixed(1)} วิ
+                </span>
               </span>
-              <span className="w-11 text-right tabular-nums text-gray-600">
-                {(ms / 1000).toFixed(1)} วิ
-              </span>
-            </span>
-          </HelpTooltip>
+            </HelpTooltip>
+            {when}
+          </div>
         )
       },
     },
@@ -592,24 +624,30 @@ export default function WebJobsPage() {
     },
     {
       key: 'scan',
-      header: 'สแกน',
+      header: 'Malware',
       align: 'center',
       sortValue: (s) => (s.lastScanStatus === 'suspect' ? 2 : s.lastScanAt ? 1 : 0),
       cell: (s) =>
         s.lastScanStatus === 'suspect' ? (
-          <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.suspect.chip}`}>
-            ต้องสงสัย
-          </span>
-        ) : s.lastScanAt ? (
-          // วันเวลาไปอยู่ใน tooltip — ถ้าโชว์ทั้งก้อนช่องจะกว้างจนตารางแตก
-          <span
-            className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.clean.chip}`}
-            title={`สแกนล่าสุด ${fmt(s.lastScanAt)}`}
+          // กดแล้วเปิดรายละเอียดงานสแกนล่าสุด — เห็นว่าไฟล์ไหนผิดตรงไหน
+          // พร้อมปุ่มคัดลอกให้ AI · ป้ายที่บอกแค่ "ต้องสงสัย" แล้วจบคือทางตัน
+          <button
+            type="button"
+            className={`rounded-md px-2 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:brightness-95 ${HEALTH.suspect.chip}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              openScan(s)
+            }}
           >
-            สะอาด
-          </span>
+            {openingScan === s.id ? 'กำลังเปิด…' : 'ต้องสงสัย'}
+          </button>
+        ) : s.lastScanAt ? (
+          <div>
+            <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.clean.chip}`}>สะอาด</span>
+            <p className="mt-0.5 text-xs text-gray-400">{fmt(s.lastScanAt)}</p>
+          </div>
         ) : (
-          <span className="text-gray-300">—</span>
+          <span className="text-gray-300">ยังไม่เคยสแกน</span>
         ),
     },
     {
@@ -848,8 +886,10 @@ export default function WebJobsPage() {
             สั่งงานกับ <strong className="text-gray-800">{tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab}</strong>{' '}
             ({tabSites.length} เว็บ)
           </span>
-          {/* ปิดเฉพาะปุ่มของงานชนิดที่กำลังเดินอยู่ ไม่ปิดทั้งแถบ — ระหว่างรออัปเดต
-              ยังต้องสั่งสแกนหรือสำรองได้ · งานซ้ำถูกกรองที่ฝั่งเซิร์ฟเวอร์อยู่แล้ว */}
+          {/* ปุ่มรวมกดได้เสมอ แม้จะมีงานชนิดเดียวกันเดินอยู่ — มันจะไปทำ "เว็บที่เหลือ"
+              ซึ่งเป็นสิ่งที่ควรทำจริง ๆ · ฝั่งเซิร์ฟเวอร์กรองเว็บที่มีงานค้าง /
+              เพิ่งทำไป / UTD ออกให้อยู่แล้ว กดซ้ำจึงไม่ทำให้งานซ้ำ
+              spinner เป็นแค่ป้ายบอกสถานะ ไม่ใช่การล็อกปุ่ม (เจ้าของทัก 15 ส.ค. 69) */}
           <span className="flex flex-wrap gap-2">
             {FLEET_ACTIONS.map(({ type, Icon, label }, i) => {
               const mine = activeTypes.has(type)
@@ -858,10 +898,10 @@ export default function WebJobsPage() {
                   key={type}
                   variant={i === 0 ? 'primary' : 'secondary'}
                   onClick={() => fire(type)}
-                  disabled={!!busy || mine}
+                  disabled={!!busy}
                 >
                   {mine ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
-                  {mine ? `${label} — กำลังทำ` : label}
+                  {mine ? `${label} — เว็บที่เหลือ` : label}
                 </Button>
               )
             })}

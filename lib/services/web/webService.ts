@@ -692,6 +692,24 @@ export async function getJobs(opts: { batchId?: string; limit?: number } = {}): 
   return (data ?? []).map(toJob)
 }
 
+/**
+ * งานล่าสุดของเว็บนั้นตามชนิด — ใช้ตอนกดป้ายผลในตารางเพื่อเปิดดูรายละเอียด
+ * ดึงแยกเพราะรายการประวัติหน้าเว็บจำกัด 40 แถว งานที่อยากดูอาจตกไปแล้ว
+ */
+export async function getLatestJob(siteId: string, type: WebJob['type']): Promise<WebJob | null> {
+  const { data, error } = await sb()
+    .from('web_jobs')
+    .select('*, web_sites(site_name), web_hosts(name)')
+    .eq('site_id', siteId)
+    .eq('type', type)
+    .not('finished_at', 'is', null)
+    .order('finished_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toJob(data) : null
+}
+
 export interface ActiveJob {
   siteId: string | null
   hostId: string | null

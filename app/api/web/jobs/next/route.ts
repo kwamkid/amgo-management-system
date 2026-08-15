@@ -446,10 +446,42 @@ async function finish(sb: Admin, job: Job, ok: boolean, log: string, summary: un
         backup: 'สำรองข้อมูล',
         discover: 'สำรวจรายชื่อเว็บ',
       })[batch.type as Job['type']] ?? batch.type
+    // ต้องบอกว่า "ทำอะไรกับเว็บไหนบ้าง" — สรุปที่มีแต่ตัวเลขอ่านแล้วไม่รู้ว่า
+    // ไปยุ่งกับเว็บของใคร และเว็บไหนพัง (เจ้าของทัก 15 ส.ค. 69 สองรอบ)
+    const { data: rows } = await sb
+      .from('web_jobs')
+      .select('status, web_sites(site_name)')
+      .eq('batch_id', batch.id)
+    const nameOf = (r: { web_sites: { site_name?: string } | null }) =>
+      r.web_sites?.site_name ?? '(ไม่ทราบชื่อ)'
+    const okNames = (rows ?? []).filter((r) => r.status === 'done').map(nameOf).sort()
+    const badNames = (rows ?? []).filter((r) => r.status === 'failed').map(nameOf).sort()
+
+    /** ยาวเกินไป Discord ตัดทิ้ง — โชว์ 20 ชื่อแรกพอ ที่เหลือบอกจำนวน */
+    const list = (names: string[]) =>
+      names.length <= 20
+        ? names.join(' · ')
+        : `${names.slice(0, 20).join(' · ')} …และอีก ${names.length - 20} เว็บ`
+
+    const single = batch.total_jobs === 1
+    const scope = single ? `— ${okNames[0] ?? badNames[0] ?? ''}` : `ครบ ${batch.total_jobs} เว็บแล้ว`
+
+    const fields = single
+      ? []
+      : [
+          ...(okNames.length ? [{ name: `สำเร็จ ${okNames.length} เว็บ`, value: list(okNames).slice(0, 1000) }] : []),
+          ...(badNames.length ? [{ name: `❌ ล้มเหลว ${badNames.length} เว็บ`, value: list(badNames).slice(0, 1000) }] : []),
+        ]
+
     await sendWebAlert({
-      title: `✅ ${label} ครบทุกเว็บแล้ว`,
-      description: `สำเร็จ ${done} · ล้มเหลว ${failed} (ทั้งหมด ${batch.total_jobs})`,
+      title: `${failed ? '⚠️' : '✅'} ${label} ${scope}`,
+      description: single
+        ? ok
+          ? 'เสร็จเรียบร้อย'
+          : 'ทำไม่สำเร็จ — เปิดดูรายละเอียดงานในระบบ'
+        : `สำเร็จ ${done} · ล้มเหลว ${failed} (ทั้งหมด ${batch.total_jobs})`,
       color: failed ? 'amber' : 'green',
+      fields,
     })
   }
 }

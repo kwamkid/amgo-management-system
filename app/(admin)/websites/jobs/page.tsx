@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, HelpTooltip, Modal, TabBar, TabItem } from '@/components/aoo'
+import { Button, HelpTooltip, Modal, TabBar, TabItem, useConfirm } from '@/components/aoo'
 import {
   DataTable,
   PageHeader,
@@ -102,6 +102,32 @@ const FLEET_ACTIONS = [
   { type: 'scan', Icon: ShieldCheck, label: 'สแกนมัลแวร์' },
   { type: 'backup', Icon: Download, label: 'สำรองข้อมูล' },
 ] as const
+
+/**
+ * งานนี้ไปทำอะไรกับเว็บจริง ๆ — โผล่ในกล่องยืนยันก่อนสั่งทั้งฟลีต
+ * เขียนให้ต่างกันชัดว่า "อ่านอย่างเดียว" กับ "แก้ของจริง" คนละเรื่องกัน
+ */
+const FLEET_RISK: Record<
+  (typeof FLEET_ACTIONS)[number]['type'],
+  { tone: 'danger' | 'primary'; note: string }
+> = {
+  plugin_check: {
+    tone: 'primary',
+    note: 'อ่านอย่างเดียว ไม่แตะไฟล์บนเว็บ · cron ตรวจให้ทุกคืนอยู่แล้ว กดเองเมื่ออยากได้ตัวเลขสดเดี๋ยวนี้',
+  },
+  plugin_update: {
+    tone: 'danger',
+    note: 'แก้ของจริงบนเว็บลูกค้า — ปลั๊กอินบางตัวอัปเดตแล้วหน้าเว็บเปลี่ยนได้ และสั่งแล้วยกเลิกกลางทางไม่ได้',
+  },
+  scan: {
+    tone: 'primary',
+    note: 'อ่านอย่างเดียว ไม่แตะไฟล์บนเว็บ · แต่กิน CPU โฮสต์ตอนไล่อ่านทุกไฟล์',
+  },
+  backup: {
+    tone: 'primary',
+    note: 'สร้างไฟล์ .wpress เก็บไว้บนโฮสต์ — กินพื้นที่ดิสก์ตามขนาดเว็บ',
+  },
+}
 
 /** อาการที่ตัวเช็คอ่านได้จากเนื้อหาหน้า — เว็บพวกนี้ตอบ 200 แต่คนเข้าไปใช้ไม่ได้ */
 const ISSUE_LABEL: Record<string, string> = {
@@ -258,6 +284,7 @@ export default function WebJobsPage() {
   /** มุมมองหลักของหน้า — รายเว็บ หรือ ประวัติงาน */
   const [view, setView] = useState('sites')
   const [detail, setDetail] = useState<WebJob | null>(null)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const canSee = !!userData && !!userData.hasWebAccess
 
@@ -479,6 +506,59 @@ export default function WebJobsPage() {
     } finally {
       setBusy('')
     }
+  }
+
+  /**
+   * ปุ่มฟลีตยิงทีเดียวหลายสิบเว็บ — ถามก่อนเสมอ แต่ถามแบบมีตัวเลข
+   *
+   * กล่องที่ถามแค่ "แน่ใจไหม" คนกดตกลงอัตโนมัติภายในสองวัน · ต้องบอกว่า
+   * "กี่เว็บ ข้ามกี่เว็บ เพราะอะไร งานนี้ไปแตะอะไรบ้าง" ถึงจะมีค่าพอให้หยุดอ่าน
+   * — นับด้วยกติกาเดียวกับที่ enqueue กรองจริง จะได้ไม่หลอกกันเอง
+   */
+  const fireFleet = async (type: (typeof FLEET_ACTIONS)[number]['type'], label: string) => {
+    const where = tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab
+    // เซิร์ฟเวอร์ข้ามเว็บที่ปลั๊กอินครบ "เฉพาะตอนสั่งทั้งฟลีต" — แท็บแพลนส่ง siteIds
+    // ไปตรง ๆ จึงไม่โดนกรองชั้นนี้ กล่องยืนยันต้องนับให้ตรงกับของจริง
+    let skipUtd = 0
+    let skipQueued = 0
+    let willRun = 0
+    for (const s of tabSites) {
+      if (type === 'plugin_update' && tab === 'all' && s.pluginsCheckedAt && s.pendingPluginCount === 0)
+        skipUtd++
+      else if (activeBySite.get(s.id)?.has(type)) skipQueued++
+      else willRun++
+    }
+
+    // ไม่มีอะไรให้ทำ = ไม่ต้องถาม ปล่อยให้เซิร์ฟเวอร์ตอบเหตุผลเต็ม ๆ ผ่าน toast
+    // (ยังไงก็ไม่มีอะไรเกิดขึ้น จะขึ้นกล่องยืนยันให้กดเล่นทำไม)
+    if (!willRun) return fire(type)
+
+    const risk = FLEET_RISK[type]
+    const ok = await confirm({
+      title: `${label} — ${where}?`,
+      tone: risk.tone,
+      confirmLabel: `สั่งเลย ${willRun} เว็บ`,
+      children: (
+        <div className="space-y-2.5 text-sm text-gray-600">
+          <p>
+            จะเข้าคิว <strong className="text-gray-900">{willRun} เว็บ</strong> จากทั้งหมด{' '}
+            {tabSites.length} เว็บ{tab === 'all' ? '' : ` ในแพลน ${tab}`}
+          </p>
+          {(skipUtd > 0 || skipQueued > 0) && (
+            <ul className="list-inside list-disc space-y-0.5 text-gray-500">
+              {skipUtd > 0 && <li>ข้าม {skipUtd} เว็บที่ปลั๊กอินครบแล้ว</li>}
+              {skipQueued > 0 && <li>ข้าม {skipQueued} เว็บที่มีงานนี้ค้างคิวอยู่</li>}
+            </ul>
+          )}
+          <p className={risk.tone === 'danger' ? 'text-red-600' : ''}>{risk.note}</p>
+          <p className="text-xs text-gray-400">
+            เว็บที่เพิ่งทำงานนี้ไปไม่ถึง 10 นาทีจะถูกข้ามอีกชั้นที่เซิร์ฟเวอร์ · คิวเดินทีละเว็บต่อโฮสต์
+            จบรอบสรุปเข้า Discord
+          </p>
+        </div>
+      ),
+    })
+    if (ok) fire(type)
   }
 
   /** เปิดรายละเอียดผลสแกนล่าสุดของเว็บนั้น (ดึงแยก เพราะประวัติหน้าเว็บมีแค่ 40 แถว) */
@@ -1016,7 +1096,9 @@ export default function WebJobsPage() {
           {/* ปุ่มรวมกดได้เสมอ แม้จะมีงานชนิดเดียวกันเดินอยู่ — มันจะไปทำ "เว็บที่เหลือ"
               ซึ่งเป็นสิ่งที่ควรทำจริง ๆ · ฝั่งเซิร์ฟเวอร์กรองเว็บที่มีงานค้าง /
               เพิ่งทำไป / UTD ออกให้อยู่แล้ว กดซ้ำจึงไม่ทำให้งานซ้ำ
-              spinner เป็นแค่ป้ายบอกสถานะ ไม่ใช่การล็อกปุ่ม (เจ้าของทัก 15 ส.ค. 69) */}
+              spinner เป็นแค่ป้ายบอกสถานะ ไม่ใช่การล็อกปุ่ม (เจ้าของทัก 15 ส.ค. 69)
+              ทุกปุ่มถามยืนยันก่อน เพราะกดทีเดียวโดน 49 เว็บ และปุ่มแรกอยู่ติดปุ่ม
+              อัปเดตที่แก้ของจริง — กล่องยืนยันบอกจำนวนเว็บที่จะโดนจริงก่อนตัดสินใจ */}
           <span className="flex flex-wrap gap-2">
             {FLEET_ACTIONS.map(({ type, Icon, label }, i) => {
               const mine = activeTypes.has(type)
@@ -1024,7 +1106,7 @@ export default function WebJobsPage() {
                 <Button
                   key={type}
                   variant={i === 0 ? 'primary' : 'secondary'}
-                  onClick={() => fire(type)}
+                  onClick={() => fireFleet(type, label)}
                   disabled={!!busy}
                 >
                   {mine ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
@@ -1142,6 +1224,8 @@ export default function WebJobsPage() {
           </div>
         </Modal>
       )}
+
+      {confirmDialog}
     </div>
   )
 }

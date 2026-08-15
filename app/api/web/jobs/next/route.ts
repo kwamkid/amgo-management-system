@@ -292,6 +292,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // บริการตั้งเวลาบางเจ้าตั้งค่าเริ่มต้นเป็น POST — ถ้ามีรหัส cron มาก็ให้ผ่าน
+  // เหมือน GET ไม่ต้องมี session (เคยตั้ง cron-job.org เป็น POST แล้วโดน 401)
+  if (isAuthorizedCron(request)) return GET(request)
+
   const sb = await createServerSupabase()
   const {
     data: { user },

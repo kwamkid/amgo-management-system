@@ -35,8 +35,14 @@ async function probe(domain: string) {
       method: 'GET',
       redirect: 'follow',
       signal: ctrl.signal,
-      // WordPress หลายเจ้าบล็อก HEAD และบล็อก UA ที่ไม่เหมือนเบราว์เซอร์
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AMGO-SiteMonitor/1.0)' },
+      // ต้องเป็น UA เบราว์เซอร์จริง — SiteGround ตอบ 403 ให้ UA แปลกหน้าทุกตัว
+      // (15 ส.ค. 69 เจอ 8 เว็บของเราขึ้น "ล่ม" ทั้งที่เปิดได้ปกติ) และ WordPress
+      // หลายเจ้าก็บล็อก HEAD ด้วย เลยใช้ GET
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
       cache: 'no-store',
     })
     return { status: res.status, ms: Date.now() - started, up: res.status < 400 }
@@ -120,6 +126,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // cron ที่ตั้งเป็น POST ก็ให้ผ่าน (เช็คทุกเว็บเหมือน GET)
+  if (isAuthorizedCron(request)) return GET(request)
+
   // กดจากหน้าเว็บ — ต้องล็อกอินและอยู่ใน web_owners
   const sb = await createServerSupabase()
   const {

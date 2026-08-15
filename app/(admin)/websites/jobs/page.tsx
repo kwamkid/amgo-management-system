@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  Clock,
   Download,
   ListChecks,
   Loader2,
@@ -218,7 +219,7 @@ export default function WebJobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // รอบตามคิว — ถามแค่คิวกับประวัติงาน (ไม่กี่สิบแถว) แล้วค่อยดึงเว็บทั้ง 50 ตัวใหม่
+  // รอบตามคิว — ถามแค่คิวกับประวัติงาน (ไม่กี่สิบแถว) แล้วค่อยดึงเว็บทั้ง 49 ตัวใหม่
   // เฉพาะตอนมีงานเพิ่งเสร็จ · ของเดิมยิงทั้ง 4 ก้อนทุก 15 วิ ตลอดเวลาที่เปิดแท็บทิ้งไว้
   const lastFinished = useRef('')
   const tick = useCallback(async () => {
@@ -266,9 +267,10 @@ export default function WebJobsPage() {
     const t = setInterval(() => {
       if (document.hidden) return // สลับแท็บออกไปทำอย่างอื่น = ไม่ยิงเลย
       n++
-      // มีงานเดินอยู่ = ทุก 10 วิ · คิวว่าง = ทุก 60 วิ พอให้เห็นงานที่ cron สั่งเอง
-      if (queueBusyRef.current || n % 6 === 0) tick()
-    }, 10_000)
+      // มีงานเดินอยู่ = ทุก 5 วิ ให้แถบความคืบหน้าขยับพอเห็น
+      // คิวว่าง = ทุก 60 วิ พอให้เห็นงานที่ cron สั่งเอง
+      if (queueBusyRef.current || n % 12 === 0) tick()
+    }, 5_000)
     return () => clearInterval(t)
   }, [canSee, load, tick])
 
@@ -468,6 +470,37 @@ export default function WebJobsPage() {
       sortValue: (s) => (s.pluginsCheckedAt ? s.pendingPluginCount : -1),
       // "ค้าง/ทั้งหมด" — ค้าง 3 จาก 5 กับ ค้าง 3 จาก 40 คนละเรื่องกัน ตัวเลขเดี่ยวบอกไม่ได้
       cell: (s) => {
+        // กำลังอัปเดตอยู่จริง = โชว์ความคืบหน้าแทนตัวเลขนิ่ง ๆ
+        // มีแถบเฉพาะงานที่นับขั้นได้ (อัปเดตทีละตัว) งานอื่น progressTotal = 0
+        const job = activeBySite.get(s.id)
+        if (job?.status === 'running' && job.type === 'plugin_update' && job.progressTotal > 0) {
+          const pct = Math.round((job.progressDone / job.progressTotal) * 100)
+          return (
+            <HelpTooltip
+              variant="tooltip"
+              delay={200}
+              triggerStyle={PLAIN_TRIGGER}
+              content={
+                job.progressNote
+                  ? `กำลังอัปเดต ${job.progressNote} (${job.progressDone}/${job.progressTotal})`
+                  : `อัปเดตไปแล้ว ${job.progressDone} จาก ${job.progressTotal} ตัว`
+              }
+            >
+              <span className="inline-flex items-center gap-2">
+                <span className="h-1.5 w-12 overflow-hidden rounded-full bg-amber-100">
+                  <span
+                    className="block h-full rounded-full bg-amber-400 transition-[width] duration-500"
+                    style={{ width: `${Math.max(6, pct)}%` }}
+                  />
+                </span>
+                <span className="tabular-nums text-xs text-amber-700">
+                  {job.progressDone}/{job.progressTotal}
+                </span>
+              </span>
+            </HelpTooltip>
+          )
+        }
+
         if (!s.pluginsCheckedAt) return <span className="text-gray-300">—</span>
         const chip = s.pendingPluginCount > 0 ? HEALTH.pending.chip : HEALTH.clean.chip
         return (
@@ -605,11 +638,14 @@ export default function WebJobsPage() {
                       fire(type, { siteIds: [s.id], label: s.siteName })
                     }}
                   >
+                    {/* รอคิวใช้นาฬิกา ไม่ใช่ spinner ที่ค้างนิ่ง — spinner ไม่หมุน
+                        อ่านเหมือนระบบแฮงก์ ทั้งที่จริงแค่ยังไม่ถึงคิว */}
                     {mine ? (
-                      <Loader2
-                        size={15}
-                        className={running ? 'animate-spin' : 'opacity-60'}
-                      />
+                      running ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : (
+                        <Clock size={15} className="opacity-60" />
+                      )
                     ) : (
                       <Icon size={15} />
                     )}
@@ -691,7 +727,7 @@ export default function WebJobsPage() {
           value={stats.total}
           hint={
             queueBusy
-              ? `กำลังเดินคิว ${queue.queued + queue.running} งาน · หน้านี้อัปเดตเองทุก 10 วิ`
+              ? `กำลังเดินคิว ${queue.queued + queue.running} งาน · หน้านี้อัปเดตเองทุก 5 วิ`
               : 'คิวว่าง'
           }
         />

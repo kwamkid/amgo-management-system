@@ -695,6 +695,10 @@ export interface ActiveJob {
   hostId: string | null
   type: WebJob['type']
   status: 'queued' | 'running'
+  /** ทำไปกี่ขั้นแล้ว — total = 0 แปลว่างานนี้นับขั้นไม่ได้ ไม่ต้องโชว์แถบ */
+  progressDone: number
+  progressTotal: number
+  progressNote: string
 }
 
 /**
@@ -709,7 +713,7 @@ export async function getQueueStatus(): Promise<{
 }> {
   const { data, error } = await sb()
     .from('web_jobs')
-    .select('site_id, host_id, type, status')
+    .select('site_id, host_id, type, status, progress_done, progress_total, progress_note')
     .in('status', ['queued', 'running'])
     .limit(1000)
   if (error) throw error
@@ -719,6 +723,9 @@ export async function getQueueStatus(): Promise<{
     hostId: (r.host_id as string) ?? null,
     type: r.type as WebJob['type'],
     status: r.status as 'queued' | 'running',
+    progressDone: (r.progress_done as number) ?? 0,
+    progressTotal: (r.progress_total as number) ?? 0,
+    progressNote: (r.progress_note as string) ?? '',
   }))
 
   return {

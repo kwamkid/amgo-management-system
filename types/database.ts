@@ -3536,6 +3536,9 @@ export type Database = {
           batch_id: string | null
           finished_at: string | null
           force: boolean
+          progress_done: number
+          progress_note: string | null
+          progress_total: number
           host_id: string | null
           id: string
           queued_at: string
@@ -3552,6 +3555,9 @@ export type Database = {
           batch_id?: string | null
           finished_at?: string | null
           force?: boolean
+          progress_done?: number
+          progress_note?: string | null
+          progress_total?: number
           host_id?: string | null
           id?: string
           queued_at?: string
@@ -3568,6 +3574,9 @@ export type Database = {
           batch_id?: string | null
           finished_at?: string | null
           force?: boolean
+          progress_done?: number
+          progress_note?: string | null
+          progress_total?: number
           host_id?: string | null
           id?: string
           queued_at?: string

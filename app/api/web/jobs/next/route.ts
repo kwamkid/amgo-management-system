@@ -196,6 +196,17 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
       log += `\n⏳ หมดเวลารอบนี้ เหลืออีก ${pending.length - pending.indexOf(p)} ตัว — ต่อคิวให้แล้ว`
       break
     }
+    // บอกความคืบหน้าก่อนลงมือ — หน้าเว็บอ่านค่านี้ตอน poll ทุก 5 วิ
+    // เขียนเพิ่ม 1 ครั้งต่อปลั๊กอิน 1 ตัว เทียบกับการ SSH จริงแล้วถือว่าฟรี
+    await sb
+      .from('web_jobs')
+      .update({
+        progress_done: tried.length,
+        progress_total: pending.length,
+        progress_note: p.name,
+      })
+      .eq('id', job.id)
+
     tried.push(p.name)
     try {
       const res = await updatePlugins(target, path, p.name)

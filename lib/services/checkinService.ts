@@ -22,7 +22,13 @@ import type {
 } from '@/types/checkin'
 import type { Database } from '@/types/database'
 import { format } from 'date-fns'
-import { calculateWorkingHours, needsOvertimeApproval, distanceMeters, normalEndTime } from './workingHoursService'
+import {
+  calculateWorkingHours,
+  needsOvertimeApproval,
+  distanceMeters,
+  normalEndTime,
+  isForgotCheckout,
+} from './workingHoursService'
 import { getLocation } from './locationService'
 import { getDeviceId } from '@/lib/utils/device'
 
@@ -209,7 +215,7 @@ export async function resolveOtEligible(userId: string): Promise<boolean> {
 export async function checkOut(
   userId: string,
   checkoutData: CheckOutData
-): Promise<{ totalHours: number; overtimeHours: number; farKm: number }> {
+): Promise<{ totalHours: number; overtimeHours: number; farKm: number; forgot: boolean }> {
   const active = await getActiveCheckIn(userId)
   if (!active) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
 
@@ -217,6 +223,30 @@ export async function checkOut(
 
   const checkinTime = new Date(active.checkinTime)
   const checkoutTime = new Date()
+  const breakHours = location?.breakHours ?? OFFSITE_HOURS_RULES.breakHours
+
+  // เวลาเลิกงานปกติของกะนี้ — เพดานเดียวใช้ได้ทั้งเคสเช็คเอาท์ไกลและเคสลืมเช็คเอาท์
+  const normalEnd = normalEndTime(checkinTime, active.shiftEndTime, breakHours)
+
+  // ── ลืมเช็คเอาท์ = มากดปิดกะข้ามวัน ─────────────────────────────────
+  // กติกาเจ้าของ (14 ส.ค. 69): ลืมเช็คเอาท์ให้ปิดที่ "เวลาเลิกงานปกติ" คิด
+  // ชั่วโมงถึงแค่นั้น ไม่มี OT + ติดธง needs_review ให้ HR ตรวจ
+  //
+  // กติกานี้เคยเขียนไว้ที่ autoCheckoutService (cron 23:59) ที่เดียว ซึ่งกวาด
+  // เฉพาะกะที่เปิดค้างเกิน 12 ชม. — คนเข้าบ่าย/เย็นแล้วลืมจึงรอดตาข่ายไปกด
+  // เช็คเอาท์เองเช้าวันรุ่งขึ้น แล้วได้ชั่วโมงเต็มดุ้น (ปู 14 ส.ค. 69: เข้า
+  // 16:55 ออก 08:48 → 14.87 ชม. + OT 6.87) เพดาน "เช็คเอาท์ไกล" ก็ช่วยไม่ได้
+  // เพราะคน WFH ไม่มีสาขาให้เทียบระยะ
+  //
+  // เส้นแบ่ง "ข้ามวัน" อยู่ใน isForgotCheckout (workingHoursService) — เทสต์ที่
+  // scripts/test-checkout-hours.mjs ยิงตรงเข้าฟังก์ชันนั้น
+  const forgot = isForgotCheckout(
+    checkinTime,
+    checkoutTime,
+    active.shiftStartTime,
+    active.shiftEndTime,
+    breakHours
+  )
 
   // ── เช็คเอาท์ไกลจากสาขาที่เช็คอิน = ตัดชั่วโมงที่เวลาเลิกงานปกติ ──────
   // เจ้าของสั่ง 14 ส.ค. 69: กันเคส "เช็คอินที่งาน กลับไปเช็คเอาท์ที่บ้าน
@@ -224,9 +254,12 @@ export async function checkOut(
   // เท่านั้น และไม่เกิด OT (OT อยู่หลังเวลาเลิกงาน โดนตัดก่อนพอดี)
   // ใช้เฉพาะเช็คอินที่สาขา — offsite/WFH ไม่มีจุดอ้างอิงให้เทียบ
   // เผื่อ GPS แกว่ง 300 ม. นอกรัศมีถึงนับว่า "ไกล"
+  // ข้ามไปเลยถ้าเข้าข่ายลืม — คนลืมย่อมกดจากที่บ้านตอนเช้า ทักว่า "นอกพื้นที่"
+  // ก็ผิดเรื่อง และเพดานเดียวกันโดนตัดไปแล้ว
   let farKm = 0
-  let effectiveCheckout = checkoutTime
+  let effectiveCheckout = forgot && normalEnd < checkoutTime ? normalEnd : checkoutTime
   if (
+    !forgot &&
     active.checkinType === 'onsite' &&
     location &&
     checkoutData.lat != null &&
@@ -235,8 +268,7 @@ export async function checkOut(
     const dist = distanceMeters(location.lat, location.lng, checkoutData.lat, checkoutData.lng)
     if (dist > location.radius + 300) {
       farKm = Math.round(dist / 100) / 10
-      const cap = normalEndTime(checkinTime, active.shiftEndTime, location.breakHours)
-      if (cap < checkoutTime) effectiveCheckout = cap
+      if (normalEnd < checkoutTime) effectiveCheckout = normalEnd
     }
   }
 
@@ -261,20 +293,26 @@ export async function checkOut(
   const calcRaw = shiftInfo
     ? calcBase
     : { ...calcBase, isLate: active.isLate, lateMinutes: active.lateMinutes }
-  // เช็คเอาท์ไกล = ไม่มี OT เด็ดขาด (กันเศษ OT จากการปัดเวลา)
-  const calc = farKm
+  // เช็คเอาท์ไกล/ลืมเช็คเอาท์ = ไม่มี OT เด็ดขาด (กันเศษ OT จากการปัดเวลา)
+  const calc = farKm || forgot
     ? { ...calcRaw, overtimeHours: 0, totalHours: calcRaw.regularHours }
     : calcRaw
 
-  const needsApproval = location && !farKm
+  // เคสลืมไม่ต้องเข้าคิวอนุมัติโอที — ชั่วโมงโดนตัดที่เวลาเลิกงานไปแล้ว
+  // (ของเดิมปล่อยเข้าคิว ทำให้ใบที่ลืมค้างสถานะ "รออนุมัติ" ไม่มีวันจบ)
+  const needsApproval = location && !farKm && !forgot
     ? needsOvertimeApproval(checkoutTime, location, checkinTime)
     : false
+
+  // เคสลืม บันทึกเวลาออก = เวลาเลิกงานที่ระบบปิดให้ (เหมือน cron ปิดกะ) เวลาที่
+  // กดจริงเก็บไว้ในหมายเหตุ — รายงานจะได้อ่านแล้วตรงกัน เวลาออกคู่กับชั่วโมง
+  const recordedCheckout = forgot ? effectiveCheckout : checkoutTime
 
   // total_hours เป็น generated column ใน Postgres (regular + overtime) — ห้ามเขียนเอง
   const { error } = await sb()
     .from('checkins')
     .update({
-      checkout_time: checkoutTime.toISOString(),
+      checkout_time: recordedCheckout.toISOString(),
       checkout_lat: checkoutData.lat ?? null,
       checkout_lng: checkoutData.lng ?? null,
       regular_hours: calc.regularHours,
@@ -284,22 +322,26 @@ export async function checkOut(
       is_late: calc.isLate,
       late_minutes: calc.lateMinutes,
       is_overnight_shift: calc.isOvernightShift,
+      forgot_checkout: forgot,
       needs_overtime_approval: needsApproval,
       checkout_note:
         [
+          forgot
+            ? `[ลืมเช็คเอาท์ — ระบบปิดให้ที่เวลาเลิกงาน ไม่มี OT · กดจริง ${format(checkoutTime, 'dd/MM HH:mm')}] HR แก้ได้ถ้าทำงานจริงเลยเวลา`
+            : '',
           farKm ? `[เช็คเอาท์นอกพื้นที่ ${farKm} กม. — ตัดชั่วโมงที่เวลาเลิกงาน]` : '',
           checkoutData.note ?? '',
         ]
           .filter(Boolean)
           .join(' ') || null,
-      hours_status: 'original',
+      hours_status: forgot ? 'needs_review' : 'original',
     })
     .eq('id', active.id!)
 
   if (error) throw new Error(`เช็คเอาท์ไม่สำเร็จ: ${error.message}`)
 
   // ส่งเลขที่คำนวณจริงกลับไปให้ noti — ไม่ต้องคิดเองจากเวลาดิบอีก
-  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours, farKm }
+  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours, farKm, forgot }
 }
 
 /* ------------------------------------------------------------------ *

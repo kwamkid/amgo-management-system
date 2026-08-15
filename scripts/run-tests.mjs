@@ -19,6 +19,7 @@ const SUITES = [
   { file: 'test-self-edit-guard.mjs', title: 'พนักงานแก้ข้อมูลตัวเอง' },
   { file: 'test-rls.mjs', title: 'สิทธิ์การเข้าถึงข้อมูล' },
   { file: 'test-checkin-rls.mjs', title: 'เช็คอิน' },
+  { file: 'test-checkout-hours.mjs', title: 'ชั่วโมงตอนเช็คเอาท์ · ลืมเช็คเอาท์', noEnv: true },
   { file: 'test-leave-rls.mjs', title: 'สิทธิ์ใบลา' },
   { file: 'test-leave-flow.mjs', title: 'ยื่นลา → อนุมัติ → โควต้า' },
   { file: 'test-attendance-report.mjs', title: 'รายงานการมาทำงาน' },

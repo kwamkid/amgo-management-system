@@ -157,10 +157,12 @@ export async function sendCheckInNotification(event: NotificationEvent) {
 
 export async function sendCheckOutNotification(event: NotificationEvent) {
   const webhook = new DiscordWebhook(WebhookChannel.CHECK_IN, 'checkOut')
-  const { totalHours, overtime } = event.data || {}
+  const { totalHours, overtime, forgot } = event.data || {}
 
   const embed: DiscordEmbed = {
-    title: '🔴 เช็คเอาท์',
+    // ลืมเช็คเอาท์ต้องอ่านออกตั้งแต่หัวการ์ด — เดิมขึ้น "เช็คเอาท์ 14.9 ชั่วโมง"
+    // เฉย ๆ เหมือนคนทำงานยาวจริง (เจ้าของทัก 15 ส.ค. 69)
+    title: forgot ? '🔴 เช็คเอาท์ · ลืมเช็คเอาท์' : '🔴 เช็คเอาท์',
     // ป้ายแดงลูกศรออกประตู + การ์ดสีแดง — ตัดกับเช็คอินสีเขียวทันที
     thumbnail: { url: NOTI_ICONS.checkOut },
     image: CARD_WIDTH_SPACER,
@@ -171,18 +173,23 @@ export async function sendCheckOutNotification(event: NotificationEvent) {
     color: GRID_COLORS.absent,
     fields: [
       {
-        name: 'เวลาทำงาน',
+        name: forgot ? 'เวลาทำงาน (ระบบปิดให้)' : 'เวลาทำงาน',
         value: `${totalHours || 0} ชั่วโมง`,
         inline: true
       },
-      ...(overtime > 0 ? [{
+      ...(!forgot && overtime > 0 ? [{
         name: 'โอที',
         value: `${overtime} ชั่วโมง`,
         inline: true
+      }] : []),
+      ...(forgot ? [{
+        name: '⚠️ ลืมเช็คเอาท์',
+        value: 'ระบบปิดกะให้ที่เวลาเลิกงาน ไม่นับโอที — รอ HR ตรวจ',
+        inline: false
       }] : [])
     ],
     footer: {
-      text: 'AMGO Check-in System'
+      text: forgot ? '⚠️ ลืมเช็คเอาท์ | AMGO Check-in System' : 'AMGO Check-in System'
     },
     timestamp: new Date().toISOString()
   }

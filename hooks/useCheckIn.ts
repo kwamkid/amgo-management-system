@@ -309,6 +309,14 @@ export function useCheckIn(): UseCheckInReturn {
         )
       }
 
+      // ── ลืมเช็คเอาท์ (มากดข้ามวัน) — บอกตรง ๆ ว่าระบบปิดให้ที่เวลาเลิกงาน
+      if (hours.forgot) {
+        showToast(
+          'ลืมเช็คเอาท์เมื่อวาน — ระบบปิดกะให้ที่เวลาเลิกงาน ไม่นับโอที · แจ้ง HR ถ้าทำงานจริงเลยเวลา',
+          'error'
+        )
+      }
+
       // Send Discord notification (no toast if fails)
       try {
         // เลขชั่วโมง/โอทีใช้ของที่คำนวณจริง (หักพัก/ตัดเวลาปิดร้านแล้ว) — เดิมคิดจาก
@@ -320,13 +328,16 @@ export function useCheckIn(): UseCheckInReturn {
           userData.displayName || userData.fullName,
           Math.round(hours.totalHours * 10) / 10,
           otEligible ? Math.round(hours.overtimeHours * 10) / 10 : 0,
-          userData.linePictureUrl
+          userData.linePictureUrl,
+          // การ์ดต้องบอกว่าเลขนี้ระบบปิดให้ ไม่ใช่ชั่วโมงที่ทำจริง — เดิมโชว์
+          // 14.9 ชม. ของคนที่ลืมเช็คเอาท์เฉย ๆ (เจ้าของทัก 15 ส.ค. 69)
+          hours.forgot
         )
       } catch (err) {
         console.error('Discord notification failed:', err)
       }
-      
-      if (!hours.farKm) showToast('เช็คเอาท์สำเร็จ', 'success')
+
+      if (!hours.farKm && !hours.forgot) showToast('เช็คเอาท์สำเร็จ', 'success')
       setCurrentCheckIn(null)
     } catch (err) {
       console.error('Check-out error:', err)

@@ -14,7 +14,7 @@
 // ปกติไม่มีทางเกิน 1 วันงาน จึงบันทึกชั่วโมงได้โดยไม่เปิดช่องปั๊มชั่วโมง
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calculateWorkingHours } from './workingHoursService'
+import { calculateWorkingHours, normalEndTime } from './workingHoursService'
 
 /** ลืมเช็คเอาท์เกินกี่ชั่วโมงถึงถือว่าลืมจริง (ไม่ใช่กะยาว) */
 const FORGOT_AFTER_HOURS = 12
@@ -47,7 +47,6 @@ export async function autoCheckoutPendingRecords(): Promise<{
   for (const rec of stale) {
     try {
       const checkinTime = new Date(rec.checkin_time!)
-      const checkoutTime = guessCheckoutTime(checkinTime, rec.shift_end_time)
 
       // ชั่วโมงคิดถึงเวลาเลิกงานปกติ (หักพักตามสาขา) — OT ไม่มีเด็ดขาด
       let breakHours = 1
@@ -59,6 +58,9 @@ export async function autoCheckoutPendingRecords(): Promise<{
           .maybeSingle()
         if (loc) breakHours = Number(loc.break_hours ?? 1)
       }
+
+      const checkoutTime = normalEndTime(checkinTime, rec.shift_end_time, breakHours)
+
       const calc = calculateWorkingHours(
         checkinTime,
         checkoutTime,
@@ -112,19 +114,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
   return { processed, errors }
 }
 
-/**
- * เวลาเลิกงานปกติที่ใช้ปิดกะ + คิดชั่วโมง — จบกะ > 18:00 > เข้า+8 ชม.
- */
-function guessCheckoutTime(checkinTime: Date, shiftEndTime: string | null): Date {
-  const out = new Date(checkinTime)
-
-  if (shiftEndTime) {
-    const [h, m] = shiftEndTime.split(':').map(Number)
-    out.setHours(h, m, 0, 0)
-    if (out <= checkinTime) out.setDate(out.getDate() + 1) // กะข้ามคืน
-    return out
-  }
-
-  out.setHours(18, 0, 0, 0)
-  return out > checkinTime ? out : new Date(checkinTime.getTime() + 8 * 3_600_000)
-}
+// เวลาเลิกงานปกติใช้ normalEndTime ตัวเดียวกับตอนพนักงานกดเช็คเอาท์เอง
+// (15 ส.ค. 69) — เดิมที่นี่มี guessCheckoutTime ของตัวเองที่ถอยไป 18:00 ก่อน
+// ค่อยใช้ เข้า+8 ชม. แบบไม่บวกพัก ใบเดียวกันจึงได้ 7 หรือ 8 ชม. แล้วแต่ว่า
+// cron ปิดให้หรือเจ้าตัวมากดเอง

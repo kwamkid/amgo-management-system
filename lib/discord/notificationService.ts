@@ -44,7 +44,8 @@ export class DiscordNotificationService {
     userName: string,
     totalHours: number,
     overtime: number = 0,
-    userAvatar?: string
+    userAvatar?: string,
+    forgot: boolean = false
   ) {
     const event: NotificationEvent = {
       type: 'check_out',
@@ -52,7 +53,7 @@ export class DiscordNotificationService {
       userName,
       userAvatar,
       timestamp: new Date(),
-      data: { totalHours, overtime }
+      data: { totalHours, overtime, forgot }
     }
     
     try {

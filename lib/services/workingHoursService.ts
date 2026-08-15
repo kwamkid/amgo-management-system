@@ -1,8 +1,9 @@
 // lib/services/workingHoursService.ts
 
-import { CheckInRecord } from '@/types/checkin'
-import { Shift, Location } from '@/types/location'
-import { differenceInMinutes, format, isSameDay, startOfDay, endOfDay } from 'date-fns'
+// import type ล้วน ๆ เพื่อให้ node รัน .ts ตรง ๆ ได้ (เทสต์เรียกไฟล์นี้)
+// — type-stripping ตัดบรรทัดพวกนี้ทิ้ง ไม่ต้องแปล path alias '@/'
+import type { CheckInRecord } from '@/types/checkin'
+import { differenceInMinutes, isSameDay } from 'date-fns'
 
 interface WorkingHoursCalculation {
   regularHours: number      // Max 8 hours per day
@@ -45,6 +46,32 @@ export function normalEndTime(
     return end
   }
   return new Date(checkinTime.getTime() + (8 + breakHours) * 3600_000)
+}
+
+/**
+ * เข้าข่าย "ลืมเช็คเอาท์" ไหม — เส้นแบ่งคือ **มากดปิดกะข้ามวัน**
+ * (เจ้าของเลือก 15 ส.ค. 69 หลังเจอใบที่ลืมแล้วได้ 14.87 ชม. + OT 6.87)
+ *
+ * ทำไมต้องเป็น "ข้ามวัน" ไม่ใช่ "เกิน N ชั่วโมง": โอทีจริงของ PC หน้าร้าน
+ * จบในวันเดียวกันเสมอ (ห้างปิด 22:00 เข้า 09:43 ออก 22:03 = 12.3 ชม. + OT 3.27
+ * เจ้าของยืนยันว่าถูก) เกณฑ์นับชั่วโมงจะไปกินโอทีก้อนนั้น
+ *
+ * กะข้ามคืนแท้ (จบกะ < เริ่มกะ) ข้ามเที่ยงคืนเป็นปกติ — นับว่าลืมต่อเมื่อ
+ * ปิดกะเลยวันที่ควรจบกะไปอีกวัน
+ */
+export function isForgotCheckout(
+  checkinTime: Date,
+  checkoutTime: Date,
+  shiftStartTime?: string | null,
+  shiftEndTime?: string | null,
+  breakHours: number = 1
+): boolean {
+  const normalEnd = normalEndTime(checkinTime, shiftEndTime, breakHours)
+  if (checkoutTime <= normalEnd) return false
+  if (isSameDay(checkinTime, checkoutTime)) return false
+
+  const overnightShift = !!(shiftStartTime && shiftEndTime && shiftEndTime < shiftStartTime)
+  return !(overnightShift && isSameDay(normalEnd, checkoutTime))
 }
 
 export function calculateWorkingHours(

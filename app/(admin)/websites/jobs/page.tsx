@@ -17,6 +17,7 @@ import {
   ClipboardCopy,
   Clock,
   Download,
+  ExternalLink,
   ListChecks,
   Loader2,
   PlayCircle,
@@ -163,6 +164,20 @@ function healthOf(s: WebSite): Health {
   return 'clean'
 }
 
+/**
+ * ตัวกรองด่วนจากการ์ดสรุป — กดตัวเลขแล้วเห็นเว็บที่นับอยู่ในตัวเลขนั้นเลย
+ *
+ * การ์ดบอกว่า "ค้างอัปเดต 20 เว็บ" แล้วให้ไปไล่หาเองในตาราง 49 แถวคือทางตัน ·
+ * เงื่อนไขต้องตรงกับที่ `stats` นับเป๊ะ ๆ ไม่งั้นกดแล้วได้คนละจำนวนกับที่เห็น
+ */
+const QUICK = {
+  pending: { label: 'ค้างอัปเดตปลั๊กอิน', match: (s: WebSite) => healthOf(s) === 'pending' },
+  urgent: { label: 'ต้องดูด่วน', match: (s: WebSite) => healthOf(s) === 'suspect' },
+  nobackup: { label: 'ไม่มีไฟล์สำรอง', match: (s: WebSite) => !s.lastBackupAt },
+} as const
+
+type QuickKey = keyof typeof QUICK
+
 /** ทำไมจุดหน้าชื่อเว็บถึงเป็นสีนี้ — เจ้าของถามว่า "สแกนสะอาดแต่ทำไมเหลือง" */
 function healthReason(s: WebSite): string {
   if (s.lastScanStatus === 'suspect') return 'พบไฟล์ต้องสงสัยจากการสแกน'
@@ -281,6 +296,8 @@ export default function WebJobsPage() {
   })
   const [busy, setBusy] = useState('')
   const [tab, setTab] = useState('all')
+  /** ตัวกรองด่วนที่กดมาจากการ์ดสรุป — ซ้อนบนแท็บแพลน (แท็บเลือกกลุ่ม การ์ดเลือกอาการ) */
+  const [quick, setQuick] = useState<QuickKey | ''>('')
   /** มุมมองหลักของหน้า — รายเว็บ หรือ ประวัติงาน */
   const [view, setView] = useState('sites')
   const [detail, setDetail] = useState<WebJob | null>(null)
@@ -469,23 +486,52 @@ export default function WebJobsPage() {
     return [...map.values()].sort((a, b) => b.sites.length - a.sites.length)
   }, [hosts, workable])
 
-  /** เว็บที่แท็บปัจจุบันครอบอยู่ — ใช้ทั้งตารางและปุ่มสั่งงาน */
+  /** เว็บที่แท็บปัจจุบันครอบอยู่ */
   const tabSites = useMemo(
     () => (tab === 'all' ? workable : (plans.find((p) => p.name === tab)?.sites ?? [])),
     [tab, workable, plans]
   )
 
+  /**
+   * เว็บที่เห็นอยู่ตรงหน้าจริง ๆ = แท็บแพลน + ตัวกรองด่วนจากการ์ด
+   *
+   * ปุ่มสั่งงานยึดชุดนี้ ไม่ใช่ทั้งแท็บ — กด "ค้างอัปเดต 20 เว็บ" แล้วกดอัปเดต
+   * ต้องได้ 20 เว็บนั้น ไม่ใช่ 49 · ตารางกับปุ่มต้องพูดถึงของชุดเดียวกันเสมอ
+   */
+  const viewSites = useMemo(
+    () => (quick ? tabSites.filter(QUICK[quick].match) : tabSites),
+    [quick, tabSites]
+  )
+
+  /** กดการ์ดใบเดิมซ้ำ = เลิกกรอง — ไม่ต้องไปตามหาปุ่มล้างที่อื่น */
+  const toggleQuick = (k: QuickKey) => setQuick((cur) => (cur === k ? '' : k))
+
+  /** "ทั้งฟลีตแบบไม่กรองอะไรเลย" — ตัวกรอง UTD ฝั่งเซิร์ฟเวอร์ทำงานเฉพาะเคสนี้ */
+  const wholeFleet = tab === 'all' && !quick
+  /** ขอบเขตที่ปุ่มจะไปทำ เขียนเป็นคำ — ใช้ทั้งบนปุ่ม ในกล่องยืนยัน และใน toast */
+  const scopeLabel = `${tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab}${quick ? ` · เฉพาะที่${QUICK[quick].label}` : ''}`
+
   const fire = async (
     type: WebJob['type'],
     opts?: { hostId?: string; siteIds?: string[]; label?: string }
   ) => {
+    // ไม่ระบุมา = ทำกับเว็บที่เห็นอยู่ตรงหน้า · ส่ง undefined ได้เฉพาะตอน
+    // "ทุกเว็บ ไม่กรองอะไรเลย" เพราะนั่นแปลว่าทั้งฟลีตจริง ๆ
+    const siteIds = opts?.siteIds ?? (wholeFleet ? undefined : viewSites.map((s) => s.id))
+
+    // กรองจนไม่เหลือเว็บแล้วยังกดปุ่ม = ต้องไม่ส่งอะไรออกไปเลย
+    // เซิร์ฟเวอร์เช็ค `siteIds?.length` ลิสต์ว่างจึงถูกมองว่า "ไม่ได้ระบุ"
+    // แล้วไปทำทั้ง 49 เว็บแทน — พลาดชั้นนี้ทีเดียวคือยิงทั้งฟลีตโดยไม่ได้ตั้งใจ
+    if (siteIds && !siteIds.length) {
+      showToast('ไม่มีเว็บให้สั่งงานในมุมมองนี้ — ลองล้างตัวกรองหรือเปลี่ยนแท็บ', 'error')
+      return
+    }
+
     const key = opts?.siteIds?.[0] ?? opts?.hostId ?? type
     setBusy(key)
     try {
-      // ไม่ระบุมา = ทำกับเว็บในแท็บที่เปิดอยู่ (แท็บ "ทุกเว็บ" = ทั้งฟลีต)
-      const siteIds = opts?.siteIds ?? (tab === 'all' ? undefined : tabSites.map((s) => s.id))
       const r = await enqueueJobs({ type, hostId: opts?.hostId, siteIds })
-      const where = opts?.label ?? (tab === 'all' ? 'ทั้งฟลีต' : tab)
+      const where = opts?.label ?? scopeLabel
 
       // บอกให้ตรงกับที่เกิดขึ้นจริง — สั่ง 49 แล้วเข้าคิว 32 ต้องรู้ว่าอีก 17 หายไปไหน
       const skipped = [
@@ -516,14 +562,13 @@ export default function WebJobsPage() {
    * — นับด้วยกติกาเดียวกับที่ enqueue กรองจริง จะได้ไม่หลอกกันเอง
    */
   const fireFleet = async (type: (typeof FLEET_ACTIONS)[number]['type'], label: string) => {
-    const where = tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab
-    // เซิร์ฟเวอร์ข้ามเว็บที่ปลั๊กอินครบ "เฉพาะตอนสั่งทั้งฟลีต" — แท็บแพลนส่ง siteIds
-    // ไปตรง ๆ จึงไม่โดนกรองชั้นนี้ กล่องยืนยันต้องนับให้ตรงกับของจริง
+    // เซิร์ฟเวอร์ข้ามเว็บที่ปลั๊กอินครบ "เฉพาะตอนสั่งทั้งฟลีตแบบไม่กรอง" — พอกรอง
+    // ด้วยแท็บหรือการ์ด หน้าเว็บจะส่ง siteIds ไปตรง ๆ จึงไม่โดนกรองชั้นนั้น
     let skipUtd = 0
     let skipQueued = 0
     let willRun = 0
-    for (const s of tabSites) {
-      if (type === 'plugin_update' && tab === 'all' && s.pluginsCheckedAt && s.pendingPluginCount === 0)
+    for (const s of viewSites) {
+      if (type === 'plugin_update' && wholeFleet && s.pluginsCheckedAt && s.pendingPluginCount === 0)
         skipUtd++
       else if (activeBySite.get(s.id)?.has(type)) skipQueued++
       else willRun++
@@ -535,14 +580,16 @@ export default function WebJobsPage() {
 
     const risk = FLEET_RISK[type]
     const ok = await confirm({
-      title: `${label} — ${where}?`,
+      title: `${label} — ${scopeLabel}?`,
       tone: risk.tone,
       confirmLabel: `สั่งเลย ${willRun} เว็บ`,
       children: (
         <div className="space-y-2.5 text-sm text-gray-600">
           <p>
-            จะเข้าคิว <strong className="text-gray-900">{willRun} เว็บ</strong> จากทั้งหมด{' '}
-            {tabSites.length} เว็บ{tab === 'all' ? '' : ` ในแพลน ${tab}`}
+            จะเข้าคิว <strong className="text-gray-900">{willRun} เว็บ</strong> จาก{' '}
+            {viewSites.length} เว็บที่เห็นอยู่
+            {tab === 'all' ? '' : ` ในแพลน ${tab}`}
+            {quick ? ` (กรอง "${QUICK[quick].label}" อยู่)` : ''}
           </p>
           {(skipUtd > 0 || skipQueued > 0) && (
             <ul className="list-inside list-disc space-y-0.5 text-gray-500">
@@ -613,6 +660,26 @@ export default function WebJobsPage() {
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${HEALTH[h].bar}`} />
               </HelpTooltip>
               <span className="truncate font-medium text-gray-900">{s.siteName}</span>
+              {/* เปิดเว็บจริงในแท็บใหม่ — แยกเป็นไอคอน ไม่ผูกกับตัวชื่อ เพราะคลิกแถว
+                  พาไปหน้ารายละเอียดเว็บอยู่แล้ว · ชื่อที่กดแล้วไปคนละที่กับแถว = กับดัก
+                  โดเมนต่อ https:// ตรง ๆ แบบเดียวกับที่ตัวเช็คเว็บล่มใช้ยิงจริง */}
+              <HelpTooltip
+                variant="tooltip"
+                delay={300}
+                triggerStyle={PLAIN_TRIGGER}
+                content={`เปิด ${s.siteName} ในแท็บใหม่`}
+              >
+                <a
+                  href={`https://${s.siteName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`เปิด ${s.siteName} ในแท็บใหม่`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 rounded p-0.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <ExternalLink size={13} />
+                </a>
+              </HelpTooltip>
               {s.downSince && (
                 <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-600">ล่ม</span>
               )}
@@ -748,22 +815,29 @@ export default function WebJobsPage() {
                 : `ปลั๊กอิน ${s.pluginCount} ตัว ใหม่ล่าสุดทั้งหมด`) +
               (s.blockedPluginCount
                 ? ` · อีก ${s.blockedPluginCount} ตัวระบบอัปเดตให้ไม่ได้ ต้องทำมือ (มักเป็นตัว pro ที่ license หมด)`
-                : '') +
-              ` · ตรวจล่าสุด ${fmt(s.pluginsCheckedAt)}`
+                : '')
             }
           >
-            <span className="inline-flex items-center gap-1">
-              {/* ไม่มีอะไรค้าง = บอกเป็นคำ อ่านแล้วจบ ไม่ต้องแปล "0/27" ในหัวอีกที */}
-              <span className={`rounded-md px-2 py-0.5 font-medium tabular-nums ${chip}`}>
-                {s.pendingPluginCount > 0 ? `${s.pendingPluginCount}/${s.pluginCount}` : 'UTD'}
-              </span>
-              {/* แยกกองให้ชัด — ของที่ระบบทำต่อได้ กับของที่ต้องคนตัดสินใจ
-                  ต้องการการกระทำคนละแบบ ปนกันแล้วสีเหลืองจะไม่มีความหมาย */}
-              {s.blockedPluginCount > 0 && (
-                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
-                  ทำมือ {s.blockedPluginCount}
+            {/* วันเวลาที่ตรวจอยู่ใต้ป้าย ไม่ใช่ใน tooltip — "4/27" ของเมื่อวาน
+                กับของเมื่อชั่วโมงที่แล้วคนละความหมาย ต้องเห็นพร้อมตัวเลข
+                (แถวสูง 2 บรรทัดอยู่แล้วจากคอลัมน์สถานะเว็บ บรรทัดนี้จึงไม่กินที่เพิ่ม) */}
+            <span className="inline-block">
+              <span className="inline-flex items-center gap-1">
+                {/* ไม่มีอะไรค้าง = บอกเป็นคำ อ่านแล้วจบ ไม่ต้องแปล "0/27" ในหัวอีกที */}
+                <span className={`rounded-md px-2 py-0.5 font-medium tabular-nums ${chip}`}>
+                  {s.pendingPluginCount > 0 ? `${s.pendingPluginCount}/${s.pluginCount}` : 'UTD'}
                 </span>
-              )}
+                {/* แยกกองให้ชัด — ของที่ระบบทำต่อได้ กับของที่ต้องคนตัดสินใจ
+                    ต้องการการกระทำคนละแบบ ปนกันแล้วสีเหลืองจะไม่มีความหมาย */}
+                {s.blockedPluginCount > 0 && (
+                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+                    ทำมือ {s.blockedPluginCount}
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 block whitespace-nowrap text-xs text-gray-400">
+                ตรวจ {fmt(s.pluginsCheckedAt)}
+              </span>
             </span>
           </HelpTooltip>
         )
@@ -811,9 +885,12 @@ export default function WebJobsPage() {
         // เกิน 30 วันถือว่าเก่าเกินจะกู้ได้จริง — งานเว็บเปลี่ยนแปลงเยอะกว่านั้น
         const tone = d > 30 ? 'text-red-600' : d > 7 ? 'text-amber-600' : 'text-gray-600'
         return (
-          <span className={`whitespace-nowrap ${tone}`} title={fmtDay(s.lastBackupAt)}>
-            {d === 0 ? 'วันนี้' : `${d} วัน`}
-          </span>
+          <div>
+            <span className={`whitespace-nowrap ${tone}`}>{d === 0 ? 'วันนี้' : `${d} วัน`}</span>
+            {/* "12 วัน" บอกว่าเก่าแค่ไหน วันที่จริงบอกว่าไฟล์ไหน — ตอนจะกู้ต้องใช้ทั้งคู่
+                และไม่ควรต้องเอาเมาส์ไปจิ้มทีละแถวเพื่อดู */}
+            <p className="mt-0.5 whitespace-nowrap text-xs text-gray-400">{fmtDay(s.lastBackupAt)}</p>
+          </div>
         )
       },
     },
@@ -980,21 +1057,30 @@ export default function WebJobsPage() {
       />
 
       <StatGrid>
+        {/* ใบรวมทำหน้าที่ "กลับไปดูทั้งหมด" ตอนกรองอยู่ — ตำแหน่งซ้ายสุดของแถว
+            เป็นที่ที่คนจะกดกลับอยู่แล้ว ไม่ต้องสอนว่าปุ่มล้างอยู่ตรงไหน */}
         <StatCard
           label="เว็บที่ดูแลอยู่"
           value={stats.total}
           hint={
-            queueBusy
-              ? `กำลังเดินคิว ${queue.queued + queue.running} งาน · หน้านี้อัปเดตเองทุก 5 วิ`
-              : 'คิวว่าง'
+            quick
+              ? 'กดเพื่อกลับไปดูทุกเว็บ'
+              : queueBusy
+                ? `กำลังเดินคิว ${queue.queued + queue.running} งาน · หน้านี้อัปเดตเองทุก 5 วิ`
+                : 'คิวว่าง'
           }
+          onClick={quick ? () => setQuick('') : undefined}
         />
+        {/* กดการ์ด = กรองตารางเหลือเฉพาะเว็บที่นับอยู่ในตัวเลขนั้น แล้วปุ่มสั่งงาน
+            ก็ทำกับชุดนั้นต่อได้เลย — "เห็นตัวเลขแล้วต้องไปหาเองใน 49 แถว" คือทางตัน */}
         <StatCard
           label="ค้างอัปเดตปลั๊กอิน"
           value={stats.pending}
           unit="เว็บ"
           tone={stats.pending ? 'warning' : 'success'}
           hint={stats.pluginCount ? `รวม ${stats.pluginCount} ตัว` : 'ไม่มีค้าง'}
+          onClick={stats.pending ? () => toggleQuick('pending') : undefined}
+          selected={quick === 'pending'}
         />
         {/* รวมทุกเหตุที่ต้องลงมือ แล้วบอกสัดส่วนในบรรทัดล่าง — ดูใบเดียวรู้ว่าวันนี้มีงานไหม */}
         <StatCard
@@ -1013,6 +1099,8 @@ export default function WebJobsPage() {
                   .join(' · ')
               : 'ไม่มีเว็บที่ต้องแก้'
           }
+          onClick={stats.suspect ? () => toggleQuick('urgent') : undefined}
+          selected={quick === 'urgent'}
         />
         {/* ไม่เคยสำรอง = ความเสี่ยงระดับธุรกิจ ต้องเห็นเป็นตัวเลขเดียว
             ไม่ใช่ป้ายแดงซ้ำ 49 แถวจนชินตาแล้วเลิกมอง */}
@@ -1022,6 +1110,8 @@ export default function WebJobsPage() {
           unit="เว็บ"
           tone={stats.noBackup ? 'danger' : 'success'}
           hint={stats.staleBackup ? `เก่าเกิน 30 วันอีก ${stats.staleBackup} เว็บ` : 'สำรองครบทุกเว็บ'}
+          onClick={stats.noBackup ? () => toggleQuick('nobackup') : undefined}
+          selected={quick === 'nobackup'}
         />
       </StatGrid>
 
@@ -1090,8 +1180,7 @@ export default function WebJobsPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
           <span className="text-sm text-gray-500">
-            สั่งงานกับ <strong className="text-gray-800">{tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab}</strong>{' '}
-            ({tabSites.length} เว็บ)
+            สั่งงานกับ <strong className="text-gray-800">{scopeLabel}</strong> ({viewSites.length} เว็บ)
           </span>
           {/* ปุ่มรวมกดได้เสมอ แม้จะมีงานชนิดเดียวกันเดินอยู่ — มันจะไปทำ "เว็บที่เหลือ"
               ซึ่งเป็นสิ่งที่ควรทำจริง ๆ · ฝั่งเซิร์ฟเวอร์กรองเว็บที่มีงานค้าง /
@@ -1117,7 +1206,8 @@ export default function WebJobsPage() {
           </span>
         </div>
         <p className="mt-2 text-xs text-gray-400">
-          ปุ่มทำกับ &quot;แท็บที่เปิดอยู่&quot; เท่านั้น · <strong>ตรวจปลั๊กอิน</strong> ระบบทำให้เองทุกคืนอยู่แล้ว
+          ปุ่มทำกับ &quot;เว็บที่เห็นอยู่ในตาราง&quot; เท่านั้น (แท็บแพลน + การ์ดที่กดกรองไว้) ·{' '}
+          <strong>ตรวจปลั๊กอิน</strong> ระบบทำให้เองทุกคืนอยู่แล้ว
           กดเองเมื่ออยากได้ตัวเลขสดเดี๋ยวนี้ ส่วน <strong>อัปเดตปลั๊กอิน</strong> แก้ของจริง
           และทำเฉพาะเว็บที่ยังค้าง (เว็บที่ขึ้น UTD ถูกข้ามอัตโนมัติ) ลองแท็บแพลนเล็ก ๆ ก่อน ·
           งานเข้าคิวแล้วระบบทยอยทำทีละเว็บต่อโฮสต์ จบรอบสรุปเข้า Discord
@@ -1170,12 +1260,30 @@ export default function WebJobsPage() {
               })}
             </TabBar>
 
+            {/* กรองอยู่ = ต้องเห็นชัดว่าทำไมตารางเหลือไม่กี่แถว พร้อมทางออกในที่เดียวกัน
+                (กรอบสีบนการ์ดอยู่คนละที่กับตาราง เลื่อนลงมาแล้วลืมว่ากรองไว้) */}
+            {quick && (
+              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <span>
+                  กรองอยู่: <strong>{QUICK[quick].label}</strong> — เห็น {viewSites.length} จาก{' '}
+                  {tabSites.length} เว็บ{tab === 'all' ? 'ทั้งฟลีต' : `ในแพลน ${tab}`}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:bg-amber-100"
+                  onClick={() => setQuick('')}
+                >
+                  ล้างตัวกรอง
+                </button>
+              </div>
+            )}
+
             <DataTable
               columns={siteColumns}
-              rows={tabSites}
+              rows={viewSites}
               rowKey={(s) => s.id}
               onRowClick={(s) => router.push(`/websites/${s.id}`)}
-              emptyTitle="ไม่มีเว็บในแท็บนี้"
+              emptyTitle={quick ? `ไม่มีเว็บที่${QUICK[quick].label}ในแท็บนี้` : 'ไม่มีเว็บในแท็บนี้'}
             />
           </>
         ) : (

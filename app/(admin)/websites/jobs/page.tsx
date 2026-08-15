@@ -281,6 +281,30 @@ function summaryText(job: WebJob): string {
   return JSON.stringify(s).slice(0, 120)
 }
 
+/**
+ * ลำดับที่ `web_claim_jobs` หยิบงานจริง — running ก่อน แล้ว `queued_at` แล้ว `id`
+ *
+ * ต้องตรงกับฝั่ง SQL เป๊ะ ไม่งั้นเลขคิวที่โชว์กับตัวที่ระบบหยิบจริงจะคนละใบ
+ */
+const claimOrder = (x: ActiveJob, y: ActiveJob) =>
+  x.status !== y.status
+    ? x.status === 'running'
+      ? -1
+      : 1
+    : x.queuedAt === y.queuedAt
+      ? x.id.localeCompare(y.id)
+      : x.queuedAt.localeCompare(y.queuedAt)
+
+/** วินาที → "3 นาที" / "1 ชม. 20 นาที" — ต่ำกว่านาทีไม่ต้องละเอียด เดี๋ยวก็ถึงแล้ว */
+const fmtWait = (secs: number) => {
+  const m = Math.round(secs / 60)
+  if (m < 1) return 'อีกไม่ถึงนาที'
+  if (m < 60) return `~${m} นาที`
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  return `~${h} ชม.${r ? ` ${r} นาที` : ''}`
+}
+
 export default function WebJobsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -300,6 +324,9 @@ export default function WebJobsPage() {
   const [quick, setQuick] = useState<QuickKey | ''>('')
   /** มุมมองหลักของหน้า — รายเว็บ หรือ ประวัติงาน */
   const [view, setView] = useState('sites')
+  /** กางคิวเต็มไว้ไหม — ปิดไว้ก่อน เพราะปกติดูแค่ "ตอนนี้ทำอะไร" ก็พอ
+      จะกางก็ต่อเมื่ออยากรู้ว่าเว็บของตัวเองอยู่ตรงไหนของคิว 98 ใบ */
+  const [queueOpen, setQueueOpen] = useState(false)
   const [detail, setDetail] = useState<WebJob | null>(null)
   const { confirm, dialog: confirmDialog } = useConfirm()
 
@@ -383,7 +410,50 @@ export default function WebJobsPage() {
    * ป้าย "รอคิว" เฉย ๆ ตอบไม่ได้ว่ารออะไรอยู่ — สั่งตรวจปลั๊กอินทั้งฟลีตทีเดียว
    * ดองคิวโฮสต์นั้นไว้ 20 กว่างาน แล้วงานที่กดทีหลังดูเหมือนค้างไม่ไปไหน
    */
-  const aheadOf = useMemo(() => {
+  /**
+   * จังหวะที่คิวเดินจริง — ระยะจาก "ใบก่อนหน้าเริ่ม" ถึง "ใบถัดไปเริ่ม" บนโฮสต์เดียวกัน
+   *
+   * ห้ามเอา "เวลาที่งานใช้ทำ" มาประมาณ ETA · ตัวไล่คิวหยิบรอบละ 2 ใบแล้วจบ request
+   * (`drain(2)` ไม่มีลูป) ความเร็วคิวจึงถูกกำหนดด้วยจังหวะ cron ไม่ใช่ความเร็วงาน —
+   * ของจริงวัดได้ ~120 วิ/ใบ ขณะที่ตัวงานเองใช้ ~12 วิ ต่างกัน 10 เท่า
+   *
+   * นับเฉพาะคู่ที่ใบหลัง "รออยู่แล้ว" ตอนใบหน้าเริ่ม ไม่งั้นช่วงที่คิวว่าง ๆ
+   * จะถูกนับเป็นความช้าของคิว · วัดไม่ได้ก็ไม่โชว์ ETA ดีกว่าโชว์เลขที่ผิด
+   */
+  const slotSecs = useMemo(() => {
+    const byHost = new Map<string, WebJob[]>()
+    for (const j of jobs) {
+      if (!j.hostId || !j.startedAt) continue
+      const l = byHost.get(j.hostId)
+      if (l) l.push(j)
+      else byHost.set(j.hostId, [j])
+    }
+    const gaps: number[] = []
+    for (const l of byHost.values()) {
+      l.sort((a, b) => a.startedAt!.localeCompare(b.startedAt!))
+      for (let i = 1; i < l.length; i++) {
+        const prev = l[i - 1].startedAt!
+        const cur = l[i]
+        if (cur.queuedAt > prev) continue
+        const g = (new Date(cur.startedAt!).getTime() - new Date(prev).getTime()) / 1000
+        if (g >= 1 && g <= 3600) gaps.push(g)
+      }
+    }
+    if (gaps.length < 3) return null
+    gaps.sort((a, b) => a - b)
+    return gaps[Math.floor(gaps.length / 2)]
+  }, [jobs])
+
+  /**
+   * คิวเต็มแยกตามโฮสต์ เรียงตามลำดับที่ระบบจะหยิบจริง + เวลาที่คาดว่าจะได้เริ่ม
+   *
+   * แยกตามโฮสต์เพราะแต่ละโฮสต์เดินคิวของตัวเองขนานกัน (ทีละงานต่อโฮสต์) —
+   * เอามากองรวมเป็นลิสต์เดียวจะอ่านเหมือนต้องรอต่อคิวกันทั้งหมด ซึ่งไม่จริง
+   *
+   * เวลารอ = ลำดับที่ × จังหวะคิว — ใบที่อยู่หน้าสุดได้คิวรอบถัดไป ใบถัดไปอีกรอบ
+   * เป็นการประมาณจากจังหวะที่วัดได้ ไม่ใช่นาฬิกาจับเวลา
+   */
+  const queueByHost = useMemo(() => {
     const byHost = new Map<string, ActiveJob[]>()
     for (const a of queue.active) {
       const k = a.hostId ?? '—'
@@ -391,22 +461,33 @@ export default function WebJobsPage() {
       if (list) list.push(a)
       else byHost.set(k, [a])
     }
+    return [...byHost.entries()]
+      .map(([hostId, list]) => {
+        const rows = [...list].sort(claimOrder).map((job, i) => ({
+          job,
+          waitSecs: slotSecs === null || job.status === 'running' ? null : i * slotSecs,
+        }))
+        return {
+          hostId,
+          hostName: hostNameOf.get(hostId) ?? 'ไม่ทราบโฮสต์',
+          rows,
+          totalSecs: slotSecs === null ? null : rows.length * slotSecs,
+        }
+      })
+      .sort((a, b) => b.rows.length - a.rows.length)
+  }, [queue.active, slotSecs, hostNameOf])
+
+  /**
+   * งานใบนี้ต้องรออีกกี่คิว — อ่านจากลำดับที่ `queueByHost` จัดไว้แล้ว
+   *
+   * ป้าย "รอคิว" เฉย ๆ ตอบไม่ได้ว่ารออะไรอยู่ — สั่งตรวจปลั๊กอินทั้งฟลีตทีเดียว
+   * ดองคิวโฮสต์นั้นไว้ 20 กว่างาน แล้วงานที่กดทีหลังดูเหมือนค้างไม่ไปไหน
+   */
+  const aheadOf = useMemo(() => {
     const m = new Map<string, number>()
-    for (const list of byHost.values()) {
-      list
-        .sort((x, y) =>
-          x.status !== y.status
-            ? x.status === 'running'
-              ? -1
-              : 1
-            : x.queuedAt === y.queuedAt
-              ? x.id.localeCompare(y.id)
-              : x.queuedAt.localeCompare(y.queuedAt)
-        )
-        .forEach((a, i) => m.set(a.id, i))
-    }
+    for (const h of queueByHost) h.rows.forEach((r, i) => m.set(r.job.id, i))
     return m
-  }, [queue.active])
+  }, [queueByHost])
 
   /** งานหนึ่งใบเขียนเป็นประโยคเดียว: "ตรวจปลั๊กอิน — bebbykids.com" */
   const jobLabel = useCallback(
@@ -511,6 +592,40 @@ export default function WebJobsPage() {
   /** ขอบเขตที่ปุ่มจะไปทำ เขียนเป็นคำ — ใช้ทั้งบนปุ่ม ในกล่องยืนยัน และใน toast */
   const scopeLabel = `${tab === 'all' ? 'ทุกเว็บทั้งฟลีต' : tab}${quick ? ` · เฉพาะที่${QUICK[quick].label}` : ''}`
 
+  /**
+   * ปุ่มรวมแต่ละใบจะได้ทำจริงกี่เว็บ — ต้องรู้ "ก่อนกด" ไม่ใช่รู้ตอนกดไปแล้ว
+   *
+   * เจ้าของถาม 16 ส.ค. 69 ว่าตอนงานเดินอยู่น่าจะกดไม่ได้ไหม จะได้ไม่กดซ้ำ ·
+   * ล็อกทั้งใบตอนมีงานเดินไม่ได้ เพราะ 15 ส.ค. เพิ่งปลดล็อกไปตามที่เจ้าของสั่งเอง
+   * (ล็อกแล้วสั่ง "เว็บที่เหลือ" ไม่ได้เลย — กดรายเว็บไป 2 ตัวก็สั่งทั้งกลุ่มไม่ได้)
+   * ทางออกคือล็อกเฉพาะตอน "ไม่เหลืออะไรให้ทำจริง ๆ" แล้วบอกจำนวนที่เหลือบนปุ่ม
+   *
+   * เซิร์ฟเวอร์ข้ามเว็บที่ปลั๊กอินครบ "เฉพาะตอนสั่งทั้งฟลีตแบบไม่กรอง" — พอกรอง
+   * ด้วยแท็บหรือการ์ด หน้าเว็บจะส่ง siteIds ไปตรง ๆ จึงไม่โดนกรองชั้นนั้น
+   *
+   * ยังมีชั้นพัก 10 นาทีที่เซิร์ฟเวอร์อีกชั้นซึ่งหน้าเว็บมองไม่เห็น เลขบนปุ่มจึงเป็น
+   * "อย่างมากที่สุด" ไม่ใช่คำมั่น · กดแล้วโดนข้ามหมด เซิร์ฟเวอร์จะตอบเหตุผลมาเอง
+   */
+  const fleetCounts = useMemo(() => {
+    const m = new Map<
+      (typeof FLEET_ACTIONS)[number]['type'],
+      { willRun: number; skipUtd: number; skipQueued: number }
+    >()
+    for (const { type } of FLEET_ACTIONS) {
+      let skipUtd = 0
+      let skipQueued = 0
+      let willRun = 0
+      for (const s of viewSites) {
+        if (type === 'plugin_update' && wholeFleet && s.pluginsCheckedAt && s.pendingPluginCount === 0)
+          skipUtd++
+        else if (activeBySite.get(s.id)?.has(type)) skipQueued++
+        else willRun++
+      }
+      m.set(type, { willRun, skipUtd, skipQueued })
+    }
+    return m
+  }, [viewSites, wholeFleet, activeBySite])
+
   const fire = async (
     type: WebJob['type'],
     opts?: { hostId?: string; siteIds?: string[]; label?: string }
@@ -562,17 +677,7 @@ export default function WebJobsPage() {
    * — นับด้วยกติกาเดียวกับที่ enqueue กรองจริง จะได้ไม่หลอกกันเอง
    */
   const fireFleet = async (type: (typeof FLEET_ACTIONS)[number]['type'], label: string) => {
-    // เซิร์ฟเวอร์ข้ามเว็บที่ปลั๊กอินครบ "เฉพาะตอนสั่งทั้งฟลีตแบบไม่กรอง" — พอกรอง
-    // ด้วยแท็บหรือการ์ด หน้าเว็บจะส่ง siteIds ไปตรง ๆ จึงไม่โดนกรองชั้นนั้น
-    let skipUtd = 0
-    let skipQueued = 0
-    let willRun = 0
-    for (const s of viewSites) {
-      if (type === 'plugin_update' && wholeFleet && s.pluginsCheckedAt && s.pendingPluginCount === 0)
-        skipUtd++
-      else if (activeBySite.get(s.id)?.has(type)) skipQueued++
-      else willRun++
-    }
+    const { willRun, skipUtd, skipQueued } = fleetCounts.get(type)!
 
     // ไม่มีอะไรให้ทำ = ไม่ต้องถาม ปล่อยให้เซิร์ฟเวอร์ตอบเหตุผลเต็ม ๆ ผ่าน toast
     // (ยังไงก็ไม่มีอะไรเกิดขึ้น จะขึ้นกล่องยืนยันให้กดเล่นทำไม)
@@ -1142,11 +1247,11 @@ export default function WebJobsPage() {
           <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
             {runningNow.length > 0 ? (
               <>
-                <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
-                  <Loader2 size={14} className="animate-spin" />
+                <p className="flex items-center gap-2 text-lg font-semibold text-blue-900">
+                  <Loader2 size={18} className="animate-spin" />
                   ตอนนี้กำลังทำ {runningNow.length} งาน (โฮสต์ละงานเดียว)
                 </p>
-                <ul className="mt-1.5 space-y-0.5 text-sm text-blue-800">
+                <ul className="mt-1.5 space-y-1 text-base text-blue-800">
                   {runningNow.map((a) => (
                     <li key={a.id}>
                       {jobLabel(a)}
@@ -1164,17 +1269,29 @@ export default function WebJobsPage() {
             ) : (
               // ช่วงระหว่างรอบ cron — ไม่มีอะไรเดินอยู่จริง ต้องบอกตรง ๆ
               // ไม่งั้น spinner หมุนทั้งที่ไม่มีงานทำ อ่านแล้วเข้าใจผิดหนักกว่าเดิม
-              <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
-                <Clock size={14} />
+              <p className="flex items-center gap-2 text-lg font-semibold text-blue-900">
+                <Clock size={18} />
                 ยังไม่มีงานที่กำลังทำ — รอระบบหยิบคิวรอบถัดไป (ทุก 1–2 นาที)
               </p>
             )}
             {queue.queued > 0 && (
-              <p className="mt-1.5 text-xs text-blue-700/80">
+              <p className="mt-2 text-base text-blue-700/90">
                 รอคิวอีก {queue.queued} งาน — {queuedByType.map(([t, n]) => `${TYPE_LABEL[t]} ${n}`).join(' · ')}{' '}
                 · โฮสต์หนึ่งทำทีละงาน กด &quot;เร่งคิวเดี๋ยวนี้&quot; ข้างบนได้ถ้าไม่อยากรอรอบ cron
               </p>
             )}
+
+            {/* คิวเต็มไปอยู่ใน modal — ตัวหนังสือต้องใหญ่พอที่จะอ่านออก (เจ้าของบอก
+                16 ส.ค. 69 ว่า 12px เล็กไป 14px ก็ยังไม่เห็น) กางในการ์ดแล้วดันของ
+                ที่อยู่ข้างล่างหายไปทั้งจอ · ~98 ใบต้องเลื่อนดู modal เหมาะกว่า */}
+            <button
+              type="button"
+              onClick={() => setQueueOpen(true)}
+              className="mt-2.5 flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-base font-semibold text-blue-800 hover:bg-blue-50"
+            >
+              <ListChecks size={18} />
+              ดูคิวทั้งหมด {queue.queued + queue.running} งาน
+            </button>
           </div>
         )}
 
@@ -1191,15 +1308,23 @@ export default function WebJobsPage() {
           <span className="flex flex-wrap gap-2">
             {FLEET_ACTIONS.map(({ type, Icon, label }, i) => {
               const mine = activeTypes.has(type)
+              const { willRun } = fleetCounts.get(type)!
+              // ปิดปุ่มเฉพาะตอนไม่เหลือเว็บให้ทำจริง ๆ · ไม่ปิดตอนกรองจนไม่เหลือเว็บ
+              // เพราะเหตุผลคนละอย่าง ปล่อยให้ toast เดิมบอกว่า "ล้างตัวกรองก่อน"
+              const done = viewSites.length > 0 && willRun === 0
               return (
                 <Button
                   key={type}
                   variant={i === 0 ? 'primary' : 'secondary'}
                   onClick={() => fireFleet(type, label)}
-                  disabled={!!busy}
+                  disabled={!!busy || done}
                 >
                   {mine ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
-                  {mine ? `${label} — เว็บที่เหลือ` : label}
+                  {done
+                    ? `${label} — เข้าคิวครบแล้ว`
+                    : mine
+                      ? `${label} — เว็บที่เหลือ ${willRun}`
+                      : label}
                 </Button>
               )
             })}
@@ -1296,6 +1421,62 @@ export default function WebJobsPage() {
           />
         )}
       </SectionCard>
+
+      {/* คิวเต็ม — แยกตามโฮสต์เพราะแต่ละโฮสต์เดินคิวของตัวเองขนานกัน (ทีละงานต่อโฮสต์)
+          กองรวมเป็นลิสต์เดียวจะอ่านเหมือนทุกใบต้องรอต่อคิวกันหมด ซึ่งไม่จริง */}
+      {queueOpen && (
+        <Modal
+          open
+          onClose={() => setQueueOpen(false)}
+          maxWidth={720}
+          title={`คิวงาน ${queue.queued + queue.running} ใบ`}
+          description={
+            slotSecs === null
+              ? 'ยังประมาณเวลาไม่ได้ — ต้องมีประวัติงานที่เดินติดกันก่อน'
+              : `คิวเดินจริงประมาณ ${Math.round(slotSecs)} วินาทีต่อ 1 งาน ต่อโฮสต์ — ความเร็วมาจากรอบ cron ไม่ใช่ความเร็วของงาน กด "เร่งคิวเดี๋ยวนี้" แล้วจะเร็วกว่านี้`
+          }
+        >
+          <div className="max-h-[65vh] space-y-6 overflow-y-auto">
+            {queueByHost.map((h) => (
+              <section key={h.hostId}>
+                <h3 className="sticky top-0 bg-white pb-1.5 text-lg font-semibold text-gray-900">
+                  {h.hostName}
+                  <span className="ml-2 text-base font-normal text-gray-500">
+                    {h.rows.length} งาน
+                    {h.totalSecs !== null && ` · น่าจะหมดใน ${fmtWait(h.totalSecs)}`}
+                  </span>
+                </h3>
+                <ol className="divide-y divide-gray-100">
+                  {h.rows.map((r, i) => (
+                    <li
+                      key={r.job.id}
+                      className={`flex items-baseline gap-3 py-2 text-base ${
+                        r.job.status === 'running'
+                          ? 'font-semibold text-blue-900'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      <span className="w-7 shrink-0 text-right tabular-nums text-gray-400">
+                        {r.job.status === 'running' ? '▶' : i}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{jobLabel(r.job)}</span>
+                      <span className="shrink-0 tabular-nums text-gray-500">
+                        {r.job.status === 'running'
+                          ? r.job.progressTotal > 0
+                            ? `${r.job.progressDone}/${r.job.progressTotal}`
+                            : 'กำลังทำ'
+                          : r.waitSecs !== null
+                            ? fmtWait(r.waitSecs)
+                            : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </Modal>
+      )}
 
       {detail && (
         <Modal

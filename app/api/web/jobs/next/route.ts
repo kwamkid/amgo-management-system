@@ -316,7 +316,7 @@ async function runScan(sb: Admin, job: Job, target: SshTarget, path: string, sit
       return re.test(file)
     })
 
-  const suspects = hits.filter((h) => !isKnown(h))
+  const suspects = hits.filter((h) => !isKnown(h.path))
   const status = suspects.length ? 'suspect' : 'ok'
 
   await sb
@@ -327,15 +327,38 @@ async function runScan(sb: Admin, job: Job, target: SshTarget, path: string, sit
   if (suspects.length) {
     await sendWebAlert({
       title: `🚨 พบไฟล์ต้องสงสัย — ${siteName}`,
-      description: suspects.slice(0, 15).map((s) => `• \`${s}\``).join('\n').slice(0, 3500),
+      description: suspects
+        .slice(0, 15)
+        .map((s) => `• \`${s.path}\``)
+        .join('\n')
+        .slice(0, 3500),
       color: 'red',
       fields: [{ name: 'รวม', value: `${suspects.length} ไฟล์ (ตัดที่รู้ว่าไม่ใช่ออกแล้ว)` }],
     })
   }
 
+  // log อ่านได้ด้วยตา — path + บรรทัดที่ตรง pattern + เวลาที่ไฟล์ถูกแก้ล่าสุด
+  const log = suspects.length
+    ? suspects
+        .map((s) => {
+          const when = s.modifiedAt
+            ? new Date(s.modifiedAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+            : 'ไม่ทราบ'
+          const body = s.lines.map((l) => `    ${l.no}: ${l.text}`).join('\n')
+          return `${s.path}\n  แก้ไขล่าสุด ${when} · ${s.bytes ?? '?'} bytes\n${body}`
+        })
+        .join('\n\n')
+    : 'ไม่พบไฟล์ที่ตรง pattern'
+
   return {
-    log: hits.join('\n') || 'ไม่พบไฟล์ที่ตรง pattern',
-    summary: { findings: suspects, knownIgnored: hits.length - suspects.length, status },
+    log,
+    summary: {
+      findings: suspects,
+      knownIgnored: hits.length - suspects.length,
+      status,
+      // เก็บ path ล้วนไว้ด้วย เผื่อโค้ดเก่า/รายงานที่อ่านแบบเดิม
+      paths: suspects.map((s) => s.path),
+    },
   }
 }
 

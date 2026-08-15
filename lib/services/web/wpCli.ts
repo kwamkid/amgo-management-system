@@ -182,16 +182,68 @@ export const SCAN_PATTERNS = [
   'wso_version',
 ]
 
-export async function scanSite(target: SshTarget, path: string): Promise<string[]> {
+/** หลักฐานต่อ 1 ไฟล์ที่เข้าข่าย — มากพอให้คนหรือ AI ตัดสินได้โดยไม่ต้องเปิดเซิร์ฟเวอร์ */
+export interface ScanHit {
+  path: string
+  /** บรรทัดที่ตรง pattern — เลขบรรทัด + โค้ดจริง (ตัดความยาว) */
+  lines: { no: number; text: string }[]
+  /** แก้ไขล่าสุดเมื่อไหร่ (ISO) — ไฟล์ PHP ที่เพิ่งถูกแก้คือธงแดง */
+  modifiedAt: string | null
+  bytes: number | null
+}
+
+/** ตัดโค้ดยาว ๆ ทิ้ง — มัลแวร์ชอบยัด base64 ก้อนเดียวยาวเป็นหมื่นตัวอักษร */
+const MAX_LINE = 240
+const MAX_LINES_PER_FILE = 6
+
+/**
+ * ไล่หาไฟล์ที่เข้าข่ายมัลแวร์ พร้อม "หลักฐาน" ไม่ใช่แค่รายชื่อ
+ *
+ * เดิมคืนแต่ path ซึ่งเอาไปตัดสินอะไรต่อไม่ได้เลย — ไม่รู้ว่าผิดตรงไหน
+ * เป็นไฟล์แปลกปลอมทั้งไฟล์หรือไฟล์ดีที่โดนแทรกโค้ด · เจ้าของสั่ง 15 ส.ค. 69
+ * ให้เก็บ log ละเอียดพอที่เอาไปให้ AI แก้ต่อได้ทันที
+ */
+export async function scanSite(target: SshTarget, path: string): Promise<ScanHit[]> {
   const pats = SCAN_PATTERNS.map((p) => `-e ${q(p)}`).join(' ')
+
+  // -n = เลขบรรทัด · -I = ข้ามไฟล์ไบนารี · จำกัดผลกันเว็บที่ติดหนักถล่ม log
   const { out } = await sshRun(
     target,
-    `grep -rl --include='*.php' ${pats} ${at(path)} 2>/dev/null | head -200`
+    `grep -rnI --include='*.php' ${pats} ${at(path)} 2>/dev/null | head -300`
   )
-  return out
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
+
+  const byFile = new Map<string, ScanHit>()
+  for (const raw of out.split('\n')) {
+    // รูปแบบ: /path/to/file.php:123:โค้ด...
+    const m = raw.match(/^(.+?):(\d+):([\s\S]*)$/)
+    if (!m) continue
+    const [, file, no, text] = m
+    if (!byFile.has(file)) byFile.set(file, { path: file, lines: [], modifiedAt: null, bytes: null })
+    const hit = byFile.get(file)!
+    if (hit.lines.length < MAX_LINES_PER_FILE) {
+      hit.lines.push({ no: Number(no), text: text.trim().slice(0, MAX_LINE) })
+    }
+  }
+
+  const files = [...byFile.keys()]
+  if (!files.length) return []
+
+  // ดึงเวลาแก้ไข + ขนาดในคำสั่งเดียว ไม่วนยิงทีละไฟล์
+  const list = files.slice(0, 60).map((f) => q(f)).join(' ')
+  const { out: statOut } = await sshRun(
+    target,
+    `stat -c '%n|%Y|%s' ${list} 2>/dev/null || true`
+  )
+  for (const line of statOut.split('\n')) {
+    const [name, epoch, size] = line.split('|')
+    const hit = name && byFile.get(name.trim())
+    if (!hit) continue
+    const secs = Number(epoch)
+    if (Number.isFinite(secs) && secs > 0) hit.modifiedAt = new Date(secs * 1000).toISOString()
+    if (Number.isFinite(Number(size))) hit.bytes = Number(size)
+  }
+
+  return [...byFile.values()]
 }
 
 /* ── สำรองข้อมูล (ai1wm) + ลบของเก่า ────────────────────────────────── */

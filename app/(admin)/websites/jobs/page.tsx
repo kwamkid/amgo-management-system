@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  ClipboardCopy,
   Clock,
   Download,
   ListChecks,
@@ -153,6 +154,60 @@ function nextExpiry(s: WebSite): { label: string; date: string } | null {
     { label: 'SSL', date: s.sslExpiresAt },
   ].filter((x): x is { label: string; date: string } => !!x.date)
   return all.sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+}
+
+/** หลักฐาน 1 ไฟล์ที่ตัวสแกนเก็บมา — ตรงกับ ScanHit ฝั่งเซิร์ฟเวอร์ */
+type ScanFinding = {
+  path: string
+  lines?: { no: number; text: string }[]
+  modifiedAt?: string | null
+  bytes?: number | null
+}
+
+/**
+ * ก้อนข้อความพร้อมวางให้ AI — ต้องมีครบพอที่มันตัดสินได้โดยไม่ต้องถามกลับ
+ * และต้องบอกกติกาความปลอดภัยไปด้วย เพราะมัลแวร์ WordPress ส่วนใหญ่
+ * แทรกอยู่ในไฟล์ที่ถูกต้อง การ "ลบไฟล์ที่เจอ" คือลบเว็บทิ้ง
+ */
+function aiReport(job: WebJob): string {
+  const f = (job.summary?.findings ?? []) as ScanFinding[]
+  const ignored = (job.summary?.knownIgnored as number) ?? 0
+
+  const body = f
+    .map((x, i) => {
+      const when = x.modifiedAt ? new Date(x.modifiedAt).toLocaleString('th-TH') : 'ไม่ทราบ'
+      const code = (x.lines ?? []).map((l) => `${l.no}: ${l.text}`).join('\n')
+      return [
+        `### ${i + 1}. ${x.path}`,
+        `- แก้ไขล่าสุด: ${when}`,
+        `- ขนาด: ${x.bytes ?? '?'} bytes`,
+        '',
+        '```php',
+        code || '(ไม่มีบรรทัดที่บันทึกไว้)',
+        '```',
+      ].join('\n')
+    })
+    .join('\n\n')
+
+  return [
+    `# ผลสแกนมัลแวร์ — ${job.siteName || job.hostName || 'ไม่ทราบเว็บ'}`,
+    `สแกนเมื่อ ${fmt(job.finishedAt ?? job.queuedAt)} · พบต้องสงสัย ${f.length} ไฟล์` +
+      (ignored ? ` · ตัดที่รู้ว่าไม่ใช่ออกแล้ว ${ignored} ไฟล์` : ''),
+    '',
+    'ตัวสแกนจับด้วย pattern เช่น `eval(base64_decode`, `shell_exec(`, `assert($_`',
+    'ซึ่ง**ไลบรารีปกติก็มีใช้** — ต้องดูโค้ดจริงก่อนตัดสิน',
+    '',
+    body,
+    '',
+    '---',
+    '## สิ่งที่อยากให้ช่วย',
+    '1. แยกให้หน่อยว่าไฟล์ไหนเป็นมัลแวร์จริง ไฟล์ไหนเป็นของปกติ (false positive)',
+    '2. ถ้าเป็นมัลแวร์ บอกด้วยว่าเป็น **ไฟล์แปลกปลอมทั้งไฟล์** (ลบทิ้งได้)',
+    '   หรือ **ไฟล์ที่ถูกต้องแต่โดนแทรกโค้ด** (ต้องลบเฉพาะส่วนที่แทรก ห้ามลบทั้งไฟล์)',
+    '3. ถ้าเป็น false positive บอกด้วยว่าควรใส่ pattern อะไรลงรายการยกเว้น',
+    '',
+    '⚠️ ก่อนแก้ไฟล์ใด ๆ ให้สำรองไฟล์นั้นไว้ก่อนเสมอ',
+  ].join('\n')
 }
 
 function summaryText(job: WebJob): string {
@@ -892,7 +947,28 @@ export default function WebJobsPage() {
           title={`${TYPE_LABEL[detail.type]} — ${detail.siteName || detail.hostName || ''}`}
         >
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">{summaryText(detail)}</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className="text-sm text-gray-600">{summaryText(detail)}</p>
+              {/* งานสแกนที่เจอของ = ก้อนหลักฐานพร้อมวางให้ AI อ่านแล้วบอกได้เลย
+                  ว่าอันไหนของจริง อันไหนหลอก โดยไม่ต้องเปิดเซิร์ฟเวอร์ดูเอง */}
+              {detail.type === 'scan' && (detail.summary?.findings as unknown[])?.length ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(aiReport(detail))
+                      showToast('คัดลอกแล้ว — เอาไปวางให้ AI อ่านได้เลย', 'success')
+                    } catch {
+                      showToast('คัดลอกไม่ได้ ให้เลือกข้อความใน log เอาแทน', 'error')
+                    }
+                  }}
+                >
+                  <ClipboardCopy size={14} />
+                  คัดลอกให้ AI
+                </Button>
+              ) : null}
+            </div>
             <pre className="max-h-80 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
               {detail.rawLog || '(ไม่มี log)'}
             </pre>

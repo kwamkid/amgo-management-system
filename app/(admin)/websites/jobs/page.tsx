@@ -289,15 +289,21 @@ export default function WebJobsPage() {
   }, [])
 
   /**
-   * เว็บไหนมีงานค้างอยู่บ้าง — ใช้ปิดปุ่มกันกดซ้ำระหว่างรอคิว
+   * งานค้างของแต่ละเว็บ แยกตาม "ชนิดงาน" — ปุ่มแต่ละใบดูเฉพาะชนิดของตัวเอง
+   *
+   * เก็บเป็น map ซ้อน map ไม่ใช่งานเดียวต่อเว็บ เพราะเว็บหนึ่งมีงานค้างพร้อมกัน
+   * หลายชนิดได้จริง (ตรวจปลั๊กอินทั้งฟลีต + สั่งสำรองรายตัว) · ถ้าเก็บตัวเดียว
+   * งานชนิดอื่นจะบังปุ่มที่ยังกดได้จนหมดแถว
    * "กำลังทำ" ชนะ "รอคิว" เสมอ จะได้โชว์สถานะที่คืบหน้ากว่า
    */
   const activeBySite = useMemo(() => {
-    const m = new Map<string, ActiveJob>()
+    const m = new Map<string, Map<WebJob['type'], ActiveJob>>()
     for (const a of queue.active) {
       if (!a.siteId) continue
-      const cur = m.get(a.siteId)
-      if (!cur || (cur.status === 'queued' && a.status === 'running')) m.set(a.siteId, a)
+      let byType = m.get(a.siteId)
+      if (!byType) m.set(a.siteId, (byType = new Map()))
+      const cur = byType.get(a.type)
+      if (!cur || (cur.status === 'queued' && a.status === 'running')) byType.set(a.type, a)
     }
     return m
   }, [queue.active])
@@ -306,6 +312,67 @@ export default function WebJobsPage() {
   const activeTypes = useMemo(
     () => new Set(queue.active.map((a) => a.type)),
     [queue.active]
+  )
+
+  /** คิวเก็บแค่ id — ชื่อเว็บ/ชื่อโฮสต์ต้องแปลงเองที่หน้า ถึงจะบอกได้ว่ากำลังทำ "เว็บไหน" */
+  const siteNameOf = useMemo(() => new Map((sites ?? []).map((s) => [s.id, s.siteName])), [sites])
+  const hostNameOf = useMemo(() => new Map(hosts.map((h) => [h.id, h.name])), [hosts])
+
+  /** งานที่กำลังทำอยู่จริงเดี๋ยวนี้ — โฮสต์ละไม่เกิน 1 ตัวตามกติกาคิว */
+  const runningNow = useMemo(() => queue.active.filter((a) => a.status === 'running'), [queue.active])
+  const runningByHost = useMemo(
+    () => new Map(runningNow.filter((a) => a.hostId).map((a) => [a.hostId!, a])),
+    [runningNow]
+  )
+
+  /** ที่รออยู่เป็นงานอะไรบ้าง — "รออีก 30 งาน" เฉย ๆ ไม่บอกว่ารออะไร */
+  const queuedByType = useMemo(() => {
+    const m = new Map<WebJob['type'], number>()
+    for (const a of queue.active) if (a.status === 'queued') m.set(a.type, (m.get(a.type) ?? 0) + 1)
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }, [queue.active])
+
+  /**
+   * งานใบนี้ต้องรออีกกี่คิว — เรียงตามกติกาที่ web_claim_jobs หยิบจริง
+   * (โฮสต์เดียวกันทำทีละงาน เรียงตาม queued_at แล้ว id)
+   *
+   * ป้าย "รอคิว" เฉย ๆ ตอบไม่ได้ว่ารออะไรอยู่ — สั่งตรวจปลั๊กอินทั้งฟลีตทีเดียว
+   * ดองคิวโฮสต์นั้นไว้ 20 กว่างาน แล้วงานที่กดทีหลังดูเหมือนค้างไม่ไปไหน
+   */
+  const aheadOf = useMemo(() => {
+    const byHost = new Map<string, ActiveJob[]>()
+    for (const a of queue.active) {
+      const k = a.hostId ?? '—'
+      const list = byHost.get(k)
+      if (list) list.push(a)
+      else byHost.set(k, [a])
+    }
+    const m = new Map<string, number>()
+    for (const list of byHost.values()) {
+      list
+        .sort((x, y) =>
+          x.status !== y.status
+            ? x.status === 'running'
+              ? -1
+              : 1
+            : x.queuedAt === y.queuedAt
+              ? x.id.localeCompare(y.id)
+              : x.queuedAt.localeCompare(y.queuedAt)
+        )
+        .forEach((a, i) => m.set(a.id, i))
+    }
+    return m
+  }, [queue.active])
+
+  /** งานหนึ่งใบเขียนเป็นประโยคเดียว: "ตรวจปลั๊กอิน — bebbykids.com" */
+  const jobLabel = useCallback(
+    (a: ActiveJob) =>
+      `${TYPE_LABEL[a.type]} — ${
+        a.siteId
+          ? (siteNameOf.get(a.siteId) ?? 'เว็บที่ถูกลบไปแล้ว')
+          : `ทั้งโฮสต์ ${hostNameOf.get(a.hostId ?? '') ?? ''}`.trim()
+      }`,
+    [siteNameOf, hostNameOf]
   )
 
   // ให้ตัวจับเวลาอ่านสถานะคิวล่าสุดได้ โดยไม่ต้องตั้ง interval ใหม่ทุกครั้งที่คิวเปลี่ยน
@@ -559,8 +626,8 @@ export default function WebJobsPage() {
       cell: (s) => {
         // กำลังอัปเดตอยู่จริง = โชว์ความคืบหน้าแทนตัวเลขนิ่ง ๆ
         // มีแถบเฉพาะงานที่นับขั้นได้ (อัปเดตทีละตัว) งานอื่น progressTotal = 0
-        const job = activeBySite.get(s.id)
-        if (job?.status === 'running' && job.type === 'plugin_update' && job.progressTotal > 0) {
+        const job = activeBySite.get(s.id)?.get('plugin_update')
+        if (job?.status === 'running' && job.progressTotal > 0) {
           const pct = Math.round((job.progressDone / job.progressTotal) * 100)
           return (
             <HelpTooltip
@@ -686,14 +753,31 @@ export default function WebJobsPage() {
       // จอกว้างโชว์ข้อความด้วย เพราะไอคอนล้วนเดาไม่ออกว่าปุ่มไหนทำอะไร
       // จอแคบลงเหลือไอคอน แต่ยังมี tooltip บอกชื่อ + คำอธิบายว่าปุ่มนี้ทำอะไรกับเว็บ
       cell: (s) => {
-        // เว็บนี้มีงานค้างอยู่ = ปิดปุ่มทั้งแถว กันสั่งซ้ำระหว่างรอคิว
-        // (คิวเดินทีละงานต่อโฮสต์ กดเพิ่มไปก็แค่ต่อแถวยาวขึ้น)
-        const act = activeBySite.get(s.id)
+        // ปิดเฉพาะปุ่มที่มี "งานชนิดเดียวกัน" ค้างอยู่ — ชนิดอื่นยังกดต่อคิวได้
+        // (ตรวจปลั๊กอินทั้งฟลีตค้างคิวอยู่ ไม่ใช่เหตุผลที่จะสั่งสำรองไม่ได้ ·
+        //  ฝั่ง API ก็กันซ้ำเฉพาะชนิดเดียวกันอยู่แล้ว ล็อกทั้งแถวคือหน้าเว็บ
+        //  เข้มเกินของจริง แล้วกลายเป็นปุ่มตายที่ไม่บอกเหตุผล)
+        const jobs = activeBySite.get(s.id)
+        // โฮสต์นี้กำลังทำอะไรอยู่ — ใช้อธิบายว่าทำไมงานที่กดยังไม่เริ่มสักที
+        const hostBusy = s.hostId ? runningByHost.get(s.hostId) : undefined
         return (
           <div className="flex justify-end gap-1.5">
             {ROW_ACTIONS.map(({ type, Icon, label, help }) => {
-              const mine = act?.type === type
-              const running = mine && act?.status === 'running'
+              const act = jobs?.get(type)
+              const mine = !!act
+              const running = act?.status === 'running'
+              // รออีกกี่งานบนโฮสต์นี้ — "รอคิว" เฉย ๆ ไม่บอกว่าอีกนานแค่ไหน
+              const ahead = act && !running ? (aheadOf.get(act.id) ?? 0) : 0
+              const waitNote =
+                (ahead ? `คิวที่ ${ahead + 1} ของโฮสต์นี้ รออีก ${ahead} งาน` : 'เป็นคิวถัดไปของโฮสต์นี้') +
+                (hostBusy ? ` · ตอนนี้โฮสต์กำลัง${jobLabel(hostBusy)}` : ' · รอระบบหยิบคิว (ทุก 1–2 นาที)')
+              // งานชนิดอื่นที่ค้างอยู่ — ไม่ปิดปุ่ม แต่บอกไว้ว่ากดแล้วจะไปต่อคิวหลังตัวนี้
+              const others = jobs ? [...jobs.values()].filter((j) => j.type !== type) : []
+              const other = others.find((j) => j.status === 'running') ?? others[0]
+              const otherNow = other
+                ? `ตอนนี้เว็บนี้${other.status === 'running' ? 'กำลัง' : 'รอคิว'}${TYPE_LABEL[other.type]}อยู่`
+                : ''
+              const queueNote = other ? ` · ${otherNow} กดได้เลย ระบบจะต่อคิวให้ทำหลังจากนั้น` : ''
               // ปลั๊กอินครบแล้วก็ไม่มีอะไรให้อัปเดต — ปิดปุ่มไปเลย กันกดแล้วงงว่าไม่เกิดอะไร
               // แต่ถ้ามีตัว "ทำมือ" ค้างอยู่ ยังต้องกดได้ เพราะนี่คือทางลองใหม่หลังต่ออายุ license
               const nothingToDo =
@@ -711,21 +795,20 @@ export default function WebJobsPage() {
                     mine
                       ? running
                         ? `${label} — กำลังทำอยู่`
-                        : `${label} — เข้าคิวแล้ว รอโฮสต์ว่าง`
-                      : act
-                        ? `เว็บนี้มีงานค้างอยู่ รอให้เสร็จก่อน`
-                        : nothingToDo
-                          ? 'ปลั๊กอินครบทุกตัวแล้ว ไม่มีอะไรต้องอัปเดต'
-                          : type === 'plugin_update' && s.blockedPluginCount > 0
-                            ? `ลองใหม่ทุกตัว รวม ${s.blockedPluginCount} ตัวที่เคยอัปเดตไม่ผ่าน (กดหลังต่ออายุ license)`
-                            : `${label} — ${help}`
+                        : `${label} — เข้าคิวแล้ว · ${waitNote}`
+                      : nothingToDo
+                        ? // ปุ่มนี้ปิดอยู่จริง เลยบอกแค่ว่ามีอะไรค้าง ไม่ต้องชวนให้กด
+                          `ปลั๊กอินครบทุกตัวแล้ว ไม่มีอะไรต้องอัปเดต${other ? ` · ${otherNow}` : ''}`
+                        : type === 'plugin_update' && s.blockedPluginCount > 0
+                          ? `ลองใหม่ทุกตัว รวม ${s.blockedPluginCount} ตัวที่เคยอัปเดตไม่ผ่าน (กดหลังต่ออายุ license)${queueNote}`
+                          : `${label} — ${help}${queueNote}`
                   }
                 >
                   <Button
                     size="sm"
                     variant="secondary"
                     aria-label={`${label} ${s.siteName}`}
-                    disabled={busy === s.id || !!act || nothingToDo}
+                    disabled={busy === s.id || mine || nothingToDo}
                     onClick={(e) => {
                       e.stopPropagation()
                       fire(type, { siteIds: [s.id], label: s.siteName })
@@ -742,8 +825,10 @@ export default function WebJobsPage() {
                     ) : (
                       <Icon size={15} />
                     )}
+                    {/* ติดเลขคิวไปกับป้ายเลย — "รอคิว" เฉย ๆ ดูไม่ออกว่าขยับอยู่ไหม
+                        เห็น #13 ค่อย ๆ ลดลงทุกรอบ อ่านได้ว่าระบบยังเดินอยู่ */}
                     <span className="hidden 2xl:inline">
-                      {mine ? (running ? 'กำลังทำ' : 'รอคิว') : label}
+                      {mine ? (running ? 'กำลังทำ' : ahead ? `รอคิว #${ahead + 1}` : 'รอคิว') : label}
                     </span>
                   </Button>
                 </HelpTooltip>
@@ -880,6 +965,48 @@ export default function WebJobsPage() {
             </span>
           ))}
         </div>
+
+        {/* "ตอนนี้ทำอะไรอยู่" ต้องเห็นด้วยตา ไม่ใช่ซ่อนใน tooltip ของปุ่ม —
+            ป้าย "รอคิว" ที่ไม่บอกว่ารออะไร อ่านแล้วเหมือนระบบค้าง (เจ้าของทัก 15 ส.ค. 69) */}
+        {queueBusy && (
+          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+            {runningNow.length > 0 ? (
+              <>
+                <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                  <Loader2 size={14} className="animate-spin" />
+                  ตอนนี้กำลังทำ {runningNow.length} งาน (โฮสต์ละงานเดียว)
+                </p>
+                <ul className="mt-1.5 space-y-0.5 text-sm text-blue-800">
+                  {runningNow.map((a) => (
+                    <li key={a.id}>
+                      {jobLabel(a)}
+                      {a.progressTotal > 0 && (
+                        <span className="text-blue-700/70">
+                          {' '}
+                          ({a.progressDone}/{a.progressTotal}
+                          {a.progressNote ? ` · ${a.progressNote}` : ''})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              // ช่วงระหว่างรอบ cron — ไม่มีอะไรเดินอยู่จริง ต้องบอกตรง ๆ
+              // ไม่งั้น spinner หมุนทั้งที่ไม่มีงานทำ อ่านแล้วเข้าใจผิดหนักกว่าเดิม
+              <p className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                <Clock size={14} />
+                ยังไม่มีงานที่กำลังทำ — รอระบบหยิบคิวรอบถัดไป (ทุก 1–2 นาที)
+              </p>
+            )}
+            {queue.queued > 0 && (
+              <p className="mt-1.5 text-xs text-blue-700/80">
+                รอคิวอีก {queue.queued} งาน — {queuedByType.map(([t, n]) => `${TYPE_LABEL[t]} ${n}`).join(' · ')}{' '}
+                · โฮสต์หนึ่งทำทีละงาน กด &quot;เร่งคิวเดี๋ยวนี้&quot; ข้างบนได้ถ้าไม่อยากรอรอบ cron
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
           <span className="text-sm text-gray-500">

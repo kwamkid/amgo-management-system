@@ -711,10 +711,13 @@ export async function getLatestJob(siteId: string, type: WebJob['type']): Promis
 }
 
 export interface ActiveJob {
+  id: string
   siteId: string | null
   hostId: string | null
   type: WebJob['type']
   status: 'queued' | 'running'
+  /** เวลาที่เข้าคิว — ใช้เรียงลำดับให้ตรงกับที่ web_claim_jobs หยิบจริง */
+  queuedAt: string
   /** ทำไปกี่ขั้นแล้ว — total = 0 แปลว่างานนี้นับขั้นไม่ได้ ไม่ต้องโชว์แถบ */
   progressDone: number
   progressTotal: number
@@ -722,8 +725,8 @@ export interface ActiveJob {
 }
 
 /**
- * งานที่ยังไม่จบ — คืนรายตัวไม่ใช่แค่จำนวน เพราะหน้าเว็บต้องรู้ว่า
- * "เว็บไหนกำลังมีงานค้างอยู่" เพื่อปิดปุ่มกันกดซ้ำระหว่างรอคิว
+ * งานที่ยังไม่จบ — คืนรายตัวไม่ใช่แค่จำนวน เพราะหน้าเว็บต้องบอกได้ว่า
+ * "ตอนนี้ทำอะไรอยู่" และ "งานของเว็บนี้ต้องรออีกกี่คิว"
  * (งานค้างมีไม่เกินหลักร้อย ดึงทั้งแถวถูกกว่ายิง count 2 รอบ)
  */
 export async function getQueueStatus(): Promise<{
@@ -733,16 +736,18 @@ export async function getQueueStatus(): Promise<{
 }> {
   const { data, error } = await sb()
     .from('web_jobs')
-    .select('site_id, host_id, type, status, progress_done, progress_total, progress_note')
+    .select('id, site_id, host_id, type, status, queued_at, progress_done, progress_total, progress_note')
     .in('status', ['queued', 'running'])
     .limit(1000)
   if (error) throw error
 
   const active: ActiveJob[] = (data ?? []).map((r) => ({
+    id: r.id as string,
     siteId: (r.site_id as string) ?? null,
     hostId: (r.host_id as string) ?? null,
     type: r.type as WebJob['type'],
     status: r.status as 'queued' | 'running',
+    queuedAt: (r.queued_at as string) ?? '',
     progressDone: (r.progress_done as number) ?? 0,
     progressTotal: (r.progress_total as number) ?? 0,
     progressNote: (r.progress_note as string) ?? '',

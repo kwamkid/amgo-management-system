@@ -14,11 +14,21 @@ import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
 import { targetForHost } from '@/lib/services/web/sshTarget'
 import {
+  canStartPlugin,
+  CORE_VERSION_MS,
+  FIRST_LIST_MS,
+  LOOP_DEADLINE_MS,
+  PLUGIN_MAX_MS,
+  pluginTimeoutMs,
+  tailTimeoutMs,
+} from '@/lib/services/web/jobBudget'
+import {
   backupSite,
   coreVersion,
   discoverSites,
   listPlugins,
   scanSite,
+  SSH_TIMEOUT_PREFIX,
   updatePlugins,
   type SshTarget,
   type WpPlugin,
@@ -161,11 +171,25 @@ async function runPluginCheck(sb: Admin, job: Job, target: SshTarget, path: stri
  * ซึ่งดันเป็นเว็บที่ต้องการอัปเดตมากที่สุด (15 ส.ค. 69 aplussme.com)
  *
  * ทำทีละตัวแทน: ตัวไหนเสร็จก็เสร็จจริง ไม่ต้องเริ่มใหม่ทั้งชุด
+ *
+ * ── งบเวลา (แก้ 16 ส.ค. 69 หลังล้ม 40 ใบ สำเร็จ 36) ──────────────────
+ * ของเดิมนับ 38 วิ *หลัง* listPlugins ใบแรก แล้วเช็คแค่ "ก่อนจะเริ่มตัวถัดไป"
+ * ตัวที่เริ่มตอนวินาทีที่ 37 จึงมีสิทธิ์รันต่อได้อีก 45 วิ (timeout ของ SSH)
+ * = 83 วิ ทั้งที่ Vercel ตัดฟังก์ชันที่ 60 · แถมไม่ได้กันเวลาไว้ให้ listPlugins
+ * ใบสองกับ coreVersion ที่ต้องทำหลังลูปเลย · ใบที่ "สำเร็จ" ยังแตะ 59.6 วิ
+ *
+ * พอฟังก์ชันโดนตัด ใบงานค้างสถานะ running แล้วตัวกวาดงานผีปิดเป็น failed
+ * อีก 5 นาทีถัดมา — ระหว่างนั้นคิวของโฮสต์นั้นถูกดองไปด้วย
+ *
+ * ตอนนี้: นับจากวินาทีแรกของงาน · กันเวลาท้ายไว้ให้ 2 คำสั่งปิดท้าย ·
+ * และปลั๊กอินแต่ละตัวได้ timeout เท่ากับ "เวลาที่เหลือจริง" ไม่ใช่ 45 วิตายตัว
  */
-const UPDATE_BUDGET_MS = 38_000
-
 async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: string) {
-  const before = await listPlugins(target, path)
+  const startedAt = Date.now()
+  const loopDeadline = startedAt + LOOP_DEADLINE_MS
+
+  // ใบแรกก็ต้องคุม ไม่งั้นมันกิน timeout ปกติ 45 วิได้คนเดียวจนไม่เหลืออะไรเลย
+  const before = await listPlugins(target, path, FIRST_LIST_MS)
 
   // เจ้าของกดสั่งเว็บนี้เอง = ขอลองใหม่ทุกตัว ล้างประวัติที่เคยยอมแพ้ทิ้ง
   // (เผื่อเพิ่งต่ออายุ license มา)
@@ -186,12 +210,12 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
         .join(', ')}\n`
     : ''
   let ranOut = false
-  const deadline = Date.now() + UPDATE_BUDGET_MS
   const tried: string[] = []
   /** ข้อความที่ WP-CLI ตอบกลับต่อปลั๊กอิน — เก็บไว้ให้คนอ่านว่าทำไมอัปเดตไม่ได้ */
   const errors = new Map<string, string>()
   for (const p of pending) {
-    if (Date.now() > deadline) {
+    const left = loopDeadline - Date.now()
+    if (!canStartPlugin(left)) {
       ranOut = true
       log += `\n⏳ หมดเวลารอบนี้ เหลืออีก ${pending.length - pending.indexOf(p)} ตัว — ต่อคิวให้แล้ว`
       break
@@ -207,21 +231,39 @@ async function runPluginUpdate(sb: Admin, job: Job, target: SshTarget, path: str
       })
       .eq('id', job.id)
 
+    // ให้เท่าที่เหลือจริง แต่ไม่เกินเพดานต่อตัว — cap จึงไม่มีทางพาเลย deadline
+    const cap = pluginTimeoutMs(left)
     tried.push(p.name)
     try {
-      const res = await updatePlugins(target, path, p.name)
+      const res = await updatePlugins(target, path, p.name, cap)
       log += (res.out + res.err).slice(-1500)
       errors.set(p.name, (res.err || res.out).trim().slice(-300))
     } catch (e) {
-      // ตัวเดียวพังไม่ควรล้มทั้งใบ — จดไว้แล้วไปตัวถัดไป
-      log += `\n❌ ${p.name}: ${(e as Error).message}`
-      errors.set(p.name, (e as Error).message.slice(-300))
+      const msg = (e as Error).message
+      if (msg.startsWith(SSH_TIMEOUT_PREFIX) && cap < PLUGIN_MAX_MS) {
+        // ให้เวลาไม่เต็มเพราะรอบนี้เหลือน้อย ไม่ใช่ความผิดปลั๊กอิน — ถอดออกจาก
+        // รายการที่ลอง ไม่งั้นจะโดนนับ "พลาด" แล้วครบ 2 ครั้งเมื่อไหร่ระบบจะเลิก
+        // ลองตัวนั้นถาวร ทั้งที่จริงแค่คิวมาถึงตอนเวลาเหลือน้อย
+        tried.pop()
+        ranOut = true
+        log += `\n⏳ ${p.name} เวลารอบนี้ไม่พอ — ยกไปรอบหน้า (เหลืออีก ${
+          pending.length - pending.indexOf(p)
+        } ตัว)`
+        break
+      }
+      // ได้เวลาเต็มเพดานแล้วยังไม่จบ = ตัวนี้ช้าเกินกว่าจะอัปเดตด้วยวิธีนี้ได้จริง
+      // ต้องปล่อยให้นับพลาดตามปกติ ไม่งั้นมันจะถูกลองใหม่ทุกคืนไปตลอดกาล
+      // โดยไม่มีใครรู้ (ครบ 2 ครั้งแล้วระบบจะข้ามและขึ้นให้คนเห็นว่าต้องไปดูเอง)
+      log += `\n❌ ${p.name}: ${msg}`
+      errors.set(p.name, msg.slice(-300))
     }
   }
   log = log.slice(-6000)
 
-  const after = await listPlugins(target, path)
-  const version = await coreVersion(target, path).catch(() => '')
+  // 2 คำสั่งปิดท้ายต้องอยู่ในเวลาที่กันไว้ ห้ามยืดตาม timeout ปกติ 45 วิ
+  // ไม่งั้นงานที่ลูปจบตรงเวลาเป๊ะก็ยังไปตายตอนสรุปผลอยู่ดี
+  const after = await listPlugins(target, path, tailTimeoutMs(Date.now() - startedAt))
+  const version = await coreVersion(target, path, CORE_VERSION_MS).catch(() => '')
 
   // ตัวที่ลองแล้วยังค้างอยู่ = พลาด · ตัวที่หายไปจากรายการค้าง = สำเร็จ
   const stillAvailable = new Set(

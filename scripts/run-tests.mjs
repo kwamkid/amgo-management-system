@@ -21,6 +21,7 @@ const SUITES = [
   { file: 'test-checkin-rls.mjs', title: 'เช็คอิน' },
   { file: 'test-checkout-hours.mjs', title: 'ชั่วโมงตอนเช็คเอาท์ · ลืมเช็คเอาท์', noEnv: true },
   { file: 'test-payroll-cycle.mjs', title: 'รอบจ่าย · ช่วงงวดเงินเดือน', noEnv: true },
+  { file: 'test-job-budget.mjs', title: 'งบเวลางานอัปเดตปลั๊กอิน', noEnv: true },
   { file: 'test-leave-rls.mjs', title: 'สิทธิ์ใบลา' },
   { file: 'test-leave-flow.mjs', title: 'ยื่นลา → อนุมัติ → โควต้า' },
   { file: 'test-attendance-report.mjs', title: 'รายงานการมาทำงาน' },

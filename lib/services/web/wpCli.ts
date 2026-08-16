@@ -39,13 +39,24 @@ export interface WpPlugin {
 // (backup ที่นานกว่านี้ใช้วิธีสั่งแบบ detached แล้วตามผลทีหลัง ดู backupSite)
 const TIMEOUT_MS = 45_000
 
+/**
+ * ขึ้นต้นข้อความตอน "เราเป็นคนตัดเอง เพราะเวลาหมด" — ไม่ใช่ปลายทางมีปัญหา
+ *
+ * ผู้เรียกต้องแยกสองอย่างนี้ออกจากกันได้ ไม่งั้นจะไปโทษปลั๊กอินที่จริง ๆ แล้ว
+ * อัปเดตได้ แค่บังเอิญคิวมาถึงตอนงบเวลาเหลือน้อย (ตัวนับ "พลาด" ครบ 2 ครั้ง
+ * แล้วระบบจะเลิกลองตัวนั้นถาวร — โทษผิดตัวคือเลิกลองของที่ยังใช้ได้)
+ */
+export const SSH_TIMEOUT_PREFIX = 'SSH หมดเวลา'
+
 /** ครอบสตริงให้ปลอดภัยก่อนยัดลง shell — path/โดเมนมาจาก DB ไม่ควรเชื่อ 100% */
 const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
 
 /** รันคำสั่งเดียวแล้วปิดการเชื่อมต่อ — คืน stdout+exit code (ไม่โยน error เมื่อ code ≠ 0) */
 export function sshRun(
   target: SshTarget,
-  command: string
+  command: string,
+  /** ตัดที่กี่มิลลิวินาที — ส่งมาเองได้เมื่อผู้เรียกมีงบเวลาน้อยกว่าค่าปกติ */
+  timeoutMs: number = TIMEOUT_MS
 ): Promise<{ code: number; out: string; err: string }> {
   // กุญแจกลางจาก env ใช้เมื่อโฮสต์ไม่ได้ตั้งอะไรไว้เอง
   const fallbackKey = process.env.WP_SSH_PRIVATE_KEY
@@ -61,8 +72,8 @@ export function sshRun(
     let err = ''
     const timer = setTimeout(() => {
       conn.end()
-      reject(new Error('SSH หมดเวลา (45 วินาที)'))
-    }, TIMEOUT_MS)
+      reject(new Error(`${SSH_TIMEOUT_PREFIX} (${Math.round(timeoutMs / 1000)} วินาที)`))
+    }, timeoutMs)
 
     conn
       .on('ready', () => {
@@ -148,22 +159,35 @@ export async function discoverSites(target: SshTarget, domainsPath: string): Pro
 
 /* ── ปลั๊กอิน ────────────────────────────────────────────────────────── */
 
-export async function listPlugins(target: SshTarget, path: string): Promise<WpPlugin[]> {
-  const { out } = await sshRun(target, wpAt(path, 'plugin list --format=json'))
+export async function listPlugins(
+  target: SshTarget,
+  path: string,
+  timeoutMs?: number
+): Promise<WpPlugin[]> {
+  const { out } = await sshRun(target, wpAt(path, 'plugin list --format=json'), timeoutMs)
   const start = out.indexOf('[')
   if (start < 0) throw new Error('อ่านผลจาก WP-CLI ไม่ได้ (path ถูกไหม / มี wp-cli ไหม)')
   return JSON.parse(out.slice(start)) as WpPlugin[]
 }
 
-export async function coreVersion(target: SshTarget, path: string): Promise<string> {
-  const { out } = await sshRun(target, wpAt(path, 'core version'))
+export async function coreVersion(
+  target: SshTarget,
+  path: string,
+  timeoutMs?: number
+): Promise<string> {
+  const { out } = await sshRun(target, wpAt(path, 'core version'), timeoutMs)
   return out.trim().split('\n').pop()?.trim() ?? ''
 }
 
 /** slug = 'all' คืออัปเดตทุกตัวที่ค้าง */
-export async function updatePlugins(target: SshTarget, path: string, slug = 'all') {
+export async function updatePlugins(
+  target: SshTarget,
+  path: string,
+  slug = 'all',
+  timeoutMs?: number
+) {
   const args = slug === 'all' ? 'plugin update --all' : `plugin update ${q(slug)}`
-  return sshRun(target, wpAt(path, args))
+  return sshRun(target, wpAt(path, args), timeoutMs)
 }
 
 /* ── สแกนไฟล์ต้องสงสัย (ยกจาก scan.sh) ──────────────────────────────── */

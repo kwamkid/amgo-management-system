@@ -41,8 +41,7 @@ import {
   Receipt,
   Layers,
   ListChecks,
-  Server,
-} from 'lucide-react'
+  Server, CalendarSync} from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
 interface NavItem {
@@ -90,7 +89,9 @@ const navSections: NavSection[] = [
           { label: 'ข้อมูลการลา', href: '/leaves', icon: subIcon(Calendar) },
           { label: 'ขอลา', href: '/leaves/request', icon: subIcon(UserPlus) },
           { label: 'ประวัติการลา', href: '/leaves/history', icon: subIcon(Clock) },
+          { label: 'สลับวันหยุด', href: '/leaves/swap', icon: subIcon(CalendarSync) },
           { label: 'จัดการคำขอลา', href: '/leaves/management', icon: subIcon(UserCog), roles: ['hr', 'admin', 'manager'] },
+          { label: 'จัดการใบสลับวันหยุด', href: '/leaves/swap/management', icon: subIcon(CalendarSync), roles: ['hr', 'admin', 'manager'] },
         ],
       },
       {

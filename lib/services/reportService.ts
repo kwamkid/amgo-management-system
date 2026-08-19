@@ -39,6 +39,8 @@ export interface AttendanceReportData {
   note?: string
   holidayName?: string
   isWorkingHoliday?: boolean
+  /** วันนี้อยู่ในใบสลับวันหยุดที่อนุมัติแล้ว — ข้อความอธิบายว่าสลับกับวันไหน */
+  swapNote?: string
 }
 
 export interface AttendanceReportFilters {
@@ -205,13 +207,46 @@ async function fetchReportAll(
 
   const raw = (data ?? []) as ReportRow[]
   const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(raw.map((r) => r.user_id), client)
+  const [names, swaps] = await Promise.all([
+    getDisplayNames(raw.map((r) => r.user_id), client),
+    swapNotes(filters.startDate, endCapped, client),
+  ])
   const rows = raw.map((r) => {
     const row = toReportData(r)
     row.userName = names.get(r.user_id) || row.userName
+    const swap = swaps.get(`${r.user_id}|${r.work_date}`)
+    if (swap) {
+      row.swapNote = swap
+      row.note = row.note ? `${row.note} · ${swap}` : swap
+    }
     return row
   })
   return { rows, total: rows.length }
+}
+
+/**
+ * หมายเหตุใบสลับวันหยุดของช่วงนั้น — คีย์ "คน|วันที่"
+ *
+ * พออนุมัติใบ วันที่มาทำงานกลายเป็นวันทำงานปกติ และวันที่หยุดชดเชยกลายเป็น
+ * วันหยุดตามตาราง เลขทุกอย่างถูกต้องแล้วแต่ **เรื่องราวหายไปจากรายงาน** —
+ * เปิดดูไม่รู้เลยว่าวันที่ 25 หยุดเพราะไปทำงานแทนวันที่ 9
+ * (เจ้าของสั่งให้แสดง 16 ส.ค. 69)
+ */
+async function swapNotes(
+  from: Date,
+  to: Date,
+  client?: Db
+): Promise<Map<string, string>> {
+  const { data } = await (client ?? sb())
+    .from('schedule_exceptions')
+    .select('user_id, exception_date, note')
+    .gte('exception_date', ymd(from))
+    .lte('exception_date', ymd(to))
+    .like('note', '[ใบสลับวันหยุด]%')
+
+  return new Map(
+    (data ?? []).map((e) => [`${e.user_id}|${e.exception_date}`, e.note.replace('[ใบสลับวันหยุด] ', '')])
+  )
 }
 
 /** วันทำงาน/สัปดาห์ของแต่ละคน — ใช้คิดวันขาดของกะหมุนเวียน */

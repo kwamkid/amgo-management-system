@@ -10,6 +10,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // ให้ import ลงท้าย .ts ได้ — สคริปต์เทสต์รัน .ts ตรง ๆ ด้วย node
+    // (node type-stripping ต้องมีนามสกุลเต็ม ไม่เดา extension ให้)
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

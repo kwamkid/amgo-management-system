@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/shared'
 
 import { useState, useEffect } from 'react'
 import { useCheckIn } from '@/hooks/useCheckIn'
+import SwapDayPrompt from './SwapDayPrompt'
 import { useLocations } from '@/hooks/useLocations'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -51,6 +52,8 @@ export default function CheckInButton() {
     checkIn,
     checkOut,
     getCurrentLocation,
+    swapPromptDate,
+    dismissSwapPrompt,
     loading,
     error
   } = useCheckIn()
@@ -474,6 +477,11 @@ export default function CheckInButton() {
           onCancel={() => setShowShiftSelector(false)}
           currentTime={currentTime}
         />
+      )}
+
+      {/* เช็คอินตรงวันหยุดตัวเอง — ถามวันหยุดชดเชยตรงนี้เลย ตอนที่เขายังคิดเรื่องนี้อยู่ */}
+      {swapPromptDate && (
+        <SwapDayPrompt workedDate={swapPromptDate} onDone={dismissSwapPrompt} />
       )}
 
       {/* Camera Capture */}

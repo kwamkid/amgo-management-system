@@ -2301,6 +2301,80 @@ export type Database = {
           },
         ]
       }
+      schedule_swaps: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          off_date: string
+          reason: string
+          rejected_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          user_name: string
+          worked_date: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          off_date: string
+          reason?: string
+          rejected_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_name?: string
+          worked_date: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          off_date?: string
+          reason?: string
+          rejected_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_name?: string
+          worked_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_swaps_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_swaps_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_swaps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_swaps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           created_at: string
@@ -2635,10 +2709,10 @@ export type Database = {
           influencer_name: string
           is_draft: boolean
           last_saved_at: string | null
-          status: string
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          status: string
           submitted_at: string | null
           updated_at: string
         }
@@ -2652,10 +2726,10 @@ export type Database = {
           influencer_name?: string
           is_draft?: boolean
           last_saved_at?: string | null
-          status?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          status?: string
           submitted_at?: string | null
           updated_at?: string
         }
@@ -2669,10 +2743,10 @@ export type Database = {
           influencer_name?: string
           is_draft?: boolean
           last_saved_at?: string | null
-          status?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          status?: string
           submitted_at?: string | null
           updated_at?: string
         }
@@ -3405,26 +3479,77 @@ export type Database = {
           },
         ]
       }
+      web_courses: {
+        Row: {
+          created_at: string
+          domain_amount: number
+          hosting_amount: number
+          id: string
+          name: string
+          period_end: string | null
+          period_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          name: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain_amount?: number
+          hosting_amount?: number
+          id?: string
+          name?: string
+          period_end?: string | null
+          period_start?: string | null
+        }
+        Relationships: []
+      }
+      web_false_positives: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          path_pattern: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          path_pattern: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          path_pattern?: string
+        }
+        Relationships: []
+      }
       web_host_secrets: {
         Row: {
           host_id: string
+          ssh_passphrase: string | null
           ssh_password: string | null
           ssh_private_key: string | null
-          ssh_passphrase: string | null
           updated_at: string
         }
         Insert: {
           host_id: string
+          ssh_passphrase?: string | null
           ssh_password?: string | null
           ssh_private_key?: string | null
-          ssh_passphrase?: string | null
           updated_at?: string
         }
         Update: {
           host_id?: string
+          ssh_passphrase?: string | null
           ssh_password?: string | null
           ssh_private_key?: string | null
-          ssh_passphrase?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3437,52 +3562,22 @@ export type Database = {
           },
         ]
       }
-      web_ssh_keys: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          passphrase: string | null
-          private_key: string
-          provider: string
-          public_key: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          passphrase?: string | null
-          private_key: string
-          provider?: string
-          public_key?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          passphrase?: string | null
-          private_key?: string
-          provider?: string
-          public_key?: string
-        }
-        Relationships: []
-      }
       web_hosts: {
         Row: {
           backup_keep: number
           created_at: string
           domains_path: string
           hardened: boolean
-          has_password: boolean
-          is_own_business: boolean
-          plan_expires_at: string | null
           has_key: boolean
+          has_password: boolean
           id: string
-          key_id: string | null
           is_active: boolean
+          is_own_business: boolean
+          key_id: string | null
           last_discovered_at: string | null
           name: string
           notes: string | null
+          plan_expires_at: string | null
           provider: string
           ssh_host: string
           ssh_port: number
@@ -3493,16 +3588,16 @@ export type Database = {
           created_at?: string
           domains_path?: string
           hardened?: boolean
-          has_password?: boolean
-          is_own_business?: boolean
-          plan_expires_at?: string | null
           has_key?: boolean
+          has_password?: boolean
           id?: string
-          key_id?: string | null
           is_active?: boolean
+          is_own_business?: boolean
+          key_id?: string | null
           last_discovered_at?: string | null
           name: string
           notes?: string | null
+          plan_expires_at?: string | null
           provider?: string
           ssh_host: string
           ssh_port?: number
@@ -3513,22 +3608,30 @@ export type Database = {
           created_at?: string
           domains_path?: string
           hardened?: boolean
-          has_password?: boolean
-          is_own_business?: boolean
-          plan_expires_at?: string | null
           has_key?: boolean
+          has_password?: boolean
           id?: string
-          key_id?: string | null
           is_active?: boolean
+          is_own_business?: boolean
+          key_id?: string | null
           last_discovered_at?: string | null
           name?: string
           notes?: string | null
+          plan_expires_at?: string | null
           provider?: string
           ssh_host?: string
           ssh_port?: number
           ssh_user?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "web_hosts_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "web_ssh_keys"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       web_jobs: {
         Row: {
@@ -3536,11 +3639,11 @@ export type Database = {
           batch_id: string | null
           finished_at: string | null
           force: boolean
+          host_id: string | null
+          id: string
           progress_done: number
           progress_note: string | null
           progress_total: number
-          host_id: string | null
-          id: string
           queued_at: string
           raw_log: string | null
           site_id: string | null
@@ -3555,11 +3658,11 @@ export type Database = {
           batch_id?: string | null
           finished_at?: string | null
           force?: boolean
+          host_id?: string | null
+          id?: string
           progress_done?: number
           progress_note?: string | null
           progress_total?: number
-          host_id?: string | null
-          id?: string
           queued_at?: string
           raw_log?: string | null
           site_id?: string | null
@@ -3574,11 +3677,11 @@ export type Database = {
           batch_id?: string | null
           finished_at?: string | null
           force?: boolean
+          host_id?: string | null
+          id?: string
           progress_done?: number
           progress_note?: string | null
           progress_total?: number
-          host_id?: string | null
-          id?: string
           queued_at?: string
           raw_log?: string | null
           site_id?: string | null
@@ -3612,90 +3715,6 @@ export type Database = {
           },
         ]
       }
-      web_run_batches: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          done_jobs: number
-          failed_jobs: number
-          finished_at: string | null
-          id: string
-          total_jobs: number
-          type: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          done_jobs?: number
-          failed_jobs?: number
-          finished_at?: string | null
-          id?: string
-          total_jobs?: number
-          type: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          done_jobs?: number
-          failed_jobs?: number
-          finished_at?: string | null
-          id?: string
-          total_jobs?: number
-          type?: string
-        }
-        Relationships: []
-      }
-      web_false_positives: {
-        Row: {
-          created_at: string
-          description: string
-          id: string
-          path_pattern: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string
-          id?: string
-          path_pattern: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          id?: string
-          path_pattern?: string
-        }
-        Relationships: []
-      }
-      web_courses: {
-        Row: {
-          created_at: string
-          domain_amount: number
-          hosting_amount: number
-          id: string
-          name: string
-          period_end: string | null
-          period_start: string | null
-        }
-        Insert: {
-          created_at?: string
-          domain_amount?: number
-          hosting_amount?: number
-          id?: string
-          name: string
-          period_end?: string | null
-          period_start?: string | null
-        }
-        Update: {
-          created_at?: string
-          domain_amount?: number
-          hosting_amount?: number
-          id?: string
-          name?: string
-          period_end?: string | null
-          period_start?: string | null
-        }
-        Relationships: []
-      }
       web_owners: {
         Row: {
           added_at: string
@@ -3710,6 +3729,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "web_owners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "web_owners_user_id_fkey"
             columns: ["user_id"]
@@ -3801,6 +3827,54 @@ export type Database = {
           },
         ]
       }
+      web_run_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          done_jobs: number
+          failed_jobs: number
+          finished_at: string | null
+          id: string
+          total_jobs: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          done_jobs?: number
+          failed_jobs?: number
+          finished_at?: string | null
+          id?: string
+          total_jobs?: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          done_jobs?: number
+          failed_jobs?: number
+          finished_at?: string | null
+          id?: string
+          total_jobs?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_run_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_run_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       web_site_logs: {
         Row: {
           created_at: string
@@ -3831,6 +3905,13 @@ export type Database = {
             foreignKeyName: "web_site_logs_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_site_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -3845,6 +3926,7 @@ export type Database = {
       }
       web_sites: {
         Row: {
+          blocked_plugin_count: number
           course_id: string | null
           created_at: string
           domain_expires_at: string | null
@@ -3852,27 +3934,26 @@ export type Database = {
           domain_registrar: string | null
           domain_self_registered: boolean
           down_since: string | null
-          page_issue: string | null
+          host_id: string | null
           hosting_account: string | null
           hosting_expires_at: string | null
           hosting_provider: string | null
-          host_id: string | null
-          is_own_business: boolean
-          last_backup_at: string | null
-          last_backup_file: string | null
-          last_scan_at: string | null
-          last_scan_status: string
-          pending_plugin_count: number
-          blocked_plugin_count: number
-          plugin_count: number
-          public_html_path: string | null
           http_status: number | null
           id: string
           is_active: boolean
+          is_own_business: boolean
+          last_backup_at: string | null
+          last_backup_file: string | null
           last_checked_at: string | null
+          last_scan_at: string | null
+          last_scan_status: string
           last_up_at: string | null
           notes: string | null
+          page_issue: string | null
+          pending_plugin_count: number
+          plugin_count: number
           plugins_checked_at: string | null
+          public_html_path: string | null
           response_ms: number | null
           site_name: string
           ssh_host: string | null
@@ -3887,6 +3968,7 @@ export type Database = {
           wp_version: string | null
         }
         Insert: {
+          blocked_plugin_count?: number
           course_id?: string | null
           created_at?: string
           domain_expires_at?: string | null
@@ -3894,27 +3976,26 @@ export type Database = {
           domain_registrar?: string | null
           domain_self_registered?: boolean
           down_since?: string | null
-          page_issue?: string | null
+          host_id?: string | null
           hosting_account?: string | null
           hosting_expires_at?: string | null
           hosting_provider?: string | null
-          host_id?: string | null
-          is_own_business?: boolean
-          last_backup_at?: string | null
-          last_backup_file?: string | null
-          last_scan_at?: string | null
-          last_scan_status?: string
-          pending_plugin_count?: number
-          blocked_plugin_count?: number
-          plugin_count?: number
-          public_html_path?: string | null
           http_status?: number | null
           id?: string
           is_active?: boolean
+          is_own_business?: boolean
+          last_backup_at?: string | null
+          last_backup_file?: string | null
           last_checked_at?: string | null
+          last_scan_at?: string | null
+          last_scan_status?: string
           last_up_at?: string | null
           notes?: string | null
+          page_issue?: string | null
+          pending_plugin_count?: number
+          plugin_count?: number
           plugins_checked_at?: string | null
+          public_html_path?: string | null
           response_ms?: number | null
           site_name: string
           ssh_host?: string | null
@@ -3929,6 +4010,7 @@ export type Database = {
           wp_version?: string | null
         }
         Update: {
+          blocked_plugin_count?: number
           course_id?: string | null
           created_at?: string
           domain_expires_at?: string | null
@@ -3936,27 +4018,26 @@ export type Database = {
           domain_registrar?: string | null
           domain_self_registered?: boolean
           down_since?: string | null
-          page_issue?: string | null
+          host_id?: string | null
           hosting_account?: string | null
           hosting_expires_at?: string | null
           hosting_provider?: string | null
-          host_id?: string | null
-          is_own_business?: boolean
-          last_backup_at?: string | null
-          last_backup_file?: string | null
-          last_scan_at?: string | null
-          last_scan_status?: string
-          pending_plugin_count?: number
-          blocked_plugin_count?: number
-          plugin_count?: number
-          public_html_path?: string | null
           http_status?: number | null
           id?: string
           is_active?: boolean
+          is_own_business?: boolean
+          last_backup_at?: string | null
+          last_backup_file?: string | null
           last_checked_at?: string | null
+          last_scan_at?: string | null
+          last_scan_status?: string
           last_up_at?: string | null
           notes?: string | null
+          page_issue?: string | null
+          pending_plugin_count?: number
+          plugin_count?: number
           plugins_checked_at?: string | null
+          public_html_path?: string | null
           response_ms?: number | null
           site_name?: string
           ssh_host?: string | null
@@ -3972,17 +4053,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "web_sites_host_id_fkey"
-            columns: ["host_id"]
-            isOneToOne: false
-            referencedRelation: "web_hosts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "web_sites_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "web_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "web_sites_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "web_hosts"
             referencedColumns: ["id"]
           },
         ]
@@ -4034,6 +4115,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      web_ssh_keys: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          passphrase: string | null
+          private_key: string
+          provider: string
+          public_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          passphrase?: string | null
+          private_key: string
+          provider?: string
+          public_key?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          passphrase?: string | null
+          private_key?: string
+          provider?: string
+          public_key?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -4206,13 +4317,9 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: never; Returns: boolean }
-      is_web_owner: { Args: never; Returns: boolean }
-      web_claim_jobs: {
-        Args: { p_limit?: number }
-        Returns: Database["public"]["Tables"]["web_jobs"]["Row"][]
-      }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }
+      is_web_owner: { Args: never; Returns: boolean }
       months_of_service: { Args: { p_start: string }; Returns: number }
       pay_items_total: {
         Args: { p_date: string; p_user_id: string }
@@ -4264,6 +4371,34 @@ export type Database = {
         }[]
       }
       user_requires_checkin: { Args: { p_user_id: string }; Returns: boolean }
+      web_claim_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          batch_id: string | null
+          finished_at: string | null
+          force: boolean
+          host_id: string | null
+          id: string
+          progress_done: number
+          progress_note: string | null
+          progress_total: number
+          queued_at: string
+          raw_log: string | null
+          site_id: string | null
+          started_at: string | null
+          status: string
+          summary: Json | null
+          triggered_by: string
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "web_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never

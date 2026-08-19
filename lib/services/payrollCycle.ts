@@ -110,6 +110,32 @@ export function cycleWindow(cycle: CycleCode, month: Date): CycleWindow {
   }
 }
 
+/**
+ * งวดที่วันนี้ตกอยู่ — เดินหาจากเดือนของวันนั้นเป็นหลัก แล้วเผื่อเดือนข้างเคียง
+ * เพราะขอบงวดไม่ตรงกับขอบเดือน (c28 ของงวดกันยายนเริ่ม 26 ส.ค.)
+ *
+ * ใช้ตรวจว่าใบสลับวันหยุดอยู่งวดเดียวกันไหม — เจ้าของสั่ง 16 ส.ค. 69 ว่า
+ * ต้องหยุดชดเชยภายในงวดเดียวกัน ไม่งั้นวันทำงานที่จ่ายไปแล้วกับวันหยุดที่
+ * ชดเชยทีหลังจะไปคนละงวด แก้ย้อนหลังไม่ได้เพราะงวดก่อนตัดยอดไปแล้ว
+ */
+export function periodOf(cycle: CycleCode, date: Date): CycleWindow {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  for (const offset of [0, 1, -1]) {
+    const month = new Date(d.getFullYear(), d.getMonth() + offset, 1)
+    const w = cycleWindow(cycle, month)
+    if (d >= w.from && d <= w.to) return w
+  }
+  // ไปไม่ถึงตรงนี้ — งวดต่อกันสนิทเสมอ (มีเทสต์ตรึงไว้)
+  return cycleWindow(cycle, new Date(d.getFullYear(), d.getMonth(), 1))
+}
+
+/** สองวันนี้อยู่งวดเดียวกันไหม */
+export function sameCyclePeriod(cycle: CycleCode, a: Date, b: Date): boolean {
+  const pa = periodOf(cycle, a)
+  const pb = periodOf(cycle, b)
+  return pa.to.getTime() === pb.to.getTime()
+}
+
 /** ถึงวันตัดยอดของงวดนี้หรือยัง (ใช้ล็อกไม่ให้บันทึกงวดที่ยังไม่ปิด) */
 export function isCutoffPassed(cycle: CycleCode, month: Date, now: Date = new Date()): boolean {
   const cutoff = cutoffDate(cycle, month)

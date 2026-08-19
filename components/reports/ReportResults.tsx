@@ -717,6 +717,8 @@ function DaySlotGrid({
     // holiday รวม ลา/วันหยุดตามตาราง/ไม่ต้องเช็คอิน — แยกด้วยหมายเหตุ
     if (c.hours > 0) return `${presenceClass(c)} ring-1 ring-green-800` // มาทำงานวันหยุด
     if (c.note.includes('ลา')) return 'bg-sky-500'
+    // หยุดชดเชยจากใบสลับวันหยุด — ต่างจากวันหยุดประจำเฉย ๆ ต้องดูออกจากตาราง
+    if (c.note.includes('หยุดชดเชย')) return 'bg-gray-200 ring-1 ring-indigo-500'
     return 'bg-gray-200'
   }
 
@@ -756,6 +758,7 @@ function DaySlotGrid({
     ['bg-red-500', 'ขาด'],
     ['bg-sky-500', 'ลา'],
     ['bg-gray-200', 'วันหยุด/ไม่ต้องเช็คอิน'],
+    ['bg-gray-200 ring-1 ring-indigo-500', 'หยุดชดเชย (สลับวันหยุด)'],
   ] as const
 
   return (

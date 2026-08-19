@@ -21,6 +21,9 @@ interface UseCheckInReturn {
   availableShifts: Shift[]
   selectedLocation: any | null
   showShiftSelector: boolean
+  /** เพิ่งเช็คอินตรงวันหยุดของตัวเอง — หน้าจอเอาไปถามว่าจะไปหยุดวันไหนแทน */
+  swapPromptDate: Date | null
+  dismissSwapPrompt: () => void
 
   // Actions
   checkIn: (selectedShift?: Shift, isWFH?: boolean, photoUrl?: string) => Promise<void>
@@ -40,6 +43,8 @@ export function useCheckIn(): UseCheckInReturn {
   const { showToast } = useToast()
   const { locations } = useLocations(true) // Active locations only
   
+  /** วันที่เพิ่งเช็คอินไปทั้งที่เป็นวันหยุดของตัวเอง — null = ไม่ต้องถาม */
+  const [swapPromptDate, setSwapPromptDate] = useState<Date | null>(null)
   const [currentCheckIn, setCurrentCheckIn] = useState<CheckInRecord | null>(null)
   const [isCheckingIn, setIsCheckingIn] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -65,6 +70,25 @@ export function useCheckIn(): UseCheckInReturn {
       
       const activeCheckIn = await checkinService.getActiveCheckIn(userData.id)
       setCurrentCheckIn(activeCheckIn)
+
+      // ── เช็คอินค้างอยู่ในวันหยุดของตัวเอง แต่ยังไม่ได้ยื่นใบสลับ = ถามซ้ำ ──
+      // เจ้าของสั่งว่าห้ามข้าม (16 ส.ค. 69) — ถ้าเด้งแค่ตอนกดเช็คอินครั้งเดียว
+      // แค่ refresh ก็หนีได้ กลายเป็นบังคับแต่ในนาม
+      if (activeCheckIn?.checkinTime) {
+        const cin = new Date(activeCheckIn.checkinTime as Date)
+        if (cin.toDateString() === new Date().toDateString()) {
+          try {
+            const { expectedMode, hasSwapFor } = await import('@/lib/services/scheduleSwapService')
+            const [mode, filed] = await Promise.all([
+              expectedMode(userData.id, cin),
+              hasSwapFor(userData.id, cin),
+            ])
+            if (mode === 'off' && !filed) setSwapPromptDate(cin)
+          } catch {
+            // ถามไม่ได้ก็ไม่ควรทำให้หน้าเช็คอินพัง
+          }
+        }
+      }
     } catch (err) {
       console.error('Error fetching check-in status:', err)
       setError('ไม่สามารถโหลดข้อมูลการเช็คอินได้')
@@ -225,6 +249,18 @@ export function useCheckIn(): UseCheckInReturn {
         note: locationCheckResult.reason,
         checkinPhotoUrl: photoUrl,
       })
+
+      // ── มาทำงานตรงวันหยุดของตัวเอง = ถามเลยว่าจะไปหยุดวันไหนแทน ──────
+      // จังหวะนี้จังหวะเดียวที่เขาคิดเรื่องนี้อยู่ — พ้นไปแล้วไม่มีใครเดินไป
+      // กรอกใบเอง (schedule_exceptions มี 0 แถวมาตลอดทั้งที่มี UI ให้กรอก)
+      // เจ้าของทัก 16 ส.ค. 69: "เค้าไปทำงานก่อน แล้วกดเช็คอิน แล้วมันค่อยขึ้นว่าวันหยุดเค้า"
+      // fire-and-forget — ถามไม่ขึ้นก็ไม่กระทบการเช็คอิน
+      import('@/lib/services/scheduleSwapService')
+        .then(({ expectedMode }) => expectedMode(userData.id!, new Date()))
+        .then((mode) => {
+          if (mode === 'off') setSwapPromptDate(new Date())
+        })
+        .catch(() => {})
 
       // ตรวจหลังบ้าน: เครื่องนี้เช็คอินให้คนอื่นวันนี้ด้วยไหม (จับกดแทนกัน)
       // fire-and-forget — พลาดก็ไม่กวนการเช็คอิน
@@ -396,7 +432,10 @@ export function useCheckIn(): UseCheckInReturn {
     availableShifts,
     selectedLocation,
     showShiftSelector,
-    
+    /** เช็คอินตรงวันหยุดตัวเอง — หน้าจอเอาไปถามว่าจะไปหยุดวันไหนแทน */
+    swapPromptDate,
+    dismissSwapPrompt: () => setSwapPromptDate(null),
+
     // Actions
     checkIn,
     checkOut,

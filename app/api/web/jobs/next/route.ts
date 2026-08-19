@@ -406,17 +406,48 @@ async function runScan(sb: Admin, job: Job, target: SshTarget, path: string, sit
 
 async function runBackup(sb: Admin, job: Job, target: SshTarget, path: string, keep: number) {
   const r = await backupSite(target, path, keep)
-  const now = new Date().toISOString()
-  await sb
-    .from('web_sites')
-    .update({ last_backup_at: now, ...(r.file ? { last_backup_file: r.file } : {}) })
-    .eq('id', job.site_id!)
+
+  // ⚠️ เขียน last_backup_at เฉพาะตอนมีไฟล์จริงเท่านั้น
+  // ของเดิมเขียนทุกกรณีรวมถึงตอนยังทำไม่เสร็จ — หน้าเว็บจะขึ้นว่า "สำรองแล้ว
+  // เมื่อสักครู่" ตั้งแต่วินาทีที่เพิ่งสั่ง ทั้งที่ยังไม่มีไฟล์สักไบต์ ซึ่งเป็น
+  // คำโกหกที่อันตรายที่สุดในระบบสำรองข้อมูล (นึกว่ามีของ วันที่ต้องกู้จริงถึงรู้)
+  if (r.file) {
+    await sb
+      .from('web_sites')
+      .update({ last_backup_at: new Date().toISOString(), last_backup_file: r.file })
+      .eq('id', job.site_id!)
+  } else if (r.latest) {
+    // ไฟล์ที่รอบก่อนทำเสร็จ "หลังจากเราเลิกรอ" — เก็บตกให้ตรงนี้
+    // เว็บ 1–2 GB ใช้เวลาหลายนาที เกินหน้าต่างที่ฟังก์ชันรอไหว ถ้าไม่เก็บตก
+    // ไฟล์ที่สำรองสำเร็จจริงจะไม่มีวันถูกบันทึก หน้าเว็บขึ้น "ไม่มีไฟล์สำรอง" ตลอดไป
+    // ใช้ "เวลาแก้ไขไฟล์จริง" ไม่ใช่ now() — ไม่งั้นจะโม้ว่าเพิ่งสำรองเมื่อสักครู่
+    const { data: cur } = await sb
+      .from('web_sites')
+      .select('last_backup_file')
+      .eq('id', job.site_id!)
+      .single()
+    if (cur?.last_backup_file !== r.latest.file) {
+      await sb
+        .from('web_sites')
+        .update({ last_backup_at: r.latest.at, last_backup_file: r.latest.file })
+        .eq('id', job.site_id!)
+    }
+  }
+
   await sb.from('web_site_logs').insert({
     site_id: job.site_id!,
     kind: 'backup',
-    message: r.pending ? 'สั่ง backup แล้ว (ทำงานเบื้องหลังที่โฮสต์)' : `backup เสร็จ: ${r.file} ${r.size}`,
+    message: r.file
+      ? `backup เสร็จ: ${r.file} ${r.size}`
+      : r.running
+        ? 'ข้ามรอบนี้ — เว็บนี้มีงานสำรองทำค้างอยู่แล้วที่โฮสต์'
+        : 'สั่ง backup แล้ว กำลังทำงานเบื้องหลังที่โฮสต์ (ยังไม่บันทึกว่าสำเร็จจนกว่าจะเห็นไฟล์)',
   })
-  return { log: r.log, summary: { file: r.file, size: r.size, pending: r.pending } }
+
+  return {
+    log: r.log,
+    summary: { file: r.file, size: r.size, pending: r.pending, running: r.running, latest: r.latest },
+  }
 }
 
 /* ── ตัวรัน 1 job ────────────────────────────────────────────────────── */

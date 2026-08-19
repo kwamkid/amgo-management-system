@@ -284,35 +284,103 @@ export async function backupSite(
   target: SshTarget,
   path: string,
   keep: number
-): Promise<{ file: string; size: string; pending: boolean; log: string }> {
-  const dir = `${path}/wp-content/ai1wm-backups`
-  const before = await sshRun(target, `ls -t ${at(dir)}/*.wpress 2>/dev/null | head -1`)
-  const prev = before.out.trim()
+): Promise<{
+  file: string
+  size: string
+  pending: boolean
+  running: boolean
+  log: string
+  /** ไฟล์ล่าสุดที่มีอยู่บนโฮสต์ก่อนรอบนี้ — ใช้เก็บผลของรอบก่อนที่จบหลังเราเลิกรอ */
+  latest: { file: string; at: string; size: string } | null
+}> {
+  // ⚠️ ห้ามใช้ wpAt() ตรงนี้ — มันต่อ `--skip-plugins` ให้อัตโนมัติ ซึ่งบอก WP-CLI
+  // ว่า "อย่าโหลดปลั๊กอิน" แต่คำสั่ง `ai1wm` **เกิดจากปลั๊กอิน** All-in-One WP
+  // Migration เอง พอไม่โหลดมันก็ไม่ถูกลงทะเบียน ตอบ "'ai1wm' is not a registered
+  // wp command" ตั้งแต่ก่อนเริ่มสำรอง (บั๊กนี้ทำให้สำรองไม่เคยสำเร็จเลยสักครั้ง
+  // ตั้งแต่มีระบบ — พิสูจน์บนเว็บจริง 19 ส.ค. 69 รันสองบรรทัดติดกันต่างกันแค่ธง)
+  //
+  // ธงที่ตัดขยะออกจากไฟล์สำรองเป็นของ ai1wm เอง ชื่อ --exclude-* คนละตัวกับ --skip-*
+  // เอาครบทั้งฐานข้อมูล ไฟล์อัปโหลด ธีม ปลั๊กอิน (เจ้าของยืนยัน 19 ส.ค. 69) —
+  // เว็บลูกค้าหลายตัวใช้ปลั๊กอิน Pro ที่ license หมด ถ้าไม่ติดไปด้วยจะกู้กลับไม่ได้
+  const wpArgs = 'ai1wm backup --exclude-cache --exclude-spam-comments --exclude-post-revisions'
 
-  const { code, out, err } = await sshRun(
-    target,
-    `cd ${at(path)} && nohup sh -c 'wp ai1wm backup --skip-plugins --skip-themes' > ~/aoo-backup-last.log 2>&1 & echo started`
-  )
-  if (code !== 0) throw new Error(err.trim() || out.trim() || 'สั่ง backup ไม่สำเร็จ')
+  // ทำทุกอย่างในการต่อ SSH ครั้งเดียว — ของเดิมต่อใหม่ 9 ครั้ง (2 + วนดู 7 รอบ)
+  // ครั้งละ ~5.5 วิ บวกเวลานอนอีก 35 วิ = ~84 วิ ทะลุเพดาน Vercel 60 วิ
+  // ฟังก์ชันจึงถูกตัดก่อนได้ตอบ งานค้าง running แล้วตัวกวาดงานผีปิดให้ทีหลัง
+  // คราวนี้ให้ฝั่งโฮสต์เป็นคนนอนรอเอง เราจ่ายค่าต่อ SSH แค่ครั้งเดียว
+  const script = [
+    `cd ${at(path)} || exit 9`,
+    'BD=wp-content/ai1wm-backups',
+    'mkdir -p "$BD"',
+    'PREV=$(ls -t "$BD"/*.wpress 2>/dev/null | head -1)',
+    // รายงานไฟล์ล่าสุดที่ "มีอยู่แล้ว" กลับไปเสมอ พร้อมเวลาแก้ไขจริงของไฟล์
+    // เพราะงานสำรองของเว็บใหญ่จบหลังเราเลิกรอ — ถ้าไม่เก็บตรงนี้ ไฟล์ที่ทำสำเร็จ
+    // เมื่อรอบก่อนจะไม่มีวันถูกบันทึก หน้าเว็บก็ขึ้นว่า "ไม่มีไฟล์สำรอง" ตลอดไป
+    '[ -n "$PREV" ] && echo "LATEST:$(basename "$PREV")|$(date -r "$PREV" +%s 2>/dev/null)|$(du -h "$PREV" 2>/dev/null | cut -f1)"',
+    // ล็อกรายเว็บด้วย PID — โฮสต์อย่าง Hostinger วางหลายเว็บไว้ใต้ผู้ใช้เดียวกัน
+    // เช็คด้วย pgrep เฉย ๆ จะไปเห็นงานของเว็บอื่นแล้วนึกว่าของตัวเองกำลังทำอยู่
+    'LOCK="$BD/.aoo-backup.pid"',
+    'if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then',
+    '  echo RUNNING',
+    'else',
+    '  : > ~/aoo-backup-last.log',
+    `  nohup wp ${wpArgs} >> ~/aoo-backup-last.log 2>&1 &`,
+    '  echo $! > "$LOCK"',
+    '  echo STARTED',
+    'fi',
+    'for i in 1 2 3 4 5; do',
+    '  sleep 5',
+    '  F=$(ls -t "$BD"/*.wpress 2>/dev/null | head -1)',
+    '  if [ -n "$F" ] && [ "$F" != "$PREV" ]; then',
+    '    echo "NEW:$F"',
+    '    du -h "$F" 2>/dev/null | cut -f1',
+    `    (cd "$BD" && ls -t *.wpress 2>/dev/null | tail -n +${keep + 1} | xargs -r rm -f)`,
+    '    rm -f "$LOCK"',
+    '    exit 0',
+    '  fi',
+    'done',
+    'echo PENDING',
+    // ต่อให้ยังไม่เสร็จก็ต้องส่ง log กลับมาด้วยเสมอ — คำสั่งที่พังทันทีจะโผล่ตรงนี้
+    // ของเดิมยิงแบบ `nohup ... & echo started` ซึ่งคืน exit code ของ echo เสมอ 0
+    // error จึงไปนอนอยู่ในไฟล์ log ที่ไม่มีใครอ่าน นานเป็นเดือน
+    'echo ---LOG---',
+    'head -c 600 ~/aoo-backup-last.log 2>/dev/null',
+  ].join('\n')
 
-  // เฝ้าดูไฟล์ใหม่ ~35 วิ (เว็บเล็กเสร็จในนี้ เว็บใหญ่ปล่อยให้ทำต่อเบื้องหลัง)
-  for (let i = 0; i < 7; i++) {
-    await new Promise((r) => setTimeout(r, 5000))
-    const now = await sshRun(
-      target,
-      `f=$(ls -t ${at(dir)}/*.wpress 2>/dev/null | head -1); echo "$f"; [ -n "$f" ] && du -h "$f" | cut -f1`
-    )
-    const lines = now.out.split('\n').map((l) => l.trim()).filter(Boolean)
-    const file = lines[0] ?? ''
-    if (file && file !== prev) {
-      // ลบของเก่าที่เกินจำนวนที่ตั้งไว้ — backup สั่งเองสะสมเรื่อย ๆ กินพื้นที่โฮสต์
-      await sshRun(
-        target,
-        `cd ${at(dir)} && ls -t *.wpress 2>/dev/null | tail -n +${keep + 1} | xargs -r rm -f`
-      )
-      return { file: file.split('/').pop() ?? file, size: lines[1] ?? '', pending: false, log: '' }
-    }
+  // นอนฝั่งโฮสต์ 25 วิ + ต่อ SSH ~6 วิ = ~31 วิ · เผื่อถึง 45 ยังห่างเพดาน 60
+  const { out } = await sshRun(target, script, 45_000)
+
+  const latestLine = out.split('\n').find((l) => l.startsWith('LATEST:'))
+  const latest = (() => {
+    if (!latestLine) return null
+    const [file, epoch, size] = latestLine.slice(7).split('|')
+    const secs = Number(epoch)
+    if (!file || !Number.isFinite(secs) || secs <= 0) return null
+    return { file, at: new Date(secs * 1000).toISOString(), size: size ?? '' }
+  })()
+
+  const running = /^RUNNING$/m.test(out)
+  const newLine = out.split('\n').find((l) => l.startsWith('NEW:'))
+  if (newLine) {
+    const full = newLine.slice(4).trim()
+    const size = out.split('\n')[out.split('\n').indexOf(newLine) + 1]?.trim() ?? ''
+    return { file: full.split('/').pop() ?? full, size, pending: false, running: false, log: '', latest }
   }
 
-  return { file: '', size: '', pending: true, log: 'สั่งแล้ว กำลังทำงานเบื้องหลังที่โฮสต์' }
+  const tail = out.split('---LOG---')[1]?.trim() ?? ''
+  // คำสั่งพังทันที = ไม่ใช่ "กำลังทำเบื้องหลัง" ต้องโยนให้งานล้มพร้อมเหตุผลจริง
+  if (/is not a registered wp command|^Error:/m.test(tail)) {
+    throw new Error(`สั่ง backup ไม่สำเร็จ — ${tail.split('\n')[0].slice(0, 200)}`)
+  }
+
+  return {
+    file: '',
+    size: '',
+    pending: true,
+    running,
+    latest,
+    log: running
+      ? 'มีงานสำรองของเว็บนี้ทำค้างอยู่แล้วที่โฮสต์ — รอบนี้ไม่สั่งซ้ำ'
+      : `สั่งแล้ว กำลังทำงานเบื้องหลังที่โฮสต์${tail ? `\n${tail}` : ''}`,
+  }
 }

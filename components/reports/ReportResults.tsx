@@ -32,6 +32,7 @@ import {
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
 import { backfillWorkDay } from '@/lib/services/checkinService'
 import UserScheduleDialog from '@/components/users/UserScheduleDialog'
+import PersonalReport from './PersonalReport'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Input } from '@/components/ui/input'
@@ -71,11 +72,12 @@ export default function ReportResults({
   // เติมวันได้เฉพาะ HR/แอดมิน — RLS ฝั่งฐานข้อมูลกันซ้ำอีกชั้น
   const canBackfill = userData?.role === 'hr' || userData?.role === 'admin'
   const [backfillFor, setBackfillFor] = useState<AttendanceReportData | null>(null)
-  // กดชื่อพนักงาน → แก้ตารางวันทำงาน (วันทำงาน/สัปดาห์ · วันหยุดประจำ) ได้ตรงนั้นเลย
+  // กดชื่อพนักงาน → รายงานรายคนทั้งช่วง ลงรายวัน (เจ้าของสั่ง 18 ส.ค. 69)
+  // ของเดิมกดชื่อแล้วเปิดแก้ตารางเลย — ย้ายไปเป็นปุ่มในรายงานรายคนแทน
+  // เพราะดูของใครอยู่แล้วค่อยกดแก้ตารางเขา ต่อเนื่องกว่า
   const [scheduleFor, setScheduleFor] = useState<{ userId: string; name: string } | null>(null)
-  const openSchedule = canBackfill
-    ? (userId: string, name: string) => setScheduleFor({ userId, name })
-    : undefined
+  const [personFor, setPersonFor] = useState<{ userId: string; name: string } | null>(null)
+  const openPerson = (userId: string, name: string) => setPersonFor({ userId, name })
   
   // Handle page change with loading state
   const handlePageChange = async (page: number) => {
@@ -151,7 +153,7 @@ export default function ReportResults({
                 filters={filters}
                 rows={fullData}
                 summaryData={summaryData}
-                onNameClick={openSchedule}
+                onNameClick={openPerson}
               />
             )}
           </TabsContent>
@@ -183,7 +185,7 @@ export default function ReportResults({
           
           {/* Summary Report */}
           <TabsContent value="summary" className="mt-4">
-            <SummaryReportTable data={summaryData} onNameClick={openSchedule} />
+            <SummaryReportTable data={summaryData} onNameClick={openPerson} />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -196,6 +198,23 @@ export default function ReportResults({
             setBackfillFor(null)
             onDataChanged?.()
           }}
+        />
+      )}
+
+      {personFor && (
+        <PersonalReport
+          userName={personFor.name}
+          rows={fullData.filter((r) => r.userId === personFor.userId)}
+          summary={(summaryData || []).find((x: any) => x.userId === personFor.userId)}
+          onClose={() => setPersonFor(null)}
+          onEditSchedule={
+            canBackfill
+              ? () => {
+                  setScheduleFor(personFor)
+                  setPersonFor(null)
+                }
+              : undefined
+          }
         />
       )}
 
@@ -542,7 +561,7 @@ function SummaryReportTable({
                     type="button"
                     onClick={() => onNameClick(summary.userId, summary.userName)}
                     className="text-left hover:text-indigo-600 hover:underline"
-                    title="กดเพื่อแก้ตารางวันทำงาน"
+                    title="กดเพื่อดูรายงานรายคน"
                   >
                     {summary.userName}
                   </button>
@@ -813,7 +832,7 @@ function DaySlotGrid({
                       type="button"
                       onClick={() => onNameClick(p.userId, p.name)}
                       className="max-w-full truncate text-left hover:text-indigo-600 hover:underline"
-                      title="กดเพื่อแก้ตารางวันทำงาน"
+                      title="กดเพื่อดูรายงานรายคน"
                     >
                       {p.name}
                     </button>

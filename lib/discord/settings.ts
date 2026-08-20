@@ -22,6 +22,8 @@ export interface DiscordSettings {
     alerts: string
     campaign: string
     birthday: string
+    /** ห้อง "ลูกค้าให้ติดต่อกลับ" — iOS Shortcut ยิงเบอร์ลูกค้าเข้ามาที่นี่ */
+    callback: string
   }
   notifications: {
     checkIn: boolean
@@ -40,7 +42,7 @@ export interface DiscordSettings {
 }
 
 export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
-  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '', birthday: '' },
+  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '', birthday: '', callback: '' },
   notifications: {
     checkIn: true,
     checkOut: true,

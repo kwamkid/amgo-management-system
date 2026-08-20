@@ -13,6 +13,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
+import { targetForHost } from '@/lib/services/web/sshTarget'
+import { sshRun } from '@/lib/services/web/wpCli'
 
 export const maxDuration = 60
 
@@ -41,6 +43,15 @@ const PER_HOST = 2
 
 /** ทั้งรอบต้องจบก่อน Vercel ตัดที่ 60 วิ — เว็บที่ยิงไม่ทันปล่อยไว้เฉย ๆ ดีกว่าเดา */
 const RUN_BUDGET_MS = 45_000
+
+/** ยืนยันผ่าน SSH ใช้เวลาได้ถึงเท่านี้ */
+const HOST_CONFIRM_MS = 25_000
+
+/**
+ * หลังจากนี้ไม่ต้องเริ่มยืนยันผ่าน SSH แล้ว — เริ่มตอนวินาทีที่ 30 แล้วใช้อีก 25
+ * = 55 วิ ยังห่างเพดาน 60 อยู่นิดเดียว เกินกว่านี้เสี่ยงโดนตัดกลางคัน
+ */
+const CONFIRM_UNTIL_MS = 30_000
 
 /** อ่านแค่หัวหน้าเว็บพอให้เห็นอาการ — ไม่ดูดทั้งหน้า 50 เว็บทุกชั่วโมงให้เปลือง bandwidth */
 const HEAD_BYTES = 64 * 1024
@@ -171,6 +182,38 @@ async function probe(domain: string, deadline: number) {
   return { ...last, attempts }
 }
 
+/** โดเมนที่ยอมให้ยัดลงคำสั่ง shell ได้ — ค่ามาจาก DB ไม่ควรเชื่อ 100% */
+const SAFE_DOMAIN = /^[a-z0-9.-]+$/i
+
+/**
+ * ยิงจากตัวโฮสต์เองผ่าน SSH — ใช้ตอนยิงจากข้างนอกไม่ผ่าน
+ *
+ * SiteGround กันบอทตาม IP ของศูนย์ข้อมูล เว็บบนนั้นจึงตอบ Vercel เป็น 202
+ * ตัวเปล่าบ้าง ตัดสายเงียบ ๆ บ้าง ทั้งที่เว็บปกติดี — ของจริง 20 ส.ค. 69
+ * joolzjuice.com ตอบ 200 พร้อม 583 KB ทั้ง 8 ครั้งจากเครื่องคนและจากตัวโฮสต์เอง
+ * ขณะที่ Vercel หมดเวลา 3 ครั้งรวด · ปัญหาอยู่ที่จุดยืนที่เรามอง ไม่ใช่ที่เว็บ
+ *
+ * ⚠️ ยืนยันจากโฮสต์ไม่ใช่การเช็คจากภายนอกจริง — จับกรณี DNS เพี้ยนหรือไฟร์วอลล์
+ * ปิดโลกไม่ได้ · แต่ใช้เป็น "ตัวตัดสินเมื่อเราถูกบล็อก" ดีกว่าประกาศว่าล่มทั้งที่ไม่ล่ม
+ */
+async function upFromHost(sb: ReturnType<typeof createAdminClient>, site: Site) {
+  if (!site.host_id || !SAFE_DOMAIN.test(site.site_name)) return null
+  try {
+    const { data: host } = await sb.from('web_hosts').select('*').eq('id', site.host_id).single()
+    if (!host) return null
+    const target = await targetForHost(sb, host)
+    const { out } = await sshRun(
+      target,
+      `curl -sL -o /dev/null --max-time 15 -w '%{http_code}' https://${site.site_name}`,
+      HOST_CONFIRM_MS
+    )
+    const code = Number(out.trim().slice(-3))
+    return Number.isFinite(code) && code >= 200 && code < 400 ? code : null
+  } catch {
+    return null
+  }
+}
+
 const ISSUE_TEXT: Record<string, string> = {
   critical_error: 'WordPress ขึ้น critical error',
   db_error: 'ต่อฐานข้อมูลไม่ได้',
@@ -193,8 +236,11 @@ async function run(onlySiteId?: string) {
   const now = new Date().toISOString()
   let down = 0
   let broken = 0
+  /** ยิงจากข้างนอกไม่ผ่านแต่ตัวโฮสต์ยืนยันว่าขึ้น = เราถูกบล็อก ไม่ใช่เว็บล่ม */
+  let blocked = 0
 
-  const deadline = Date.now() + RUN_BUDGET_MS
+  const runStart = Date.now()
+  const deadline = runStart + RUN_BUDGET_MS
   let skipped = 0
 
   // แบ่งตามโฮสต์ แล้วเดินทีละโฮสต์ขนานกัน — โฮสต์หนึ่งโดนพร้อมกันไม่เกิน PER_HOST
@@ -226,10 +272,20 @@ async function run(onlySiteId?: string) {
     })
   )
 
-  return { checked: sites.length - skipped, skipped, down, broken }
+  return { checked: sites.length - skipped, skipped, down, broken, blocked }
 
   async function one(site: Site) {
-    const r = await probe(site.site_name, deadline)
+    let r = await probe(site.site_name, deadline)
+
+    // ยิงจากข้างนอกไม่ผ่าน — ถามตัวโฮสต์ก่อนว่าเว็บขึ้นไหม ก่อนจะประกาศว่าล่ม
+    if (!r.up && Date.now() - runStart < CONFIRM_UNTIL_MS) {
+      const code = await upFromHost(sb, site)
+      if (code) {
+        r = { ...r, up: true, status: code, issue: null }
+        blocked++
+      }
+    }
+
     if (!r.up) down++
     if (r.issue) broken++
 

@@ -468,7 +468,17 @@ export async function backupSite(
 
   const tail = out.split('---LOG---')[1]?.trim() ?? ''
   // คำสั่งพังทันที = ไม่ใช่ "กำลังทำเบื้องหลัง" ต้องโยนให้งานล้มพร้อมเหตุผลจริง
-  if (/is not a registered wp command|^Error:/m.test(tail)) {
+  //
+  // "Unlimited Extension" อยู่ในลิสต์เพราะปลั๊กอิน ai1wm **ตัวฟรีสำรองผ่าน CLI
+  // ไม่ได้** ต้องมีส่วนเสริมแบบเสียเงิน · มันตอบเป็นข้อความธรรมดาไม่ขึ้นต้นว่า
+  // Error จึงรอดด่านเดิมไปขึ้นว่า "กำลังทำงานเบื้องหลัง" ทั้งที่แพ้ไปแล้ว
+  // (เจอ 20 ส.ค. 69 ตอนติดตั้งตัวฟรีให้ 2 เว็บที่ยังไม่มี แล้วสำรองไม่ออก)
+  const FATAL = [
+    /is not a registered wp command/,
+    /available in Unlimited Extension/i,
+    /^Error:/m,
+  ]
+  if (FATAL.some((re) => re.test(tail))) {
     throw new Error(`สั่ง backup ไม่สำเร็จ — ${tail.split('\n')[0].slice(0, 200)}`)
   }
 

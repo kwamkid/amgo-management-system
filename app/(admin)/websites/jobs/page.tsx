@@ -18,6 +18,7 @@ import {
   Clock,
   Download,
   ExternalLink,
+  FolderCheck,
   ListChecks,
   Loader2,
   PlayCircle,
@@ -69,6 +70,7 @@ const TYPE_LABEL: Record<WebJob['type'], string> = {
   plugin_check: 'ตรวจปลั๊กอิน',
   scan: 'สแกนมัลแวร์',
   backup: 'สำรองข้อมูล',
+  backup_check: 'ตรวจไฟล์สำรอง',
   discover: 'สำรวจรายชื่อเว็บ',
 }
 
@@ -102,6 +104,7 @@ const FLEET_ACTIONS = [
   { type: 'plugin_update', Icon: Puzzle, label: 'อัปเดตปลั๊กอิน' },
   { type: 'scan', Icon: ShieldCheck, label: 'สแกนมัลแวร์' },
   { type: 'backup', Icon: Download, label: 'สำรองข้อมูล' },
+  { type: 'backup_check', Icon: FolderCheck, label: 'ตรวจไฟล์สำรอง' },
 ] as const
 
 /**
@@ -123,6 +126,10 @@ const FLEET_RISK: Record<
   scan: {
     tone: 'primary',
     note: 'อ่านอย่างเดียว ไม่แตะไฟล์บนเว็บ · แต่กิน CPU โฮสต์ตอนไล่อ่านทุกไฟล์',
+  },
+  backup_check: {
+    tone: 'primary',
+    note: 'ไม่สร้างไฟล์ใหม่ — แค่ไปดูว่าไฟล์ที่ทำค้างไว้เสร็จหรือยัง แล้วลบก้อนเก่าที่เกินโควตาของโฮสต์ทิ้ง',
   },
   backup: {
     tone: 'primary',

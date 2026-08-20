@@ -46,7 +46,7 @@ export interface WebHost {
 export interface WebJob {
   id: string
   batchId: string | null
-  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
+  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'backup_check' | 'discover'
   status: 'queued' | 'running' | 'done' | 'failed'
   hostId: string | null
   siteId: string | null

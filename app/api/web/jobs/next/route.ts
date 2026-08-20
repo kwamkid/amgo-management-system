@@ -24,6 +24,7 @@ import {
 } from '@/lib/services/web/jobBudget'
 import {
   backupSite,
+  collectBackup,
   coreVersion,
   discoverSites,
   latestBackup,
@@ -42,7 +43,7 @@ type Admin = ReturnType<typeof createAdminClient>
 type Job = {
   id: string
   batch_id: string | null
-  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'discover'
+  type: 'scan' | 'plugin_update' | 'plugin_check' | 'backup' | 'backup_check' | 'discover'
   host_id: string | null
   site_id: string | null
   /** ผู้ใช้กดสั่งเว็บนี้เอง = ขอลองอัปเดตใหม่ทุกตัว ไม่สนประวัติที่เคยยอมแพ้ */
@@ -424,6 +425,87 @@ async function runScan(sb: Admin, job: Job, target: SshTarget, path: string, sit
   }
 }
 
+/** ไล่ต่อคิวได้มากสุดกี่ใบต่อการสำรอง 1 ครั้ง — ที่ cron ทุก 2 นาที = เฝ้าราว 30 นาที */
+const BACKUP_CHECK_MAX = 15
+
+/** ต่อคิวงานไปดูไฟล์สำรองอีกรอบ — คืน false เมื่อเฝ้ามานานพอแล้ว */
+async function queueBackupCheck(sb: Admin, job: Job): Promise<boolean> {
+  const since = new Date(Date.now() - 60 * 60_000).toISOString()
+  const { count } = await sb
+    .from('web_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('type', 'backup_check')
+    .eq('site_id', job.site_id!)
+    .gte('queued_at', since)
+  if ((count ?? 0) >= BACKUP_CHECK_MAX) return false
+
+  await sb.from('web_jobs').insert({
+    type: 'backup_check',
+    host_id: job.host_id,
+    site_id: job.site_id,
+    triggered_by: 'schedule',
+  })
+  return true
+}
+
+/**
+ * ไปดูว่าไฟล์สำรองมาหรือยัง + เก็บกวาดของเก่า — ไม่สั่งสำรองใหม่
+ *
+ * ปิดรูที่ทำให้ "กดสำรองแล้วหน้าจอไม่ขึ้น": งานสำรองรอไฟล์ได้แค่ 25 วิ แล้วต้อง
+ * ปล่อยไป (Vercel ตัดที่ 60) ส่วนไฟล์ 1 GB ขึ้นไปเสร็จช้ากว่านั้นเสมอ
+ * งานนี้จึงมาเก็บผลทีหลัง และถ้ายังไม่เสร็จก็ต่อคิวตัวเองใหม่จนกว่าจะเจอ
+ */
+async function runBackupCheck(sb: Admin, job: Job, target: SshTarget, path: string, keep: number) {
+  const r = await collectBackup(target, path, keep)
+
+  const { data: cur } = await sb
+    .from('web_sites')
+    .select('last_backup_file')
+    .eq('id', job.site_id!)
+    .single()
+
+  const isNew = !!r.latest && cur?.last_backup_file !== r.latest.file
+  if (r.latest && isNew) {
+    // เวลาแก้ไขไฟล์จริง ไม่ใช่ now() — ไฟล์ปี 2023 ต้องขึ้นว่าเก่า 3 ปี
+    await sb
+      .from('web_sites')
+      .update({ last_backup_at: r.latest.at, last_backup_file: r.latest.file })
+      .eq('id', job.site_id!)
+    await sb.from('web_site_logs').insert({
+      site_id: job.site_id!,
+      kind: 'backup',
+      message: `backup เสร็จ: ${r.latest.file} ${r.latest.size}`,
+    })
+  }
+
+  const freedMb = Math.round(r.freedKb / 1024)
+  const parts = [
+    r.latest ? `ไฟล์ล่าสุด: ${r.latest.file} (${r.latest.size})` : 'ยังไม่มีไฟล์สำรองเลย',
+    isNew ? '→ บันทึกเป็นไฟล์ใหม่แล้ว' : '',
+    r.pruned.length ? `ลบของเก่า ${r.pruned.length} ไฟล์ คืนพื้นที่ ~${freedMb} MB:\n  ${r.pruned.join('\n  ')}` : '',
+  ].filter(Boolean)
+
+  // ยังทำอยู่และยังไม่เห็นของใหม่ = กลับมาดูอีกรอบ
+  let watching = false
+  if (!isNew && r.running) {
+    watching = await queueBackupCheck(sb, job)
+    parts.push(watching ? 'ยังสำรองอยู่ — ต่อคิวไปดูอีกรอบแล้ว' : 'ยังสำรองอยู่ แต่เฝ้ามานานพอแล้ว — หยุดตามที่นี่')
+  }
+
+  return {
+    log: parts.join('\n'),
+    summary: {
+      file: r.latest?.file ?? '',
+      size: r.latest?.size ?? '',
+      recorded: isNew,
+      running: r.running,
+      watching,
+      pruned: r.pruned,
+      freedMb,
+    },
+  }
+}
+
 async function runBackup(sb: Admin, job: Job, target: SshTarget, path: string, keep: number) {
   const r = await backupSite(target, path, keep)
 
@@ -464,9 +546,20 @@ async function runBackup(sb: Admin, job: Job, target: SshTarget, path: string, k
         : 'สั่ง backup แล้ว กำลังทำงานเบื้องหลังที่โฮสต์ (ยังไม่บันทึกว่าสำเร็จจนกว่าจะเห็นไฟล์)',
   })
 
+  // ยังไม่เห็นไฟล์ = ต่อคิวตัวไปเก็บผลทีหลัง แทนที่จะปล่อยให้ผู้ใช้กดซ้ำเอง
+  // หรือรอถึงรอบตรวจตี 2 (ซึ่งคือสาเหตุที่ "กดแล้วไม่ขึ้น" ตั้งแต่แรก)
+  const watching = r.file ? false : await queueBackupCheck(sb, job)
+
   return {
-    log: r.log,
-    summary: { file: r.file, size: r.size, pending: r.pending, running: r.running, latest: r.latest },
+    log: watching ? `${r.log}\n→ ต่อคิวไปเก็บผลให้แล้ว อีกไม่กี่นาทีจะขึ้นเอง` : r.log,
+    summary: {
+      file: r.file,
+      size: r.size,
+      pending: r.pending,
+      running: r.running,
+      latest: r.latest,
+      watching,
+    },
   }
 }
 
@@ -490,6 +583,8 @@ async function runJob(sb: Admin, job: Job) {
   if (job.type === 'plugin_update') return runPluginUpdate(sb, job, target, site.public_html_path)
   if (job.type === 'scan') return runScan(sb, job, target, site.public_html_path, site.site_name)
   if (job.type === 'backup') return runBackup(sb, job, target, site.public_html_path, host.backup_keep)
+  if (job.type === 'backup_check')
+    return runBackupCheck(sb, job, target, site.public_html_path, host.backup_keep)
 
   // ห้ามมี fallback เป็นงานใดงานหนึ่ง — ถ้าเพิ่มชนิดงานใหม่ในฐานข้อมูลก่อนโค้ดขึ้น
   // production เวอร์ชันเก่าจะหยิบไปทำเป็นงานนั้นแทน (เกือบเกิดจริงกับ plugin_check)
@@ -537,6 +632,7 @@ async function finish(sb: Admin, job: Job, ok: boolean, log: string, summary: un
         plugin_check: 'ตรวจปลั๊กอิน',
         scan: 'สแกนมัลแวร์',
         backup: 'สำรองข้อมูล',
+        backup_check: 'ตรวจไฟล์สำรอง',
         discover: 'สำรวจรายชื่อเว็บ',
       })[batch.type as Job['type']] ?? batch.type
     // ต้องบอกว่า "ทำอะไรกับเว็บไหนบ้าง" — สรุปที่มีแต่ตัวเลขอ่านแล้วไม่รู้ว่า

@@ -311,6 +311,74 @@ export async function latestBackup(
   return { file, at: new Date(secs * 1000).toISOString(), size: size ?? '' }
 }
 
+/**
+ * ไปดูว่าไฟล์สำรองมาหรือยัง + เก็บกวาดของเก่าที่เกินโควตา — ไม่สั่งสำรองใหม่
+ *
+ * ใช้กับงาน backup_check ที่งานสำรองต่อคิวทิ้งไว้ให้ตัวเอง · ไฟล์ 1 GB ขึ้นไป
+ * เสร็จช้ากว่าที่งานสำรองรอไหว (25 วิ) เสมอ — ของ aducationthings.com เสร็จช้ากว่า
+ * ที่งานปิดตัวเองไปแค่ 2 วินาที แล้วหน้าเว็บก็ค้างว่า "สำรองล่าสุด 44 วันที่แล้ว"
+ *
+ * ลบของเก่าเฉพาะตอนไม่มีงานสำรองเดินอยู่ — ai1wm เขียนลง .wpress ตรง ๆ ระหว่างทำ
+ * ถ้าเผลอไปลบตอนมันกำลังเขียน จะได้ไฟล์พังแทนที่จะได้ไฟล์สำรอง
+ */
+export async function collectBackup(
+  target: SshTarget,
+  path: string,
+  keep: number,
+  timeoutMs = 20_000
+): Promise<{
+  latest: { file: string; at: string; size: string } | null
+  running: boolean
+  pruned: string[]
+  freedKb: number
+}> {
+  const { out } = await sshRun(
+    target,
+    [
+      `cd ${at(path)} 2>/dev/null || exit 0`,
+      'BD=wp-content/ai1wm-backups',
+      'LOCK="$BD/.aoo-backup.pid"',
+      'RUNNING=0',
+      // ล็อกค้างที่ process ตายไปแล้วต้องเก็บกวาด ไม่งั้นระบบจะนึกว่ายังสำรองอยู่ตลอดกาล
+      'if [ -f "$LOCK" ]; then',
+      '  if kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then RUNNING=1; else rm -f "$LOCK"; fi',
+      'fi',
+      'echo "RUNNING:$RUNNING"',
+      'F=$(ls -t "$BD"/*.wpress 2>/dev/null | head -1)',
+      '[ -n "$F" ] && echo "LATEST:$(basename "$F")|$(date -r "$F" +%s 2>/dev/null)|$(du -h "$F" 2>/dev/null | cut -f1)"',
+      'if [ "$RUNNING" = "0" ]; then',
+      `  ls -t "$BD"/*.wpress 2>/dev/null | tail -n +${keep + 1} | while IFS= read -r old; do`,
+      '    sz=$(du -k "$old" 2>/dev/null | cut -f1)',
+      '    rm -f "$old" && echo "DEL:$(basename "$old")|${sz:-0}"',
+      '  done',
+      'fi',
+    ].join('\n'),
+    timeoutMs
+  )
+
+  const lines = out.split('\n').map((l) => l.trim())
+  const running = lines.includes('RUNNING:1')
+
+  const latestLine = lines.find((l) => l.startsWith('LATEST:'))
+  const latest = (() => {
+    if (!latestLine) return null
+    const [file, epoch, size] = latestLine.slice(7).split('|')
+    const secs = Number(epoch)
+    if (!file || !Number.isFinite(secs) || secs <= 0) return null
+    return { file, at: new Date(secs * 1000).toISOString(), size: size ?? '' }
+  })()
+
+  const pruned: string[] = []
+  let freedKb = 0
+  for (const l of lines.filter((x) => x.startsWith('DEL:'))) {
+    const [file, kb] = l.slice(4).split('|')
+    if (file) pruned.push(file)
+    freedKb += Number(kb) || 0
+  }
+
+  return { latest, running, pruned, freedKb }
+}
+
 export async function backupSite(
   target: SshTarget,
   path: string,

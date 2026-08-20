@@ -305,6 +305,22 @@ const fmtWait = (secs: number) => {
   return `~${h} ชม.${r ? ` ${r} นาที` : ''}`
 }
 
+/**
+ * ลิงก์ดาวน์โหลดไฟล์สำรอง — ชี้ตรงไปที่โฮสต์ของเว็บนั้น ไม่ผ่านแอปเรา
+ *
+ * ai1wm วางไฟล์ไว้ใต้ public_html ซึ่งเปิดจากเน็ตได้อยู่แล้ว (.htaccess ของมัน
+ * ปิดแค่การไล่ดูรายชื่อไฟล์ = 403 · ตัวไฟล์ตอบ 200 และรองรับโหลดต่อ)
+ * ไฟล์ 5 GB จึงวิ่งจากโฮสต์ไปเครื่องผู้ใช้ตรง ๆ ไม่ชนเพดาน 60 วิของ Vercel
+ *
+ * ⚠️ ลิงก์นี้เท่ากับรหัสผ่านของเว็บนั้นทั้งเว็บ — ใครมีก็โหลดฐานข้อมูลทั้งก้อนได้
+ * ที่ยังปลอดภัยเพราะชื่อไฟล์มีตัวสุ่มต่อท้ายและไล่ดูรายชื่อไฟล์ไม่ได้
+ */
+const backupUrl = (s: WebSite) =>
+  `https://${s.siteName}/wp-content/ai1wm-backups/${s.lastBackupFile}`
+
+/** คำสั่งโหลดทั้งรายการ — curl มากับ macOS อยู่แล้ว (wget ไม่มี) · -C - คือโหลดต่อได้ */
+const DOWNLOAD_CMD = 'xargs -n1 curl -C - -O < amgo-backups.txt'
+
 export default function WebJobsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -676,6 +692,34 @@ export default function WebJobsPage() {
    * "กี่เว็บ ข้ามกี่เว็บ เพราะอะไร งานนี้ไปแตะอะไรบ้าง" ถึงจะมีค่าพอให้หยุดอ่าน
    * — นับด้วยกติกาเดียวกับที่ enqueue กรองจริง จะได้ไม่หลอกกันเอง
    */
+  /**
+   * ดาวน์โหลดทั้งฟลีต — ให้ "ไฟล์รายการลิงก์" ไม่ใช่ยิง 49 แท็บพร้อมกัน
+   *
+   * ไฟล์สำรองเว็บละหลาย GB (abcthebaby 4.9 GB) เบราว์เซอร์โหลดพร้อมกัน 49 ไฟล์
+   * ไม่รอด และเน็ตหลุดทีเดียวเริ่มใหม่หมด · โหลดผ่าน curl ทีละไฟล์แทน
+   * โฮสต์รองรับ range request ทำให้ `-C -` โหลดต่อจากที่ค้างได้
+   */
+  const downloadList = () => {
+    const ready = viewSites.filter((s) => s.lastBackupFile)
+    if (!ready.length) {
+      showToast('ยังไม่มีเว็บไหนที่รู้ชื่อไฟล์สำรอง — สั่งสำรองหรือรอรอบตรวจคืนนี้ก่อน', 'error')
+      return
+    }
+    const blob = new Blob([ready.map(backupUrl).join('\n') + '\n'], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'amgo-backups.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+    const skipped = viewSites.length - ready.length
+    showToast(
+      `ได้รายการ ${ready.length} ลิงก์แล้ว${skipped ? ` (ข้าม ${skipped} เว็บที่ยังไม่มีไฟล์)` : ''} — ` +
+        `เปิด Terminal ในโฟลเดอร์ที่ไฟล์อยู่แล้วรัน: ${DOWNLOAD_CMD}`,
+      'success'
+    )
+  }
+
   const fireFleet = async (type: (typeof FLEET_ACTIONS)[number]['type'], label: string) => {
     const { willRun, skipUtd, skipQueued } = fleetCounts.get(type)!
 
@@ -990,11 +1034,30 @@ export default function WebJobsPage() {
         // เกิน 30 วันถือว่าเก่าเกินจะกู้ได้จริง — งานเว็บเปลี่ยนแปลงเยอะกว่านั้น
         const tone = d > 30 ? 'text-red-600' : d > 7 ? 'text-amber-600' : 'text-gray-600'
         return (
-          <div>
-            <span className={`whitespace-nowrap ${tone}`}>{d === 0 ? 'วันนี้' : `${d} วัน`}</span>
-            {/* "12 วัน" บอกว่าเก่าแค่ไหน วันที่จริงบอกว่าไฟล์ไหน — ตอนจะกู้ต้องใช้ทั้งคู่
-                และไม่ควรต้องเอาเมาส์ไปจิ้มทีละแถวเพื่อดู */}
-            <p className="mt-0.5 whitespace-nowrap text-xs text-gray-400">{fmtDay(s.lastBackupAt)}</p>
+          <div className="flex items-center justify-end gap-1.5">
+            <div>
+              <span className={`whitespace-nowrap ${tone}`}>{d === 0 ? 'วันนี้' : `${d} วัน`}</span>
+              {/* "12 วัน" บอกว่าเก่าแค่ไหน วันที่จริงบอกว่าไฟล์ไหน — ตอนจะกู้ต้องใช้ทั้งคู่
+                  และไม่ควรต้องเอาเมาส์ไปจิ้มทีละแถวเพื่อดู */}
+              <p className="mt-0.5 whitespace-nowrap text-xs text-gray-400">{fmtDay(s.lastBackupAt)}</p>
+            </div>
+            {s.lastBackupFile && (
+              <HelpTooltip
+                variant="tooltip"
+                delay={300}
+                triggerStyle={PLAIN_TRIGGER}
+                content={`ดาวน์โหลด ${s.lastBackupFile}`}
+              >
+                <a
+                  href={backupUrl(s)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`ดาวน์โหลดไฟล์สำรองของ ${s.siteName}`}
+                  className="shrink-0 rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <Download size={15} />
+                </a>
+              </HelpTooltip>
+            )}
           </div>
         )
       },
@@ -1329,6 +1392,11 @@ export default function WebJobsPage() {
               )
             })}
           </span>
+          {/* แยกจากปุ่มสั่งงาน — อันนี้ไม่เข้าคิว ไม่แตะโฮสต์ แค่รวมลิงก์ให้ */}
+          <Button variant="ghost" onClick={downloadList}>
+            <Download size={15} />
+            ดาวน์โหลดไฟล์สำรอง ({viewSites.filter((s) => s.lastBackupFile).length})
+          </Button>
         </div>
         <p className="mt-2 text-xs text-gray-400">
           ปุ่มทำกับ &quot;เว็บที่เห็นอยู่ในตาราง&quot; เท่านั้น (แท็บแพลน + การ์ดที่กดกรองไว้) ·{' '}

@@ -26,6 +26,7 @@ import {
   backupSite,
   coreVersion,
   discoverSites,
+  latestBackup,
   listPlugins,
   scanSite,
   SSH_TIMEOUT_PREFIX,
@@ -149,6 +150,25 @@ async function runPluginCheck(sb: Admin, job: Job, target: SshTarget, path: stri
   const list = await listPlugins(target, path)
   const version = await coreVersion(target, path).catch(() => '')
   const pending = await savePlugins(sb, job.site_id!, list, version)
+
+  // เก็บชื่อไฟล์สำรองล่าสุดไปด้วยเลย — งานนี้รันทุกคืนทั้งฟลีตและต่อ SSH อยู่แล้ว
+  // ทำให้ปุ่มดาวน์โหลดมีชื่อไฟล์ใช้โดยไม่ต้องรอให้ใครกดสำรอง (งานสำรองของเว็บ
+  // 5 GB จบหลังเราเลิกรอเสมอ ถ้าไม่เก็บตรงนี้ก็จะไม่มีวันรู้ว่ามีไฟล์อยู่แล้ว)
+  // ล้มก็ช่างมัน ห้ามให้เรื่องไฟล์สำรองไปทำงานตรวจปลั๊กอินพัง
+  const backup = await latestBackup(target, path).catch(() => null)
+  if (backup) {
+    const { data: cur } = await sb
+      .from('web_sites')
+      .select('last_backup_file')
+      .eq('id', job.site_id!)
+      .single()
+    if (cur?.last_backup_file !== backup.file) {
+      await sb
+        .from('web_sites')
+        .update({ last_backup_at: backup.at, last_backup_file: backup.file })
+        .eq('id', job.site_id!)
+    }
+  }
 
   return {
     log: pending.length

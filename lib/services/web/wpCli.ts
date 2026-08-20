@@ -280,6 +280,37 @@ export async function scanSite(target: SshTarget, path: string): Promise<ScanHit
  * จึงสั่งให้มันหลุดจาก session ไปเลย (nohup + &) แล้วเฝ้าดูว่ามีไฟล์ใหม่ไหม
  * ไม่ทันในรอบนี้ก็ไม่เป็นไร — งานยังเดินต่อที่โฮสต์ ไฟล์จะโผล่รอบถัดไป
  */
+/**
+ * ไฟล์สำรองล่าสุดที่มีอยู่จริงบนโฮสต์ — ไม่สั่งสำรองใหม่ ไม่แตะอะไรเลย
+ *
+ * มีไว้เพื่อให้ระบบ "รู้ชื่อไฟล์" โดยไม่ต้องรอให้มีคนกดสำรอง — งานสำรองของเว็บ
+ * 5 GB จบหลังเราเลิกรอเสมอ ถ้าเก็บชื่อไฟล์ได้เฉพาะตอนกดเอง ปุ่มดาวน์โหลดก็จะ
+ * ว่างเปล่าตลอดไปทั้งที่ไฟล์นอนอยู่บนโฮสต์แล้ว
+ *
+ * คืนเวลาแก้ไขจริงของไฟล์ ไม่ใช่เวลาที่ไปเจอ — เว็บที่สำรองไว้ตั้งแต่ปี 2023
+ * ต้องขึ้นว่าเก่า 3 ปี ไม่ใช่ "สำรองแล้ววันนี้"
+ */
+export async function latestBackup(
+  target: SshTarget,
+  path: string,
+  timeoutMs = 15_000
+): Promise<{ file: string; at: string; size: string } | null> {
+  const { out } = await sshRun(
+    target,
+    [
+      `cd ${at(path)} 2>/dev/null || exit 0`,
+      'F=$(ls -t wp-content/ai1wm-backups/*.wpress 2>/dev/null | head -1)',
+      '[ -z "$F" ] && exit 0',
+      'echo "$(basename "$F")|$(date -r "$F" +%s 2>/dev/null)|$(du -h "$F" 2>/dev/null | cut -f1)"',
+    ].join('\n'),
+    timeoutMs
+  )
+  const [file, epoch, size] = out.trim().split('|')
+  const secs = Number(epoch)
+  if (!file || !Number.isFinite(secs) || secs <= 0) return null
+  return { file, at: new Date(secs * 1000).toISOString(), size: size ?? '' }
+}
+
 export async function backupSite(
   target: SshTarget,
   path: string,

@@ -127,9 +127,20 @@ async function probeOnce(domain: string) {
 
     const { text, complete } = await readHead(res)
     const sign = CRASH_SIGNS.find((c) => c.re.test(text))
-    // หน้าว่างจริง ๆ (ไม่ถึง 200 ตัวอักษร) = จอขาว — เว็บปกติต่อให้เป็น SPA
-    // ก็ยังส่ง shell มามากกว่านี้ · แต่ฟันธงได้เฉพาะตอนอ่านครบเท่านั้น
-    const issue = sign?.issue ?? (complete && text.trim().length < 200 ? 'blank_page' : null)
+
+    /**
+     * ตัดสินเนื้อหาหน้าได้เฉพาะตอนตอบ 200 เท่านั้น
+     *
+     * SiteGround ตอบ **202** พร้อมตัวเปล่าให้ IP ของศูนย์ข้อมูล (หน้ากันบอท) —
+     * เว็บไม่ได้เป็นอะไรเลย ยิงจากเครื่องคนได้ 200 พร้อมเนื้อหาครบ 66–670 KB
+     * แต่ 202 < 400 จึงผ่านด่านแรกมาแล้วไปโดนตัดสินว่า "จอขาว" (7 เว็บบน
+     * SiteGround โดนแบบนี้ทุกชั่วโมง · ตรวจเจอ 20 ส.ค. 69)
+     *
+     * เว็บยังนับว่าขึ้นตามปกติ — แค่เราไม่ได้เห็นหน้าจริง จึงไม่มีสิทธิ์ตัดสินมัน
+     */
+    const judgeable = res.status === 200
+    const issue =
+      sign?.issue ?? (judgeable && complete && text.trim().length < 200 ? 'blank_page' : null)
 
     return { status: res.status, ms, up: !sign?.hard, issue }
   } catch {

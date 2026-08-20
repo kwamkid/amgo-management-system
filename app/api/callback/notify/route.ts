@@ -123,3 +123,23 @@ export async function POST(request: NextRequest) {
     mentioned: people.map((p) => p.nickname).filter(Boolean),
   })
 }
+
+/**
+ * Shortcut ที่ยังไม่ได้เปลี่ยน Method เป็น POST จะยิง GET มาที่นี่
+ *
+ * ถ้าไม่มีตัวนี้ Next.js ตอบ 405 ตั้งแต่ก่อนเข้าโค้ดเรา — ไม่มีอะไรถูกบันทึก
+ * และบนมือถือก็เงียบสนิท ไล่ปัญหาไม่ได้เลย · "Get Contents of URL" ของ iOS
+ * ตั้งค่าเริ่มต้นเป็น GET และช่อง Method ซ่อนอยู่ใต้ลูกศรที่ต้องกดกาง
+ * จึงเป็นจุดที่พลาดง่ายที่สุดในทั้ง Shortcut
+ */
+export async function GET(request: NextRequest) {
+  const sb = createAdminClient()
+  await log(sb, 405, null, 'Shortcut ยิงมาเป็น GET — ต้องตั้ง Method เป็น POST', request.headers.get('user-agent'))
+  return NextResponse.json(
+    {
+      error: 'ต้องใช้ POST ไม่ใช่ GET',
+      วิธีแก้: 'ใน Shortcut action สุดท้าย กดลูกศร ▸ ให้กางออก แล้วเปลี่ยน Method จาก GET เป็น POST',
+    },
+    { status: 405 }
+  )
+}

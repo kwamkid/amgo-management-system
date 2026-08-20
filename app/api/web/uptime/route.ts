@@ -16,8 +16,31 @@ import { sendWebAlert } from '@/lib/services/web/webAlerts'
 
 export const maxDuration = 60
 
-const TIMEOUT_MS = 12_000
-const BATCH = 8
+const TIMEOUT_MS = 15_000
+
+/**
+ * ยิงซ้ำก่อนฟันธงว่าล่ม — ของเดิมพลาดครั้งเดียวก็แจ้งเตือนทันที
+ *
+ * ผลคือ 125 การแจ้งเตือนใน 7 วัน โดย**ไม่มีเว็บไหนล่มจริงสักตัว** (ตรวจ 20 ส.ค. 69
+ * ทุกเว็บที่เตือนบ่อยสุดตอบ 200 ใน 0.7–2 วิ เนื้อหาครบ 66 KB–670 KB) · อาการเด่นคือ
+ * ล่มตอน :00 แล้วกลับมาตอน :00 ของชั่วโมงถัดไปสลับกันไปมา ซึ่งไม่ใช่หน้าตาของ
+ * เว็บที่ล่มจริง แต่เป็นหน้าตาของตัวเช็คที่ยิงพลาดเป็นครั้งคราว
+ */
+const ATTEMPTS = 3
+const RETRY_WAIT_MS = [0, 2_000, 5_000]
+
+/**
+ * ยิงพร้อมกันได้กี่เว็บต่อโฮสต์
+ *
+ * ของเดิมยิงทีละ 8 เว็บโดยไม่สนว่าอยู่โฮสต์ไหน — โฮสต์เดียวมี 24 เว็บ จึงโดน
+ * 8 request พร้อมกันจาก IP เดียว ซึ่งหน้าตาเหมือนการยิงถล่ม โฮสต์เลยตอบ 403
+ * หรือตัดสายทิ้ง · หลักฐาน: 4 เว็บบนโฮสต์เดียวกัน "ล่ม" พร้อมกันเป๊ะตอนตี 3
+ * แล้ว "กลับมา" พร้อมกันเป๊ะตอนตี 4
+ */
+const PER_HOST = 2
+
+/** ทั้งรอบต้องจบก่อน Vercel ตัดที่ 60 วิ — เว็บที่ยิงไม่ทันปล่อยไว้เฉย ๆ ดีกว่าเดา */
+const RUN_BUDGET_MS = 45_000
 
 /** อ่านแค่หัวหน้าเว็บพอให้เห็นอาการ — ไม่ดูดทั้งหน้า 50 เว็บทุกชั่วโมงให้เปลือง bandwidth */
 const HEAD_BYTES = 64 * 1024
@@ -27,6 +50,7 @@ type Site = {
   site_name: string
   down_since: string | null
   page_issue: string | null
+  host_id: string | null
 }
 
 /**
@@ -43,28 +67,40 @@ const CRASH_SIGNS: { re: RegExp; issue: string; hard: boolean }[] = [
   { re: /Briefly unavailable for scheduled maintenance/i, issue: 'maintenance', hard: false },
 ]
 
-/** อ่านต้นหน้าแล้วตัดสาย — ไม่รอจนโหลดครบ */
-async function readHead(res: Response): Promise<string> {
-  if (!res.body) return ''
+/**
+ * อ่านต้นหน้าแล้วตัดสาย — พร้อมบอกว่า "อ่านได้ครบพอจะตัดสินไหม"
+ *
+ * ต้องรู้ให้ได้ เพราะการสรุปว่า "หน้าว่าง = จอขาว" จากข้อมูลที่อ่านค้างกลางทาง
+ * คือการเดา · ของจริง 20 ส.ค. 69 มี 4 เว็บขึ้น "จอขาว" ตอนตี 1–2 ทั้งที่หน้าจริง
+ * หนัก 135–670 KB — ตรงกับช่วงที่งานสแกน/สำรองกำลังรีดโฮสต์อยู่พอดี
+ */
+async function readHead(res: Response): Promise<{ text: string; complete: boolean }> {
+  if (!res.body) return { text: '', complete: false }
   const reader = res.body.getReader()
   const chunks: Uint8Array[] = []
   let n = 0
+  let complete = false
   try {
     while (n < HEAD_BYTES) {
       const { done, value } = await reader.read()
-      if (done) break
+      if (done) {
+        complete = true
+        break
+      }
       chunks.push(value)
       n += value.length
     }
+    // อ่านครบโควตาที่ตั้งใจไว้ก็ถือว่าพอตัดสินได้ ไม่ต้องรอจนจบหน้า
+    if (n >= HEAD_BYTES) complete = true
   } catch {
-    /* สายหลุดกลางทาง — ใช้เท่าที่ได้มา */
+    /* สายหลุดกลางทาง — ข้อมูลไม่ครบ ห้ามเอาไปสรุปว่าหน้าว่าง */
   }
   reader.cancel().catch(() => {})
-  return Buffer.concat(chunks).toString('utf8')
+  return { text: Buffer.concat(chunks).toString('utf8'), complete }
 }
 
-/** ยิงจริง 1 เว็บ — ขึ้นเมื่อตอบต่ำกว่า 400 **และ** หน้าไม่ได้พัง */
-async function probe(domain: string) {
+/** ยิงจริง 1 ครั้ง — ขึ้นเมื่อตอบต่ำกว่า 400 **และ** หน้าไม่ได้พัง */
+async function probeOnce(domain: string) {
   const started = Date.now()
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
@@ -89,11 +125,11 @@ async function probe(domain: string) {
       return { status: res.status, ms, up: false, issue: null as string | null }
     }
 
-    const body = await readHead(res)
-    const sign = CRASH_SIGNS.find((c) => c.re.test(body))
+    const { text, complete } = await readHead(res)
+    const sign = CRASH_SIGNS.find((c) => c.re.test(text))
     // หน้าว่างจริง ๆ (ไม่ถึง 200 ตัวอักษร) = จอขาว — เว็บปกติต่อให้เป็น SPA
-    // ก็ยังส่ง shell มามากกว่านี้ ตั้งเกณฑ์ต่ำไว้กัน false positive
-    const issue = sign?.issue ?? (body.trim().length < 200 ? 'blank_page' : null)
+    // ก็ยังส่ง shell มามากกว่านี้ · แต่ฟันธงได้เฉพาะตอนอ่านครบเท่านั้น
+    const issue = sign?.issue ?? (complete && text.trim().length < 200 ? 'blank_page' : null)
 
     return { status: res.status, ms, up: !sign?.hard, issue }
   } catch {
@@ -101,6 +137,27 @@ async function probe(domain: string) {
   } finally {
     clearTimeout(timer)
   }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * ยิงจนกว่าจะได้ผลที่ดี หรือหมดโควตา — ผลที่ "ไม่ดี" ต้องยืนยันซ้ำก่อนเสมอ
+ *
+ * เว็บล่มจริงจะล่มทุกครั้งที่ยิง · เว็บที่แค่โฮสต์สะดุดตอนนั้นจะกลับมาในรอบสอง
+ * ความต่างนี้แหละที่แยก "แจ้งเตือนที่ควรรีบดู" ออกจาก "เสียงรบกวนรายชั่วโมง"
+ */
+async function probe(domain: string, deadline: number) {
+  let last = await probeOnce(domain)
+  let attempts = 1
+  while (attempts < ATTEMPTS && (!last.up || last.issue)) {
+    const wait = RETRY_WAIT_MS[attempts]
+    if (Date.now() + wait + TIMEOUT_MS > deadline) break
+    await sleep(wait)
+    last = await probeOnce(domain)
+    attempts++
+  }
+  return { ...last, attempts }
 }
 
 const ISSUE_TEXT: Record<string, string> = {
@@ -115,7 +172,7 @@ async function run(onlySiteId?: string) {
   const sb = createAdminClient()
   let q = sb
     .from('web_sites')
-    .select('id, site_name, down_since, page_issue')
+    .select('id, site_name, down_since, page_issue, host_id')
     .eq('is_active', true)
   if (onlySiteId) q = q.eq('id', onlySiteId)
   const { data, error } = await q
@@ -126,75 +183,102 @@ async function run(onlySiteId?: string) {
   let down = 0
   let broken = 0
 
-  for (let i = 0; i < sites.length; i += BATCH) {
-    const chunk = sites.slice(i, i + BATCH)
-    await Promise.all(
-      chunk.map(async (site) => {
-        const r = await probe(site.site_name)
-        if (!r.up) down++
-        if (r.issue) broken++
+  const deadline = Date.now() + RUN_BUDGET_MS
+  let skipped = 0
 
-        await sb
-          .from('web_sites')
-          .update({
-            http_status: r.status,
-            response_ms: r.ms,
-            last_checked_at: now,
-            page_issue: r.issue,
-            ...(r.up ? { last_up_at: now, down_since: null } : {}),
-            ...(!r.up && !site.down_since ? { down_since: now } : {}),
-          })
-          .eq('id', site.id)
-
-        // อาการหน้าเว็บผิดปกติที่ยังไม่ถึงขั้นล่ม (จอขาว / ค้างโหมดปรับปรุง)
-        // แจ้งตอนเพิ่งเป็นเท่านั้น เหมือนกติกาเดียวกับเว็บล่ม
-        if (r.up && r.issue && r.issue !== site.page_issue) {
-          const what = ISSUE_TEXT[r.issue] ?? r.issue
-          await sb.from('web_site_logs').insert({
-            site_id: site.id,
-            kind: 'downtime',
-            message: `หน้าเว็บผิดปกติ — ${what}`,
-          })
-          await sendWebAlert({
-            title: `🟠 หน้าเว็บผิดปกติ — ${site.site_name}`,
-            description: `${what} (ตอบกลับ ${r.status} ปกติ แต่เนื้อหาหน้าไม่ใช่เว็บที่ควรเห็น)`,
-            color: 'amber',
-          })
-        }
-
-        // เปลี่ยนสถานะเท่านั้นถึงแจ้ง — ล่มค้างไม่ต้องเตือนซ้ำทุกชั่วโมง
-        if (!r.up && !site.down_since) {
-          const why = r.issue
-            ? (ISSUE_TEXT[r.issue] ?? r.issue)
-            : `ตอบกลับ ${r.status || 'ต่อไม่ติด/หมดเวลา'}`
-          await sb.from('web_site_logs').insert({
-            site_id: site.id,
-            kind: 'downtime',
-            message: `เว็บล่ม — ${why}`,
-          })
-          await sendWebAlert({
-            title: `🔴 เว็บล่ม — ${site.site_name}`,
-            description: why,
-            color: 'red',
-          })
-        } else if (r.up && site.down_since) {
-          const mins = Math.round((Date.now() - new Date(site.down_since).getTime()) / 60000)
-          await sb.from('web_site_logs').insert({
-            site_id: site.id,
-            kind: 'downtime',
-            message: `เว็บกลับมาแล้ว (ล่มไป ~${mins} นาที)`,
-          })
-          await sendWebAlert({
-            title: `🟢 เว็บกลับมาแล้ว — ${site.site_name}`,
-            description: `ล่มไปประมาณ ${mins} นาที`,
-            color: 'green',
-          })
-        }
-      })
-    )
+  // แบ่งตามโฮสต์ แล้วเดินทีละโฮสต์ขนานกัน — โฮสต์หนึ่งโดนพร้อมกันไม่เกิน PER_HOST
+  const byHost = new Map<string, Site[]>()
+  for (const s of sites) {
+    const k = s.host_id ?? '—'
+    const l = byHost.get(k)
+    if (l) l.push(s)
+    else byHost.set(k, [s])
   }
 
-  return { checked: sites.length, down, broken }
+  await Promise.all(
+    [...byHost.values()].map(async (list) => {
+      let next = 0
+      const worker = async () => {
+        while (next < list.length) {
+          const site = list[next++]
+          // ต้องเหลือเวลาพอให้ยิงจบ 1 ครั้งเต็ม ๆ ไม่ใช่แค่ "ยังไม่ถึง deadline"
+          // เริ่มตอนเหลือ 1 วิ แล้วปล่อยให้รันต่ออีก 15 = ทะลุเพดาน Vercel พอดี
+          // (บั๊กแบบเดียวกับงบเวลาของ plugin_update เมื่อ 16 ส.ค.)
+          if (Date.now() + TIMEOUT_MS > deadline) {
+            skipped++
+            continue
+          }
+          await one(site)
+        }
+      }
+      await Promise.all(Array.from({ length: PER_HOST }, worker))
+    })
+  )
+
+  return { checked: sites.length - skipped, skipped, down, broken }
+
+  async function one(site: Site) {
+    const r = await probe(site.site_name, deadline)
+    if (!r.up) down++
+    if (r.issue) broken++
+
+    await sb
+      .from('web_sites')
+      .update({
+        http_status: r.status,
+        response_ms: r.ms,
+        last_checked_at: now,
+        page_issue: r.issue,
+        ...(r.up ? { last_up_at: now, down_since: null } : {}),
+        ...(!r.up && !site.down_since ? { down_since: now } : {}),
+      })
+      .eq('id', site.id)
+
+    // อาการหน้าเว็บผิดปกติที่ยังไม่ถึงขั้นล่ม (จอขาว / ค้างโหมดปรับปรุง)
+    // แจ้งตอนเพิ่งเป็นเท่านั้น เหมือนกติกาเดียวกับเว็บล่ม
+    if (r.up && r.issue && r.issue !== site.page_issue) {
+      const what = ISSUE_TEXT[r.issue] ?? r.issue
+      await sb.from('web_site_logs').insert({
+        site_id: site.id,
+        kind: 'downtime',
+        message: `หน้าเว็บผิดปกติ — ${what}`,
+      })
+      await sendWebAlert({
+        title: `🟠 หน้าเว็บผิดปกติ — ${site.site_name}`,
+        description: `${what} (ตอบกลับ ${r.status} ปกติ แต่เนื้อหาหน้าไม่ใช่เว็บที่ควรเห็น)`,
+        color: 'amber',
+      })
+    }
+
+    // เปลี่ยนสถานะเท่านั้นถึงแจ้ง — ล่มค้างไม่ต้องเตือนซ้ำทุกชั่วโมง
+    if (!r.up && !site.down_since) {
+      const why = r.issue
+        ? (ISSUE_TEXT[r.issue] ?? r.issue)
+        : `ตอบกลับ ${r.status || 'ต่อไม่ติด/หมดเวลา'}`
+      await sb.from('web_site_logs').insert({
+        site_id: site.id,
+        kind: 'downtime',
+        message: `เว็บล่ม — ${why}`,
+      })
+      await sendWebAlert({
+        title: `🔴 เว็บล่ม — ${site.site_name}`,
+        description: why,
+        color: 'red',
+      })
+    } else if (r.up && site.down_since) {
+      const mins = Math.round((Date.now() - new Date(site.down_since).getTime()) / 60000)
+      await sb.from('web_site_logs').insert({
+        site_id: site.id,
+        kind: 'downtime',
+        message: `เว็บกลับมาแล้ว (ล่มไป ~${mins} นาที)`,
+      })
+      await sendWebAlert({
+        title: `🟢 เว็บกลับมาแล้ว — ${site.site_name}`,
+        description: `ล่มไปประมาณ ${mins} นาที`,
+        color: 'green',
+      })
+    }
+  }
 }
 
 export async function GET(request: NextRequest) {

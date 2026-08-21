@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/aoo'
 import { PageHeader, TechLoader } from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
+import { FitToWidth } from '@/components/documents/FitToWidth'
 import {
   parseBody,
   thaiDate,
@@ -105,7 +106,8 @@ export default function DocumentViewPage({
         }
       />
 
-      <div className="overflow-x-auto pb-2 print:overflow-visible print:pb-0">
+      {/* ย่อให้พอดีจอ ไม่ใช่บีบ — บนมือถือแผ่น A4 กว้างกว่าจอเกือบเท่าตัว */}
+      <FitToWidth>
         <DocumentSheet
           company={doc.company}
           docNo={doc.doc_no}
@@ -116,7 +118,7 @@ export default function DocumentViewPage({
           signers={doc.signers ?? []}
           issuedAt={doc.issued_at}
         />
-      </div>
+      </FitToWidth>
 
       <style>{printCss}</style>
     </div>

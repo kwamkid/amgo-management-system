@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/useToast'
 import { ActionMenu, Button, Modal, SelectMenu } from '@/components/aoo'
 import { PageHeader, TechLoader } from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
+import { FitToWidth } from '@/components/documents/FitToWidth'
 import { copyText, downloadFile, shareUrl } from '@/lib/documents/download'
 import {
   blocksToText,
@@ -547,9 +548,8 @@ export default function DocumentEditorPage({
           <p className="mb-2 text-xs text-gray-400 print:hidden">
             ตัวอย่างขนาดเท่าของจริง (A4) — สิ่งที่เห็นคือสิ่งที่พิมพ์ออกมา
           </p>
-          {/* จอแคบกว่ากระดาษ A4 ให้เลื่อนดูแนวนอนได้ — แต่ตอนพิมพ์ต้องปลดออก
-              ไม่งั้นกล่องนี้ตัดขอบแผ่นที่ถูกยกไปวางมุมบนซ้ายด้วย position:absolute */}
-          <div className="overflow-x-auto pb-2 print:overflow-visible print:pb-0">
+          {/* ย่อให้พอดีคอลัมน์ ไม่ใช่บีบ — บรรทัดจะได้ขึ้นตรงกับตอนพิมพ์ */}
+          <FitToWidth>
             <DocumentSheet
               company={company}
               docNo={issued.no}
@@ -560,7 +560,7 @@ export default function DocumentEditorPage({
               signers={form.signers}
               issuedAt={issued.at || null}
             />
-          </div>
+          </FitToWidth>
         </div>
       </div>
 

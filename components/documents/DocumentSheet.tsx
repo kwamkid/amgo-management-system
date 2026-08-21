@@ -59,7 +59,9 @@ export function DocumentSheet(props: SheetProps) {
       id={SHEET_ID}
       style={{ fontFamily: DOC_FONT_STACK }}
       className={[
-        'mx-auto flex w-[210mm] max-w-full flex-col bg-white text-[14.5px] leading-[1.85] text-gray-900',
+        // ⚠️ ห้ามใส่ max-w-full — จอแคบกว่ากระดาษจะบีบแผ่นแล้วข้อความไหลใหม่
+        // ไม่ตรงกับตอนพิมพ์ · จอแคบให้ห่อด้วย FitToWidth เพื่อ "ย่อ" แทน
+        'mx-auto flex w-[210mm] flex-col bg-white text-[14.5px] leading-[1.85] text-gray-900',
         'min-h-[297mm] p-[18mm] pt-[14mm]',
         'rounded-xl border border-gray-200 shadow-sm',
         // ตอนพิมพ์เอากรอบ/เงาออก — ขนาดกับขอบตั้งใน printCss ไม่ใช่คลาส

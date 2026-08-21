@@ -531,17 +531,20 @@ export default function SrpBrandPage() {
         />
       </FilterBar>
 
+      {/* คำอธิบายพวกนี้พูดถึงตาราง ซึ่งจอแคบไม่เห็น — ซ่อนไปด้วยกัน */}
       {canEdit ? (
-        <p className="-mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+        <p className="-mt-1 hidden items-center gap-1.5 text-xs text-gray-500 lg:flex">
           <span className="inline-block h-3 w-5 rounded-sm border border-amber-200 bg-amber-50" />
           ช่องพื้นเหลือง = พิมพ์แก้ได้เลย (ระบบบันทึกให้เอง) · ช่องพื้นขาว = ระบบคำนวณให้ · ลากขอบหัวตารางเพื่อปรับความกว้าง (ดับเบิลคลิก = คืนค่าเดิม)
         </p>
       ) : (
-        <p className="-mt-1 text-xs text-gray-500">คุณมีสิทธิ์ดูอย่างเดียว — แก้ไขไม่ได้ · ลากขอบหัวตารางปรับความกว้างคอลัมน์ได้</p>
+        <p className="-mt-1 hidden text-xs text-gray-500 lg:block">คุณมีสิทธิ์ดูอย่างเดียว — แก้ไขไม่ได้ · ลากขอบหัวตารางปรับความกว้างคอลัมน์ได้</p>
       )}
 
-      {/* ตารางหลัก — เลื่อนแนวนอน คอลัมน์สินค้าตรึงซ้าย */}
-      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      {/* ตารางหลัก — เลื่อนแนวนอน คอลัมน์สินค้าตรึงซ้าย
+          ซ่อนบนจอแคบ: 20 คอลัมน์บนมือถือ เลื่อนไปทางขวาแล้วไม่เหลือบริบทว่า
+          กำลังดูสินค้าตัวไหน (เจ้าของทัก 22 ส.ค.) — จอแคบใช้การ์ดแทนข้างล่าง */}
+      <div className="hidden overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm lg:block">
         <table
           className="border-collapse text-[15px]"
           style={{ tableLayout: 'fixed', width: tableWidth }}
@@ -721,6 +724,139 @@ export default function SrpBrandPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* ── จอแคบ: การ์ดต่อสินค้า เอาเฉพาะตัวเลขที่ใช้ตัดสินใจ ──────────
+          ตัดคอลัมน์ต้นทาง (FOB/ค่าเรือ/ภาษี/ส่งในไทย) ออก เพราะบนมือถือ
+          คนดูเพื่อ "เช็คราคากับกำไร" ไม่ได้มานั่งกรอกต้นทุน — ถ้าต้องแก้
+          ต้นทุนจริง ๆ เปิดบนคอมซึ่งมีตารางเต็ม */}
+      <div className="space-y-3 lg:hidden">
+        {visible.map((p) => (
+          <div
+            key={p.id}
+            className={`rounded-xl border border-gray-200 bg-white p-3 shadow-sm ${p.isActive ? '' : 'opacity-50'}`}
+          >
+            <div className="flex items-start gap-2.5">
+              <button
+                type="button"
+                onClick={() => setLightbox(p)}
+                className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50"
+              >
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.imageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon size={16} className="text-gray-300" />
+                )}
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <input
+                  readOnly={!canEdit}
+                  className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-[15px] font-medium focus:border-amber-300 focus:bg-white focus:outline-none"
+                  value={p.name}
+                  onChange={(e) => patchProduct(p.id, { name: e.target.value }, { name: e.target.value })}
+                />
+                <p className="truncate px-1 text-xs text-gray-400">
+                  {[p.sku, p.category].filter(Boolean).join(' · ') || '—'}
+                </p>
+              </div>
+
+              <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${profitClass(p.marginPct)}`}>
+                {p.marginPct}%
+              </span>
+            </div>
+
+            <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-2.5 text-center">
+              <div>
+                <p className="text-[11px] text-gray-400">ต้นทุนรวม</p>
+                <p className="text-[15px] font-semibold tabular-nums">{fmt(p.totalImportCost)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400">แนะนำ</p>
+                <button
+                  type="button"
+                  className="text-[15px] tabular-nums text-sky-600"
+                  onClick={() => {
+                    if (!canEdit) return
+                    patchProduct(
+                      p.id,
+                      { our_price_thb: p.suggestedPrice, platform_price_thb: p.suggestedPrice },
+                      { ourPriceThb: p.suggestedPrice, platformPriceThb: p.suggestedPrice }
+                    )
+                  }}
+                >
+                  {fmt(p.suggestedPrice)}
+                </button>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400">ราคาขายเรา</p>
+                <NumCell
+                  disabled={!canEdit}
+                  value={p.ourPriceThb}
+                  onSave={(v) => patchProduct(p.id, { our_price_thb: v }, { ourPriceThb: v })}
+                  placeholder={fmt(p.suggestedPrice)}
+                  className="!text-center font-semibold text-green-800"
+                />
+              </div>
+            </div>
+
+            {shownChannels.length > 0 && (
+              <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                {shownChannels.map((ch) => {
+                  const price = ch.type === 'online' ? p.platformPriceThb || 0 : p.effectivePrice
+                  const cp = calculateChannelProfit(price, p.totalImportCost, ch)
+                  return (
+                    <div key={ch.id} className="flex items-center justify-between text-xs">
+                      <span className="truncate text-gray-500">{ch.name}</span>
+                      {price > 0 ? (
+                        <span className="flex items-center gap-2 tabular-nums">
+                          <span className="text-gray-500">{fmt(cp.ourProfitThb)}</span>
+                          <span className={`rounded px-1.5 py-0.5 font-semibold ${profitClass(cp.ourProfitPct)}`}>
+                            {cp.ourProfitPct}%
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">ยังไม่ตั้งราคา</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {canEdit && (
+              <div className="mt-2 flex justify-end gap-1 border-t border-gray-100 pt-2">
+                <button
+                  type="button"
+                  className={`rounded p-1.5 ${p.isActive ? 'text-green-500' : 'text-gray-300'}`}
+                  title={p.isActive ? 'ปิดการขาย' : 'เปิดการขาย'}
+                  onClick={() => patchProduct(p.id, { is_active: !p.isActive }, { isActive: !p.isActive })}
+                >
+                  <Power size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="rounded p-1.5 text-gray-300 hover:text-red-500"
+                  title="ลบสินค้า"
+                  onClick={async () => {
+                    if (!confirm(`ลบ "${p.name}" ?`)) return
+                    await deleteSrpProduct(p.id)
+                    setProducts((prev) => prev?.filter((x) => x.id !== p.id) ?? prev)
+                  }}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {visible.length === 0 && (
+          <p className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+            ไม่มีสินค้าตรงตามตัวกรอง
+          </p>
+        )}
       </div>
 
       {/* Lightbox รูปสินค้า */}

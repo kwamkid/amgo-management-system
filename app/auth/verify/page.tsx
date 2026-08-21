@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, Suspense, useState } from 'react'
+import { useEffect, useRef, Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signInBoth } from '@/lib/auth/dual-session'
 
@@ -13,8 +13,24 @@ function VerifyAuth() {
   const router = useRouter()
   const params = useSearchParams()
   const [error, setError] = useState<string | null>(null)
+  /**
+   * แลก token ได้ครั้งเดียวต่อการเข้าหน้านี้หนึ่งครั้ง
+   *
+   * ── ทำไมต้องกั้น (พบ 21 ส.ค. 69) ────────────────────────────────
+   * effect นี้มี router.replace() + router.refresh() อยู่ข้างใน ซึ่งทำให้
+   * คอมโพเนนต์วาดใหม่ · เดิมใส่ [router, params] เป็น dependency effect
+   * จึงรันซ้ำแล้วเรียก verifyOtp อีกรอบ — **verifyOtp ทุกครั้งสร้าง session
+   * ใหม่ในฐานข้อมูล** ผลคือล็อกอินครั้งเดียวได้ session 2-4 อัน
+   * (วัดจริง: ปู 3.8 อัน/ครั้ง · หน่อย 2.3 อัน/ครั้ง)
+   *
+   * React โหมดพัฒนายังรัน effect สองรอบอีกชั้นด้วย
+   */
+  const exchanged = useRef(false)
 
   useEffect(() => {
+    if (exchanged.current) return
+    exchanged.current = true
+
     const run = async () => {
       const tokenHash = params.get('token_hash')
       if (!tokenHash) {
@@ -40,7 +56,9 @@ function VerifyAuth() {
       router.refresh()
     }
     run()
-  }, [router, params])
+    // ตั้งใจให้ว่าง — ต้องรันครั้งเดียวตอนเข้าหน้า ไม่ใช่ทุกครั้งที่วาดใหม่
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="text-center">

@@ -14,6 +14,27 @@ const nextConfig: NextConfig = {
     '/api/documents/[id]/docx': ['./lib/documents/fonts/**'],
   },
 
+  // ── โดเมนเดียว = คุกกี้ใบเดียว (เจ้าของยืนยัน 22 ส.ค.) ──────────────
+  // คุกกี้ session แยกตามโดเมน และ LINE callback ส่งกลับมาที่
+  // NEXT_PUBLIC_APP_URL เสมอ · คนที่เปิดจากลิงก์เก่า (amgo-management.vercel.app)
+  // จึงล็อกอินแล้วคุกกี้ไปตกที่ app.amgovenger.com — กลับมาเปิดลิงก์เดิมก็เจอ
+  // หน้าล็อกอินอีก ดูเหมือน "session หมดอายุ" ทั้งที่ล็อกอินสำเร็จไปแล้ว
+  //
+  // ใช้ 307 (permanent: false) ไม่ใช่ 308 — เบราว์เซอร์ไม่แคชถาวร ถ้าวันหนึ่ง
+  // ต้องเปิดโดเมนนั้นตรง ๆ อีกก็แค่ถอดกฎนี้ออก ไม่ต้องไล่ล้างแคชของทุกเครื่อง
+  //
+  // preview deployment ใช้โฮสต์คนละชื่อ (amgo-management-git-...) จึงไม่โดน
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'amgo-management.vercel.app' }],
+        destination: 'https://app.amgovenger.com/:path*',
+        permanent: false,
+      },
+    ]
+  },
+
   images: {
     remotePatterns: [
       {

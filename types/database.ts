@@ -1001,12 +1001,12 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
-          department: string
           doc_no: string
           id: string
           issued_at: string
           period: string
           recipient: string
+          share_token: string
           signers: Json
           status: string
           title: string
@@ -1018,12 +1018,12 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
-          department?: string
           doc_no?: string
           id?: string
           issued_at?: string
           period?: string
           recipient?: string
+          share_token?: string
           signers?: Json
           status?: string
           title?: string
@@ -1035,12 +1035,12 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
-          department?: string
           doc_no?: string
           id?: string
           issued_at?: string
           period?: string
           recipient?: string
+          share_token?: string
           signers?: Json
           status?: string
           title?: string
@@ -4546,6 +4546,10 @@ export type Database = {
           id: string
           require_approval: boolean
         }[]
+      }
+      document_by_share: {
+        Args: { p_id: string; p_token: string }
+        Returns: Json
       }
       effective_permission: {
         Args: { p_resource: string; p_user_id: string }

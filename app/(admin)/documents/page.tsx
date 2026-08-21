@@ -29,7 +29,7 @@ import {
   type CompanyHead,
   type Signer,
 } from '@/lib/documents/types'
-import { downloadFile } from '@/lib/documents/download'
+import { copyText, downloadFile, shareUrl } from '@/lib/documents/download'
 
 type Row = {
   id: string
@@ -39,6 +39,7 @@ type Row = {
   recipient: string
   updated_at: string
   created_by: string | null
+  share_token: string
   company: { code: string; name_th: string } | null
 }
 
@@ -68,7 +69,7 @@ export default function DocumentsPage() {
     const { data, error } = await sb
       .from('documents')
       .select(
-        'id, doc_no, title, status, recipient, updated_at, created_by, company:companies(code, name_th)'
+        'id, doc_no, title, status, recipient, updated_at, created_by, share_token, company:companies(code, name_th)'
       )
       .order('updated_at', { ascending: false })
     if (error) {
@@ -323,6 +324,22 @@ export default function DocumentsPage() {
                           label: 'พิมพ์ / บันทึก PDF',
                           icon: 'Printer',
                           onSelect: () => printRow(r),
+                        },
+                        {
+                          // ให้คนอื่นเปิดดูเพื่อ approve — ต้องล็อกอินก่อนเสมอ
+                          label: 'คัดลอกลิงก์ให้คนอื่นดู',
+                          icon: 'Link',
+                          onSelect: async () => {
+                            const ok = await copyText(
+                              shareUrl(r.id, r.share_token)
+                            )
+                            showToast(
+                              ok
+                                ? 'คัดลอกลิงก์แล้ว — คนที่เปิดต้องล็อกอินก่อน'
+                                : 'คัดลอกไม่สำเร็จ ลองใหม่อีกครั้ง',
+                              ok ? 'success' : 'error'
+                            )
+                          },
                         },
                         {
                           label: 'ดาวน์โหลด Word',

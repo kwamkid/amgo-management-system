@@ -236,3 +236,52 @@ create policy documents_update on documents
 create policy documents_delete on documents
   for delete to authenticated
   using (can_view_all() and (is_admin() or status = 'draft'));
+
+-- ── ลิงก์แชร์เอกสาร (เจ้าของสั่ง 21 ส.ค.) ────────────────────────────
+-- "ส่งลิงก์ให้ดูเพื่อ approve ง่าย ๆ แต่ต้อง login ก่อนถึงจะดูได้"
+--
+-- ทำเป็น token ในลิงก์ ไม่ใช่เปิด policy ให้พนักงานอ่าน documents ได้ทุกใบ —
+-- ถ้าเปิด policy ใครที่ล็อกอินก็ดึงจดหมายทุกฉบับออกไปได้ ทั้งที่ไม่เคยได้ลิงก์
+-- (จดหมายมีอัตราค่าคอม/เงื่อนไขภายในอยู่ด้วย)
+--
+-- token อยู่คู่กับเอกสาร ไม่ใช่คู่กับคน — ใครส่งลิงก์ต่อก็เปิดได้ ตรงตามที่สั่ง
+-- ถ้าวันหนึ่งอยากตัดลิงก์เก่าทิ้ง แค่ออก token ใหม่ให้ใบนั้น
+alter table documents
+  add column share_token uuid not null default gen_random_uuid();
+
+-- อ่านผ่าน token — คืนเฉพาะช่องที่ต้องใช้วาดเอกสาร ไม่คืนทั้งแถว
+-- (created_by / updated_by / share_token ไม่หลุดออกไปกับผลลัพธ์)
+create or replace function document_by_share(p_id uuid, p_token uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+           'doc_no',    d.doc_no,
+           'title',     d.title,
+           'period',    d.period,
+           'recipient', d.recipient,
+           'body_text', d.body_text,
+           'signers',   d.signers,
+           'status',    d.status,
+           'issued_at', d.issued_at,
+           'company', jsonb_build_object(
+             'id', c.id, 'code', c.code, 'name_th', c.name_th,
+             'name_en', c.name_en, 'address', c.address, 'phone', c.phone,
+             'registration_no', c.registration_no,
+             'branch_label', c.branch_label, 'logo_url', c.logo_url
+           )
+         )
+    from documents d
+    join companies c on c.id = d.company_id
+   where d.id = p_id
+     and d.share_token = p_token
+     -- ต้องล็อกอินก่อน ตามที่เจ้าของกำหนด — ลิงก์อย่างเดียวไม่พอ
+     and auth.uid() is not null;
+$$;
+
+-- security definer มองข้าม RLS ได้ จึงต้องปิดไม่ให้คนที่ยังไม่ล็อกอินเรียก
+revoke execute on function document_by_share(uuid, uuid) from public, anon;
+grant execute on function document_by_share(uuid, uuid) to authenticated;

@@ -141,7 +141,10 @@ export function DocumentSheet(props: SheetProps) {
                 ))}
             </ul>
           ) : (
-            <p key={i} className="indent-[12mm] text-justify">
+            /* ⚠️ ห้ามใส่ text-justify — ภาษาไทยใช้เว้นวรรคคั่นวลี ไม่ใช่คั่นคำ
+               พอบังคับให้ชิดขอบขวา เบราว์เซอร์ยืดช่องว่างพวกนั้นจนถ่างเป็นรู
+               (เจ้าของทัก 21 ส.ค.) · ฝั่ง Word ก็ต้องไม่จัดเหมือนกัน */
+            <p key={i} className="indent-[12mm]">
               {b.text}
             </p>
           )

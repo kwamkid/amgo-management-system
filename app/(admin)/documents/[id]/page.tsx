@@ -17,6 +17,7 @@ import {
   Download,
   FileText,
   History,
+  Link2,
   Printer,
   Save,
 } from 'lucide-react'
@@ -26,7 +27,7 @@ import { useToast } from '@/hooks/useToast'
 import { ActionMenu, Button, Modal, SelectMenu } from '@/components/aoo'
 import { PageHeader, TechLoader } from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
-import { downloadFile } from '@/lib/documents/download'
+import { copyText, downloadFile, shareUrl } from '@/lib/documents/download'
 import {
   blocksToText,
   parseBody,
@@ -87,6 +88,8 @@ export default function DocumentEditorPage({
     no: '',
     at: '',
   })
+  /** token สำหรับลิงก์ให้คนอื่นเปิดดู — ใบใหม่ยังไม่มีจนกว่าจะบันทึก */
+  const [shareToken, setShareToken] = useState('')
 
   useEffect(() => {
     // ผู้จัดการออกเอกสารได้ด้วย (เจ้าของสั่ง 21 ส.ค.) — ตรงกับ can_view_all() ฝั่ง RLS
@@ -138,6 +141,7 @@ export default function DocumentEditorPage({
       }
 
       setIssued({ no: doc.doc_no ?? '', at: doc.issued_at ?? '' })
+      setShareToken(doc.share_token ?? '')
       const f: Form = {
         company_id: doc.company_id,
         title: doc.title ?? '',
@@ -228,7 +232,7 @@ export default function DocumentEditorPage({
           created_by: userData?.id ?? null,
           updated_by: userData?.id ?? null,
         })
-        .select('id, doc_no, issued_at')
+        .select('id, doc_no, issued_at, share_token')
         .single()
       setSaving(false)
       if (error || !data) {
@@ -238,6 +242,7 @@ export default function DocumentEditorPage({
       savedRef.current = JSON.stringify(form)
       setDirty(false)
       setIssued({ no: data.doc_no ?? '', at: data.issued_at ?? '' })
+      setShareToken(data.share_token ?? '')
       showToast(`สร้างเอกสารแล้ว — เลขที่ ${data.doc_no}`, 'success')
       // replace ไม่ใช่ push — กด back แล้วต้องไม่ย้อนมาหน้า /new ที่ว่างเปล่า
       router.replace(`/documents/${data.id}`)
@@ -340,6 +345,28 @@ export default function DocumentEditorPage({
             >
               <History size={15} /> ประวัติการแก้ไข
             </Button>
+            {/* ลิงก์ให้คนอื่นเปิดดูเพื่อ approve (เจ้าของขอ 21 ส.ค.)
+                ใบใหม่ยังไม่มี token จนกว่าจะบันทึก จึงกดไม่ได้ */}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!shareToken}
+              title={
+                shareToken ? undefined : 'บันทึกเอกสารก่อนถึงจะแชร์ได้'
+              }
+              onClick={async () => {
+                const ok = await copyText(shareUrl(id, shareToken))
+                showToast(
+                  ok
+                    ? 'คัดลอกลิงก์แล้ว — คนที่เปิดต้องล็อกอินก่อน'
+                    : 'คัดลอกไม่สำเร็จ ลองใหม่อีกครั้ง',
+                  ok ? 'success' : 'error'
+                )
+              }}
+            >
+              <Link2 size={15} /> แชร์
+            </Button>
+
             {/* สั่งพิมพ์ทันที — งานที่ทำบ่อยสุดต้องกดครั้งเดียวถึง
                 ไม่ต้องเปิดเมนูก่อน (เจ้าของขอ 21 ส.ค.) */}
             <Button variant="secondary" size="sm" onClick={() => window.print()}>

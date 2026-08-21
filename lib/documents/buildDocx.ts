@@ -434,7 +434,7 @@ export async function buildDocx(d: DocxInput): Promise<Buffer> {
       new Paragraph({
         spacing: { after: 140, line: 300 },
         indent: { firstLine: convertMillimetersToTwip(12) },
-        alignment: AlignmentType.JUSTIFIED,
+        // ไม่จัดชิดขอบสองข้าง — เหตุผลเดียวกับฝั่งเว็บ (ดู DocumentSheet)
         children: [run(b.text)],
       }),
     ]

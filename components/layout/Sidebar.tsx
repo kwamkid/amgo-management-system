@@ -16,6 +16,7 @@ import {
   Building2,
   MapPin,
   Calendar,
+  FileSignature,
   FileText,
   Settings,
   Clock,
@@ -169,6 +170,8 @@ const navSections: NavSection[] = [
         ],
       },
       { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },
+      // จดหมาย/ประกาศจากแม่แบบกลาง — หน้าเดียวใช้ได้ทั้ง 3 บริษัท (สลับแค่โลโก้+ข้อมูล)
+      { label: 'เอกสารบริษัท', href: '/documents', icon: icon(FileSignature), roles: ['hr', 'admin', 'manager'] },
     ],
   },
   {

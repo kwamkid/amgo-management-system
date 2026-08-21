@@ -55,6 +55,10 @@ import {
   MessageSquareText,
   GripVertical,
   type LucideProps,
+  Printer,
+  FileDown,
+  FileText,
+  Undo2
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -114,6 +118,11 @@ const ICON_MAP: Record<string, React.FC<LucideProps>> = {
   MessageSquareText,
   GripVertical,
   Wallet,
+  // เอกสารบริษัท — เมนู ⋯ ในตารางและปุ่มดาวน์โหลด (เพิ่ม 21 ส.ค.)
+  Printer,
+  FileDown,
+  FileText,
+  Undo2,
 };
 
 /* ------------------------------------------------------------------ */
@@ -126,7 +135,16 @@ export interface LucideIconProps extends LucideProps {
 
 export function LucideIcon({ name, ...rest }: LucideIconProps) {
   const Icon = ICON_MAP[name];
-  if (!Icon) return null;
+  if (!Icon) {
+    // ชื่อที่ไม่มีในตารางเคยหายเงียบ ๆ — เมนูขึ้นแต่ตัวหนังสือ ไม่มีอะไรฟ้อง
+    // ว่าพิมพ์ชื่อผิดหรือลืมเพิ่มไอคอน (เจอกับเมนูเอกสารบริษัท 21 ส.ค.)
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[LucideIcon] ไม่มีไอคอนชื่อ "${name}" ใน ICON_MAP — เพิ่มที่ components/aoo/button.tsx`,
+      );
+    }
+    return null;
+  }
   return <Icon {...rest} />;
 }
 

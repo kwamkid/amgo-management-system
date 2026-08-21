@@ -22,7 +22,10 @@ type CompanyRow = {
   id: string | null // null = แถวใหม่ ยังไม่บันทึก
   code: string
   name_th: string
+  name_en: string
   address: string
+  phone: string
+  branch_label: string
   registration_no: string
   logo_url: string | null
   is_active: boolean
@@ -51,7 +54,9 @@ export default function CompanySettingsPage() {
   const load = async () => {
     const { data, error } = await createClient()
       .from('companies')
-      .select('id, code, name_th, address, registration_no, logo_url, is_active')
+      .select(
+        'id, code, name_th, name_en, address, phone, branch_label, registration_no, logo_url, is_active'
+      )
       .order('code')
     if (error) {
       showToast(`โหลดข้อมูลบริษัทไม่สำเร็จ: ${error.message}`, 'error')
@@ -62,7 +67,10 @@ export default function CompanySettingsPage() {
         id: c.id,
         code: c.code,
         name_th: c.name_th,
+        name_en: c.name_en ?? '',
         address: c.address ?? '',
+        phone: c.phone ?? '',
+        branch_label: c.branch_label ?? '',
         registration_no: c.registration_no ?? '',
         logo_url: c.logo_url,
         is_active: c.is_active,
@@ -89,7 +97,11 @@ export default function CompanySettingsPage() {
     const payload = {
       code: r.code.trim().toUpperCase(),
       name_th: r.name_th.trim(),
+      name_en: r.name_en.trim() || null,
       address: r.address.trim() || null,
+      phone: r.phone.trim() || null,
+      // ว่าง = ไม่ขึ้นวงเล็บต่อท้ายชื่อบนหัวจดหมาย (คอลัมน์ NOT NULL จึงเก็บ '')
+      branch_label: r.branch_label.trim(),
       registration_no: r.registration_no.trim() || null,
       is_active: r.is_active,
     }
@@ -151,7 +163,7 @@ export default function CompanySettingsPage() {
     <div className="max-w-3xl space-y-5">
       <PageHeader
         title="บริษัท"
-        description="ชื่อ ที่อยู่ เลขทะเบียน และโลโก้ — ใช้บนหัวสัญญาจ้างและใบรับรองเงินเดือน"
+        description="ชื่อ ที่อยู่ เลขทะเบียน และโลโก้ — ใช้บนหัวจดหมาย สัญญาจ้าง และใบรับรองเงินเดือน"
         icon={Building2}
         actions={
           <Button
@@ -164,7 +176,10 @@ export default function CompanySettingsPage() {
                   id: null,
                   code: '',
                   name_th: '',
+                  name_en: '',
                   address: '',
+                  phone: '',
+                  branch_label: 'สำนักงานใหญ่',
                   registration_no: '',
                   logo_url: null,
                   is_active: true,
@@ -294,12 +309,39 @@ function CompanyCard({
             />
           </label>
           <label className="block sm:col-span-2">
+            <span className="text-xs text-gray-500">ชื่อบริษัท (อังกฤษ)</span>
+            <input
+              value={row.name_en}
+              onChange={(e) => onChange({ name_en: e.target.value })}
+              placeholder="เช่น AG DRAGON CO., LTD."
+              className={`${FIELD} mt-0.5`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-gray-500">คำต่อท้ายชื่อ</span>
+            <input
+              value={row.branch_label}
+              onChange={(e) => onChange({ branch_label: e.target.value })}
+              placeholder="สำนักงานใหญ่"
+              className={`${FIELD} mt-0.5`}
+            />
+          </label>
+          <label className="block sm:col-span-2">
             <span className="text-xs text-gray-500">ที่อยู่สำนักงาน</span>
             <input
               value={row.address}
               onChange={(e) => onChange({ address: e.target.value })}
               placeholder="เลขที่ ถนน แขวง เขต จังหวัด รหัสไปรษณีย์"
               className={`${FIELD} mt-0.5`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-gray-500">เบอร์โทร</span>
+            <input
+              value={row.phone}
+              onChange={(e) => onChange({ phone: e.target.value })}
+              placeholder="02-000-0000"
+              className={`${FIELD} mt-0.5 tabular-nums`}
             />
           </label>
           <label className="block">

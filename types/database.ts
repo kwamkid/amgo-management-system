@@ -155,6 +155,108 @@ export type Database = {
         }
         Relationships: []
       }
+      callback_logs: {
+        Row: {
+          at: string
+          error: string | null
+          id: string
+          ok: boolean
+          raw: Json | null
+          status: number
+          user_agent: string | null
+        }
+        Insert: {
+          at?: string
+          error?: string | null
+          id?: string
+          ok?: boolean
+          raw?: Json | null
+          status: number
+          user_agent?: string | null
+        }
+        Update: {
+          at?: string
+          error?: string | null
+          id?: string
+          ok?: boolean
+          raw?: Json | null
+          status?: number
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      callback_target_members: {
+        Row: {
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "callback_target_members_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "callback_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "callback_target_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "callback_target_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      callback_targets: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          location_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          location_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          location_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "callback_targets_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_brands: {
         Row: {
           brand_id: string
@@ -630,32 +732,41 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          branch_label: string
           code: string
           created_at: string
           id: string
           is_active: boolean
           logo_url: string | null
+          name_en: string | null
           name_th: string
+          phone: string | null
           registration_no: string | null
         }
         Insert: {
           address?: string | null
+          branch_label?: string
           code: string
           created_at?: string
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          name_en?: string | null
           name_th: string
+          phone?: string | null
           registration_no?: string | null
         }
         Update: {
           address?: string | null
+          branch_label?: string
           code?: string
           created_at?: string
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          name_en?: string | null
           name_th?: string
+          phone?: string | null
           registration_no?: string | null
         }
         Relationships: []
@@ -829,6 +940,145 @@ export type Database = {
           {
             foreignKeyName: "delivery_routes_driver_id_fkey"
             columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_versions: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          document_id: string
+          id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          body_text: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          department: string
+          doc_no: string
+          id: string
+          issued_at: string
+          period: string
+          recipient: string
+          signers: Json
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body_text?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          doc_no?: string
+          id?: string
+          issued_at?: string
+          period?: string
+          recipient?: string
+          signers?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body_text?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          doc_no?: string
+          id?: string
+          issued_at?: string
+          period?: string
+          recipient?: string
+          signers?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

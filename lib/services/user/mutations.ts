@@ -75,6 +75,8 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   set('payroll_cycle', data.payrollCycle as string | undefined)
   set('requires_checkin', data.requiresCheckin as boolean | undefined)
   set('start_date', data.startDate as string | undefined)
+  // กรอกมือ = ยืนยันแล้ว (ค่าเริ่มต้นของคนสมัครใหม่คือวันสมัคร ซึ่งไม่ใช่วันเริ่มงานจริง)
+  set('start_date_verified', data.startDateVerified as boolean | undefined)
   set('end_date', data.endDate as string | undefined)
   set('probation_end_date', (data.probationEndDate as string | null | undefined) ?? undefined)
   set('end_reason', data.endReason as string | undefined)

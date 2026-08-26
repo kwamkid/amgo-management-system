@@ -102,6 +102,7 @@ export default function UserEditForm({
     nickname: user.nickname || '',
     phone: user.phone || '',
     birthDate: formatDateForInput(user.birthDate), // This is already a string
+    startDate: formatDateForInput(user.startDate),
     nationalId: user.nationalId ?? '',
     address: user.address ?? '',
     // ⚠️ ไม่มี role — สิทธิ์มากับตำแหน่ง trigger ที่ฐานข้อมูลเซ็ตให้เอง
@@ -319,6 +320,36 @@ export default function UserEditForm({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            {/* วันเริ่มงานจริง — เดิมกรอกได้เฉพาะหน้าแก้หลายคนพร้อมกัน ทั้งที่ไทม์ไลน์
+                บอกให้มากรอกที่แท็บนี้ (หน่อยหาไม่เจอ 22 ส.ค. 69)
+                ค่าตั้งต้นของคนสมัครใหม่คือวันสมัคร ไม่ใช่วันเริ่มงานจริง —
+                กรอกมือเมื่อไหร่ถือว่ายืนยันแล้ว */}
+            <div>
+              <Label htmlFor="startDate">วันเริ่มงาน</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={(formData.startDate as string) || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      startDate: e.target.value,
+                      startDateVerified: !!e.target.value,
+                    })
+                  }
+                  className="pl-10"
+                  disabled={isLoading}
+                />
+              </div>
+              {!user.startDateVerified && (
+                <p className="mt-1 text-xs text-amber-600">
+                  ยังเป็นวันที่สมัครเข้าระบบ ไม่ใช่วันเริ่มงานจริง — ใช้คิดอายุงานกับสัญญาจ้าง
+                </p>
+              )}
             </div>
 
             <div>

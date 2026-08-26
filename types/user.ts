@@ -29,6 +29,8 @@ export interface User {
   companyId?: string | null
   jobFunctionId?: string | null
   startDate?: Date | string | null // วันเริ่มงานจริง (start_date_verified บอกว่ายืนยันแล้ว)
+  /** true = มีคนกรอกวันเริ่มงานจริงแล้ว · false/undefined = ยังเป็นวันที่สมัครเข้าระบบ */
+  startDateVerified?: boolean
   allowedLocationIds?: string[] // สาขาที่อนุญาตให้เช็คอิน (หลายที่ได้)
   requiresCheckin?: boolean | null // false = ไม่ต้องเช็คอิน รายงานไม่นับขาดงาน · null = ตามตำแหน่ง
   employmentStatus?: string        // active | probation | resigned | terminated | retired

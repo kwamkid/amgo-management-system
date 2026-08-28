@@ -266,6 +266,51 @@ export async function saveSrpChannel(data: Partial<SrpChannel> & { brandId: stri
   }
 }
 
+/* ── ประวัติการแก้ไขสินค้า (trigger ฝั่ง DB เป็นคนเขียน) ────────────── */
+
+export interface SrpHistoryEntry {
+  id: string
+  productId: string
+  /** ชื่อสินค้า ณ ตอนนี้ — ไม่ใช่ชื่อ ณ ตอนที่แก้ */
+  productName: string
+  /** ชื่อคอลัมน์จริงใน srp_products หรือ 'created' */
+  field: string
+  oldValue: string | null
+  newValue: string | null
+  editedBy: string
+  createdAt: string
+}
+
+/**
+ * ประวัติล่าสุดของแบรนด์ (ใส่ productId = เฉพาะสินค้าตัวนั้น)
+ *
+ * จำกัดจำนวนไว้เพราะแก้ราคาทั้งแบรนด์ทีเดียวได้เป็นร้อยบรรทัด — หน้าจอดูย้อนหลัง
+ * ไม่ได้ไว้ทำรายงาน ถ้าต้องขุดจริงค่อยดูจากฐานข้อมูล
+ */
+export async function getSrpHistory(
+  brandId: string,
+  productId?: string,
+  limit = 300
+): Promise<SrpHistoryEntry[]> {
+  let q = sb()
+    .from('srp_product_history')
+    .select('id, product_id, field, old_value, new_value, edited_by, created_at, srp_products(name)')
+    .eq('brand_id', brandId)
+  if (productId) q = q.eq('product_id', productId)
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    productId: r.product_id,
+    productName: (r.srp_products as { name?: string } | null)?.name ?? '(ลบไปแล้ว)',
+    field: r.field,
+    oldValue: r.old_value,
+    newValue: r.new_value,
+    editedBy: r.edited_by,
+    createdAt: r.created_at,
+  }))
+}
+
 export async function deleteSrpChannel(id: string): Promise<void> {
   const { error } = await sb().from('srp_brand_channels').delete().eq('id', id)
   if (error) throw error

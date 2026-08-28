@@ -91,6 +91,8 @@ export function SelectMenu({
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
   const [query, setQuery] = useState('')
+  // ช่องค้นหาถูกโฟกัสให้อัตโนมัติตอนกางเมนู — ต้องมีกรอบบอกด้วยว่ากำลังโฟกัสอยู่
+  const [searchFocus, setSearchFocus] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
@@ -121,6 +123,7 @@ export function SelectMenu({
   const close = useCallback(() => {
     setOpen(false)
     setQuery('')
+    setSearchFocus(false)
     setPos(null)
   }, [])
 
@@ -353,13 +356,20 @@ export function SelectMenu({
                     setCursor(0)
                   }}
                   placeholder="ค้นหา"
+                  onFocus={() => setSearchFocus(true)}
+                  onBlur={() => setSearchFocus(false)}
                   style={{
                     width: '100%',
                     height: 32,
                     padding: '0 8px 0 30px',
                     borderRadius: 'var(--r-sm)',
-                    border: '1px solid var(--border-2)',
-                    background: 'var(--bg-sunken)',
+                    // เดิมพื้นเป็น --bg-sunken (สีจม) ทั้งที่พิมพ์ได้และถูกโฟกัสอยู่
+                    // อ่านเป็น "ช่องปิดใช้งาน" (เจ้าของทัก 29 ส.ค. 69)
+                    border: `1px solid ${searchFocus ? 'var(--accent)' : 'var(--border-2)'}`,
+                    background: 'var(--bg-surface)',
+                    boxShadow: searchFocus ? 'var(--shadow-focus)' : 'none',
+                    transition:
+                      'border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out)',
                     fontFamily: 'var(--font-sans)',
                     fontSize: 14,
                     color: 'var(--fg-1)',

@@ -41,7 +41,10 @@ export default function FilterBar({
             value={search ?? ''}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={placeholder}
-            className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-8 text-sm outline-none focus:border-red-400 focus:bg-white"
+            // พื้นขาวตั้งแต่แรก — พื้นเทาอ่านเป็นช่องปิดใช้งานทั้งที่พิมพ์ได้
+            // (เจ้าของทัก 29 ส.ค. 69) กรอบเข้มขึ้นหน่อยเพื่อให้ยังเห็นขอบช่อง
+            // บนการ์ดพื้นขาว แล้วเน้นด้วยวงแหวนตอนโฟกัส
+            className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-8 pr-8 text-sm outline-none transition placeholder:text-gray-400 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
           />
           {search && (
             <button

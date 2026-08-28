@@ -2868,6 +2868,57 @@ export type Database = {
         }
         Relationships: []
       }
+      srp_product_history: {
+        Row: {
+          brand_id: string
+          created_at: string
+          edited_by: string
+          edited_by_id: string | null
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          product_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          edited_by?: string
+          edited_by_id?: string | null
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          product_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          edited_by?: string
+          edited_by_id?: string | null
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srp_product_history_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "srp_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "srp_product_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "srp_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       srp_products: {
         Row: {
           brand_id: string

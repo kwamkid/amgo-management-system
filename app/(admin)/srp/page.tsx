@@ -32,6 +32,7 @@ interface BrandDraft {
   logoUrl: string | null
   usdToThb: string
   eurToThb: string
+  sgdToThb: string
   vat: string
   defaultMultiplier: string
   platformMarkupPct: string
@@ -43,6 +44,7 @@ const draftFrom = (b?: SrpBrand): BrandDraft => ({
   logoUrl: b?.logoUrl ?? null,
   usdToThb: String(b?.usdToThb ?? 37),
   eurToThb: String(b?.eurToThb ?? 39),
+  sgdToThb: String(b?.sgdToThb ?? 27),
   vat: String(b?.vat ?? 7),
   defaultMultiplier: String(b?.defaultMultiplier ?? 3),
   platformMarkupPct: String(b?.platformMarkupPct ?? 0),
@@ -117,6 +119,7 @@ export default function SrpBrandsPage() {
         logoUrl: draft.logoUrl,
         usdToThb: parseFloat(draft.usdToThb) || 37,
         eurToThb: parseFloat(draft.eurToThb) || 39,
+        sgdToThb: parseFloat(draft.sgdToThb) || 27,
         vat: parseFloat(draft.vat) || 0,
         defaultMultiplier: parseFloat(draft.defaultMultiplier) || 3,
         platformMarkupPct: parseFloat(draft.platformMarkupPct) || 0,
@@ -267,6 +270,8 @@ export default function SrpBrandsPage() {
                 [
                   ['usdToThb', 'USD → บาท'],
                   ['eurToThb', 'EUR → บาท'],
+                  // บางแบรนด์ให้ราคาแนะนำมาเป็น SGD (เจ้าของแจ้ง 28 ส.ค. 69)
+                  ['sgdToThb', 'SGD → บาท'],
                   ['vat', 'VAT %'],
                   ['defaultMultiplier', 'ตัวคูณราคา (default)'],
                   ['platformMarkupPct', 'Markup ราคา platform %'],

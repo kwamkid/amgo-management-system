@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -2833,6 +2833,7 @@ export type Database = {
           logo_url: string | null
           name: string
           platform_markup_pct: number
+          sgd_to_thb: number
           updated_at: string
           usd_to_thb: number
           vat: number
@@ -2846,6 +2847,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           platform_markup_pct?: number
+          sgd_to_thb?: number
           updated_at?: string
           usd_to_thb?: number
           vat?: number
@@ -2859,6 +2861,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           platform_markup_pct?: number
+          sgd_to_thb?: number
           updated_at?: string
           usd_to_thb?: number
           vat?: number
@@ -2883,11 +2886,13 @@ export type Database = {
           name: string
           notes: string
           our_price_thb: number
+          platform_markup_pct: number
           platform_price_thb: number
           shipping_cost: number
           sku: string
           sort_order: number
           srp_eur: number
+          srp_sgd: number
           srp_usd: number
         }
         Insert: {
@@ -2907,11 +2912,13 @@ export type Database = {
           name?: string
           notes?: string
           our_price_thb?: number
+          platform_markup_pct?: number
           platform_price_thb?: number
           shipping_cost?: number
           sku?: string
           sort_order?: number
           srp_eur?: number
+          srp_sgd?: number
           srp_usd?: number
         }
         Update: {
@@ -2931,11 +2938,13 @@ export type Database = {
           name?: string
           notes?: string
           our_price_thb?: number
+          platform_markup_pct?: number
           platform_price_thb?: number
           shipping_cost?: number
           sku?: string
           sort_order?: number
           srp_eur?: number
+          srp_sgd?: number
           srp_usd?: number
         }
         Relationships: [

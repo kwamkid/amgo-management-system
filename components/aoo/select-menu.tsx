@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Plus, Search } from 'lucide-react'
 import { Z } from './z-layers'
 
 /**
@@ -44,6 +44,12 @@ export interface SelectMenuProps {
   clearable?: string | false
   /** โชว์ช่องค้นหาเมื่อตัวเลือกเยอะกว่านี้ (ค่าเริ่มต้น 8) */
   searchThreshold?: number
+  /**
+   * เพิ่มตัวเลือกใหม่ได้ — พิมพ์ในช่องค้นหาแล้วไม่ตรงกับอันไหน จะมีแถว
+   * "+ เพิ่ม …" ให้กด · ใส่ prop นี้เมื่อไหร่ ช่องค้นหาจะโผล่เสมอ
+   * เพราะมันคือช่องพิมพ์ชื่อใหม่ไปในตัว
+   */
+  onCreate?: (label: string) => void
   disabled?: boolean
   /** compact = สูง 32px สำหรับใช้ในตาราง */
   size?: 'sm' | 'md'
@@ -62,9 +68,13 @@ export interface SelectMenuProps {
 
 const H = { sm: 32, md: 40 }
 
+/** ค่าประจำแถว "เพิ่มตัวเลือกใหม่" — ไม่มีทางชนกับค่าจริงที่ไหน */
+const CREATE = '__aoo_select_create__'
+
 export function SelectMenu({
   value,
   options,
+  onCreate,
   onChange,
   placeholder = 'เลือก',
   clearable = false,
@@ -89,7 +99,8 @@ export function SelectMenu({
   const searchRef = useRef<HTMLInputElement | null>(null)
 
   const selected = options.find((o) => o.value === value) ?? null
-  const showSearch = options.length > searchThreshold
+  // มี onCreate = ช่องค้นหาต้องมีเสมอ มันคือช่องพิมพ์ชื่อหมวดใหม่ไปในตัว
+  const showSearch = !!onCreate || options.length > searchThreshold
 
   const rows: (SelectOption | { value: null; label: string })[] = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -98,8 +109,14 @@ export function SelectMenu({
           (o) => o.label.toLowerCase().includes(q) || (o.hint?.toLowerCase().includes(q) ?? false)
         )
       : options
-    return clearable ? [{ value: null, label: clearable }, ...filtered] : filtered
-  }, [options, query, clearable])
+    const base = clearable ? [{ value: null, label: clearable }, ...filtered] : filtered
+    // พิมพ์แล้วไม่ตรงกับตัวเลือกไหนเลย → เสนอให้เพิ่มเป็นตัวเลือกใหม่
+    const typed = query.trim()
+    const exists = options.some((o) => o.label.trim().toLowerCase() === typed.toLowerCase())
+    return onCreate && typed && !exists
+      ? [...base, { value: CREATE, label: `เพิ่ม “${typed}”` }]
+      : base
+  }, [options, query, clearable, onCreate])
 
   const close = useCallback(() => {
     setOpen(false)
@@ -184,6 +201,12 @@ export function SelectMenu({
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (v: string | null) => {
+    if (v === CREATE) {
+      onCreate?.(query.trim())
+      close()
+      btnRef.current?.focus()
+      return
+    }
     onChange(v)
     close()
     btnRef.current?.focus()
@@ -382,7 +405,12 @@ export function SelectMenu({
                       border: 'none',
                       borderRadius: 'var(--r-sm)',
                       background: isCur ? 'var(--warm-150)' : 'transparent',
-                      color: row.value === null ? 'var(--fg-3)' : 'var(--fg-1)',
+                      color:
+                        row.value === CREATE
+                          ? 'var(--accent)'
+                          : row.value === null
+                            ? 'var(--fg-3)'
+                            : 'var(--fg-1)',
                       fontFamily: 'var(--font-sans)',
                       fontSize: 14,
                       fontWeight: isSel ? 600 : 400,
@@ -390,6 +418,7 @@ export function SelectMenu({
                       cursor: 'pointer',
                     }}
                   >
+                    {row.value === CREATE && <Plus size={14} style={{ flexShrink: 0 }} />}
                     {opt.dot && <Dot color={opt.dot} />}
                     <span
                       style={{

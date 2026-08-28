@@ -4,6 +4,7 @@
 // RLS คุมชั้น DB แล้ว (แอดมินเห็นหมด · viewer อ่าน · editor แก้) — โค้ดฝั่งนี้
 // query ตรง ๆ ได้เลย แถวที่ไม่มีสิทธิ์จะไม่หลุดมาเอง
 
+import type { ChannelType } from './calculator'
 import { createClient } from '@/lib/supabase/client'
 import type {
   SrpBrand,
@@ -25,7 +26,7 @@ export interface SrpBrandAccess {
 
 type BrandRow = {
   id: string; name: string; logo_url: string | null; usd_to_thb: number
-  eur_to_thb: number; vat: number; default_multiplier: number
+  eur_to_thb: number; sgd_to_thb: number; vat: number; default_multiplier: number
   platform_markup_pct: number; is_active: boolean
 }
 const toBrand = (r: BrandRow): SrpBrand => ({
@@ -34,6 +35,7 @@ const toBrand = (r: BrandRow): SrpBrand => ({
   logoUrl: r.logo_url,
   usdToThb: Number(r.usd_to_thb),
   eurToThb: Number(r.eur_to_thb),
+  sgdToThb: Number(r.sgd_to_thb),
   vat: Number(r.vat),
   defaultMultiplier: Number(r.default_multiplier),
   platformMarkupPct: Number(r.platform_markup_pct),
@@ -44,6 +46,7 @@ type ProductRow = {
   id: string; brand_id: string; name: string; category: string; sku: string
   image_url: string; fob_usd: number; fob_eur: number; freight_do: number
   import_tax_pct: number; shipping_cost: number; srp_usd: number; srp_eur: number
+  srp_sgd: number; platform_markup_pct: number
   multiplier: number; our_price_thb: number; platform_price_thb: number
   notes: string; sort_order: number; is_active: boolean
   last_edited_by: string; last_edited_at: string | null
@@ -60,8 +63,10 @@ const toProduct = (r: ProductRow): SrpProduct => ({
   freightDo: Number(r.freight_do),
   importTaxPct: Number(r.import_tax_pct),
   shippingCost: Number(r.shipping_cost),
+  platformMarkupPct: Number(r.platform_markup_pct),
   srpUsd: Number(r.srp_usd),
   srpEur: Number(r.srp_eur),
+  srpSgd: Number(r.srp_sgd),
   multiplier: Number(r.multiplier),
   ourPriceThb: Number(r.our_price_thb),
   platformPriceThb: Number(r.platform_price_thb),
@@ -81,7 +86,7 @@ type ChannelRow = {
 const toChannel = (r: ChannelRow): SrpChannel => ({
   id: r.id,
   brandId: r.brand_id,
-  type: r.type as 'offline' | 'online',
+  type: r.type as ChannelType,
   name: r.name,
   sortOrder: r.sort_order,
   gpPct: Number(r.gp_pct),
@@ -99,7 +104,7 @@ const toChannel = (r: ChannelRow): SrpChannel => ({
 export async function getSrpBrands(): Promise<(SrpBrand & { productCount: number })[]> {
   const { data, error } = await sb()
     .from('srp_brands')
-    .select('id, name, logo_url, usd_to_thb, eur_to_thb, vat, default_multiplier, platform_markup_pct, is_active, srp_products(count)')
+    .select('id, name, logo_url, usd_to_thb, eur_to_thb, sgd_to_thb, vat, default_multiplier, platform_markup_pct, is_active, srp_products(count)')
     .order('name')
   if (error) throw error
   return (data ?? []).map((r) => ({
@@ -111,7 +116,7 @@ export async function getSrpBrands(): Promise<(SrpBrand & { productCount: number
 export async function getSrpBrand(id: string): Promise<SrpBrand | null> {
   const { data, error } = await sb()
     .from('srp_brands')
-    .select('id, name, logo_url, usd_to_thb, eur_to_thb, vat, default_multiplier, platform_markup_pct, is_active')
+    .select('id, name, logo_url, usd_to_thb, eur_to_thb, sgd_to_thb, vat, default_multiplier, platform_markup_pct, is_active')
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
@@ -124,6 +129,7 @@ export async function saveSrpBrand(data: {
   logoUrl?: string | null
   usdToThb: number
   eurToThb: number
+  sgdToThb: number
   vat: number
   defaultMultiplier: number
   platformMarkupPct: number
@@ -132,6 +138,7 @@ export async function saveSrpBrand(data: {
     name: data.name,
     logo_url: data.logoUrl ?? null,
     usd_to_thb: data.usdToThb,
+    sgd_to_thb: data.sgdToThb,
     eur_to_thb: data.eurToThb,
     vat: data.vat,
     default_multiplier: data.defaultMultiplier,
@@ -156,7 +163,10 @@ export async function getSrpProducts(brandId: string): Promise<SrpProduct[]> {
     .from('srp_products')
     .select('*')
     .eq('brand_id', brandId)
-    .order('sort_order')
+    // ของที่เพิ่งเพิ่ม/เพิ่งนำเข้าอยู่บนสุด (เจ้าของสั่ง 28 ส.ค. 69) — เดิมเรียงตาม
+    // sort_order ที่มีแต่ตอนนำเข้า Excel เป็นคนใส่ ไม่มีที่ไหนในเว็บแก้ได้เลย
+    // จึงไม่ใช่ลำดับที่ใครตั้งใจจัด · ชื่อเป็นตัวตัดสินเมื่อเพิ่มมาพร้อมกัน
+    .order('created_at', { ascending: false })
     .order('name')
   if (error) throw error
   return (data ?? []).map(toProduct)

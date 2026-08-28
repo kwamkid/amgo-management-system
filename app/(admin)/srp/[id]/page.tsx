@@ -24,6 +24,7 @@ import {
   type CalculatedProduct,
   type SrpBrand,
   type SrpChannel,
+  type ChannelType,
   type SrpProduct,
 } from '@/lib/services/srp/calculator'
 import {
@@ -54,10 +55,27 @@ const profitClass = (pct: number) =>
 /** ความกว้างเริ่มต้นของแต่ละคอลัมน์ (px) — ผู้ใช้ลากปรับเองได้ ระบบจำไว้ต่อแบรนด์ */
 const COL_W: Record<string, number> = {
   product: 320, sku: 120, category: 120, fobUsd: 86, fobEur: 86, fobThb: 92,
-  freightDo: 104, importTaxPct: 84, shippingCost: 96, totalCost: 108, srpThb: 96,
-  multiplier: 64, suggested: 96, ourPrice: 120, margin: 96, platform: 132, actions: 84,
+  freightDo: 104, importTaxPct: 84, shippingCost: 96, totalCost: 108,
+  srpUsd: 86, srpEur: 86, srpSgd: 86, srpThb: 96,
+  multiplier: 64, suggested: 96, ourPrice: 120, margin: 96,
+  platformPct: 84, platformSuggested: 116, platform: 132, actions: 84,
 }
 const CH_COL_W = 92 // 3 คอลัมน์ต่อ 1 ช่องทางขาย
+
+/** ประเภทช่องทางขาย — เจ้าของแยกเป็น 3 เมื่อ 28 ส.ค. 69 */
+const CHANNEL_TYPES = ['retail', 'department', 'marketplace'] as const
+const CHANNEL_TYPE_LABEL: Record<ChannelType, string> = {
+  retail: 'ช่องทางปกติ',
+  department: 'ห้าง',
+  marketplace: 'Marketplace',
+}
+
+/**
+ * ราคาที่ช่องทางนั้นใช้คิดกำไร (เจ้าของยืนยัน 28 ส.ค. 69)
+ *   ปกติ + ห้าง = ราคาขายจริง · marketplace = ราคาบนแพลตฟอร์ม
+ */
+const priceForChannel = (ch: SrpChannel, p: CalculatedProduct) =>
+  ch.type === 'marketplace' ? p.platformEffective || 0 : p.effectivePrice
 
 /** ช่องตัวเลขในตาราง — โชว์เลขมี comma ตอนไม่ได้พิมพ์ เซฟแบบหน่วงเวลา */
 function NumCell({
@@ -112,8 +130,17 @@ export default function SrpBrandPage() {
   const [category, setCategory] = useState<string | null>(null)
   /** แถวที่เคอร์เซอร์อยู่ในช่องหมวด — กันแถวหายกลางคันตอนแก้หมวดขณะกรองหมวดอยู่ */
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  /** แถวที่ติ๊กไว้ — ใช้เปลี่ยนหมวดทีเดียวหลายแถว (เจ้าของเปลี่ยนใจ 28 ส.ค. 69
+      จากเดิมที่ตั้งใจให้ติ๊กไว้ดูเฉย ๆ) · ไม่บันทึกลงฐานข้อมูล หายเมื่อออกจากหน้า */
+  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const toggleMark = (id: string) =>
+    setMarked((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   const [statusTab, setStatusTab] = useState<'active' | 'inactive' | 'all'>('active')
-  const [channelTab, setChannelTab] = useState<'offline' | 'online'>('offline')
+  const [channelTab, setChannelTab] = useState<ChannelType>('retail')
   const [lightbox, setLightbox] = useState<SrpProduct | null>(null)
   const [showChannels, setShowChannels] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -255,6 +282,12 @@ export default function SrpBrandPage() {
     [calculated]
   )
 
+  /** ตัวเลือกหมวดของ dropdown ในตาราง — หมวดใหม่ที่เพิ่งพิมพ์จะโผล่มาเองรอบถัดไป */
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ value: c, label: c })),
+    [categories]
+  )
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return calculated.filter((p) => {
@@ -266,6 +299,28 @@ export default function SrpBrandPage() {
       return true
     })
   }, [calculated, search, category, statusTab, editingCategoryId])
+
+  /** ติ๊กทั้งหน้า / ล้างทั้งหมด — อิงเฉพาะแถวที่มองเห็นอยู่ตอนนั้น */
+  const allVisibleMarked = visible.length > 0 && visible.every((p) => marked.has(p.id))
+  const toggleMarkAll = () =>
+    setMarked((prev) => {
+      const next = new Set(prev)
+      if (allVisibleMarked) visible.forEach((p) => next.delete(p.id))
+      else visible.forEach((p) => next.add(p.id))
+      return next
+    })
+
+  /**
+   * เปลี่ยนหมวดของแถวที่ติ๊กไว้ทั้งหมดในครั้งเดียว
+   * patchProduct รวมทุกแถวไว้ในคิวเดียวแล้วยิงทีเดียวตอน debounce หมด
+   * ล้างการติ๊กหลังเปลี่ยน — ไม่งั้นเผลอเปลี่ยนซ้ำทับของที่เพิ่งทำ
+   */
+  const applyCategoryToMarked = (name: string) => {
+    const ids = [...marked]
+    ids.forEach((id) => patchProduct(id, { category: name }, { category: name }))
+    setMarked(new Set())
+    showToast(`เปลี่ยนหมวดเป็น "${name}" แล้ว ${ids.length} รายการ`, 'success')
+  }
 
   const shownChannels = useMemo(
     () => channels.filter((c) => c.type === channelTab),
@@ -311,15 +366,25 @@ export default function SrpBrandPage() {
     if (!brand || !products) return
     await saveSrpBrand({ ...brand, platformMarkupPct: pct })
     setBrand({ ...brand, platformMarkupPct: pct })
-    if (!confirm(`คำนวณราคา platform ใหม่ = ราคาขายเรา +${pct}% (ปัดเลขสวย) ทั้งแบรนด์?`)) return
+    if (!confirm(`ตั้ง Platform +${pct}% ให้ทุกตัวในแบรนด์ แล้วคำนวณราคาขายจริงบน platform ใหม่?`))
+      return
     const sb = createClient()
+    // เขียนทั้ง % รายสินค้าและราคาที่ได้ — ถ้าเขียนแต่ราคา ช่อง % รายตัวจะยังว่าง
+    // อยู่ ดูเหมือนไม่ได้ตั้งอะไรไว้ทั้งที่ราคาเปลี่ยนไปแล้ว
     const updated = products.map((p) => {
       const c = calculated.find((x) => x.id === p.id)
       const base = c?.effectivePrice ?? 0
-      return { ...p, platformPriceThb: base > 0 ? roundToNicePrice(base * (1 + pct / 100)) : 0 }
+      return {
+        ...p,
+        platformMarkupPct: pct,
+        platformPriceThb: base > 0 ? roundToNicePrice(base * (1 + pct / 100)) : 0,
+      }
     })
     for (const p of updated) {
-      await sb.from('srp_products').update({ platform_price_thb: p.platformPriceThb }).eq('id', p.id)
+      await sb
+        .from('srp_products')
+        .update({ platform_markup_pct: pct, platform_price_thb: p.platformPriceThb })
+        .eq('id', p.id)
     }
     setProducts(updated)
     showToast('คำนวณราคา platform ใหม่แล้ว', 'success')
@@ -353,16 +418,21 @@ export default function SrpBrandPage() {
         'Import Tax %': p.importTaxPct || '',
         'Shipping Cost': p.shippingCost || '',
         'Total Import Cost': p.totalImportCost,
+        'SRP USD': p.srpUsd || '',
+        'SRP EUR': p.srpEur || '',
+        'SRP SGD': p.srpSgd || '',
         'SRP THB (Intl)': p.srpThb || '',
         Multiplier: p.multiplier || brand?.defaultMultiplier || '',
         'Suggested Price': p.suggestedPrice,
         'Our Price (THB)': p.effectivePrice,
         'Margin (THB)': p.marginThb,
         'Margin (%)': p.marginPct,
+        'Platform Markup %': p.platformMarkupPct || '',
+        'Platform Suggested (THB)': p.platformSuggested || '',
         'Platform Price (THB)': p.platformPriceThb || '',
       }
       for (const ch of channels) {
-        const price = ch.type === 'online' ? p.platformPriceThb || 0 : p.effectivePrice
+        const price = priceForChannel(ch, p)
         const cp = calculateChannelProfit(price, p.totalImportCost, ch)
         base[`${ch.name} Selling`] = cp.sellingPrice
         base[`${ch.name} Profit`] = cp.ourProfitThb
@@ -448,7 +518,9 @@ export default function SrpBrandPage() {
   // ลำดับคอลัมน์ต้องตรงกับ <colgroup> และ <td> ในแถวสินค้าเป๊ะ ๆ
   const colKeys = [
     'product', 'sku', 'category', 'fobUsd', 'fobEur', 'fobThb', 'freightDo', 'importTaxPct',
-    'shippingCost', 'totalCost', 'srpThb', 'multiplier', 'suggested', 'ourPrice', 'margin', 'platform',
+    'shippingCost', 'totalCost', 'srpUsd', 'srpEur', 'srpSgd', 'srpThb',
+    'multiplier', 'suggested', 'ourPrice', 'margin',
+    'platformPct', 'platformSuggested', 'platform',
     ...shownChannels.flatMap((ch) => [`ch-${ch.id}-a`, `ch-${ch.id}-b`, `ch-${ch.id}-c`]),
     'actions',
   ]
@@ -499,9 +571,17 @@ export default function SrpBrandPage() {
                     label: `ตั้งตัวคูณ ×${m} ทุกตัว`,
                   })),
                   { value: 'suggest', label: 'ใช้ราคาแนะนำทุกตัว' },
+                  // % platform ย้ายไปเป็นช่องรายสินค้าแล้ว (28 ส.ค. 69) แต่ตอน
+                  // import ของใหม่ทีละร้อยตัวคงไม่มีใครกรอกทีละแถว — เก็บทาง
+                  // ตั้งทีเดียวทั้งแบรนด์ไว้ตรงนี้
+                  ...[5, 10, 15, 20, 25, 30].map((pct) => ({
+                    value: `plat:${pct}`,
+                    label: `ตั้ง Platform +${pct}% ทุกตัว`,
+                  })),
                 ]}
                 onChange={(v) => {
                   if (v === 'suggest') applyAllSuggested()
+                  else if (v?.startsWith('plat:')) applyPlatformMarkup(parseFloat(v.slice(5)))
                   else if (v) applyGlobalMultiplier(parseFloat(v))
                 }}
               />
@@ -527,10 +607,7 @@ export default function SrpBrandPage() {
         <Segmented
           value={channelTab}
           onChange={(v) => setChannelTab(v as typeof channelTab)}
-          options={[
-            { value: 'offline', label: 'ช่องทางห้าง' },
-            { value: 'online', label: 'ออนไลน์' },
-          ]}
+          options={CHANNEL_TYPES.map((t) => ({ value: t, label: CHANNEL_TYPE_LABEL[t] }))}
         />
       </FilterBar>
 
@@ -542,6 +619,31 @@ export default function SrpBrandPage() {
         </p>
       ) : (
         <p className="-mt-1 hidden text-xs text-gray-500 lg:block">คุณมีสิทธิ์ดูอย่างเดียว — แก้ไขไม่ได้ · ลากขอบหัวตารางปรับความกว้างคอลัมน์ได้</p>
+      )}
+
+      {/* ติ๊กแล้วเปลี่ยนหมวดทีเดียวหมด — เร็วกว่าไล่ทีละแถวตอนจัดของเข้าหมวด
+          (เจ้าของสั่ง 28 ส.ค. 69 หลังเจอว่า YOYO ถูกแยกเป็น Stroller กับ YOYO®) */}
+      {canEdit && marked.size > 0 && (
+        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm">
+          <span className="font-medium text-sky-900">เลือกไว้ {marked.size} รายการ</span>
+          <div className="w-52">
+            <SelectMenu
+              size="sm"
+              value={null}
+              options={categoryOptions}
+              placeholder="เปลี่ยนหมวดเป็น…"
+              onChange={(v) => v && applyCategoryToMarked(v)}
+              onCreate={(name) => applyCategoryToMarked(name)}
+            />
+          </div>
+          <button
+            type="button"
+            className="ml-auto text-gray-500 hover:text-gray-700 hover:underline"
+            onClick={() => setMarked(new Set())}
+          >
+            ล้างการเลือก
+          </button>
+        </div>
       )}
 
       {/* ตารางหลัก — เลื่อนแนวนอน คอลัมน์สินค้าตรึงซ้าย
@@ -557,15 +659,23 @@ export default function SrpBrandPage() {
               <col key={k} style={{ width: widthOf(k) }} />
             ))}
           </colgroup>
-          {/* ตัวเลือกหมวดที่แบรนด์นี้ใช้อยู่ — ช่องหมวดทุกแถวดึงไปเสนอตอนพิมพ์ */}
-          <datalist id="srp-category-options">
-            {categories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
           <thead>
             <tr>
-              <th className={`${th} sticky left-0 z-10 ${edit}`}>สินค้า ({visible.length}){rz('product')}</th>
+              <th className={`${th} sticky left-0 z-10 ${edit}`}>
+                <span className="flex items-center gap-2">
+                  {canEdit && (
+                    <input
+                      type="checkbox"
+                      checked={allVisibleMarked}
+                      onChange={toggleMarkAll}
+                      className="h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
+                      title={allVisibleMarked ? 'ล้างการเลือกทั้งหน้า' : 'เลือกทั้งหน้า'}
+                    />
+                  )}
+                  สินค้า ({visible.length})
+                </span>
+                {rz('product')}
+              </th>
               <th className={`${th} ${edit}`}>SKU{rz('sku')}</th>
               <th className={`${th} ${edit}`}>หมวด{rz('category')}</th>
               <th className={`${th} text-right ${edit}`}>FOB ${rz('fobUsd')}</th>
@@ -575,31 +685,74 @@ export default function SrpBrandPage() {
               <th className={`${th} text-right ${edit}`}>ภาษี %{rz('importTaxPct')}</th>
               <th className={`${th} text-right ${edit}`}>ส่งในไทย{rz('shippingCost')}</th>
               <th className={`${th} text-right`}>ต้นทุนรวม{rz('totalCost')}</th>
-              <th className={`${th} text-right`}>SRP ฿{rz('srpThb')}</th>
-              <th className={`${th} text-right ${edit}`}>×{rz('multiplier')}</th>
-              <th className={`${th} text-right`}>แนะนำ{rz('suggested')}</th>
-              <th className={`${th} text-right ${edit}`}>ราคาขายเรา{rz('ourPrice')}</th>
+              {/* "SRP ฿" เฉย ๆ ทำให้เข้าใจว่าเป็นผลของตัวคูณ เพราะวางอยู่ติดกับ ×
+                  พอดี — จริง ๆ คือราคาป้ายของแบรนด์ที่นำเข้ามาจาก price list
+                  ไม่ได้คิดจากต้นทุนเลย (เจ้าของเข้าใจผิด 28 ส.ค. 69) */}
+              {/* ราคาแนะนำจากแบรนด์ — แบรนด์ให้มาสกุลไหนก็กรอกช่องนั้น บางเจ้าไม่ให้เลย
+                  (เจ้าของอธิบาย 28 ส.ค. 69) · โครงเดียวกับ FOB: กรอกสกุล → ได้บาท */}
+              <th className={`${th} text-right ${edit}`} title="ราคาแนะนำจากแบรนด์ (USD) — อ้างอิงเฉย ๆ ไม่เข้าสูตรต้นทุน">
+                SRP ${rz('srpUsd')}
+              </th>
+              <th className={`${th} text-right ${edit}`} title="ราคาแนะนำจากแบรนด์ (EUR) — อ้างอิงเฉย ๆ ไม่เข้าสูตรต้นทุน">
+                SRP €{rz('srpEur')}
+              </th>
+              <th className={`${th} text-right ${edit}`} title="ราคาแนะนำจากแบรนด์ (SGD) — อ้างอิงเฉย ๆ ไม่เข้าสูตรต้นทุน">
+                SRP S${rz('srpSgd')}
+              </th>
+              <th
+                className={`${th} text-right`}
+                title="ราคาแนะนำจากแบรนด์ แปลงเป็นบาทตามเรตของแบรนด์ — ไม่ได้คิดจากต้นทุน ตัวคูณไม่มีผลกับช่องนี้"
+              >
+                SRP ฿{rz('srpThb')}
+              </th>
+              <th
+                className={`${th} text-right ${edit}`}
+                title="ตัวคูณจากต้นทุนรวม → ได้ราคาแนะนำ · ไม่ใส่ = ใช้ค่าเริ่มต้นของแบรนด์"
+              >
+                ×{rz('multiplier')}
+              </th>
+              <th
+                className={`${th} text-right`}
+                title="ต้นทุนรวม × ตัวคูณ แล้วปัดเป็นเลขสวย (ลงท้าย 9 / 90 / 900)"
+              >
+                ราคาแนะนำ{rz('suggested')}
+              </th>
+              <th
+                className={`${th} text-right ${edit}`}
+                title="ราคาที่ฟันธงขายจริง (street price) — ไม่กรอก = ใช้ราคาแนะนำ · Margin คิดจากช่องนี้"
+              >
+                ราคาขายจริง{rz('ourPrice')}
+              </th>
               <th className={`${th} text-right`}>Margin{rz('margin')}</th>
-              <th className={`${th} text-right ${edit}`}>
-                Platform{' '}
-                <NumCell
-                  value={brand.platformMarkupPct}
-                  disabled={!canEdit}
-                  onSave={(v) => applyPlatformMarkup(v)}
-                  className="!inline-block !w-12 border !border-gray-200 bg-white"
-                  placeholder="+%"
-                />
-                %
-                {rz('platform')}
+              {/* บล็อก Platform ทำโครงเดียวกับราคาปกติ (× → แนะนำ → ขายจริง)
+                  เจ้าของสั่ง 28 ส.ค. 69 — เดิม % เป็นค่าเดียวทั้งแบรนด์ กดทีเดียว
+                  ทับราคาทุกตัว รายสินค้าปรับเองไม่ได้ · ตอนนี้ % อยู่รายสินค้า
+                  ว่าง = ใช้ค่าเริ่มต้นของแบรนด์ (ยังกดปุ่มทับทั้งแบรนด์ได้เหมือนเดิม) */}
+              <th
+                className={`${th} text-right ${edit}`}
+                title={`% บวกจากราคาขายจริง → ราคาแนะนำบน marketplace · ว่าง = ใช้ของแบรนด์ (+${brand.platformMarkupPct}%)`}
+              >
+                Platform %{rz('platformPct')}
+              </th>
+              <th className={`${th} text-right`} title="ราคาขายจริง + % → ปัดเลขสวย">
+                Platform แนะนำ{rz('platformSuggested')}
+              </th>
+              <th
+                className={`${th} text-right ${edit}`}
+                title="ราคาที่ขายจริงบน marketplace — ไม่กรอก = ใช้ราคาแนะนำ · กำไรช่อง Marketplace คิดจากช่องนี้"
+              >
+                Platform ขายจริง{rz('platform')}
               </th>
               {shownChannels.map((ch) => (
                 <th key={ch.id} colSpan={3} className={`${th} border-l-2 border-l-gray-200 text-center`}>
                   {ch.name}{' '}
                   <span className="font-normal text-gray-400">
                     (หัก{' '}
-                    {ch.type === 'online'
+                    {ch.type === 'marketplace'
                       ? `${ch.commissionPct + ch.transactionFeePct + ch.serviceFeePct}% +ส่ง ${ch.shippingThb}฿`
-                      : `${ch.gpPct + ch.pcPct + ch.dcPct}%`}
+                      : ch.type === 'retail'
+                        ? `GP ${ch.gpPct}%`
+                        : `${ch.gpPct + ch.pcPct + ch.dcPct}%`}
                     {ch.promoPct ? ` · โปร -${ch.promoPct}%` : ''})
                   </span>
                   {rz(`ch-${ch.id}-a`, `ch-${ch.id}-b`, `ch-${ch.id}-c`)}
@@ -610,9 +763,21 @@ export default function SrpBrandPage() {
           </thead>
           <tbody>
             {visible.map((p) => (
-              <tr key={p.id} className={p.isActive ? '' : 'opacity-50'}>
+              <tr
+                key={p.id}
+                className={`${p.isActive ? '' : 'opacity-50'} ${
+                  marked.has(p.id) ? '[&>td]:!bg-sky-100' : ''
+                }`}
+              >
                 <td className={`${td} sticky left-0 z-10 ${canEdit ? 'bg-amber-50' : 'bg-white'}`}>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={marked.has(p.id)}
+                      onChange={() => toggleMark(p.id)}
+                      className="h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
+                      title="ทำเครื่องหมายไว้ดูเฉย ๆ ว่าทำถึงไหนแล้ว"
+                    />
                     <button
                       type="button"
                       onClick={() => setLightbox(p)}
@@ -643,18 +808,25 @@ export default function SrpBrandPage() {
                   />
                 </td>
                 <td className={`${td} ${edit}`}>
-                  {/* หมวดแก้ได้เหมือน SKU — เดิมเป็นข้อความเฉย ๆ พิมพ์ทับไม่ได้
-                      (เจ้าของแจ้ง 22 ส.ค. 69) · list= เสนอหมวดที่มีอยู่แล้ว
-                      กันพิมพ์ไม่ตรงกันจนตัวกรองหมวดแตกเป็นหลายอัน แต่ยังพิมพ์หมวดใหม่ได้ */}
-                  <input
-                    readOnly={!canEdit}
-                    list="srp-category-options"
-                    className="w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[15px] focus:border-amber-300 focus:bg-white focus:outline-none"
-                    value={p.category}
+                  {/* หมวดเป็น dropdown ตัวกลาง — เดิมเป็นข้อความเฉย ๆ พิมพ์ทับไม่ได้เลย
+                      (เจ้าของแจ้ง 22 ส.ค. 69) แล้วเคยแก้เป็น input+datalist ซึ่งเป็น
+                      dropdown ของเบราว์เซอร์ หน้าตาไม่เข้ากับที่อื่นและกรองตามที่พิมพ์
+                      จนเห็นตัวเลือกเดียว (เจ้าของทัก 28 ส.ค. 69)
+                      variant flat เพราะตารางนี้มีหลายสิบช่อง กรอบทุกช่องจะลายตา */}
+                  <SelectMenu
+                    size="sm"
+                    variant="flat"
+                    disabled={!canEdit}
+                    value={p.category || null}
+                    options={categoryOptions}
+                    placeholder="เลือกหมวด"
+                    clearable="ไม่ระบุหมวด"
                     onFocus={() => setEditingCategoryId(p.id)}
-                    onBlur={() => setEditingCategoryId((cur) => (cur === p.id ? null : cur))}
-                    onChange={(e) =>
-                      patchProduct(p.id, { category: e.target.value }, { category: e.target.value })
+                    onChange={(v) =>
+                      patchProduct(p.id, { category: v ?? '' }, { category: v ?? '' })
+                    }
+                    onCreate={(name) =>
+                      patchProduct(p.id, { category: name }, { category: name })
                     }
                   />
                 </td>
@@ -665,13 +837,16 @@ export default function SrpBrandPage() {
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.importTaxPct} onSave={(v) => patchProduct(p.id, { import_tax_pct: v }, { importTaxPct: v })} placeholder="5" /></td>
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.shippingCost} onSave={(v) => patchProduct(p.id, { shipping_cost: v }, { shippingCost: v })} /></td>
                 <td className={`${td} text-right font-semibold tabular-nums`}>{fmt(p.totalImportCost)}</td>
+                <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.srpUsd} onSave={(v) => patchProduct(p.id, { srp_usd: v }, { srpUsd: v })} /></td>
+                <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.srpEur} onSave={(v) => patchProduct(p.id, { srp_eur: v }, { srpEur: v })} /></td>
+                <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.srpSgd} onSave={(v) => patchProduct(p.id, { srp_sgd: v }, { srpSgd: v })} /></td>
                 <td className={`${td} text-right tabular-nums text-gray-500`}>{p.srpThb ? fmt(p.srpThb) : ''}</td>
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.multiplier} onSave={(v) => patchProduct(p.id, { multiplier: v }, { multiplier: v })} placeholder={String(brand.defaultMultiplier)} /></td>
                 <td className={`${td} text-right`}>
                   <button
                     type="button"
                     className="tabular-nums text-sky-600 hover:underline"
-                    title="กดเพื่อใช้เป็นราคาขายเรา + platform"
+                    title="กดเพื่อใช้เป็นราคาขายจริง + platform"
                     onClick={() => {
                       if (!canEdit) return
                       patchProduct(
@@ -701,13 +876,38 @@ export default function SrpBrandPage() {
                 <td className={`${td} ${edit}`}>
                   <NumCell
                     disabled={!canEdit}
+                    value={p.platformMarkupPct}
+                    onSave={(v) => patchProduct(p.id, { platform_markup_pct: v }, { platformMarkupPct: v })}
+                    placeholder={String(brand.platformMarkupPct)}
+                  />
+                </td>
+                <td className={`${td} text-right`}>
+                  <button
+                    type="button"
+                    className="tabular-nums text-sky-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                    disabled={!canEdit || !p.platformSuggested}
+                    title="กดเพื่อใช้เป็นราคาขายจริงบน platform"
+                    onClick={() =>
+                      patchProduct(
+                        p.id,
+                        { platform_price_thb: p.platformSuggested },
+                        { platformPriceThb: p.platformSuggested }
+                      )
+                    }
+                  >
+                    {p.platformSuggested ? fmt(p.platformSuggested) : '—'}
+                  </button>
+                </td>
+                <td className={`${td} ${edit}`}>
+                  <NumCell
+                    disabled={!canEdit}
                     value={p.platformPriceThb}
                     onSave={(v) => patchProduct(p.id, { platform_price_thb: v }, { platformPriceThb: v })}
                     className="font-semibold text-amber-800"
                   />
                 </td>
                 {shownChannels.map((ch) => {
-                  const price = ch.type === 'online' ? p.platformPriceThb || 0 : p.effectivePrice
+                  const price = priceForChannel(ch, p)
                   const cp = calculateChannelProfit(price, p.totalImportCost, ch)
                   return (
                     <SrpChannelCells key={ch.id} cp={cp} hasPrice={price > 0} td={td} />
@@ -814,7 +1014,7 @@ export default function SrpBrandPage() {
                 </button>
               </div>
               <div>
-                <p className="text-[11px] text-gray-400">ราคาขายเรา</p>
+                <p className="text-[11px] text-gray-400">ราคาขายจริง</p>
                 <NumCell
                   disabled={!canEdit}
                   value={p.ourPriceThb}
@@ -828,7 +1028,7 @@ export default function SrpBrandPage() {
             {shownChannels.length > 0 && (
               <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
                 {shownChannels.map((ch) => {
-                  const price = ch.type === 'online' ? p.platformPriceThb || 0 : p.effectivePrice
+                  const price = priceForChannel(ch, p)
                   const cp = calculateChannelProfit(price, p.totalImportCost, ch)
                   return (
                     <div key={ch.id} className="flex items-center justify-between text-xs">
@@ -936,14 +1136,14 @@ export default function SrpBrandPage() {
           open
           onClose={() => setShowChannels(false)}
           title="ช่องทางขาย"
-          description="offline หัก GP/PC/DC จากราคาขายเรา · online หัก commission/ค่าธรรมเนียม/ค่าส่ง จากราคา platform"
+          description="ช่องทางปกติ หัก GP · ห้าง หัก GP/PC/DC — ทั้งคู่คิดจากราคาขายจริง · Marketplace หัก commission/ค่าธรรมเนียม/ค่าส่ง คิดจากราคาบนแพลตฟอร์ม"
           maxWidth={620}
         >
           <div className="space-y-4">
-            {(['offline', 'online'] as const).map((type) => (
+            {CHANNEL_TYPES.map((type) => (
               <div key={type}>
                 <div className="mb-1 text-xs font-semibold text-gray-500">
-                  {type === 'offline' ? 'ช่องทางห้าง (offline)' : 'ออนไลน์'}
+                  {CHANNEL_TYPE_LABEL[type]}
                 </div>
                 <div className="space-y-2">
                   {channels
@@ -1002,8 +1202,14 @@ function ChannelEditor({
   channel: SrpChannel
   onChange: (patch: Partial<SrpChannel>) => void
 }) {
+  // retail หัก GP อย่างเดียว — ไม่ต้องมีช่อง PC/DC ให้กรอกหลอก
   const fields: [keyof SrpChannel, string][] =
-    channel.type === 'offline'
+    channel.type === 'retail'
+      ? [
+          ['gpPct', 'GP %'],
+          ['promoPct', 'โปร %'],
+        ]
+      : channel.type === 'department'
       ? [
           ['gpPct', 'GP %'],
           ['pcPct', 'PC %'],

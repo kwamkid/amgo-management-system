@@ -59,7 +59,7 @@ const COL_W: Record<string, number> = {
   freightDo: 104, importTaxPct: 84, shippingCost: 96, totalCost: 108,
   srpUsd: 86, srpEur: 86, srpSgd: 86, srpThb: 96,
   multiplier: 64, suggested: 96, ourPrice: 120, margin: 96,
-  platformPct: 84, platformSuggested: 116, platform: 132, actions: 84,
+  platformPct: 84, platformSuggested: 116, platform: 132, platformMargin: 116, actions: 84,
 }
 const CH_COL_W = 92 // ความกว้างต่อ 1 คอลัมน์ของช่องทางขาย (3 หรือ 5 คอลัมน์ต่อช่องทาง)
 
@@ -575,7 +575,11 @@ export default function SrpBrandPage() {
   // ช่อง "ราคาที่ใช้จริง" — ราคาขายจริง (ปกติ/ห้าง) และ Platform ขายจริง (marketplace)
   // สองช่องนี้คือตัวเลขที่ใช้ตัดสินใจและเป็นฐานคิดกำไรของช่องทางนั้น ๆ
   // เจ้าของขอ 28 ส.ค. 69 ให้เด่นแยกจากช่องแก้ได้อื่น → พื้นเขียว + เส้นซ้ายเน้น
-  const editPrice = 'border-l-2 border-l-emerald-300 bg-emerald-50'
+  const editPrice = 'bg-emerald-50'
+  // เส้นคั่น "ชุดราคา" — ชุดปกติ (× → แนะนำ → ขายจริง → margin) กับชุด platform
+  // อ่านเป็นก้อนเดียวได้ว่าราคานี้ตั้งมายังไง (เจ้าของขอ 29 ส.ค. 69)
+  const groupL = 'border-l-2 border-l-slate-300'
+  const groupR = 'border-r-2 border-r-slate-300'
 
   /** ขอบลากปรับความกว้าง — วางท้ายหัวคอลัมน์ (ลาก = ปรับ · ดับเบิลคลิก = คืนค่าเดิม) */
   const rz = (...keys: string[]) => (
@@ -594,7 +598,7 @@ export default function SrpBrandPage() {
     'multiplier', 'suggested', 'ourPrice', 'margin',
     // 3 คอลัมน์ Platform โผล่เฉพาะแท็บ Marketplace — ต้องตัดออกจากที่นี่ด้วย
     // ไม่งั้น <colgroup> จะเกิน ทำให้ความกว้างทุกคอลัมน์เลื่อนผิดตำแหน่ง
-    ...(isMarketplace ? ['platformPct', 'platformSuggested', 'platform'] : []),
+    ...(isMarketplace ? ['platformPct', 'platformSuggested', 'platform', 'platformMargin'] : []),
     ...shownChannels.flatMap((ch) => [
       `ch-${ch.id}-a`,
       ...(showPartnerCols ? [`ch-${ch.id}-p1`, `ch-${ch.id}-p2`] : []),
@@ -800,8 +804,9 @@ export default function SrpBrandPage() {
               >
                 SRP ฿{rz('srpThb')}
               </th>
+              {/* ── ชุดราคาปกติ: × → แนะนำ → ขายจริง → margin ── */}
               <th
-                className={`${th} text-right ${edit}`}
+                className={`${th} text-right ${edit} ${groupL}`}
                 title="ตัวคูณจากต้นทุนรวม → ได้ราคาแนะนำ · ไม่ใส่ = ใช้ค่าเริ่มต้นของแบรนด์"
               >
                 ×{rz('multiplier')}
@@ -818,7 +823,7 @@ export default function SrpBrandPage() {
               >
                 ราคาขายจริง{rz('ourPrice')}
               </th>
-              <th className={`${th} text-right`}>Margin{rz('margin')}</th>
+              <th className={`${th} text-right ${groupR}`}>Margin{rz('margin')}</th>
               {/* บล็อก Platform ทำโครงเดียวกับราคาปกติ (× → แนะนำ → ขายจริง)
                   เจ้าของสั่ง 28 ส.ค. 69 — เดิม % เป็นค่าเดียวทั้งแบรนด์ กดทีเดียว
                   ทับราคาทุกตัว รายสินค้าปรับเองไม่ได้ · ตอนนี้ % อยู่รายสินค้า
@@ -828,7 +833,7 @@ export default function SrpBrandPage() {
               {isMarketplace && (
                 <>
                   <th
-                    className={`${th} text-right ${edit}`}
+                    className={`${th} text-right ${edit} ${groupL}`}
                     title={`% บวกจากราคาขายจริง → ราคาแนะนำบน marketplace · ว่าง = ใช้ของแบรนด์ (+${brand.platformMarkupPct}%)`}
                   >
                     Platform %{rz('platformPct')}
@@ -841,6 +846,12 @@ export default function SrpBrandPage() {
                     title="ราคาที่ขายจริงบน marketplace — ไม่กรอก = ใช้ราคาแนะนำ · กำไรช่อง Marketplace คิดจากช่องนี้"
                   >
                     Platform ขายจริง{rz('platform')}
+                  </th>
+                  <th
+                    className={`${th} text-right ${groupR}`}
+                    title="margin ของราคาบน marketplace (ยังไม่หักค่าธรรมเนียมแพลตฟอร์ม) — เทียบกับ Margin ปกติได้ว่าบวก % แล้วกำไรขั้นต้นต่างกันแค่ไหน"
+                  >
+                    Platform Margin{rz('platformMargin')}
                   </th>
                 </>
               )}
@@ -962,7 +973,7 @@ export default function SrpBrandPage() {
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.srpEur} onSave={(v) => patchProduct(p.id, { srp_eur: v }, { srpEur: v })} /></td>
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.srpSgd} onSave={(v) => patchProduct(p.id, { srp_sgd: v }, { srpSgd: v })} /></td>
                 <td className={`${td} text-right tabular-nums text-gray-500`}>{p.srpThb ? fmt(p.srpThb) : ''}</td>
-                <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.multiplier} onSave={(v) => patchProduct(p.id, { multiplier: v }, { multiplier: v })} placeholder={String(brand.defaultMultiplier)} /></td>
+                <td className={`${td} ${edit} ${groupL}`}><NumCell disabled={!canEdit} value={p.multiplier} onSave={(v) => patchProduct(p.id, { multiplier: v }, { multiplier: v })} placeholder={String(brand.defaultMultiplier)} /></td>
                 <td className={`${td} text-right`}>
                   <button
                     type="button"
@@ -989,14 +1000,14 @@ export default function SrpBrandPage() {
                     className="font-semibold text-emerald-900"
                   />
                 </td>
-                <td className={`${td} text-right`}>
+                <td className={`${td} text-right ${groupR}`}>
                   <span className={`rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${profitClass(p.marginPct)}`}>
                     {p.marginPct}%
                   </span>
                 </td>
                 {isMarketplace && (
                   <>
-                    <td className={`${td} ${edit}`}>
+                    <td className={`${td} ${edit} ${groupL}`}>
                       <NumCell
                         disabled={!canEdit}
                         value={p.platformMarkupPct}
@@ -1028,6 +1039,17 @@ export default function SrpBrandPage() {
                         onSave={(v) => patchProduct(p.id, { platform_price_thb: v }, { platformPriceThb: v })}
                         className="font-semibold text-emerald-900"
                       />
+                    </td>
+                    <td className={`${td} text-right ${groupR}`}>
+                      {p.platformMarginPct ? (
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${profitClass(p.platformMarginPct)}`}
+                        >
+                          {p.platformMarginPct}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                   </>
                 )}

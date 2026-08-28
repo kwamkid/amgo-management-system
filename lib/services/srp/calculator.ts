@@ -61,6 +61,9 @@ export interface CalculatedProduct extends SrpProduct {
   effectivePrice: number
   marginPct: number
   marginThb: number
+  /** margin ของราคาบน marketplace (ยังไม่หักค่าธรรมเนียมแพลตฟอร์ม)
+   *  เทียบกับ marginPct ได้ตรง ๆ ว่าการบวก % ทำให้กำไรขั้นต้นต่างกันแค่ไหน */
+  platformMarginPct: number
 }
 
 /**
@@ -165,6 +168,7 @@ export function calculateProduct(product: SrpProduct, brand: SrpBrand): Calculat
     effectivePrice,
     marginPct: marginPct(effectivePrice, totalImportCost),
     marginThb: Math.round(marginThb * 100) / 100,
+    platformMarginPct: platformEffective > 0 ? marginPct(platformEffective, totalImportCost) : 0,
   }
 }
 

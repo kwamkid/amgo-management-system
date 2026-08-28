@@ -10,7 +10,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  Calculator, Download, FileSpreadsheet, ImageIcon, Power, Settings2, Trash2, Upload, Wand2, X,
+  Calculator, Download, Eye, EyeOff, FileSpreadsheet, ImageIcon, Power, Settings2, Trash2, Upload,
+  Wand2, X,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
@@ -60,7 +61,7 @@ const COL_W: Record<string, number> = {
   multiplier: 64, suggested: 96, ourPrice: 120, margin: 96,
   platformPct: 84, platformSuggested: 116, platform: 132, actions: 84,
 }
-const CH_COL_W = 92 // 3 คอลัมน์ต่อ 1 ช่องทางขาย
+const CH_COL_W = 92 // ความกว้างต่อ 1 คอลัมน์ของช่องทางขาย (3 หรือ 5 คอลัมน์ต่อช่องทาง)
 
 /** ประเภทช่องทางขาย — เจ้าของแยกเป็น 3 เมื่อ 28 ส.ค. 69 */
 const CHANNEL_TYPES = ['retail', 'department', 'marketplace'] as const
@@ -77,7 +78,13 @@ const CHANNEL_TYPE_LABEL: Record<ChannelType, string> = {
 const priceForChannel = (ch: SrpChannel, p: CalculatedProduct) =>
   ch.type === 'marketplace' ? p.platformEffective || 0 : p.effectivePrice
 
-/** ช่องตัวเลขในตาราง — โชว์เลขมี comma ตอนไม่ได้พิมพ์ เซฟแบบหน่วงเวลา */
+/**
+ * ช่องตัวเลขในตาราง — โชว์เลขมี comma ตอนไม่ได้พิมพ์ เซฟตอนออกจากช่อง
+ *
+ * Enter = ยืนยันค่าทันที (ไม่ต้องคลิกที่อื่น) ราคา/กำไรทั้งแถวคำนวณใหม่ให้เลย
+ * Esc   = ทิ้งค่าที่เพิ่งพิมพ์ กลับไปใช้ค่าเดิม
+ * เจ้าของขอ 28 ส.ค. 69 — เดิมพิมพ์แล้วต้องคลิกออกก่อนถึงจะเห็นผล
+ */
 function NumCell({
   value,
   onSave,
@@ -92,6 +99,8 @@ function NumCell({
   disabled?: boolean
 }) {
   const [text, setText] = useState<string | null>(null) // null = ไม่ได้โฟกัส
+  // ธงบอก onBlur ว่ารอบนี้กด Esc มา — ใช้ ref เพราะ blur ทำงานก่อน state รอบใหม่
+  const cancelled = useRef(false)
   return (
     <input
       type="text"
@@ -105,11 +114,22 @@ function NumCell({
         requestAnimationFrame(() => e.target.select())
       }}
       onChange={(e) => setText(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.blur() // onBlur เซฟให้ → ตารางคำนวณใหม่ทันที
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          cancelled.current = true
+          e.currentTarget.blur()
+        }
+      }}
       onBlur={() => {
-        if (text !== null) {
+        if (!cancelled.current && text !== null) {
           const v = parseFloat(text.replace(/,/g, '')) || 0
           if (v !== value) onSave(v)
         }
+        cancelled.current = false
         setText(null)
       }}
     />
@@ -141,6 +161,8 @@ export default function SrpBrandPage() {
     })
   const [statusTab, setStatusTab] = useState<'active' | 'inactive' | 'all'>('active')
   const [channelTab, setChannelTab] = useState<ChannelType>('retail')
+  /** โชว์คอลัมน์ "ร้านได้฿/ร้านได้%" ของแต่ละช่องทางไหม (ค่าเริ่มต้น = โชว์) */
+  const [showPartner, setShowPartner] = useState(true)
   const [lightbox, setLightbox] = useState<SrpProduct | null>(null)
   const [showChannels, setShowChannels] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -331,11 +353,53 @@ export default function SrpBrandPage() {
    *  — ช่องทางปกติกับห้างคิดกำไรจากราคาขายจริง ไม่ได้ใช้ราคา platform เลย */
   const isMarketplace = channelTab === 'marketplace'
 
+  /** คอลัมน์ "ร้านได้฿ / ร้านได้%" — เฉพาะช่องทางที่หัก GP ให้คนอื่น (ปกติ/ห้าง)
+   *  marketplace ไม่มี เพราะที่หักไปเป็นค่าธรรมเนียม ไม่ใช่กำไรของใคร
+   *  กดซ่อนได้เมื่อตารางแน่นเกินไป (เจ้าของขอ 28 ส.ค. 69) */
+  const showPartnerCols = !isMarketplace && showPartner
+
   const activeCount = calculated.filter((p) => p.isActive).length
 
   /* ── งานหัวตาราง ──────────────────────────────────────────────────── */
 
   // ตัวคูณทั้งแบรนด์ — เขียนทับ multiplier ทุกสินค้า + default ของแบรนด์
+  /** สร้างช่องทางปกติชุด GP 25–50% รวดเดียว — ข้ามระดับที่มีอยู่แล้ว กดซ้ำไม่เกิดของซ้ำ */
+  const addRetailGpSet = async () => {
+    if (!brand) return
+    const levels = [25, 30, 35, 40, 45, 50]
+    const existing = new Set(
+      channels.filter((c) => c.type === 'retail').map((c) => c.gpPct)
+    )
+    const missing = levels.filter((g) => !existing.has(g))
+    if (missing.length === 0) {
+      showToast('มีครบทั้ง 6 ระดับแล้ว', 'success')
+      return
+    }
+    try {
+      for (const [i, gp] of missing.entries()) {
+        await saveSrpChannel({
+          brandId: brand.id,
+          type: 'retail',
+          name: `GP ${gp}%`,
+          gpPct: gp,
+          sortOrder: 100 + levels.indexOf(gp),
+          pcPct: 0,
+          dcPct: 0,
+          commissionPct: 0,
+          transactionFeePct: 0,
+          serviceFeePct: 0,
+          shippingThb: 0,
+          promoPct: 0,
+        })
+        void i
+      }
+      setChannels(await getSrpChannels(brand.id))
+      showToast(`เพิ่มแล้ว ${missing.length} ระดับ (${missing.join('/')}%)`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'เพิ่มช่องทางไม่สำเร็จ', 'error')
+    }
+  }
+
   const applyGlobalMultiplier = async (m: number) => {
     if (!brand || !products) return
     if (!confirm(`ตั้งตัวคูณ ×${m} ให้สินค้าทั้งแบรนด์ (${products.length} ตัว)?`)) return
@@ -531,7 +595,12 @@ export default function SrpBrandPage() {
     // 3 คอลัมน์ Platform โผล่เฉพาะแท็บ Marketplace — ต้องตัดออกจากที่นี่ด้วย
     // ไม่งั้น <colgroup> จะเกิน ทำให้ความกว้างทุกคอลัมน์เลื่อนผิดตำแหน่ง
     ...(isMarketplace ? ['platformPct', 'platformSuggested', 'platform'] : []),
-    ...shownChannels.flatMap((ch) => [`ch-${ch.id}-a`, `ch-${ch.id}-b`, `ch-${ch.id}-c`]),
+    ...shownChannels.flatMap((ch) => [
+      `ch-${ch.id}-a`,
+      ...(showPartnerCols ? [`ch-${ch.id}-p1`, `ch-${ch.id}-p2`] : []),
+      `ch-${ch.id}-b`,
+      `ch-${ch.id}-c`,
+    ]),
     'actions',
   ]
   const tableWidth = colKeys.reduce((sum, k) => sum + widthOf(k), 0)
@@ -619,6 +688,22 @@ export default function SrpBrandPage() {
           onChange={(v) => setChannelTab(v as typeof channelTab)}
           options={CHANNEL_TYPES.map((t) => ({ value: t, label: CHANNEL_TYPE_LABEL[t] }))}
         />
+        {/* ซ่อนคอลัมน์ "ร้านได้" เมื่อตารางแน่นเกินไป — marketplace ไม่มีให้ซ่อนอยู่แล้ว */}
+        {!isMarketplace && (
+          <button
+            type="button"
+            onClick={() => setShowPartner((v) => !v)}
+            title={showPartner ? 'ซ่อนคอลัมน์ร้านได้฿/ร้านได้%' : 'แสดงคอลัมน์ร้านได้฿/ร้านได้%'}
+            className={`hidden items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium lg:inline-flex ${
+              showPartner
+                ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                : 'border-gray-200 bg-gray-100 text-gray-400 hover:bg-gray-50'
+            }`}
+          >
+            {showPartner ? <Eye size={14} /> : <EyeOff size={14} />}
+            คอลัมน์ร้านได้
+          </button>
+        )}
       </FilterBar>
 
       {/* คำอธิบายพวกนี้พูดถึงตาราง ซึ่งจอแคบไม่เห็น — ซ่อนไปด้วยกัน */}
@@ -760,7 +845,11 @@ export default function SrpBrandPage() {
                 </>
               )}
               {shownChannels.map((ch) => (
-                <th key={ch.id} colSpan={3} className={`${th} border-l-2 border-l-gray-200 text-center`}>
+                <th
+                  key={ch.id}
+                  colSpan={showPartnerCols ? 5 : 3}
+                  className={`${th} border-l-2 border-l-gray-200 text-center`}
+                >
                   {ch.name}{' '}
                   <span className="font-normal text-gray-400">
                     (หัก{' '}
@@ -771,7 +860,23 @@ export default function SrpBrandPage() {
                         : `${ch.gpPct + ch.pcPct + ch.dcPct}%`}
                     {ch.promoPct ? ` · โปร -${ch.promoPct}%` : ''})
                   </span>
-                  {rz(`ch-${ch.id}-a`, `ch-${ch.id}-b`, `ch-${ch.id}-c`)}
+                  <div className="mt-0.5 flex justify-around text-[10px] font-normal text-gray-400">
+                    <span>ราคาขาย</span>
+                    {showPartnerCols && (
+                      <>
+                        <span>ร้านได้฿</span>
+                        <span>ร้านได้%</span>
+                      </>
+                    )}
+                    <span>เราได้฿</span>
+                    <span>เราได้%</span>
+                  </div>
+                  {rz(
+                    `ch-${ch.id}-a`,
+                    ...(showPartnerCols ? [`ch-${ch.id}-p1`, `ch-${ch.id}-p2`] : []),
+                    `ch-${ch.id}-b`,
+                    `ch-${ch.id}-c`
+                  )}
                 </th>
               ))}
               <th className={th}></th>
@@ -930,7 +1035,13 @@ export default function SrpBrandPage() {
                   const price = priceForChannel(ch, p)
                   const cp = calculateChannelProfit(price, p.totalImportCost, ch)
                   return (
-                    <SrpChannelCells key={ch.id} cp={cp} hasPrice={price > 0} td={td} />
+                    <SrpChannelCells
+                      key={ch.id}
+                      cp={cp}
+                      hasPrice={price > 0}
+                      td={td}
+                      showPartner={showPartnerCols}
+                    />
                   )
                 })}
                 <td className={`${td} whitespace-nowrap`}>
@@ -1179,6 +1290,17 @@ export default function SrpBrandPage() {
                         }}
                       />
                     ))}
+                  {/* ชุด GP มาตรฐานที่เจ้าของใช้คุยกับร้านค้าเป็นประจำ (28 ส.ค. 69)
+                      กดทีเดียวได้ครบ 6 ระดับ ไม่ต้องกรอกทีละอัน */}
+                  {type === 'retail' && (
+                    <button
+                      type="button"
+                      onClick={() => addRetailGpSet()}
+                      className="w-full rounded-lg border border-dashed border-gray-300 py-2 text-xs font-medium text-gray-500 hover:border-gray-400 hover:bg-gray-50"
+                    >
+                      + เพิ่มชุด GP มาตรฐาน (25 / 30 / 35 / 40 / 45 / 50%)
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1189,12 +1311,33 @@ export default function SrpBrandPage() {
   )
 }
 
-/** 3 เซลล์กำไรของช่องทางเดียว: ราคาขาย · กำไร฿ · กำไร% */
-function SrpChannelCells({ cp, hasPrice, td }: { cp: ReturnType<typeof calculateChannelProfit>; hasPrice: boolean; td: string }) {
+/**
+ * ตัวเลขกำไรต่อ 1 ช่องทาง
+ *   marketplace 3 ช่อง: ราคาขาย · เราได้฿ · เราได้%
+ *   ร้านค้า/ห้าง 5 ช่อง: + "ร้านได้฿" กับ "ร้านได้%" (เจ้าของขอ 28 ส.ค. 69
+ *   เพื่อดูว่าหักให้เขา xx% แล้วสองฝ่ายได้เท่าไหร่ ใช้คุยกับร้านได้เลย)
+ */
+function SrpChannelCells({
+  cp,
+  hasPrice,
+  td,
+  showPartner,
+}: {
+  cp: ReturnType<typeof calculateChannelProfit>
+  hasPrice: boolean
+  td: string
+  showPartner: boolean
+}) {
   if (!hasPrice)
     return (
       <>
         <td className={`${td} border-l-2 border-l-gray-100 text-right text-gray-300`}>—</td>
+        {showPartner && (
+          <>
+            <td className={`${td} text-right text-gray-300`}>—</td>
+            <td className={`${td} text-right text-gray-300`}>—</td>
+          </>
+        )}
         <td className={`${td} text-right text-gray-300`}>—</td>
         <td className={`${td} text-right text-gray-300`}>—</td>
       </>
@@ -1204,6 +1347,16 @@ function SrpChannelCells({ cp, hasPrice, td }: { cp: ReturnType<typeof calculate
       <td className={`${td} border-l-2 border-l-gray-100 text-right tabular-nums text-gray-600`}>
         {fmt(cp.sellingPrice)}
       </td>
+      {showPartner && (
+        <>
+          <td className={`${td} text-right tabular-nums text-gray-500`}>{fmt(cp.partnerProfitThb)}</td>
+          <td className={`${td} text-right`}>
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-gray-600">
+              {cp.partnerMarkupPct}%
+            </span>
+          </td>
+        </>
+      )}
       <td className={`${td} text-right tabular-nums`}>{fmt(cp.ourProfitThb)}</td>
       <td className={`${td} text-right`}>
         <span className={`rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${profitClass(cp.ourProfitPct)}`}>

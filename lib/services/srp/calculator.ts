@@ -95,6 +95,13 @@ export interface ChannelProfit {
   feesThb: number
   ourProfitThb: number
   ourProfitPct: number
+  /** ส่วนที่ร้านค้า/ห้างได้ไป (บาท) — คือ GP ที่เราหักให้เขานั่นเอง
+   *  marketplace ไม่นับเป็นกำไรใคร เพราะเป็นค่าธรรมเนียมแพลตฟอร์ม */
+  partnerProfitThb: number
+  /** กำไรของร้านค้าคิดเป็น % ของ "ทุนที่เขาจ่ายให้เรา" (markup ฝั่งเขา)
+   *  เช่น หักให้ 30% → เขาซื้อ 70 ขาย 100 = กำไร 42.86% ของทุน
+   *  ใช้ตัวเลขนี้คุยกับร้านค้าได้ตรง ๆ ว่า "รับไปขายแล้วได้กำไรเท่าไหร่" */
+  partnerMarkupPct: number
 }
 
 export function marginPct(price: number, cost: number): number {
@@ -182,6 +189,12 @@ export function calculateChannelProfit(
   const ourProfitThb = sellingPrice - feesThb - shipping - totalImportCost
   const ourProfitPct = sellingPrice > 0 ? (ourProfitThb / sellingPrice) * 100 : 0
 
+  // ส่วนที่หักไปให้ร้านค้า/ห้าง = กำไรของเขา (marketplace เป็นค่าธรรมเนียม ไม่ใช่กำไรใคร)
+  const partnerProfitThb = channel.type === 'marketplace' ? 0 : feesThb
+  // ทุนที่ร้านค้าจ่ายให้เรา = ราคาขาย − ส่วนที่เขาได้ → กำไรเขาคิดเป็น % ของทุนก้อนนี้
+  const partnerCost = sellingPrice - partnerProfitThb
+  const partnerMarkupPct = partnerCost > 0 ? (partnerProfitThb / partnerCost) * 100 : 0
+
   return {
     channelName: channel.name,
     channelType: channel.type,
@@ -190,5 +203,7 @@ export function calculateChannelProfit(
     feesThb: Math.round(feesThb),
     ourProfitThb: Math.round(ourProfitThb),
     ourProfitPct: Math.round(ourProfitPct * 100) / 100,
+    partnerProfitThb: Math.round(partnerProfitThb),
+    partnerMarkupPct: Math.round(partnerMarkupPct * 100) / 100,
   }
 }

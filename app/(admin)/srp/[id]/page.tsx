@@ -10,8 +10,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  Calculator, Download, Eye, EyeOff, FileSpreadsheet, ImageIcon, Power, Settings2, Trash2, Upload,
-  Wand2, X,
+  Calculator, Download, Eye, EyeOff, FileSpreadsheet, ImageIcon, Loader2, Power, Settings2, Trash2,
+  Upload, Wand2, X,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
@@ -292,6 +292,38 @@ export default function SrpBrandPage() {
     },
     [editorName, showToast]
   )
+
+  /**
+   * เลิกขาย / กลับมาขาย — เขียน DB ตรงแล้วรอผลจริง ไม่ผ่าน patchProduct
+   * เพราะตัวนั้นหน่วง 400 ms ไว้รวมคีย์ที่พิมพ์รัว ๆ ซึ่งไม่เหมาะกับปุ่มที่กดครั้งเดียว
+   * แล้วอยากเห็นว่าบันทึกจริงหรือยัง (เจ้าของขอสถานะตอนกด 29 ส.ค. 69)
+   */
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const toggleActive = async (id: string, current: boolean) => {
+    if (!canEdit || togglingId) return
+    const next = !current
+    setTogglingId(id)
+    setProducts((prev) => prev?.map((p) => (p.id === id ? { ...p, isActive: next } : p)) ?? prev)
+    try {
+      const sb = createClient()
+      const { error } = await sb
+        .from('srp_products')
+        .update({
+          is_active: next,
+          last_edited_by: editorName,
+          last_edited_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+      if (error) throw error
+      showToast(next ? 'กลับมาขายแล้ว' : 'ทำเครื่องหมายว่าเลิกขายแล้ว', 'success')
+    } catch (e) {
+      // เขียนไม่สำเร็จ — คืนค่าเดิมให้ตรงกับฐานข้อมูล
+      setProducts((prev) => prev?.map((p) => (p.id === id ? { ...p, isActive: current } : p)) ?? prev)
+      showToast(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ', 'error')
+    } finally {
+      setTogglingId(null)
+    }
+  }
 
   /* ── คำนวณ + กรอง ─────────────────────────────────────────────────── */
   const calculated = useMemo<CalculatedProduct[]>(
@@ -677,7 +709,7 @@ export default function SrpBrandPage() {
           onChange={(v) => setStatusTab(v as typeof statusTab)}
           options={[
             { value: 'active', label: `ขายอยู่ (${activeCount})` },
-            { value: 'inactive', label: `ปิด (${calculated.length - activeCount})` },
+            { value: 'inactive', label: `เลิกขายแล้ว (${calculated.length - activeCount})` },
             { value: 'all', label: 'ทั้งหมด' },
           ]}
         />
@@ -1070,11 +1102,16 @@ export default function SrpBrandPage() {
                   {canEdit && (<>
                   <button
                     type="button"
-                    title={p.isActive ? 'ปิดการขาย' : 'เปิดการขาย'}
-                    className={`mr-1 ${p.isActive ? 'text-green-500' : 'text-gray-300'} hover:opacity-70`}
-                    onClick={() => patchProduct(p.id, { is_active: !p.isActive }, { isActive: !p.isActive })}
+                    disabled={togglingId === p.id}
+                    title={p.isActive ? 'ทำเครื่องหมายว่าเลิกขายแล้ว' : 'กลับมาขายอีกครั้ง'}
+                    className={`mr-1 ${p.isActive ? 'text-green-500' : 'text-gray-300'} hover:opacity-70 disabled:opacity-50`}
+                    onClick={() => toggleActive(p.id, p.isActive)}
                   >
-                    <Power size={14} />
+                    {togglingId === p.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Power size={14} />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -1206,11 +1243,16 @@ export default function SrpBrandPage() {
               <div className="mt-2 flex justify-end gap-1 border-t border-gray-100 pt-2">
                 <button
                   type="button"
-                  className={`rounded p-1.5 ${p.isActive ? 'text-green-500' : 'text-gray-300'}`}
-                  title={p.isActive ? 'ปิดการขาย' : 'เปิดการขาย'}
-                  onClick={() => patchProduct(p.id, { is_active: !p.isActive }, { isActive: !p.isActive })}
+                  disabled={togglingId === p.id}
+                  className={`rounded p-1.5 ${p.isActive ? 'text-green-500' : 'text-gray-300'} disabled:opacity-50`}
+                  title={p.isActive ? 'ทำเครื่องหมายว่าเลิกขายแล้ว' : 'กลับมาขายอีกครั้ง'}
+                  onClick={() => toggleActive(p.id, p.isActive)}
                 >
-                  <Power size={15} />
+                  {togglingId === p.id ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Power size={15} />
+                  )}
                 </button>
                 <button
                   type="button"

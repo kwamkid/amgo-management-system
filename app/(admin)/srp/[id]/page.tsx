@@ -327,6 +327,10 @@ export default function SrpBrandPage() {
     [channels, channelTab]
   )
 
+  /** คอลัมน์ Platform (% / แนะนำ / ขายจริง) โชว์เฉพาะแท็บ Marketplace
+   *  — ช่องทางปกติกับห้างคิดกำไรจากราคาขายจริง ไม่ได้ใช้ราคา platform เลย */
+  const isMarketplace = channelTab === 'marketplace'
+
   const activeCount = calculated.filter((p) => p.isActive).length
 
   /* ── งานหัวตาราง ──────────────────────────────────────────────────── */
@@ -504,6 +508,10 @@ export default function SrpBrandPage() {
   const td = 'overflow-hidden border-r border-b border-gray-100 px-2 py-1.5 align-middle'
   // ช่องที่แก้ได้ = พื้นเหลืองอ่อนสีเดียวกันหมด (เจ้าของขอ 14 ส.ค.) — viewer ไม่ต้องย้อม
   const edit = canEdit ? 'bg-amber-50' : ''
+  // ช่อง "ราคาที่ใช้จริง" — ราคาขายจริง (ปกติ/ห้าง) และ Platform ขายจริง (marketplace)
+  // สองช่องนี้คือตัวเลขที่ใช้ตัดสินใจและเป็นฐานคิดกำไรของช่องทางนั้น ๆ
+  // เจ้าของขอ 28 ส.ค. 69 ให้เด่นแยกจากช่องแก้ได้อื่น → พื้นเขียว + เส้นซ้ายเน้น
+  const editPrice = 'border-l-2 border-l-emerald-300 bg-emerald-50'
 
   /** ขอบลากปรับความกว้าง — วางท้ายหัวคอลัมน์ (ลาก = ปรับ · ดับเบิลคลิก = คืนค่าเดิม) */
   const rz = (...keys: string[]) => (
@@ -520,7 +528,9 @@ export default function SrpBrandPage() {
     'product', 'sku', 'category', 'fobUsd', 'fobEur', 'fobThb', 'freightDo', 'importTaxPct',
     'shippingCost', 'totalCost', 'srpUsd', 'srpEur', 'srpSgd', 'srpThb',
     'multiplier', 'suggested', 'ourPrice', 'margin',
-    'platformPct', 'platformSuggested', 'platform',
+    // 3 คอลัมน์ Platform โผล่เฉพาะแท็บ Marketplace — ต้องตัดออกจากที่นี่ด้วย
+    // ไม่งั้น <colgroup> จะเกิน ทำให้ความกว้างทุกคอลัมน์เลื่อนผิดตำแหน่ง
+    ...(isMarketplace ? ['platformPct', 'platformSuggested', 'platform'] : []),
     ...shownChannels.flatMap((ch) => [`ch-${ch.id}-a`, `ch-${ch.id}-b`, `ch-${ch.id}-c`]),
     'actions',
   ]
@@ -718,7 +728,7 @@ export default function SrpBrandPage() {
                 ราคาแนะนำ{rz('suggested')}
               </th>
               <th
-                className={`${th} text-right ${edit}`}
+                className={`${th} text-right ${editPrice} !text-emerald-800`}
                 title="ราคาที่ฟันธงขายจริง (street price) — ไม่กรอก = ใช้ราคาแนะนำ · Margin คิดจากช่องนี้"
               >
                 ราคาขายจริง{rz('ourPrice')}
@@ -727,22 +737,28 @@ export default function SrpBrandPage() {
               {/* บล็อก Platform ทำโครงเดียวกับราคาปกติ (× → แนะนำ → ขายจริง)
                   เจ้าของสั่ง 28 ส.ค. 69 — เดิม % เป็นค่าเดียวทั้งแบรนด์ กดทีเดียว
                   ทับราคาทุกตัว รายสินค้าปรับเองไม่ได้ · ตอนนี้ % อยู่รายสินค้า
-                  ว่าง = ใช้ค่าเริ่มต้นของแบรนด์ (ยังกดปุ่มทับทั้งแบรนด์ได้เหมือนเดิม) */}
-              <th
-                className={`${th} text-right ${edit}`}
-                title={`% บวกจากราคาขายจริง → ราคาแนะนำบน marketplace · ว่าง = ใช้ของแบรนด์ (+${brand.platformMarkupPct}%)`}
-              >
-                Platform %{rz('platformPct')}
-              </th>
-              <th className={`${th} text-right`} title="ราคาขายจริง + % → ปัดเลขสวย">
-                Platform แนะนำ{rz('platformSuggested')}
-              </th>
-              <th
-                className={`${th} text-right ${edit}`}
-                title="ราคาที่ขายจริงบน marketplace — ไม่กรอก = ใช้ราคาแนะนำ · กำไรช่อง Marketplace คิดจากช่องนี้"
-              >
-                Platform ขายจริง{rz('platform')}
-              </th>
+                  ว่าง = ใช้ค่าเริ่มต้นของแบรนด์ (ยังกดปุ่มทับทั้งแบรนด์ได้เหมือนเดิม)
+                  ⚠ โชว์เฉพาะแท็บ Marketplace (เจ้าของสั่ง 28 ส.ค. 69) — ช่องทางปกติ
+                  กับห้างคิดกำไรจากราคาขายจริง ไม่ได้ใช้ราคา platform เลย */}
+              {isMarketplace && (
+                <>
+                  <th
+                    className={`${th} text-right ${edit}`}
+                    title={`% บวกจากราคาขายจริง → ราคาแนะนำบน marketplace · ว่าง = ใช้ของแบรนด์ (+${brand.platformMarkupPct}%)`}
+                  >
+                    Platform %{rz('platformPct')}
+                  </th>
+                  <th className={`${th} text-right`} title="ราคาขายจริง + % → ปัดเลขสวย">
+                    Platform แนะนำ{rz('platformSuggested')}
+                  </th>
+                  <th
+                    className={`${th} text-right ${editPrice} !text-emerald-800`}
+                    title="ราคาที่ขายจริงบน marketplace — ไม่กรอก = ใช้ราคาแนะนำ · กำไรช่อง Marketplace คิดจากช่องนี้"
+                  >
+                    Platform ขายจริง{rz('platform')}
+                  </th>
+                </>
+              )}
               {shownChannels.map((ch) => (
                 <th key={ch.id} colSpan={3} className={`${th} border-l-2 border-l-gray-200 text-center`}>
                   {ch.name}{' '}
@@ -859,13 +875,13 @@ export default function SrpBrandPage() {
                     {fmt(p.suggestedPrice)}
                   </button>
                 </td>
-                <td className={`${td} ${edit}`}>
+                <td className={`${td} ${editPrice}`}>
                   <NumCell
                     disabled={!canEdit}
                     value={p.ourPriceThb}
                     onSave={(v) => patchProduct(p.id, { our_price_thb: v }, { ourPriceThb: v })}
                     placeholder={fmt(p.suggestedPrice)}
-                    className="font-semibold text-green-800"
+                    className="font-semibold text-emerald-900"
                   />
                 </td>
                 <td className={`${td} text-right`}>
@@ -873,39 +889,43 @@ export default function SrpBrandPage() {
                     {p.marginPct}%
                   </span>
                 </td>
-                <td className={`${td} ${edit}`}>
-                  <NumCell
-                    disabled={!canEdit}
-                    value={p.platformMarkupPct}
-                    onSave={(v) => patchProduct(p.id, { platform_markup_pct: v }, { platformMarkupPct: v })}
-                    placeholder={String(brand.platformMarkupPct)}
-                  />
-                </td>
-                <td className={`${td} text-right`}>
-                  <button
-                    type="button"
-                    className="tabular-nums text-sky-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                    disabled={!canEdit || !p.platformSuggested}
-                    title="กดเพื่อใช้เป็นราคาขายจริงบน platform"
-                    onClick={() =>
-                      patchProduct(
-                        p.id,
-                        { platform_price_thb: p.platformSuggested },
-                        { platformPriceThb: p.platformSuggested }
-                      )
-                    }
-                  >
-                    {p.platformSuggested ? fmt(p.platformSuggested) : '—'}
-                  </button>
-                </td>
-                <td className={`${td} ${edit}`}>
-                  <NumCell
-                    disabled={!canEdit}
-                    value={p.platformPriceThb}
-                    onSave={(v) => patchProduct(p.id, { platform_price_thb: v }, { platformPriceThb: v })}
-                    className="font-semibold text-amber-800"
-                  />
-                </td>
+                {isMarketplace && (
+                  <>
+                    <td className={`${td} ${edit}`}>
+                      <NumCell
+                        disabled={!canEdit}
+                        value={p.platformMarkupPct}
+                        onSave={(v) => patchProduct(p.id, { platform_markup_pct: v }, { platformMarkupPct: v })}
+                        placeholder={String(brand.platformMarkupPct)}
+                      />
+                    </td>
+                    <td className={`${td} text-right`}>
+                      <button
+                        type="button"
+                        className="tabular-nums text-sky-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        disabled={!canEdit || !p.platformSuggested}
+                        title="กดเพื่อใช้เป็นราคาขายจริงบน platform"
+                        onClick={() =>
+                          patchProduct(
+                            p.id,
+                            { platform_price_thb: p.platformSuggested },
+                            { platformPriceThb: p.platformSuggested }
+                          )
+                        }
+                      >
+                        {p.platformSuggested ? fmt(p.platformSuggested) : '—'}
+                      </button>
+                    </td>
+                    <td className={`${td} ${editPrice}`}>
+                      <NumCell
+                        disabled={!canEdit}
+                        value={p.platformPriceThb}
+                        onSave={(v) => patchProduct(p.id, { platform_price_thb: v }, { platformPriceThb: v })}
+                        className="font-semibold text-emerald-900"
+                      />
+                    </td>
+                  </>
+                )}
                 {shownChannels.map((ch) => {
                   const price = priceForChannel(ch, p)
                   const cp = calculateChannelProfit(price, p.totalImportCost, ch)
@@ -1013,14 +1033,14 @@ export default function SrpBrandPage() {
                   {fmt(p.suggestedPrice)}
                 </button>
               </div>
-              <div>
-                <p className="text-[11px] text-gray-400">ราคาขายจริง</p>
+              <div className="-m-1 rounded-md border border-emerald-200 bg-emerald-50 p-1">
+                <p className="text-[11px] font-medium text-emerald-700">ราคาขายจริง</p>
                 <NumCell
                   disabled={!canEdit}
                   value={p.ourPriceThb}
                   onSave={(v) => patchProduct(p.id, { our_price_thb: v }, { ourPriceThb: v })}
                   placeholder={fmt(p.suggestedPrice)}
-                  className="!text-center font-semibold text-green-800"
+                  className="!text-center font-semibold text-emerald-900"
                 />
               </div>
             </div>

@@ -29,6 +29,7 @@ import {
   type SrpProduct,
 } from '@/lib/services/srp/calculator'
 import {
+  deleteSrpChannel,
   deleteSrpProduct,
   getSrpBrand,
   getSrpChannels,
@@ -163,6 +164,10 @@ export default function SrpBrandPage() {
   const [channelTab, setChannelTab] = useState<ChannelType>('retail')
   /** โชว์คอลัมน์ "ร้านได้฿/ร้านได้%" ของแต่ละช่องทางไหม (ค่าเริ่มต้น = โชว์) */
   const [showPartner, setShowPartner] = useState(true)
+  /** ช่องทางที่กำลังตั้งค่าจากการกดหัวคอลัมน์ — เดิมต้องเปิดเมนู "ช่องทางขาย"
+   *  แล้วไล่หาเองว่าอันไหน (เจ้าของขอ 29 ส.ค. 69) */
+  const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
+  const editingChannel = channels.find((c) => c.id === editingChannelId) ?? null
   const [lightbox, setLightbox] = useState<SrpProduct | null>(null)
   const [showChannels, setShowChannels] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -893,16 +898,26 @@ export default function SrpBrandPage() {
                   colSpan={showPartnerCols ? 5 : 3}
                   className={`${th} border-l-2 border-l-gray-200 text-center`}
                 >
-                  {ch.name}{' '}
-                  <span className="font-normal text-gray-400">
-                    (หัก{' '}
-                    {ch.type === 'marketplace'
-                      ? `${ch.commissionPct + ch.transactionFeePct + ch.serviceFeePct}% +ส่ง ${ch.shippingThb}฿`
-                      : ch.type === 'retail'
-                        ? `GP ${ch.gpPct}%`
-                        : `${ch.gpPct + ch.pcPct + ch.dcPct}%`}
-                    {ch.promoPct ? ` · โปร -${ch.promoPct}%` : ''})
-                  </span>
+                  {/* กดชื่อช่องทาง = ตั้งค่า GP/โปรของช่องทางนั้นได้ทันที
+                      (ตัวลากปรับความกว้างอยู่ที่ขอบขวาของ th ไม่ทับกับปุ่มนี้) */}
+                  <button
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => setEditingChannelId(ch.id)}
+                    title={canEdit ? 'ตั้งค่า GP / โปรโมชั่นของช่องทางนี้' : undefined}
+                    className="mx-auto block max-w-full rounded px-1 py-0.5 enabled:hover:bg-white enabled:hover:text-sky-700 disabled:cursor-default"
+                  >
+                    {ch.name}{' '}
+                    <span className="font-normal text-gray-400">
+                      (หัก{' '}
+                      {ch.type === 'marketplace'
+                        ? `${ch.commissionPct + ch.transactionFeePct + ch.serviceFeePct}% +ส่ง ${ch.shippingThb}฿`
+                        : ch.type === 'retail'
+                          ? `GP ${ch.gpPct}%`
+                          : `${ch.gpPct + ch.pcPct + ch.dcPct}%`}
+                      {ch.promoPct ? ` · โปร -${ch.promoPct}%` : ''})
+                    </span>
+                  </button>
                   <div className="mt-0.5 flex justify-around text-[10px] font-normal text-gray-400">
                     <span>ราคาขาย</span>
                     {showPartnerCols && (
@@ -1368,6 +1383,57 @@ export default function SrpBrandPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* ตั้งค่าช่องทางเดียวจากการกดหัวคอลัมน์ — ใช้ ChannelEditor ตัวเดียวกับเมนูรวม
+          เซฟทันทีที่พิมพ์ ตารางคำนวณใหม่ให้เห็นผลหลังปิดหน้าต่าง */}
+      {editingChannel && (
+        <Modal
+          open
+          onClose={() => setEditingChannelId(null)}
+          title={`ตั้งค่า: ${editingChannel.name}`}
+          description={
+            editingChannel.type === 'marketplace'
+              ? 'หัก commission / ค่าธรรมเนียม / ค่าส่ง — คิดจากราคาบนแพลตฟอร์ม'
+              : editingChannel.type === 'retail'
+                ? 'หัก GP — คิดจากราคาขายจริง'
+                : 'หัก GP / PC / DC — คิดจากราคาขายจริง'
+          }
+          maxWidth={560}
+        >
+          <div className="space-y-3">
+            <ChannelEditor
+              channel={editingChannel}
+              onChange={(patch) => {
+                const next = { ...editingChannel, ...patch }
+                setChannels((prev) => prev.map((c) => (c.id === next.id ? next : c)))
+                saveSrpChannel(next).catch((e) => showToast(e.message, 'error'))
+              }}
+            />
+            <div className="flex justify-between gap-2 border-t border-gray-100 pt-3">
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                onClick={async () => {
+                  if (!confirm(`ลบช่องทาง "${editingChannel.name}" ออกจากตาราง?`)) return
+                  try {
+                    await deleteSrpChannel(editingChannel.id)
+                    setChannels((prev) => prev.filter((c) => c.id !== editingChannel.id))
+                    setEditingChannelId(null)
+                    showToast('ลบช่องทางแล้ว', 'success')
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : 'ลบไม่สำเร็จ', 'error')
+                  }
+                }}
+              >
+                ลบช่องทางนี้
+              </button>
+              <Button type="button" size="sm" onClick={() => setEditingChannelId(null)}>
+                เสร็จแล้ว
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

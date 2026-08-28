@@ -110,6 +110,8 @@ export default function SrpBrandPage() {
   const [channels, setChannels] = useState<SrpChannel[]>([])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | null>(null)
+  /** แถวที่เคอร์เซอร์อยู่ในช่องหมวด — กันแถวหายกลางคันตอนแก้หมวดขณะกรองหมวดอยู่ */
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [statusTab, setStatusTab] = useState<'active' | 'inactive' | 'all'>('active')
   const [channelTab, setChannelTab] = useState<'offline' | 'online'>('offline')
   const [lightbox, setLightbox] = useState<SrpProduct | null>(null)
@@ -258,11 +260,12 @@ export default function SrpBrandPage() {
     return calculated.filter((p) => {
       if (statusTab === 'active' && !p.isActive) return false
       if (statusTab === 'inactive' && p.isActive) return false
-      if (category && p.category !== category) return false
+      // แถวที่กำลังพิมพ์หมวดอยู่ ต้องไม่หายไปกลางคันแม้จะกรองไม่ตรงแล้ว
+      if (category && p.category !== category && p.id !== editingCategoryId) return false
       if (q && !p.name.toLowerCase().includes(q) && !p.sku.toLowerCase().includes(q)) return false
       return true
     })
-  }, [calculated, search, category, statusTab])
+  }, [calculated, search, category, statusTab, editingCategoryId])
 
   const shownChannels = useMemo(
     () => channels.filter((c) => c.type === channelTab),
@@ -554,11 +557,17 @@ export default function SrpBrandPage() {
               <col key={k} style={{ width: widthOf(k) }} />
             ))}
           </colgroup>
+          {/* ตัวเลือกหมวดที่แบรนด์นี้ใช้อยู่ — ช่องหมวดทุกแถวดึงไปเสนอตอนพิมพ์ */}
+          <datalist id="srp-category-options">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
           <thead>
             <tr>
               <th className={`${th} sticky left-0 z-10 ${edit}`}>สินค้า ({visible.length}){rz('product')}</th>
               <th className={`${th} ${edit}`}>SKU{rz('sku')}</th>
-              <th className={th}>หมวด{rz('category')}</th>
+              <th className={`${th} ${edit}`}>หมวด{rz('category')}</th>
               <th className={`${th} text-right ${edit}`}>FOB ${rz('fobUsd')}</th>
               <th className={`${th} text-right ${edit}`}>FOB €{rz('fobEur')}</th>
               <th className={`${th} text-right`}>FOB ฿{rz('fobThb')}</th>
@@ -633,7 +642,22 @@ export default function SrpBrandPage() {
                     onChange={(e) => patchProduct(p.id, { sku: e.target.value }, { sku: e.target.value })}
                   />
                 </td>
-                <td className={`${td} truncate text-gray-500`}>{p.category}</td>
+                <td className={`${td} ${edit}`}>
+                  {/* หมวดแก้ได้เหมือน SKU — เดิมเป็นข้อความเฉย ๆ พิมพ์ทับไม่ได้
+                      (เจ้าของแจ้ง 22 ส.ค. 69) · list= เสนอหมวดที่มีอยู่แล้ว
+                      กันพิมพ์ไม่ตรงกันจนตัวกรองหมวดแตกเป็นหลายอัน แต่ยังพิมพ์หมวดใหม่ได้ */}
+                  <input
+                    readOnly={!canEdit}
+                    list="srp-category-options"
+                    className="w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-[15px] focus:border-amber-300 focus:bg-white focus:outline-none"
+                    value={p.category}
+                    onFocus={() => setEditingCategoryId(p.id)}
+                    onBlur={() => setEditingCategoryId((cur) => (cur === p.id ? null : cur))}
+                    onChange={(e) =>
+                      patchProduct(p.id, { category: e.target.value }, { category: e.target.value })
+                    }
+                  />
+                </td>
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.fobUsd} onSave={(v) => patchProduct(p.id, { fob_usd: v }, { fobUsd: v })} /></td>
                 <td className={`${td} ${edit}`}><NumCell disabled={!canEdit} value={p.fobEur} onSave={(v) => patchProduct(p.id, { fob_eur: v }, { fobEur: v })} /></td>
                 <td className={`${td} text-right tabular-nums text-gray-500`}>{p.fobThb ? fmt(p.fobThb) : ''}</td>

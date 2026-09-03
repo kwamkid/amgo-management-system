@@ -58,15 +58,30 @@ export async function GET(request: NextRequest) {
     const discord = await userRes.json()
     const admin = createAdminClient()
 
-    // บัญชี Discord เดียวผูกได้กับพนักงานคนเดียว ไม่งั้น mention ผิดคน
-    const { data: taken } = await admin
+    // บัญชี Discord เดียวผูกได้กับพนักงานที่ยังทำงานอยู่คนเดียว ไม่งั้น mention ผิดคน
+    //
+    // แต่ถ้าเจ้าของเดิม "ปิดใช้งานไปแล้ว" ให้ย้ายมาผูกกับคนที่กำลังผูกแทน —
+    // ของเดิมบล็อกทุกกรณี ทำให้ Discord ค้างอยู่กับบัญชีที่ปิดไปตลอดกาล
+    // (เจอจริง 3 ก.ย. 69: เท็มสมัครซ้ำด้วย LINE คนละอัน บัญชีแรกผูก Discord ไว้
+    //  แล้วถูกปิด บัญชีใหม่จึงผูกไม่ได้เลย วนอยู่ที่ "ถูกผูกกับคนอื่นไปแล้ว")
+    // เคสเดียวกันเกิดกับพนักงานที่ลาออกแล้วกลับมาใหม่ด้วย
+    const { data: holders } = await admin
       .from('users')
-      .select('id')
+      .select('id, is_active, deleted_at')
       .eq('discord_user_id', discord.id)
       .neq('id', me.profile.id)
-      .maybeSingle()
 
-    if (taken) return fail('already_linked')
+    const activeHolder = (holders ?? []).find((h) => h.is_active && !h.deleted_at)
+    if (activeHolder) return fail('already_linked')
+
+    // ปลดของเจ้าของเดิมที่ปิดใช้งานแล้ว — ปล่อยค้างไว้จะบล็อกคนถัดไปอีก
+    const stale = (holders ?? []).map((h) => h.id)
+    if (stale.length) {
+      await admin
+        .from('users')
+        .update({ discord_user_id: null, discord_username: null })
+        .in('id', stale)
+    }
 
     const { error } = await admin
       .from('users')

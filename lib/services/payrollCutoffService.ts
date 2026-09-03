@@ -70,7 +70,7 @@ export async function runPayrollCutoff(today: Date = new Date()): Promise<{
       })
 
       const created = finalRows.filter((r) => !r.saved).length
-      await savePayroll(month, finalRows, null, admin)
+      await savePayroll(month, finalRows, null, admin, true)
 
       results.push({
         cycle,

@@ -140,6 +140,30 @@ head('cron รู้ว่าวันนี้ต้องตัดงวดไ
   }
 }
 
+head('กับดัก: cron ยิงตอน 23:30 ของวันตัดยอด')
+
+{
+  // ฟีเจอร์ตัดยอดอัตโนมัติไม่เคยทำงานเลยเพราะข้อนี้ (เจอ 4 ก.ย. 69)
+  // cron ยิง 23:30 ของวันตัดยอด แต่ isCutoffPassed นิยามว่า "เลยวันตัดยอดไปแล้ว"
+  // เลขสองอันนี้จึงขัดกันเสมอ — ใครเขียนโค้ดใน cron ห้ามใช้ isCutoffPassed
+  // เป็นเงื่อนไขว่าจะเขียนหรือไม่เขียน (savePayroll รับ atCutoff ไว้ให้แล้ว)
+  const cronFires = new Date(2026, 7, 31, 23, 30) // 31 ส.ค. 23:30
+  const month = M(2026, 8)
+
+  check(
+    cycleCutoffToday('c4', cronFires) !== null,
+    'cron รู้ว่า 31 ส.ค. คือวันตัดยอดของ c4'
+  )
+  check(
+    !isCutoffPassed('c4', month, cronFires),
+    'แต่ isCutoffPassed ยังเป็น false ตอนนั้น — ประตูปิดใส่ cron เอง'
+  )
+  check(
+    isCutoffPassed('c4', month, new Date(2026, 8, 1, 0, 1)),
+    'ประตูเปิดตอนเที่ยงคืนถัดไป (ช้ากว่า cron 30 นาที)'
+  )
+}
+
 head('รอบของคนนี้')
 
 {

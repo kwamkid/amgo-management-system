@@ -28,13 +28,18 @@ export async function GET(request: NextRequest) {
 
     const { results, errors } = await runPayrollCutoff()
 
-    return NextResponse.json({
-      success: true,
-      cutoffToday: results.length > 0,
-      results,
-      errors,
-      timestamp: new Date().toISOString(),
-    })
+    // มี error ต้องขึ้นแดงที่ cron-job.org — ของเดิมตอบ success: true เสมอ
+    // ทำให้ตัดยอดล้มทุกคืนโดยไม่มีใครรู้ (ดู bugs.md 4 ก.ย. 69)
+    return NextResponse.json(
+      {
+        success: errors.length === 0,
+        cutoffToday: results.length > 0,
+        results,
+        errors,
+        timestamp: new Date().toISOString(),
+      },
+      { status: errors.length ? 500 : 200 }
+    )
   } catch (error) {
     console.error('[ตัดยอดเงินเดือน] Error:', error)
     return NextResponse.json(

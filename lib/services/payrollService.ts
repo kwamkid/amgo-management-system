@@ -463,9 +463,19 @@ export async function savePayroll(
   rows: PayrollRow[],
   /** null = ระบบตัดยอดให้เอง (งาน cron ไม่มีผู้ใช้ล็อกอิน) */
   savedBy: string | null,
-  db?: Db
+  db?: Db,
+  /**
+   * true = งาน cron ที่รู้อยู่แล้วว่าวันนี้เป็นวันตัดยอด — ข้ามประตู cutoffPassed
+   *
+   * ประตูนั้นมีไว้กัน **คน** กดบันทึกก่อนงวดปิด ไม่ได้มีไว้กัน cron ทำงานใน
+   * วันที่ถูกต้อง · cron ยิง 23:30 ของวันตัดยอด ซึ่งยังไม่ "เลยวันตัดยอด"
+   * ตามนิยามของประตู (now >= วันตัดยอด + 1 วัน) จึงโดนกรองออกหมดทุกแถว
+   * แล้วโยน error เงียบ ๆ — ฟีเจอร์ตัดยอดอัตโนมัติไม่เคยทำงานเลยสักครั้ง
+   * ตั้งแต่ทำมา (เจอ 4 ก.ย. 69 ตอนงวด c4 ยังเป็นตัวเลขวันที่ 13 ส.ค.)
+   */
+  atCutoff = false
 ): Promise<{ saved: number; locked: number }> {
-  const ready = rows.filter((r) => r.cutoffPassed)
+  const ready = atCutoff ? rows : rows.filter((r) => r.cutoffPassed)
   const locked = rows.length - ready.length
 
   if (!ready.length) {

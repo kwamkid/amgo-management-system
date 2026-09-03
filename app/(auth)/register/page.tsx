@@ -33,6 +33,8 @@ function RegisterForm() {
   const [inviteLink, setInviteLink] = useState<InviteLink | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  /** เจอชื่อซ้ำแล้วรอผู้ใช้ยืนยันว่าเป็นคนละคนจริง — ยืนยันแล้วส่งซ้ำอีกรอบ */
+  const [duplicateWarning, setDuplicateWarning] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -94,9 +96,10 @@ function RegisterForm() {
     initializeForm()
   }, [searchParams, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, confirmDuplicate = false) => {
     e.preventDefault()
     setError('')
+    if (!confirmDuplicate) setDuplicateWarning('')
     setIsSubmitting(true)
 
     try {
@@ -150,13 +153,20 @@ function RegisterForm() {
           ticket,
           // ส่งเป็นโค้ด ไม่ใช่ id — server เรียก consume_invite_link ซึ่งตรวจ
           // เงื่อนไขกับนับโควตาในคำสั่งเดียว กันสองคนกดพร้อมกันแล้วนับหาย
-          inviteCode: inviteLink?.code
+          inviteCode: inviteLink?.code,
+          // ผู้ใช้ยืนยันแล้วว่าเป็นคนละคนที่ชื่อซ้ำกัน — ข้ามการเตือนรอบสอง
+          confirmDuplicateName: confirmDuplicate,
         })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
+        // ชื่อซ้ำ = เตือนแล้วให้กดยืนยัน ไม่ใช่ error ที่ทำอะไรต่อไม่ได้
+        if (data.duplicateName) {
+          setDuplicateWarning(data.error)
+          return
+        }
         throw new Error(data.error || 'การลงทะเบียนล้มเหลว')
       }
 
@@ -324,10 +334,37 @@ function RegisterForm() {
         />
       </div>
 
+      {/* ชื่อซ้ำกับคนที่มีอยู่แล้ว — เตือนก่อน ไม่บล็อกตาย (คนชื่อซ้ำกันจริงก็มี)
+          เจอของจริง 3 ก.ย. 69: สมัคร 2 รอบด้วย LINE คนละอัน ได้ 2 บัญชีชื่อเดียวกัน */}
+      {duplicateWarning && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <p className="whitespace-pre-line text-sm text-amber-900">{duplicateWarning}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSubmitting}
+              onClick={(e) => handleSubmit(e, true)}
+            >
+              เป็นคนละคน — สมัครต่อ
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDuplicateWarning('')}
+            >
+              ยกเลิก
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Submit Button */}
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !!duplicateWarning}
         className="w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
         size="lg"
       >

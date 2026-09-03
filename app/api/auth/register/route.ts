@@ -67,6 +67,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    /* ── 3.5 ชื่อซ้ำกับคนที่มีอยู่แล้ว ────────────────────────────── */
+    // LINE คนละ id = ระบบมองเป็นคนละคนเสมอ · ของจริงเจอ 3 ก.ย. 69: พนักงานใหม่
+    // สมัคร 2 รอบห่างกัน 17 นาทีด้วย LINE คนละอัน ได้ 2 บัญชีชื่อเดียวกันเป๊ะ
+    // แล้วบัญชีหนึ่งไปล็อก Discord ของอีกบัญชีไว้จนสมัครไม่จบ
+    //
+    // ไม่บล็อกตาย เพราะชื่อ-นามสกุลซ้ำกันจริง ๆ ก็มีได้ — เตือนแล้วให้ยืนยัน
+    // อีกครั้ง ส่วนที่เผลอกดสมัครซ้ำจะหยุดตรงนี้เอง
+    if (!body.confirmDuplicateName) {
+      const { data: sameName } = await sb
+        .from('users')
+        .select('id, nickname, is_active')
+        .eq('full_name', fullName)
+        .is('deleted_at', null)
+        .limit(1)
+
+      if (sameName?.length) {
+        const other = sameName[0]
+        return NextResponse.json(
+          {
+            error:
+              `มี "${fullName}" อยู่ในระบบแล้ว` +
+              (other.nickname ? ` (ชื่อเล่น ${other.nickname})` : '') +
+              (other.is_active ? '' : ' — บัญชีนั้นถูกปิดใช้งานอยู่') +
+              '\n\nถ้าเคยสมัครไว้แล้ว ให้ออกแล้วเข้าใหม่ด้วย LINE เดิมที่ใช้สมัครครั้งแรก' +
+              '\nถ้าเป็นคนละคนที่ชื่อซ้ำกันพอดี กดยืนยันเพื่อสมัครต่อได้เลย',
+            duplicateName: true,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     /* ── 4. ลิงก์เชิญ — ตรวจ+นับในคำสั่งเดียว ─────────────────────── */
     let invite: {
       id: string

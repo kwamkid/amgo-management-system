@@ -32,7 +32,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
   // ตารางแบนหาได้ทีเดียวจากเวลาเช็คอิน
   const { data: stale, error } = await sb
     .from('checkins')
-    .select('id, user_id, user_name, checkin_time, shift_end_time, primary_location_id')
+    .select('id, user_id, user_name, checkin_time, shift_end_time, shift_start_time, primary_location_id')
     .eq('status', 'checked-in')
     .is('checkout_time', null)
     .lt('checkin_time', cutoff.toISOString())

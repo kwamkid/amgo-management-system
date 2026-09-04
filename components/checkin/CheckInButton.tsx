@@ -197,103 +197,107 @@ export default function CheckInButton() {
       ? currentCheckIn.checkinTime
       : new Date(currentCheckIn.checkinTime)
 
+    // ── เช็คอินแล้ว: "งานที่ยังไม่เสร็จ" (รูปหน้าร้าน/สต็อก) ขึ้นก่อน ส่วนเช็คเอาท์ย่อเหลือแถวเดียว
+    //    (เจ้าของสั่ง 4 ก.ย. 69) · แผนที่ไม่แสดงในสถานะนี้ — ตัวกันตำแหน่งยังทำงานจากพิกัดอยู่
+    const place =
+      currentCheckIn.checkinType === 'wfh'
+        ? 'Work From Home'
+        : currentCheckIn.primaryLocationName || 'นอกสถานที่'
+    const shift = currentCheckIn.selectedShiftName
+      ? `${currentCheckIn.selectedShiftName} ${currentCheckIn.shiftStartTime}–${currentCheckIn.shiftEndTime}`
+      : ''
+
     return (
       <>
+        {/* รูปสต็อก/หน้าร้านประจำวัน — เมนูอยู่หน้าเขาเลยว่าวันนี้ยังไม่ได้ถ่าย โผล่เฉพาะคนที่ถูกตั้งค่า */}
+        {userData?.requiresStockPhotos && (
+          <div className="mb-3">
+            <StockPhotoCard
+              locationId={currentCheckIn.primaryLocationId ?? null}
+              locationName={currentCheckIn.primaryLocationName ?? ''}
+            />
+          </div>
+        )}
+
         <Card className="border-0 shadow-md">
-          <CardContent className="p-4 sm:p-6">
-            {/* Status */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-teal-500 rounded-full animate-pulse" />
-                <span className="font-medium text-gray-900">กำลังทำงาน</span>
-              </div>
-              <Badge variant="success" className="text-xs">
-                เช็คอิน {format(checkinTime, 'HH:mm')}
-              </Badge>
-            </div>
-
-            {/* รูปเซลฟี่ตอนเช็คอิน */}
-            {currentCheckIn.checkinPhotoUrl && (
-              <div className="flex justify-center mb-4">
-                <StorageImage
-                  bucket="checkin-photos"
-                  path={currentCheckIn.checkinPhotoUrl}
-                  alt="รูปตอนเช็คอิน"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-teal-300 shadow"
-                />
-              </div>
-            )}
-
-            {/* Working Time */}
-            <div className="text-center mb-3 sm:mb-6">
-              <div className="inline-flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-gray-900">{workingTime.hours}</span>
-                <span className="text-sm text-gray-600">ชม.</span>
-                <span className="text-2xl font-bold text-gray-900 ml-1">{String(workingTime.minutes).padStart(2, '0')}</span>
-                <span className="text-sm text-gray-600">นาที</span>
-                <span className="text-xl font-bold text-gray-900 ml-1">{String(workingTime.seconds).padStart(2, '0')}</span>
-                <span className="text-sm text-gray-600">วินาที</span>
-              </div>
-            </div>
-
-            {/* Location & Shift Info */}
-            <div className="space-y-2 mb-3 sm:mb-6">
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                {currentCheckIn.checkinType === 'wfh' ? (
-                  <Home className="w-4 h-4 text-blue-500" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                {currentCheckIn.checkinPhotoUrl ? (
+                  <StorageImage
+                    bucket="checkin-photos"
+                    path={currentCheckIn.checkinPhotoUrl}
+                    alt="รูปตอนเช็คอิน"
+                    className="h-11 w-11 shrink-0 rounded-full border-2 border-teal-300 object-cover"
+                  />
                 ) : (
-                  <MapPin className="w-4 h-4 text-gray-500" />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-50">
+                    <div className="h-3 w-3 animate-pulse rounded-full bg-teal-500" />
+                  </div>
                 )}
-                <span className="text-sm text-gray-700">
-                  {currentCheckIn.checkinType === 'wfh'
-                    ? 'Work From Home (WFH)'
-                    : currentCheckIn.primaryLocationName || 'เช็คอินนอกสถานที่'}
-                </span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
+                    {currentCheckIn.checkinType === 'wfh' ? (
+                      <Home className="h-4 w-4 shrink-0 text-blue-500" />
+                    ) : (
+                      <MapPin className="h-4 w-4 shrink-0 text-teal-600" />
+                    )}
+                    <span className="truncate">
+                      เช็คอิน {format(checkinTime, 'HH:mm')} · {place}
+                    </span>
+                  </p>
+                  <p className="truncate text-sm text-gray-500">
+                    ทำงานมา {workingTime.hours} ชม. {String(workingTime.minutes).padStart(2, '0')} นาที
+                    {shift && ` · ${shift}`}
+                  </p>
+                </div>
               </div>
 
-              {currentCheckIn.selectedShiftName && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                  <Clock className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm text-blue-700">
-                    {currentCheckIn.selectedShiftName} ({currentCheckIn.shiftStartTime} - {currentCheckIn.shiftEndTime})
+              <Button
+                onClick={handleCheckOut}
+                disabled={isCheckingOut}
+                className="h-10 shrink-0 bg-gradient-to-r from-red-500 to-rose-600 px-4 text-sm font-medium"
+              >
+                {isCheckingOut ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    กำลังออก…
                   </span>
-                </div>
-              )}
+                ) : (
+                  'เช็คเอาท์'
+                )}
+              </Button>
             </div>
 
-            {/* Map */}
-            {renderMap()}
-
-            {/* Location guard warning: must checkout at same location as check-in */}
+            {/* ต้องเช็คเอาท์ที่สาขาเดียวกับที่เช็คอิน */}
             {currentCheckIn.checkinType === 'onsite' && !userData?.allowCheckInOutsideLocation && (() => {
               const checkInLocationName = currentCheckIn.primaryLocationName || 'สถานที่ทำงาน'
-              // Check if user is near the specific check-in location
               const inRange = locationCheckResult?.locationsInRange.some(
                 l => l.id === currentCheckIn.primaryLocationId
               )
               return (
-                <div className={`flex items-center gap-2 p-3 rounded-lg mb-4 text-sm ${
+                <div className={`mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
                   inRange
                     ? 'bg-green-50 text-green-700'
                     : !currentPosition
                     ? 'bg-yellow-50 text-yellow-700'
                     : 'bg-red-50 text-red-700'
                 }`}>
-                  <MapPin className="w-4 h-4 shrink-0" />
+                  <MapPin className="h-4 w-4 shrink-0" />
                   <span>
                     {!currentPosition
                       ? `กำลังตรวจสอบตำแหน่ง (ต้องเช็คเอาท์ที่ ${checkInLocationName})`
                       : inRange
-                      ? `อยู่ที่ ${checkInLocationName} — สามารถเช็คเอาท์ได้`
+                      ? `อยู่ที่ ${checkInLocationName} — เช็คเอาท์ได้`
                       : `ต้องเช็คเอาท์ที่ ${checkInLocationName} เท่านั้น`}
                   </span>
                 </div>
               )
             })()}
 
-            {/* Note Section */}
+            {/* หมายเหตุ — ซ่อนไว้หลังลิงก์ เปิดเมื่อจะพิมพ์ */}
             {showNote ? (
-              <div className="mb-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 <Textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -302,54 +306,25 @@ export default function CheckInButton() {
                   className="text-sm"
                   autoFocus
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => { setShowNote(false); setNote('') }}
-                  className="text-xs"
+                  className="text-sm text-gray-500 underline-offset-2 hover:underline"
                 >
-                  ยกเลิก
-                </Button>
+                  ยกเลิกหมายเหตุ
+                </button>
               </div>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => setShowNote(true)}
-                className="w-full mb-3 text-sm"
+                className="mt-2 text-sm text-gray-500 underline-offset-2 hover:underline"
               >
-                + เพิ่มหมายเหตุ
-              </Button>
+                + หมายเหตุตอนเช็คเอาท์
+              </button>
             )}
-
-            {/* Checkout Button */}
-            <Button
-              onClick={handleCheckOut}
-              disabled={isCheckingOut}
-              className="w-full h-12 text-base font-medium bg-gradient-to-r from-red-500 to-rose-600"
-              size="lg"
-            >
-              {isCheckingOut ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  กำลังเช็คเอาท์...
-                </span>
-              ) : (
-                'เช็คเอาท์'
-              )}
-            </Button>
           </CardContent>
         </Card>
-        {/* รูปสต็อก/หน้าร้านประจำวัน — เมนูอยู่หน้าเขาเลยว่าวันนี้ยังไม่ได้ถ่าย
-            (เจ้าของสั่ง 4 ก.ย. 69) โผล่เฉพาะคนที่ถูกตั้งค่า · ถ่ายตอนไหนก็ได้ระหว่างวัน */}
-        {userData?.requiresStockPhotos && (
-          <div className="mt-4">
-            <StockPhotoCard
-              locationId={currentCheckIn.primaryLocationId ?? null}
-              locationName={currentCheckIn.primaryLocationName ?? ''}
-            />
-          </div>
-        )}
 
         {/* เช็คอินตรงวันหยุดตัวเอง — ถามวันหยุดชดเชยทันที ปิดไม่ได้
             ต้องอยู่ในกิ่งนี้ (เช็คอินอยู่) — เดิมวางไว้ท้ายไฟล์ซึ่งเป็นกิ่ง "ยังไม่เช็คอิน"

@@ -1,5 +1,6 @@
 // app/layout.tsx
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import PwaRegister from '@/components/push/PwaRegister'
 import { LoadingProvider } from '@/lib/contexts/LoadingContext'
 import './globals.css'
 
@@ -15,8 +16,23 @@ export const metadata: Metadata = {
   icons: {
     icon: '/amgo-logo.svg',
     shortcut: '/amgo-logo.svg',
-    apple: '/amgo-logo.svg',
+    // iOS ไม่รับ SVG เป็นไอคอนหน้าจอโฮม — ต้อง PNG (สร้างจาก scripts/generate-pwa-icons.mjs)
+    apple: '/icons/apple-touch-icon.png',
   },
+  // ติดตั้งเป็นแอปได้ (PWA) — manifest อยู่ที่ app/manifest.ts
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'AMGO',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
+  width: 'device-width',
+  initialScale: 1,
+  // กินพื้นที่ถึงขอบจอบนเครื่องมีรอยบาก เมื่อเปิดเป็นแอป
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -29,6 +45,7 @@ export default function RootLayout({
     // เพราะหน้าเก่ายังใช้ bg-white / text-gray-900 ตรง ๆ อยู่หลายจุด
     <html lang="th" data-theme="light" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <PwaRegister />
         <LoadingProvider>
           {children}
         </LoadingProvider>

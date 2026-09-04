@@ -9,6 +9,7 @@ import {
 } from '@/types/leave'
 import * as leaveService from '@/lib/services/leaveService'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
+import { pushNotify, toYmd } from '@/lib/push/notify'
 
 /**
  * ── ที่เปลี่ยนจากของเดิม ────────────────────────────────────────────────
@@ -104,6 +105,16 @@ export const useLeave = () => {
         }
       }
 
+      // push ถึงคนอนุมัติ (ยิงแล้วไม่รอ — Discord ยังแจ้งเหมือนเดิม)
+      pushNotify({
+        event: 'leave_request',
+        leaveType: LEAVE_TYPE_LABELS[type],
+        startDate: toYmd(startDate),
+        endDate: toYmd(endDate),
+        totalDays,
+        reason,
+        isUrgent,
+      })
       await notify(() =>
         DiscordNotificationService.notifyLeaveRequest(
           userData.id!,
@@ -137,6 +148,14 @@ export const useLeave = () => {
       await leaveService.approveLeaveRequest(leaveId, userData.id)
 
       if (leave) {
+        pushNotify({
+          event: 'leave_approved',
+          targetUserId: leave.userId,
+          leaveType: LEAVE_TYPE_LABELS[leave.type],
+          startDate: toYmd(leave.startDate),
+          endDate: toYmd(leave.endDate),
+          totalDays: leave.totalDays,
+        })
         await notify(() =>
           DiscordNotificationService.notifyLeaveApproval(
             leave.userId,
@@ -169,6 +188,14 @@ export const useLeave = () => {
       await leaveService.rejectLeaveRequest(leaveId, userData.id, reason)
 
       if (leave) {
+        pushNotify({
+          event: 'leave_rejected',
+          targetUserId: leave.userId,
+          leaveType: LEAVE_TYPE_LABELS[leave.type],
+          startDate: toYmd(leave.startDate),
+          endDate: toYmd(leave.endDate),
+          reason,
+        })
         await notify(() =>
           DiscordNotificationService.notifyLeaveRejection(
             leave.userId,

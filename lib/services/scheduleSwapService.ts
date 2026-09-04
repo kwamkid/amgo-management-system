@@ -23,6 +23,7 @@ import type { Db } from '@/lib/supabase/db'
 import { format } from 'date-fns'
 import { resolveCycle, type CycleCode } from './payrollCycle'
 import { checkSwap } from './scheduleSwapRules'
+import { pushNotify } from '@/lib/push/notify'
 
 export { checkSwap } from './scheduleSwapRules'
 export type { SwapCheckInput } from './scheduleSwapRules'
@@ -156,21 +157,26 @@ export async function createSwap(params: {
     }
     throw new Error(`ยื่นใบสลับวันหยุดไม่สำเร็จ: ${error.message}`)
   }
+  // push ถึงคนอนุมัติ — ยิงแล้วไม่รอ
+  pushNotify({ event: 'swap_request', workedDate: ymd(params.workedDate), offDate: ymd(params.offDate) })
   return data.id
 }
 
 /* ------------------------------------------------------------------ */
 export async function approveSwap(id: string, approvedBy: string): Promise<void> {
-  const { error } = await sb()
+  const { data, error } = await sb()
     .from('schedule_swaps')
     .update({ status: 'approved', approved_by: approvedBy, approved_at: new Date().toISOString() })
     .eq('id', id)
     .eq('status', 'pending') // กันกดซ้ำ/กดชนกัน
+    .select('user_id, worked_date, off_date')
+    .maybeSingle() // ไม่มีแถว = มีคนกดไปก่อนแล้ว → ไม่ต้องแจ้งซ้ำ
   if (error) throw new Error(`อนุมัติไม่สำเร็จ: ${error.message}`)
+  if (data) pushNotify({ event: 'swap_approved', targetUserId: data.user_id, workedDate: data.worked_date, offDate: data.off_date })
 }
 
 export async function rejectSwap(id: string, approvedBy: string, reason: string): Promise<void> {
-  const { error } = await sb()
+  const { data, error } = await sb()
     .from('schedule_swaps')
     .update({
       status: 'rejected',
@@ -180,7 +186,10 @@ export async function rejectSwap(id: string, approvedBy: string, reason: string)
     })
     .eq('id', id)
     .eq('status', 'pending')
+    .select('user_id, worked_date, off_date')
+    .maybeSingle()
   if (error) throw new Error(`ปฏิเสธไม่สำเร็จ: ${error.message}`)
+  if (data) pushNotify({ event: 'swap_rejected', targetUserId: data.user_id, workedDate: data.worked_date, offDate: data.off_date, reason: reason.trim() })
 }
 
 /** ยกเลิกใบของตัวเอง — อนุมัติไปแล้วก็ยกเลิกได้ trigger จะคืนตารางให้เอง */

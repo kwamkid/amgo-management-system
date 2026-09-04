@@ -49,6 +49,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // ทุกเส้นทาง ยกเว้นไฟล์สแตติกกับรูป — เพื่อให้ session ถูกต่ออายุทั่วทั้งแอป
-    '/((?!_next/static|_next/image|favicon.ico|fonts/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // (ไอคอน/service worker/manifest ของ PWA ไม่ต้องผ่าน — เบราว์เซอร์ดึงเองโดยไม่มี session)
+    '/((?!_next/static|_next/image|favicon.ico|fonts/|icons/|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

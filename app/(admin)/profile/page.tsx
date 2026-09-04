@@ -16,6 +16,7 @@ import { DiscordIcon } from '@/components/icons/DiscordIcon'
 import TechLoader from '@/components/shared/TechLoader'
 import { createClient } from '@/lib/supabase/client'
 import PayCard from '@/components/users/PayCard'
+import DeviceCard from '@/components/push/DeviceCard'
 
 const EMPLOYMENT_TYPE: Record<string, string> = {
   monthly: 'รายเดือน',
@@ -269,6 +270,9 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
+
+          {/* ติดตั้งแอป + แจ้งเตือนของเครื่องนี้ */}
+          <DeviceCard />
 
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-2 font-semibold text-gray-900">การทำงาน</h3>

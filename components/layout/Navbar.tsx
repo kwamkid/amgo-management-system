@@ -8,6 +8,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Menu, ChevronDown, Eye } from 'lucide-react'
+import { isStandalone } from '@/lib/push/client'
 import { signOutBoth } from '@/lib/auth/dual-session'
 import { UserData } from '@/hooks/useAuth'
 import UserAvatar from '@/components/shared/UserAvatar'
@@ -33,6 +34,9 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps) {
   const router = useRouter()
+  // เปิดจากแอปที่ติดตั้งอยู่แล้ว — เมนู "ติดตั้งแอป" ไม่มีประโยชน์ (เจ้าของสั่ง 4 ก.ย. 69)
+  const [standalone, setStandalone] = useState(false)
+  useEffect(() => setStandalone(isStandalone()), [])
 
   // ── แอดมิน: ดูระบบในมุมมองสิทธิ์อื่น (เครื่องมือทดสอบ) ──────────────
   // useAuth เป็น hook แยกต่อ component ไม่มี context กลาง — สลับแล้วโหลดหน้าใหม่
@@ -119,11 +123,15 @@ export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps)
               icon: 'User',
               onSelect: () => router.push('/profile'),
             },
-            {
-              label: 'ติดตั้งแอป',
-              icon: 'Smartphone',
-              onSelect: () => router.push('/install'),
-            },
+            ...(standalone
+              ? []
+              : [
+                  {
+                    label: 'ติดตั้งแอป',
+                    icon: 'Smartphone',
+                    onSelect: () => router.push('/install'),
+                  },
+                ]),
             { kind: 'divider' },
             {
               label: 'ออกจากระบบ',

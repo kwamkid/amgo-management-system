@@ -4,9 +4,11 @@
 // สิทธิ์ขอตอนผู้ใช้กดเปิดเองในหน้าโปรไฟล์) + ล้างเลขบนไอคอนทุกครั้งที่กลับมาเห็นหน้าจอ
 import { useEffect } from 'react'
 import { registerServiceWorker, clearAppBadge } from '@/lib/push/client'
+import { captureInstallPrompt } from '@/lib/push/installPrompt'
 
 export default function PwaRegister() {
   useEffect(() => {
+    captureInstallPrompt() // ต้องจับก่อน component อื่น mount — event ยิงครั้งเดียว
     registerServiceWorker()
 
     // เลขบนไอคอนหมายถึง "มีเรื่องที่ยังไม่ได้ดู" — พอเปิดแอปมาเห็นแล้วต้องหายทันที

@@ -14,7 +14,29 @@ export type PushState =
   | 'unsubscribed'      // รองรับแต่ยังไม่เปิด
 
 export function isIos(): boolean {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const ua = navigator.userAgent
+  // iPadOS 13+ แกล้งเป็น Mac ใน UA — ดูจากจอสัมผัสแทน
+  return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+}
+
+export function isAndroid(): boolean {
+  return /android/i.test(navigator.userAgent)
+}
+
+export function isMobile(): boolean {
+  return isIos() || isAndroid()
+}
+
+/**
+ * เปิดอยู่ในเบราว์เซอร์ฝังของ LINE/Facebook — ตัวนี้**ไม่มี**เมนู "เพิ่มไปยังหน้าจอโฮม"
+ * และ iOS ไม่ให้ push จากในนั้น · พนักงานส่วนใหญ่เปิดจากลิงก์ใน LINE จึงต้องบอกให้
+ * เปิดใน Safari/Chrome ก่อนเป็นขั้นแรก
+ */
+export function inAppBrowser(): 'line' | 'facebook' | null {
+  const ua = navigator.userAgent
+  if (/\bLine\//i.test(ua)) return 'line'
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'facebook'
+  return null
 }
 
 /** เปิดจากไอคอนแอป (ไม่ใช่แท็บเบราว์เซอร์) */

@@ -119,6 +119,11 @@ export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps)
               icon: 'User',
               onSelect: () => router.push('/profile'),
             },
+            {
+              label: 'ติดตั้งแอป',
+              icon: 'Smartphone',
+              onSelect: () => router.push('/install'),
+            },
             { kind: 'divider' },
             {
               label: 'ออกจากระบบ',

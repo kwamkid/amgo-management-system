@@ -100,14 +100,18 @@ export default function StockPhotoCard({
     }
   }
 
+  // กดแล้วลบทันที ไม่ถาม (เจ้าของสั่ง 4 ก.ย. 69 "ให้มันลบไปเลย") — รูปถ่ายใหม่ได้ใน 2 วิ
+  // ไม่คุ้มให้ตอบกล่องยืนยันทุกครั้ง · ปุ่มใหญ่พอนิ้วและอยู่มุมบนขวาเสมอ กันกดพลาดพอแล้ว
   const remove = async (p: StockPhoto) => {
-    if (!confirm(`ลบรูป${KIND_LABEL[p.kind]}นี้?`)) return
+    const next = photos.filter((x) => x.id !== p.id)
+    setPhotos(next) // เอาออกจากจอก่อน — รอ server แล้วค่อยหายจะรู้สึกว่ากดไม่ติด
+    onStatusChange?.(stockPhotoStatus(next).complete)
     try {
       await deleteMyPhotoToday(p.id)
-      const next = photos.filter((x) => x.id !== p.id)
-      setPhotos(next)
-      onStatusChange?.(stockPhotoStatus(next).complete)
+      showToast(`ลบรูป${KIND_LABEL[p.kind]}แล้ว`)
     } catch (e) {
+      setPhotos(photos) // ลบไม่สำเร็จ — คืนรูปกลับมา
+      onStatusChange?.(stockPhotoStatus(photos).complete)
       showToast((e as Error).message, 'error')
     }
   }
@@ -151,13 +155,15 @@ export default function StockPhotoCard({
                 <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 text-xs text-white">
                   {format(new Date(p.takenAt), 'HH:mm')}
                 </span>
+                {/* โชว์ตลอด — มือถือไม่มี hover (เดิม group-hover:block กดไม่ได้เลยบนจอสัมผัส) */}
                 <button
                   type="button"
                   onClick={() => remove(p)}
-                  className="absolute right-0.5 top-0.5 hidden rounded bg-black/60 p-0.5 text-white group-hover:block"
+                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/65 text-white active:bg-red-600"
+                  aria-label="ลบรูปนี้"
                   title="ลบ (ถ่ายพลาด)"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}

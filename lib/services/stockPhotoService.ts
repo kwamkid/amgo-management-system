@@ -124,9 +124,22 @@ export async function addStockPhoto(params: {
 }
 
 /** ลบรูปของตัวเองวันนี้ (ถ่ายพลาด) — RLS กันย้อนหลังให้แล้ว */
+/**
+ * ลบรูปที่ถ่ายพลาด — ลบแถวก่อน (RLS ยอมเฉพาะของตัวเองวันนี้) แล้วค่อยลบไฟล์
+ * เดิมลบแค่แถว ไฟล์ค้างใน bucket ตลอดไป (cron ล้างตามแถว) · เจ้าของสั่ง 4 ก.ย. 69
+ * "ให้มันลบไปเลย" · ลบไฟล์ไม่สำเร็จไม่ถือว่าล้ม — แถวหายแล้ว รูปไม่โผล่ที่ไหนอีก
+ */
 export async function deleteMyPhotoToday(id: string): Promise<void> {
-  const { error } = await sb().from('stock_photos').delete().eq('id', id)
+  const { data, error } = await sb()
+    .from('stock_photos')
+    .delete()
+    .eq('id', id)
+    .select('photo_path')
+    .maybeSingle()
   if (error) throw new Error(`ลบรูปไม่สำเร็จ: ${error.message}`)
+  if (!data) throw new Error('ลบรูปไม่สำเร็จ: ลบได้เฉพาะรูปของตัวเองที่ถ่ายวันนี้')
+  const { error: fileErr } = await sb().storage.from(BUCKET).remove([data.photo_path])
+  if (fileErr) console.warn('[stock-photos] ลบไฟล์ไม่สำเร็จ (แถวลบแล้ว):', fileErr.message)
 }
 
 /* ------------------------------------------------------------------ *

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { CircleCheck } from 'lucide-react'
 import { signInBoth } from '@/lib/auth/dual-session'
 import { isStandalone } from '@/lib/push/client'
-import { offerHandoff } from '@/lib/auth/pwaHandoff'
+import { offerHandoff, clearPwaLogin } from '@/lib/auth/pwaHandoff'
 import { NONCE_RE } from '@/lib/auth/pwaState'
 
 /**
@@ -62,6 +62,7 @@ function VerifyAuth() {
 
       try {
         await signInBoth({ tokenHash })
+        clearPwaLogin() // ล็อกอินจบในแอปเอง (ไม่ผ่าน handoff) — ล้างตั๋วที่จำไว้ทิ้ง
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         console.error(msg)

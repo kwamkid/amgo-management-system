@@ -34,4 +34,6 @@
 - ถ้าแอปยังค้างหน้า LINE อยู่ กดย้อนกลับ/ปิด (X) ให้เห็นหน้า login ก่อน ระบบจะเข้าให้เอง · รอได้ 10 นาที
 - ตาราง `auth_handoffs` (migration 20260904130000) · แถวลบตอนหยิบ/หมดอายุ ไม่ต้องมี cron
 - โค้ด: `lib/auth/pwaState.ts` (state/nonce · เทสต์ `scripts/test-pwa-login.mjs`) · `lib/auth/pwaHandoff.ts` · `app/api/auth/handoff` · `app/auth/verify` · `app/(auth)/login`
+- ปุ่มรองในแอป "เข้าสู่ระบบโดยไม่ออกจากแอป (กรอกอีเมล LINE)" = ส่ง `disable_ios_auto_login`/`disable_auto_login` ให้ LINE ใช้หน้าเว็บในแผ่นซ้อนของแอป → กลับเข้าแอปเองไม่ผ่าน Chrome/Safari · ต้องมีอีเมล+รหัสผ่าน LINE
+- **iPhone ไม่มีทางให้หน้าเว็บสั่งเปิดแอปที่ติดตั้ง** (ไม่มี URL scheme/universal link สำหรับ web app) — ปุ่ม "เปิดในแอป" บนหน้า Chrome จึงทำไม่ได้ เจ้าของถาม 4 ก.ย. 69
 

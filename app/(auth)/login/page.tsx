@@ -46,6 +46,7 @@ function LoginForm() {
   const [error, setError] = useState('')
   /** nonce ที่กำลังรอ session จากเบราว์เซอร์ (เฉพาะเมื่อกดจากแอปที่ติดตั้ง) */
   const [pending, setPending] = useState<string | null>(null)
+  const [standalone, setStandalone] = useState(false)
   const searchParams = useSearchParams()
   const isDev = process.env.NODE_ENV === 'development'
 
@@ -57,6 +58,7 @@ function LoginForm() {
   useEffect(() => {
     // กลับมาจาก LINE (เปิดในชีต/แท็บซ้อนบนแอป) ม่านโหลดเต็มจอต้องไม่ค้าง
     hideLoading()
+    setStandalone(isStandalone())
     // ล็อกอินอยู่แล้ว (เช่น Android แชร์คุกกี้กับ Chrome) → เข้าเลย ไม่ต้องกดซ้ำ
     createClient()
       .auth.getSession()
@@ -130,7 +132,13 @@ function LoginForm() {
     }
   }
 
-  const handleLineLogin = () => {
+  /**
+   * @param stayInApp ไม่เด้งไปแอป LINE — ใช้หน้าเว็บของ LINE ในแผ่นซ้อนของแอปแทน
+   *   (พารามิเตอร์ disable_*_auto_login ของ LINE) · ต้องกรอกอีเมล+รหัสผ่าน LINE
+   *   แต่กลับเข้าแอปเองโดยไม่ผ่าน Chrome/Safari · iPhone ไม่มีทางให้หน้าเว็บสั่งเปิด
+   *   แอปที่ติดตั้ง — นี่คือทางเดียวที่ "ไม่ต้องสลับแอปเอง"
+   */
+  const handleLineLogin = (stayInApp = false) => {
     setError('')
     const standalone = isStandalone()
     const nonce = standalone ? startPwaLogin() : newNonce()
@@ -148,7 +156,8 @@ function LoginForm() {
       `client_id=${process.env.NEXT_PUBLIC_LINE_CHANNEL_ID}&` +
       `redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL + '/api/auth/line/callback')}&` +
       `state=${encodeURIComponent(state)}&` +
-      `scope=profile%20openid`
+      `scope=profile%20openid` +
+      (stayInApp ? `&disable_ios_auto_login=true&disable_auto_login=true` : '')
 
     window.location.href = lineAuthUrl
   }
@@ -170,13 +179,23 @@ function LoginForm() {
 
       {/* ปุ่ม LINE — สีเขียวทางการของ LINE · สูง 56px · โลโก้ซ้าย */}
       <button
-        onClick={handleLineLogin}
+        onClick={() => handleLineLogin(false)}
         disabled={isLoading}
         className="lg-line-btn flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#06C755] px-5 text-base font-semibold text-white transition-all hover:bg-[#05B34C] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isLoading ? <Loader2 size={26} className="animate-spin" /> : <LineIcon size={28} />}
         {isLoading ? 'กำลังเปิด LINE…' : pending ? 'เปิด LINE อีกครั้ง' : 'เข้าสู่ระบบด้วย LINE'}
       </button>
+
+      {standalone && !pending && (
+        <button
+          onClick={() => handleLineLogin(true)}
+          disabled={isLoading}
+          className="mt-3 w-full text-center text-sm text-gray-400 underline-offset-2 hover:text-white hover:underline disabled:opacity-60"
+        >
+          เข้าสู่ระบบโดยไม่ออกจากแอป (กรอกอีเมล LINE)
+        </button>
+      )}
 
       {pending && (
         <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-gray-300">

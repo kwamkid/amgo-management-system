@@ -111,6 +111,7 @@ export default function UserEditForm({
     allowedLocationIds: user.allowedLocationIds || [],
     allowCheckInOutsideLocation: user.allowCheckInOutsideLocation || false,
     allowWorkFromHome: user.allowWorkFromHome || false,
+    requiresStockPhotos: user.requiresStockPhotos || false,
     requiresCheckin: user.requiresCheckin ?? true,
     employmentStatus: user.employmentStatus ?? 'active',
     employmentType: user.employmentType ?? 'monthly',
@@ -686,6 +687,27 @@ export default function UserEditForm({
                     </div>
                   </div>
                 )}
+
+                {/* รูปสต็อก+หน้าร้านประจำวัน — PC บางคน (เจ้าของสั่ง 4 ก.ย. 69)
+                    ถ่ายตอนไหนก็ได้ระหว่างวัน แต่ไม่ครบทั้งสองอย่างเช็คเอาท์ไม่ได้ */}
+                <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
+                  <Checkbox
+                    id="requiresStockPhotos"
+                    checked={formData.requiresStockPhotos ?? false}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, requiresStockPhotos: checked as boolean })
+                    }
+                    disabled={isLoading}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="requiresStockPhotos" className="text-base font-normal cursor-pointer">
+                      ต้องถ่ายรูปหน้าร้าน + สต็อกทุกวัน
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      หน้าเช็คอินจะมีการ์ดเตือนว่าวันนี้ยังไม่ได้ถ่าย · ถ่ายกี่รูปก็ได้ แต่ต้องมีทั้งสองอย่างถึงจะเช็คเอาท์ได้ · HR ดูย้อนหลังรายสาขาได้ที่รายงาน
+                    </p>
+                  </div>
+                </div>
 
                 <div className="border-t border-gray-100 pt-4">
                   <Label>สาขาที่อนุญาตให้เช็คอิน</Label>

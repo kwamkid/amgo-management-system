@@ -38,6 +38,8 @@ export interface User {
   probationEndDate?: string | null // วันพ้นทดลองงาน — ใช้ลงวันที่เงินเดือนหลังโปร + สัญญา
   allowCheckInOutsideLocation?: boolean // อนุญาตให้เช็คอินนอกสถานที่
   allowWorkFromHome?: boolean // อนุญาตให้ Work From Home
+  /** ต้องถ่ายรูปหน้าร้าน+สต็อกทุกวันก่อนเช็คเอาท์ (PC บางคน — เจ้าของสั่ง 4 ก.ย. 69) */
+  requiresStockPhotos?: boolean
   otEligible?: boolean | null // ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible)
   nationalId?: string | null // เลขบัตรประชาชน 13 หลัก — ใช้ในสัญญาจ้าง
   address?: string | null // ที่อยู่ — ใช้ในสัญญาจ้าง

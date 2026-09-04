@@ -325,6 +325,23 @@ export function useCheckIn(): UseCheckInReturn {
         return
       }
 
+      // ── รูปสต็อก/หน้าร้านประจำวัน — คนที่ถูกตั้งค่าไว้ต้องถ่ายครบก่อนออก ──
+      // เจ้าของสั่ง 4 ก.ย. 69: ไม่ครบทั้งสองอย่าง เช็คเอาท์ไม่ได้ (ไม่มีข้าม)
+      // เช็คจากฐานข้อมูลตรงนี้ ไม่เชื่อ state ของการ์ด — refresh หนีก็ไม่พ้น
+      if (userData.requiresStockPhotos) {
+        const { listMyPhotosToday, stockPhotoStatus, missingLabel } = await import(
+          '@/lib/services/stockPhotoService'
+        )
+        const status = stockPhotoStatus(await listMyPhotosToday(userData.id!))
+        if (!status.complete) {
+          showToast(
+            `ยังไม่ได้ถ่ายรูป${missingLabel(status)}ของวันนี้ — ถ่ายให้ครบก่อนเช็คเอาท์`,
+            'error'
+          )
+          return
+        }
+      }
+
       const hours = await checkinService.checkOut(userData.id, {
         lat: pos?.coords.latitude,
         lng: pos?.coords.longitude,

@@ -1,6 +1,6 @@
 // app/api/cron/cleanup-photos/route.ts
 //
-// ลบรูปที่เก่าเกิน 60 วัน — รูปเช็คอินและรูปหลักฐานส่งของ
+// ลบรูปที่เก่าเกิน 60 วัน — รูปเช็คอิน · รูปหลักฐานส่งของ · รูปสต็อก/หน้าร้าน
 //
 // ทำไมต้องมี: ที่เก็บไฟล์เดิมบน Firebase โต 615.7 MB และโตไปเรื่อย ๆ
 // เพราะไม่เคยลบรูปเก่าเลย  เจ้าของระบบสั่งไว้ว่า "ลบทุก ๆ 60 วันก็ได้ครับ
@@ -25,15 +25,18 @@ import { isAuthorizedCron } from '@/lib/cron-auth'
 export const maxDuration = 60
 
 const RETENTION_DAYS = 60
+// รูปสต็อก/หน้าร้านแยกค่าไว้ — เจ้าของสั่ง 4 ก.ย. 69 ให้ลบ "เหมือน selfie" (60 วัน)
+// แต่ถ้าอยากไล่ดูของหายย้อนได้ไกลกว่านั้น แก้เลขนี้เลขเดียว
+const STOCK_RETENTION_DAYS = 60
 const DEFAULT_LIMIT = 300 // แถวต่อตารางต่อรอบ
 const MAX_LIMIT = 2000
 const REMOVE_BATCH = 100 // storage.remove() ต่อครั้ง
 
 type Sb = ReturnType<typeof createAdminClient>
 
-function cutoff() {
+function cutoff(days = RETENTION_DAYS) {
   const d = new Date()
-  d.setDate(d.getDate() - RETENTION_DAYS)
+  d.setDate(d.getDate() - days)
   return d
 }
 
@@ -136,6 +139,40 @@ async function cleanupDeliveryPhotos(sb: Sb, limit: number) {
   }
 }
 
+async function cleanupStockPhotos(sb: Sb, limit: number) {
+  const before = cutoff(STOCK_RETENTION_DAYS).toISOString().slice(0, 10)
+
+  const { count: remainingBefore } = await sb
+    .from('stock_photos')
+    .select('id', { count: 'exact', head: true })
+    .lt('work_date', before)
+
+  const { data, error } = await sb
+    .from('stock_photos')
+    .select('id, photo_path')
+    .lt('work_date', before)
+    .order('work_date')
+    .limit(limit)
+  if (error) throw new Error(`หารูปสต็อกเก่าไม่สำเร็จ: ${error.message}`)
+  if (!data?.length) return { rows: 0, files: 0, remaining: 0 }
+
+  const files = await removeFiles(sb, 'stock-photos', data.map((r) => r.photo_path))
+
+  // แถวนี้ไม่มีค่าอะไรถ้าไม่มีรูป — ลบทั้งแถว (เซลฟี่ล้างแค่คอลัมน์เพราะแถว checkin
+  // ยังมีเวลาเข้า-ออก/ชั่วโมงที่ต้องเก็บ)
+  const { error: delErr } = await sb
+    .from('stock_photos')
+    .delete()
+    .in('id', data.map((r) => r.id))
+  if (delErr) throw new Error(`ลบแถวรูปสต็อกไม่สำเร็จ: ${delErr.message}`)
+
+  return {
+    rows: data.length,
+    files,
+    remaining: Math.max(0, (remainingBefore ?? 0) - data.length),
+  }
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -151,10 +188,11 @@ export async function GET(request: NextRequest) {
   try {
     const checkin = await cleanupCheckinPhotos(sb, limit)
     const delivery = await cleanupDeliveryPhotos(sb, limit)
+    const stock = await cleanupStockPhotos(sb, limit)
 
     const note =
-      `ลบรูปเช็คอิน ${checkin.files} · รูปส่งของ ${delivery.files} ` +
-      `· เหลือ ${checkin.remaining + delivery.remaining}`
+      `ลบรูปเช็คอิน ${checkin.files} · รูปส่งของ ${delivery.files} · รูปสต็อก ${stock.files} ` +
+      `· เหลือ ${checkin.remaining + delivery.remaining + stock.remaining}`
 
     await sb.from('app_config').upsert(
       { key: 'photo_cleanup_last_run', value: new Date().toISOString(), note },
@@ -167,8 +205,9 @@ export async function GET(request: NextRequest) {
       limit,
       checkin,
       delivery,
+      stock,
       // ยังเหลือ = รันรอบหน้าจะไล่เก็บต่อ ไม่ต้องทำอะไร
-      done: checkin.remaining === 0 && delivery.remaining === 0,
+      done: checkin.remaining === 0 && delivery.remaining === 0 && stock.remaining === 0,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

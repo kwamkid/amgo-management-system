@@ -35,6 +35,8 @@ export interface UserData {
   allowedLocationIds?: string[]
   allowCheckInOutsideLocation?: boolean
   allowWorkFromHome?: boolean
+  /** ต้องถ่ายรูปหน้าร้าน+สต็อกทุกวันก่อนเช็คเอาท์ */
+  requiresStockPhotos?: boolean
   /** ได้ค่าล่วงเวลาไหม — null = ตามตำแหน่ง (job_functions.ot_eligible) */
   otEligible?: boolean | null
   /** เห็นเมนูงานส่งของ (มาจาก job_functions.sees_delivery — useAuth เติมให้ตอนล็อกอิน) */
@@ -105,6 +107,7 @@ export function mapUser(row: UserRow, allowedLocationIds: string[] = []): UserDa
     allowedLocationIds,
     allowCheckInOutsideLocation: row.allow_checkin_outside_location ?? false,
     allowWorkFromHome: row.wfh_eligible ?? false,
+    requiresStockPhotos: row.requires_stock_photos ?? false,
     otEligible: row.ot_eligible ?? null,
     inviteLinkId: row.invite_link_id ?? undefined,
     inviteLinkCode: row.invite_link_code ?? undefined,

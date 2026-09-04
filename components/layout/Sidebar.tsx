@@ -167,6 +167,7 @@ const navSections: NavSection[] = [
           { label: 'Performance การมาทำงาน', href: '/reports/performance', icon: subIcon(TrendingUp), roles: ['hr', 'admin', 'manager'] },
           { label: 'รายงานการส่งของ', href: '/delivery/report', icon: subIcon(Truck), roles: ['hr', 'admin', 'manager', 'driver', 'delivery'] },
           { label: 'Performance การส่งของ', href: '/reports/delivery-performance', icon: subIcon(Gauge), roles: ['hr', 'admin', 'manager'] },
+          { label: 'รูปสต็อก/หน้าร้าน', href: '/reports/stock-photos', icon: subIcon(Camera), roles: ['hr', 'admin', 'manager'] },
         ],
       },
       { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },

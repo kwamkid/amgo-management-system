@@ -13,7 +13,7 @@ import { createClient } from './client'
  * (ของเดิมบน Firebase คืน download URL ที่ใครมีลิงก์ก็เปิดได้ตลอดกาล)
  */
 
-export type Bucket = 'checkin-photos' | 'avatars' | 'delivery-photos' | 'leave-attachments'
+export type Bucket = 'checkin-photos' | 'avatars' | 'delivery-photos' | 'leave-attachments' | 'stock-photos'
 
 /** อายุลิงก์รูป — ยาวพอให้เปิดดูย้อนหลังในหน้าประวัติ แต่ไม่ตลอดกาล */
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7 // 7 วัน

@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
 
   const lineState = parseLineState(state)
   const handoff = handoffQuery(lineState)
+  // ไว้ไล่ปัญหา "ล็อกอินจากแอปแล้วไปโผล่เบราว์เซอร์" — ดูใน Vercel logs ว่าธงมาถึงไหม
+  console.log('[line-callback]', lineState.pwa ? 'จากแอป (handoff)' : 'จากเบราว์เซอร์', 'nonce:', lineState.nonce ? 'มี' : 'ไม่มี')
 
   try {
     const profile = await fetchLineProfile(code)

@@ -36,4 +36,5 @@
 - โค้ด: `lib/auth/pwaState.ts` (state/nonce · เทสต์ `scripts/test-pwa-login.mjs`) · `lib/auth/pwaHandoff.ts` · `app/api/auth/handoff` · `app/auth/verify` · `app/(auth)/login`
 - ปุ่มรองในแอป "เข้าสู่ระบบโดยไม่ออกจากแอป (กรอกอีเมล LINE)" = ส่ง `disable_ios_auto_login`/`disable_auto_login` ให้ LINE ใช้หน้าเว็บในแผ่นซ้อนของแอป → กลับเข้าแอปเองไม่ผ่าน Chrome/Safari · ต้องมีอีเมล+รหัสผ่าน LINE
 - **iPhone ไม่มีทางให้หน้าเว็บสั่งเปิดแอปที่ติดตั้ง** (ไม่มี URL scheme/universal link สำหรับ web app) — ปุ่ม "เปิดในแอป" บนหน้า Chrome จึงทำไม่ได้ เจ้าของถาม 4 ก.ย. 69
+- เปิดจากแอปที่ติดตั้ง: แถบชวนติดตั้งและเมนู "ติดตั้งแอป" ไม่แสดง (การ์ดในโปรไฟล์ยังโชว์ "เปิดจากแอปอยู่ ✓")
 

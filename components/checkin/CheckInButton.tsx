@@ -39,7 +39,7 @@ const CheckInMap = dynamic(
   () => import('./CheckInMap'),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[400px]" rows={7} />
+    loading: () => <Skeleton className="h-52 sm:h-[400px]" rows={7} />
   }
 )
 
@@ -180,7 +180,7 @@ export default function CheckInButton() {
   const renderMap = () => {
     if (!currentPosition) return null
     return (
-      <div className="mb-4 rounded-lg overflow-hidden h-[400px]">
+      <div className="mb-3 rounded-lg overflow-hidden h-52 sm:h-[400px]">
         <CheckInMap
           userLat={currentPosition.coords.latitude}
           userLng={currentPosition.coords.longitude}
@@ -200,7 +200,7 @@ export default function CheckInButton() {
     return (
       <>
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             {/* Status */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export default function CheckInButton() {
             )}
 
             {/* Working Time */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-3 sm:mb-6">
               <div className="inline-flex items-baseline gap-1">
                 <span className="text-3xl font-bold text-gray-900">{workingTime.hours}</span>
                 <span className="text-sm text-gray-600">ชม.</span>
@@ -237,7 +237,7 @@ export default function CheckInButton() {
             </div>
 
             {/* Location & Shift Info */}
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-3 sm:mb-6">
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 {currentCheckIn.checkinType === 'wfh' ? (
                   <Home className="w-4 h-4 text-blue-500" />
@@ -370,10 +370,10 @@ export default function CheckInButton() {
   return (
     <>
       <Card className="border-0 shadow-md">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           {/* Clock */}
-          <div className="text-center mb-6">
-            <p className="text-4xl font-bold text-gray-900">
+          <div className="text-center mb-3 sm:mb-6">
+            <p className="text-3xl font-bold text-gray-900 sm:text-4xl">
               {format(currentTime, 'HH:mm:ss')}
             </p>
             <p className="text-gray-600 mt-1">
@@ -416,7 +416,7 @@ export default function CheckInButton() {
           )}
 
           {locationCheckResult?.canCheckIn && (
-            <div className="flex items-center justify-center gap-2 mb-4 text-teal-600">
+            <div className="flex items-center justify-center gap-2 mb-2 text-teal-600">
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium">
                 {locationCheckResult.locationsInRange.length > 0
@@ -428,7 +428,7 @@ export default function CheckInButton() {
 
           {/* Camera info notice */}
           {locationCheckResult?.canCheckIn && (
-            <p className="text-xs text-gray-500 text-center mb-3 flex items-center justify-center gap-1">
+            <p className="text-xs text-gray-500 text-center mb-2 flex items-center justify-center gap-1">
               <Camera className="w-3 h-3" />
               ระบบจะขอถ่ายรูปยืนยันตัวตนก่อนเช็คอิน
             </p>

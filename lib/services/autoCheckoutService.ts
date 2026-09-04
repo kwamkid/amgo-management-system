@@ -59,7 +59,9 @@ export async function autoCheckoutPendingRecords(): Promise<{
         if (loc) breakHours = Number(loc.break_hours ?? 1)
       }
 
-      const checkoutTime = normalEndTime(checkinTime, rec.shift_end_time, breakHours)
+      let checkoutTime = normalEndTime(checkinTime, rec.shift_end_time, breakHours, rec.shift_start_time)
+      // เช็คอินหลังเวลาเลิกงาน → เพดานอยู่ก่อนเวลาเข้า · บันทึกออกหลังเข้า 1 นาที (constraint) ชั่วโมงเป็น 0
+      if (checkoutTime <= checkinTime) checkoutTime = new Date(checkinTime.getTime() + 60_000)
 
       const calc = calculateWorkingHours(
         checkinTime,

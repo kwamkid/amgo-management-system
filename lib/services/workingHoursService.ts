@@ -36,13 +36,21 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
 export function normalEndTime(
   checkinTime: Date,
   shiftEndTime?: string | null,
-  breakHours: number = 1
+  breakHours: number = 1,
+  shiftStartTime?: string | null
 ): Date {
   if (shiftEndTime) {
     const [h, m] = shiftEndTime.split(':').map(Number)
     const end = new Date(checkinTime)
     end.setHours(h, m, 0, 0)
-    if (end < checkinTime) end.setDate(end.getDate() + 1) // กะข้ามคืน
+    // เวลาเลิกงานอยู่ "วันถัดไป" เฉพาะกะข้ามคืนแท้ (จบกะ < เริ่มกะ)
+    //
+    // ของเดิมเลื่อนทุกครั้งที่ end < checkin — กะกลางวันที่เช็คอิน *หลัง* เลิกงาน
+    // (มาร์ค 3 ก.ย. 69: เข้า 18:15 กะ 09:00–18:00) เลยกลายเป็นกะ 24 ชม. ระบบไม่มอง
+    // ว่าลืมเช็คเอาท์ แล้วชั่วโมงติดลบจนฐานข้อมูลปฏิเสธ เช็คเอาท์ไม่ได้เลย
+    // ไม่รู้เวลาเริ่มกะ = คงพฤติกรรมเดิม
+    const overnight = shiftStartTime ? shiftEndTime < shiftStartTime : end < checkinTime
+    if (overnight && end < checkinTime) end.setDate(end.getDate() + 1)
     return end
   }
   return new Date(checkinTime.getTime() + (8 + breakHours) * 3600_000)
@@ -66,7 +74,7 @@ export function isForgotCheckout(
   shiftEndTime?: string | null,
   breakHours: number = 1
 ): boolean {
-  const normalEnd = normalEndTime(checkinTime, shiftEndTime, breakHours)
+  const normalEnd = normalEndTime(checkinTime, shiftEndTime, breakHours, shiftStartTime)
   if (checkoutTime <= normalEnd) return false
   if (isSameDay(checkinTime, checkoutTime)) return false
 
@@ -113,7 +121,9 @@ export function calculateWorkingHours(
   }
   
   // Calculate total minutes worked
-  const totalMinutes = differenceInMinutes(effectiveCheckoutTime, checkinTime)
+  // ห้ามติดลบ — เช็คอินหลังเวลาปิดร้าน (เพดานตัดก่อนเวลาเข้า) ต้องได้ 0 ไม่ใช่ค่าลบ
+  // ที่ฐานข้อมูลปฏิเสธ (hours_not_negative — มาร์ค 3 ก.ย. 69)
+  const totalMinutes = Math.max(0, differenceInMinutes(effectiveCheckoutTime, checkinTime))
   
   // Check if overnight shift (spans across midnight)
   const isOvernightShift = !isSameDay(checkinTime, effectiveCheckoutTime)

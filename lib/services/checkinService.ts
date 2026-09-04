@@ -226,7 +226,7 @@ export async function checkOut(
   const breakHours = location?.breakHours ?? OFFSITE_HOURS_RULES.breakHours
 
   // เวลาเลิกงานปกติของกะนี้ — เพดานเดียวใช้ได้ทั้งเคสเช็คเอาท์ไกลและเคสลืมเช็คเอาท์
-  const normalEnd = normalEndTime(checkinTime, active.shiftEndTime, breakHours)
+  const normalEnd = normalEndTime(checkinTime, active.shiftEndTime, breakHours, active.shiftStartTime)
 
   // ── ลืมเช็คเอาท์ = มากดปิดกะข้ามวัน ─────────────────────────────────
   // กติกาเจ้าของ (14 ส.ค. 69): ลืมเช็คเอาท์ให้ปิดที่ "เวลาเลิกงานปกติ" คิด
@@ -258,6 +258,12 @@ export async function checkOut(
   // ก็ผิดเรื่อง และเพดานเดียวกันโดนตัดไปแล้ว
   let farKm = 0
   let effectiveCheckout = forgot && normalEnd < checkoutTime ? normalEnd : checkoutTime
+
+  // ── เช็คอินหลังเวลาเลิกงานแล้วลืมปิด (มาร์ค 3 ก.ย. 69: เข้า 18:15 กะ 09–18 มาปิดวันรุ่งขึ้น)
+  // เพดานอยู่ก่อนเวลาเข้า = ไม่มีชั่วโมงให้นับ → 0 ชม. + needs_review ให้ HR ใส่เอง
+  // เวลาออกที่บันทึกต้องหลังเวลาเข้า (constraint checkout_after_checkin) จึงบวก 1 นาที
+  const nothingToCount = forgot && normalEnd <= checkinTime
+  if (nothingToCount) effectiveCheckout = new Date(checkinTime.getTime() + 60_000)
   if (
     !forgot &&
     active.checkinType === 'onsite' &&
@@ -294,7 +300,9 @@ export async function checkOut(
     ? calcBase
     : { ...calcBase, isLate: active.isLate, lateMinutes: active.lateMinutes }
   // เช็คเอาท์ไกล/ลืมเช็คเอาท์ = ไม่มี OT เด็ดขาด (กันเศษ OT จากการปัดเวลา)
-  const calc = farKm || forgot
+  const calc = nothingToCount
+    ? { ...calcRaw, regularHours: 0, overtimeHours: 0, totalHours: 0, breakHours: 0 }
+    : farKm || forgot
     ? { ...calcRaw, overtimeHours: 0, totalHours: calcRaw.regularHours }
     : calcRaw
 
@@ -326,7 +334,9 @@ export async function checkOut(
       needs_overtime_approval: needsApproval,
       checkout_note:
         [
-          forgot
+          nothingToCount
+            ? `[เช็คอินหลังเวลาเลิกงาน (${format(checkinTime, 'HH:mm')}) แล้วลืมเช็คเอาท์ — ระบบให้ 0 ชม. · กดจริง ${format(checkoutTime, 'dd/MM HH:mm')}] HR ใส่ชั่วโมงจริงให้`
+            : forgot
             ? `[ลืมเช็คเอาท์ — ระบบปิดให้ที่เวลาเลิกงาน ไม่มี OT · กดจริง ${format(checkoutTime, 'dd/MM HH:mm')}] HR แก้ได้ถ้าทำงานจริงเลยเวลา`
             : '',
           farKm ? `[เช็คเอาท์นอกพื้นที่ ${farKm} กม. — ตัดชั่วโมงที่เวลาเลิกงาน]` : '',

@@ -163,4 +163,27 @@ head('ขอบเขต')
 
 console.log(`\n${'─'.repeat(50)}`)
 console.log(`ผ่าน ${pass} · ไม่ผ่าน ${fail}\n`)
+head('เช็คอินหลังเลิกงานของกะกลางวัน (มาร์ค 3 ก.ย. 69)')
+{
+  const cin = at('2026-09-03T18:15:00')
+  const end = normalEndTime(cin, '18:00:00', 1, '09:00:00')
+  check(end < cin && end.getDate() === 3 && end.getHours() === 18, 'เวลาเลิกงาน 18:00 วันเดียวกัน ไม่เลื่อนไปพรุ่งนี้', end.toString())
+  check(isForgotCheckout(cin, at('2026-09-04T11:46:00'), '09:00:00', '18:00:00', 1), 'มาปิดวันรุ่งขึ้น = ลืม')
+  check(!isForgotCheckout(cin, at('2026-09-03T20:00:00'), '09:00:00', '18:00:00', 1), 'ปิดวันเดียวกัน = ไม่ใช่ลืม')
+  const SHOP = { breakHours: 1, workingHours: Object.fromEntries(['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].map((d) => [d, { open: '09:00', close: '18:00', isClosed: false }])) }
+  const calc = calculateWorkingHours(cin, end, SHOP, { startTime: '09:00:00', endTime: '18:00:00', graceMinutes: 15 }, false)
+  check(calc.regularHours === 0 && calc.overtimeHours === 0 && calc.breakHours === 0, 'ชั่วโมงเป็น 0 ไม่ติดลบ', `${calc.regularHours}/${calc.overtimeHours}/${calc.breakHours}`)
+  const late = calculateWorkingHours(cin, at('2026-09-03T20:00:00'), SHOP, { startTime: '09:00:00', endTime: '18:00:00', graceMinutes: 15 }, false)
+  check(late.regularHours === 0, 'เข้าหลังร้านปิด ออกวันเดียวกัน = 0 ชม. (เพดานปิดร้าน)', `${late.regularHours}`)
+}
+
+head('กะข้ามคืนยังเลื่อนเวลาเลิกงานไปวันถัดไป')
+{
+  const cin = at('2026-09-03T23:00:00')
+  const end = normalEndTime(cin, '06:00:00', 1, '22:00:00')
+  check(end.getDate() === 4 && end.getHours() === 6, 'กะ 22–06 เข้า 23:00 เลิก 06:00 พรุ่งนี้', end.toString())
+  const legacy = normalEndTime(cin, '06:00:00', 1)
+  check(legacy.getDate() === 4, 'ไม่รู้เวลาเริ่มกะ = พฤติกรรมเดิม (เลื่อน)', legacy.toString())
+}
+
 process.exit(fail ? 1 : 0)

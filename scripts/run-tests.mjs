@@ -24,6 +24,7 @@ const SUITES = [
   { file: 'test-schedule-swap.mjs', title: 'ใบสลับวันหยุด', noEnv: true },
   { file: 'test-stock-photos.mjs', title: 'รูปสต็อก/หน้าร้านประจำวัน', noEnv: true },
   { file: 'test-push.mjs', title: 'แจ้งเตือน push · ใครได้รับ/ข้อความ', noEnv: true },
+  { file: 'test-pwa-login.mjs', title: 'ล็อกอินจากแอป · state/nonce ผ่าน LINE', noEnv: true },
   { file: 'test-job-budget.mjs', title: 'งบเวลางานอัปเดตปลั๊กอิน', noEnv: true },
   { file: 'test-document-body.mjs', title: 'ตัวแปลเนื้อหาเอกสาร', noEnv: true },
   { file: 'test-leave-rls.mjs', title: 'สิทธิ์ใบลา' },

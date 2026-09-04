@@ -7,12 +7,19 @@ import {
   fetchLineProfile,
 } from '@/lib/supabase/line-auth'
 import { createRegisterTicket } from '@/lib/supabase/register-ticket'
+import { parseLineState, handoffQuery } from '@/lib/auth/pwaState'
 
 /**
  * LINE Login callback → Supabase session
  *
  * ออก token_hash ของ Supabase
  * แล้วให้หน้า /auth/verify แลกเป็น session (เก็บใน cookie ฝั่ง client)
+ *
+ * ── ล็อกอินจากแอปที่ติดตั้ง (PWA) ───────────────────────────────────
+ * แอป LINE ยิง callback นี้ไปที่เบราว์เซอร์หลักของเครื่อง ไม่ใช่แอปที่กด
+ * (Android=Chrome · iOS=Safari ซึ่งคนละถังคุกกี้กับแอป) · state จึงพก nonce มา
+ * แล้วส่งต่อให้หน้า verify (`&pwa=1&nonce=`) ให้มันฝาก token ไว้ที่
+ * /api/auth/handoff แทนการแลกเอง — แอปที่ยังเปิดอยู่จะมาหยิบไปแลกเป็น session เอง
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
@@ -23,6 +30,9 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.redirect(new URL('/login?error=access_denied', appUrl))
   if (!code) return NextResponse.redirect(new URL('/login?error=no_code', appUrl))
+
+  const lineState = parseLineState(state)
+  const handoff = handoffQuery(lineState)
 
   try {
     const profile = await fetchLineProfile(code)
@@ -56,7 +66,7 @@ export async function GET(request: NextRequest) {
         const hash = await createSessionToken(uid, emailForLine(profile.userId))
         return NextResponse.redirect(
           new URL(
-            `/auth/verify?token_hash=${hash}&firstLogin=true`,
+            `/auth/verify?token_hash=${hash}&firstLogin=true${handoff}`,
             appUrl
           )
         )
@@ -74,16 +84,14 @@ export async function GET(request: NextRequest) {
       })
 
       const inviteCode =
-        request.headers.get('cookie')?.match(/invite_code=([^;]+)/)?.[1] ??
-        (() => {
-          try {
-            return state ? JSON.parse(decodeURIComponent(state)).inviteCode : null
-          } catch {
-            return null
-          }
-        })()
+        request.headers.get('cookie')?.match(/invite_code=([^;]+)/)?.[1] ?? lineState.inviteCode ?? null
 
       if (inviteCode) q.append('invite', inviteCode)
+      // สมัครจากแอปที่ติดตั้ง → หน้าสมัครต้องรู้ด้วย จะได้ส่ง session กลับเข้าแอปหลังสมัครเสร็จ
+      if (lineState.pwa && lineState.nonce) {
+        q.append('pwa', '1')
+        q.append('nonce', lineState.nonce)
+      }
       return NextResponse.redirect(new URL(`/register?${q}`, appUrl))
     }
 
@@ -124,7 +132,7 @@ export async function GET(request: NextRequest) {
     const next = user.is_system || (nameDone && discordDone) ? '' : '&next=/setup'
 
     return NextResponse.redirect(
-      new URL(`/auth/verify?token_hash=${hash}${next}`, appUrl)
+      new URL(`/auth/verify?token_hash=${hash}${next}${handoff}`, appUrl)
     )
   } catch (err) {
     console.error('LINE callback error:', err)

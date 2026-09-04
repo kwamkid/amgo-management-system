@@ -125,6 +125,27 @@ export type Database = {
           },
         ]
       }
+      auth_handoffs: {
+        Row: {
+          created_at: string
+          next: string | null
+          nonce: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          next?: string | null
+          nonce: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          next?: string | null
+          nonce?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           created_at: string

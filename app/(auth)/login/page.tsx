@@ -6,38 +6,113 @@
 // แสงส้มแบรนด์ + การ์ดกระจก · ปุ่ม LINE สูง 56px ใช้โลโก้ LINE จริง สีเขียวทางการ
 // #06C755 · ตัวอักษรเล็กสุด 14px ทั้งหน้า
 //
+// ── ล็อกอินจากแอปที่ติดตั้ง (PWA) ───────────────────────────────────────
+// แอป LINE ยิง callback ไปที่เบราว์เซอร์หลักของเครื่อง ไม่ใช่แอป (เจอจริง 4 ก.ย. 69:
+// "กด login จาก LINE แล้วมันเด้งกลับไป Chrome") · iOS หนักกว่า: Safari กับแอปคนละ
+// ถังคุกกี้ session ที่ได้ในนั้นแอปใช้ไม่ได้เลย
+// ทางแก้: ตอนกดจากแอป ฝัง nonce ไว้ใน state ที่วิ่งผ่าน LINE → หน้า verify ใน
+// เบราว์เซอร์ฝาก token ไว้ที่ server ตาม nonce → หน้านี้ (ยังเปิดอยู่ในแอป) วนถาม
+// ด้วย nonce ของตัวเองแล้วแลกเป็น session **ในแอป** เอง (ดู lib/auth/pwaHandoff.ts)
+//
 // หน้านี้อยู่นอก layout หลังบ้าน จึงตั้งพื้นหลังเองได้ (ทั้งแอปล็อกโหมดสว่างอยู่)
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
 import { signInBoth } from '@/lib/auth/dual-session'
 import { useLoading } from '@/lib/contexts/LoadingContext'
+import { createClient } from '@/lib/supabase/client'
 import { LineIcon } from '@/components/icons/LineIcon'
+import { isStandalone } from '@/lib/push/client'
+import { buildLineState, newNonce } from '@/lib/auth/pwaState'
+import { startPwaLogin, pendingPwaLogin, clearPwaLogin, claimHandoff } from '@/lib/auth/pwaHandoff'
+
+const ERROR_TEXT: Record<string, string> = {
+  access_denied: 'คุณปฏิเสธการเข้าถึงข้อมูล',
+  auth_failed: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่',
+  no_code: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่',
+  no_token: 'ลิงก์ยืนยันไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่',
+  invalid_token: 'ลิงก์ยืนยันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+  account_deleted: 'บัญชีนี้ถูกลบออกจากระบบแล้ว',
+  account_ended: 'บัญชีนี้พ้นสภาพพนักงานแล้ว',
+  account_inactive: 'บัญชียังไม่ได้รับอนุมัติ — ติดต่อ HR',
+  inactive: 'บัญชียังไม่ได้รับอนุมัติ — ติดต่อ HR',
+}
 
 function LoginForm() {
-  const { showLoading } = useLoading()
-  const router = useRouter()
+  const { showLoading, hideLoading } = useLoading()
   const [isLoading, setIsLoading] = useState(false)
   const [devLoading, setDevLoading] = useState(false)
   const [error, setError] = useState('')
+  /** nonce ที่กำลังรอ session จากเบราว์เซอร์ (เฉพาะเมื่อกดจากแอปที่ติดตั้ง) */
+  const [pending, setPending] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const isDev = process.env.NODE_ENV === 'development'
 
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    if (!errorParam) return
-    switch (errorParam) {
-      case 'access_denied':
-        setError('คุณปฏิเสธการเข้าถึงข้อมูล')
-        break
-      case 'auth_failed':
-        setError('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
-        break
-      default:
-        setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
-    }
+    if (errorParam) setError(ERROR_TEXT[errorParam] ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่')
   }, [searchParams])
+
+  useEffect(() => {
+    // กลับมาจาก LINE (เปิดในชีต/แท็บซ้อนบนแอป) ม่านโหลดเต็มจอต้องไม่ค้าง
+    hideLoading()
+    // ล็อกอินอยู่แล้ว (เช่น Android แชร์คุกกี้กับ Chrome) → เข้าเลย ไม่ต้องกดซ้ำ
+    createClient()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (data.session) window.location.replace('/dashboard')
+      })
+      .catch(() => {})
+    const nonce = pendingPwaLogin()
+    if (nonce) setPending(nonce)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // วนถาม server ว่า token มาหรือยัง — ทุก 2.5 วิ + ทันทีที่กลับมาเห็นหน้าจอ · เลิกรอใน 10 นาที
+  useEffect(() => {
+    if (!pending) return
+    let stopped = false
+    const tick = async () => {
+      if (stopped) return
+      const got = await claimHandoff(pending)
+      if (!got || stopped) return
+      stopped = true
+      try {
+        await signInBoth({ tokenHash: got.tokenHash })
+        clearPwaLogin()
+        window.location.replace(got.next && got.next.startsWith('/') ? got.next : '/dashboard')
+      } catch (e) {
+        console.error(e)
+        clearPwaLogin()
+        setPending(null)
+        setIsLoading(false)
+        setError('เข้าสู่ระบบไม่สำเร็จ กรุณากดปุ่ม LINE อีกครั้ง')
+      }
+    }
+    tick()
+    const id = setInterval(tick, 2500)
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      setIsLoading(false) // กลับมาแล้ว — ปุ่มต้องกดซ้ำได้ถ้ารอบก่อนไม่สำเร็จ
+      tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    const giveUp = setTimeout(() => {
+      stopped = true
+      clearPwaLogin()
+      setPending(null)
+      setIsLoading(false)
+    }, 10 * 60 * 1000)
+    return () => {
+      stopped = true
+      clearInterval(id)
+      clearTimeout(giveUp)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [pending])
 
   const handleDevLogin = async () => {
     try {
@@ -46,8 +121,7 @@ function LoginForm() {
       if (!res.ok) throw new Error('Dev login failed')
       const { tokenHash } = await res.json()
       await signInBoth({ tokenHash })
-      router.push('/dashboard')
-      router.refresh()
+      window.location.replace('/dashboard')
     } catch (err) {
       setError('Dev login ล้มเหลว ลองใหม่อีกครั้ง')
       console.error(err)
@@ -57,23 +131,32 @@ function LoginForm() {
   }
 
   const handleLineLogin = () => {
-    showLoading()
-    setIsLoading(true)
+    setError('')
+    const standalone = isStandalone()
+    const nonce = standalone ? startPwaLogin() : newNonce()
+    const state = buildLineState({ nonce, pwa: standalone })
+    sessionStorage.setItem('line_auth_state', state)
 
-    const state = Math.random().toString(36).substring(2, 15)
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('line_auth_state', state)
-    }
+    // ในแอป: ห้ามเปิดม่านโหลดเต็มจอ — LINE เปิดซ้อนบนหน้านี้ กลับมาแล้วม่านจะค้าง
+    if (standalone) setPending(nonce)
+    else showLoading()
+    setIsLoading(true)
 
     const lineAuthUrl =
       `https://access.line.me/oauth2/v2.1/authorize?` +
       `response_type=code&` +
       `client_id=${process.env.NEXT_PUBLIC_LINE_CHANNEL_ID}&` +
       `redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL + '/api/auth/line/callback')}&` +
-      `state=${state}&` +
+      `state=${encodeURIComponent(state)}&` +
       `scope=profile%20openid`
 
     window.location.href = lineAuthUrl
+  }
+
+  const cancelPending = () => {
+    clearPwaLogin()
+    setPending(null)
+    setIsLoading(false)
   }
 
   return (
@@ -92,8 +175,18 @@ function LoginForm() {
         className="lg-line-btn flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#06C755] px-5 text-base font-semibold text-white transition-all hover:bg-[#05B34C] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isLoading ? <Loader2 size={26} className="animate-spin" /> : <LineIcon size={28} />}
-        {isLoading ? 'กำลังเปิด LINE…' : 'เข้าสู่ระบบด้วย LINE'}
+        {isLoading ? 'กำลังเปิด LINE…' : pending ? 'เปิด LINE อีกครั้ง' : 'เข้าสู่ระบบด้วย LINE'}
       </button>
+
+      {pending && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-gray-300">
+          <Loader2 size={16} className="-mt-0.5 mr-2 inline animate-spin text-amber-400" />
+          รอการยืนยันจาก LINE — ยืนยันในแอป LINE เสร็จแล้วกลับมาหน้านี้ ระบบจะเข้าให้เอง
+          <button onClick={cancelPending} className="ml-2 text-gray-400 underline underline-offset-2 hover:text-white">
+            ยกเลิก
+          </button>
+        </div>
+      )}
 
       {isDev && (
         <button

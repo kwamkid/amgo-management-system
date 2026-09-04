@@ -246,7 +246,7 @@ export default function ProductionHistoryPage() {
                       <td className="py-1.5">
                         {i.name}
                         {i.isYieldBase && (
-                          <span className="ml-1.5 rounded bg-orange-100 px-1 py-0.5 text-[10px] font-semibold text-orange-700">
+                          <span className="ml-1.5 rounded bg-orange-100 px-1 py-0.5 text-xs font-semibold text-orange-700">
                             yield
                           </span>
                         )}

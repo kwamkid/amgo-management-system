@@ -126,7 +126,7 @@ function RangeMonthCalendar({
       </div>
       <div className="grid grid-cols-7 mb-1">
         {weekDays.map(w => (
-          <div key={w} className="text-center text-[11px] text-gray-400 py-1">{w}</div>
+          <div key={w} className="text-center text-xs text-gray-400 py-1">{w}</div>
         ))}
       </div>
       <div className="grid grid-cols-7">
@@ -249,7 +249,7 @@ export function DateRangePicker({ startDate, endDate, onChange, className }: Dat
           {/* Presets sidebar */}
           {/* Tailwind v4: border ไม่ระบุสี = currentColor (ดำ) — ต้องเทาอ่อนแบบ aoosocial */}
           <div className="flex flex-col p-3 border-r border-gray-100 min-w-[130px] shrink-0">
-            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2 px-1">ช่วงเวลา</p>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 px-1">ช่วงเวลา</p>
             {DATE_RANGE_PRESETS.map(p => (
               <button
                 key={p.key}

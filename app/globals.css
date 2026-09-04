@@ -246,6 +246,12 @@
   --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+
+  /* ── ขนาดตัวอักษรเล็กสุด 14px (เจ้าของสั่ง 4 ก.ย. 69: "ฟอนต์เล็กมาก") ──
+     text-xs ของ Tailwind = 12px → ยกเป็น 14px เท่า text-sm · ทุกที่ที่ใช้ text-xs
+     จึงโตขึ้นเองโดยไม่ต้องไล่แก้ 400 จุด · ห้ามใช้ text-[10px]/[11px]/[12px] อีก */
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.25rem;
   --fs-display: 60px;
   --fs-h1:      44px;
   --fs-h2:      32px;
@@ -253,8 +259,8 @@
   --fs-h4:      18px;
   --fs-body:    16px;
   --fs-small:   14px;
-  --fs-meta:    13px;
-  --fs-micro:   12px;
+  --fs-meta:    14px; /* เล็กสุด 14 (เดิม 13) */
+  --fs-micro:   14px; /* เล็กสุด 14 (เดิม 12) */
 
   --lh-tight:  1.15;
   --lh-snug:   1.3;
@@ -1156,7 +1162,7 @@ div.aoo-accounts-grid {
 
 /* Small-caps section heading. Use on a <div> or <span> above a list/card. */
 .t-eyebrow {
-  font-size: 11px;
+  font-size: 14px; /* เล็กสุด 14 */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;

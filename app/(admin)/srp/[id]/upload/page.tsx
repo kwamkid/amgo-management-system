@@ -155,9 +155,9 @@ export default function SrpUploadPage() {
       {rows.length > 0 && (
         <SectionCard title={`2 · ตรวจก่อนนำเข้า (${rows.length.toLocaleString()} รายการ)`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[11px] text-gray-400">
+                <tr className="text-left text-xs text-gray-400">
                   <th className="py-1 pr-2">#</th>
                   <th className="py-1 pr-2">สินค้า</th>
                   <th className="py-1 pr-2">SKU</th>

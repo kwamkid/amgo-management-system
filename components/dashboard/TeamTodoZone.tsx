@@ -131,7 +131,7 @@ function Group({
       <div className="flex flex-wrap items-center gap-2">
         {icon}
         <h3 className="text-sm font-medium text-gray-900">{title}</h3>
-        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
+        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700">
           {people.length} คน
         </span>
         <button

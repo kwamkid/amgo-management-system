@@ -34,7 +34,7 @@ export default function TodoZone() {
           สิ่งที่ต้องทำ {todos.length} อย่าง
         </h2>
         {mustDo > 0 && (
-          <span className="rounded-md bg-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">
+          <span className="rounded-md bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900">
             ต้องทำก่อนใช้งาน {mustDo}
           </span>
         )}

@@ -311,7 +311,7 @@ export default function SrpBrandsPage() {
                   <UserAvatar name={a.userName || '?'} userId={a.userId} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-gray-800">{a.userName}</span>
                   <span
-                    className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${
+                    className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
                       a.role === 'editor' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
                     }`}
                   >

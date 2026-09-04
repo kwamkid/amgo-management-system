@@ -96,12 +96,12 @@ function DayChart({ days }: { days: DriverPerf['days'] }) {
         <div className="flex items-end gap-1.5" style={{ height: 120 }}>
           {days.map((d) => (
             <div key={d.day} className="flex w-9 shrink-0 flex-col items-center justify-end self-stretch">
-              <span className="mb-0.5 text-[10px] text-gray-500">{d.points}</span>
+              <span className="mb-0.5 text-xs text-gray-500">{d.points}</span>
               <div
                 className="w-6 rounded-t bg-red-500"
                 style={{ height: `${Math.max((d.points / max) * 80, 4)}px` }}
               />
-              <span className="mt-1 text-[10px] text-gray-400">
+              <span className="mt-1 text-xs text-gray-400">
                 {format(new Date(d.day), 'd MMM', { locale: th })}
               </span>
             </div>

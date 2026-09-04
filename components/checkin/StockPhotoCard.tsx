@@ -148,7 +148,7 @@ export default function StockPhotoCard({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.url} alt="" className="h-full w-full object-cover" />
                 ) : null}
-                <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 text-[10px] text-white">
+                <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 text-xs text-white">
                   {format(new Date(p.takenAt), 'HH:mm')}
                 </span>
                 <button

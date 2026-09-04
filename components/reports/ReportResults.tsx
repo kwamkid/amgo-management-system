@@ -762,7 +762,7 @@ function DaySlotGrid({
         scrollMode ? 'min-w-6' : ''
       } ${monthStart(d) ? 'border-l-2 border-l-gray-200' : ''}`}
     >
-      <span className="block text-[10px] leading-tight">
+      <span className="block text-xs leading-tight">
         {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(d).getDay()]}
       </span>
       <span className="block leading-tight">{Number(d.slice(8))}</span>
@@ -806,7 +806,7 @@ function DaySlotGrid({
                     <th
                       key={seg.label}
                       colSpan={seg.count}
-                      className="border-b border-l-2 border-gray-100 border-l-gray-200 bg-gray-50 px-2 py-1 text-left text-[11px] font-medium text-gray-500"
+                      className="border-b border-l-2 border-gray-100 border-l-gray-200 bg-gray-50 px-2 py-1 text-left text-xs font-medium text-gray-500"
                     >
                       {seg.label}
                     </th>
@@ -942,7 +942,7 @@ function DaySlotGrid({
                         {missed}
                       </span>
                       {breakdown && (
-                        <span className="block text-[10px] leading-tight text-gray-400">
+                        <span className="block text-xs leading-tight text-gray-400">
                           {breakdown}
                         </span>
                       )}

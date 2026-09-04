@@ -194,11 +194,11 @@ export default function ProductionRecipesPage() {
                 <div className="min-w-0">
                 <div className="text-base font-semibold text-gray-900">
                   {r.name}
-                  <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+                  <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-700">
                     {r.recipeType === 'brix' ? `วัด Brix · เป้า ${r.targetBrix ?? '?'}` : 'สูตรคงที่ /ลิตร'}
                   </span>
                   {!r.isActive && (
-                    <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ปิดใช้</span>
+                    <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ปิดใช้</span>
                   )}
                 </div>
                 {r.note && <p className="mt-0.5 text-sm text-gray-500">{r.note}</p>}
@@ -239,7 +239,7 @@ export default function ProductionRecipesPage() {
                     {i.qtyPerLiter.toLocaleString()} {UNIT_TH[i.unit]}/ลิตร
                   </span>
                   {i.isYieldBase && (
-                    <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[11px] font-semibold text-orange-700">
+                    <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs font-semibold text-orange-700">
                       คิด yield
                     </span>
                   )}

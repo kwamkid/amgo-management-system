@@ -167,7 +167,7 @@ export default function WebHostsPage() {
           <p className="text-xs text-gray-400">
             {h.provider} · {h.sshUser}@{h.sshHost}:{h.sshPort}
             <span
-              className={`ml-1.5 rounded px-1.5 py-0.5 text-[11px] ${
+              className={`ml-1.5 rounded px-1.5 py-0.5 text-xs ${
                 h.isOwnBusiness ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
               }`}
             >

@@ -435,7 +435,7 @@ function WeeklyChart({
                   ) : null
                 )}
               </div>
-              <span className="whitespace-nowrap text-[10px] text-gray-400">
+              <span className="whitespace-nowrap text-xs text-gray-400">
                 {format(new Date(`${k}T00:00:00`), 'd MMM', { locale: th })}
               </span>
             </div>

@@ -342,7 +342,7 @@ export default function PayCard({
           <Wallet size={16} className="text-gray-400" /> ค่าตอบแทน
         </h3>
         {staged && stagedCount > 0 && (
-          <span className="rounded-md bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-orange-700">
+          <span className="rounded-md bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700">
             แก้แล้ว ยังไม่บันทึก — กดปุ่มบันทึกท้ายฟอร์ม
           </span>
         )}
@@ -892,7 +892,7 @@ function ItemRow({
             {KINDS.find((k) => k.value === i.kind)?.label}
           </span>
           {paidByOther && (
-            <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[11px] font-medium text-amber-700">
+            <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-xs font-medium text-amber-700">
               จ่ายโดย {paidByOther}
             </span>
           )}
@@ -1232,7 +1232,7 @@ function ImportItemsModal({
                       {KINDS.find((k) => k.value === i.kind)?.label}
                     </span>
                     {paidBy && (
-                      <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-xs font-medium text-amber-700">
                         จ่ายโดย {paidBy}
                       </span>
                     )}

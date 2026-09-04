@@ -232,7 +232,7 @@ export default function EmployeesPage() {
           {u.nameVerified === false && (
             <span
               title="ชื่อนี้ยังเป็นชื่อจาก LINE ยังไม่มีใครกรอกชื่อจริง"
-              className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-orange-700"
+              className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700"
             >
               ยังไม่มีชื่อจริง
             </span>

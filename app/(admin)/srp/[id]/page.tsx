@@ -1289,7 +1289,7 @@ export default function SrpBrandPage() {
                       {ch.promoPct ? ` · โปร -${ch.promoPct}%` : ''})
                     </span>
                   </button>
-                  <div className="mt-0.5 flex justify-around text-[10px] font-normal text-gray-400">
+                  <div className="mt-0.5 flex justify-around text-xs font-normal text-gray-400">
                     <span>ราคาขาย</span>
                     {showPartnerCols && (
                       <>
@@ -1478,7 +1478,7 @@ export default function SrpBrandPage() {
                 saveSrpChannel(next).catch((e) => showToast(e.message, 'error'))
               }}
             />
-            <p className="text-[11px] text-gray-400">
+            <p className="text-xs text-gray-400">
               พิมพ์แล้วกด Enter หรือกดปุ่ม &ldquo;บันทึก&rdquo; · Esc = ยกเลิกช่องที่กำลังพิมพ์
             </p>
             <div className="flex justify-between gap-2 border-t border-gray-100 pt-3">
@@ -1680,7 +1680,7 @@ function ChannelSettingsModal({
         ))}
 
         <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-gray-400">
             พิมพ์แล้วกด Enter หรือกดปุ่ม &ldquo;บันทึก&rdquo; · ลากจุดซ้ายมือเพื่อสลับลำดับคอลัมน์
           </p>
           <Button type="button" size="sm" onClick={onClose}>
@@ -1793,7 +1793,7 @@ function ChannelGroup({
         <>
           {/* ป้ายหัวคอลัมน์ครั้งเดียวต่อกลุ่ม — เดิมซ้ำอยู่ทุกการ์ด */}
           <div
-            className="grid items-end gap-x-2 px-1 pb-1 text-[10px] text-gray-400"
+            className="grid items-end gap-x-2 px-1 pb-1 text-xs text-gray-400"
             style={{ gridTemplateColumns: grid }}
           >
             <span />
@@ -1967,12 +1967,12 @@ function ChannelEditor({
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 p-2">
       <div className="min-w-28 flex-1">
-        <span className="mb-0.5 block text-[10px] text-gray-400">ชื่อ</span>
+        <span className="mb-0.5 block text-xs text-gray-400">ชื่อ</span>
         <BoxText value={channel.name} onSave={(v) => onChange({ name: v })} />
       </div>
       {fields.map(([key, label]) => (
         <label key={String(key)} className="block w-20">
-          <span className="mb-0.5 block text-[10px] text-gray-400">{label}</span>
+          <span className="mb-0.5 block text-xs text-gray-400">{label}</span>
           <BoxNum
             value={Number(channel[key] ?? 0)}
             onSave={(v) => onChange({ [key]: v } as Partial<SrpChannel>)}
@@ -2290,11 +2290,11 @@ const SrpCard = memo(function SrpCard({
 
       <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-2.5 text-center">
         <div>
-          <p className="text-[11px] text-gray-400">ต้นทุนรวม</p>
+          <p className="text-xs text-gray-400">ต้นทุนรวม</p>
           <p className="text-[15px] font-semibold tabular-nums">{fmt(p.totalImportCost)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-gray-400">แนะนำ</p>
+          <p className="text-xs text-gray-400">แนะนำ</p>
           <button
             type="button"
             className="text-[15px] tabular-nums text-sky-600"
@@ -2311,7 +2311,7 @@ const SrpCard = memo(function SrpCard({
           </button>
         </div>
         <div className="-m-1 rounded-md border border-emerald-200 bg-emerald-50 p-1">
-          <p className="text-[11px] font-medium text-emerald-700">ราคาขายจริง</p>
+          <p className="text-xs font-medium text-emerald-700">ราคาขายจริง</p>
           <NumCell
             disabled={!canEdit}
             value={p.ourPriceThb}
@@ -2448,7 +2448,7 @@ function SrpHistoryModal({
         <div className="max-h-[65vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-white">
-              <tr className="border-b border-gray-200 text-left text-[11px] text-gray-400">
+              <tr className="border-b border-gray-200 text-left text-xs text-gray-400">
                 <th className="whitespace-nowrap py-1.5 pr-2 font-medium">เมื่อ</th>
                 {!productId && <th className="py-1.5 pr-2 font-medium">สินค้า</th>}
                 <th className="py-1.5 pr-2 font-medium">ช่อง</th>
@@ -2497,7 +2497,7 @@ function SrpHistoryModal({
                         <button
                           type="button"
                           title={`ย้อนกลับเป็น ${historyValue(e.field, e.oldValue)}`}
-                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:bg-sky-50 hover:text-sky-700"
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-sky-50 hover:text-sky-700"
                           onClick={() => {
                             onRevert(e)
                             // ตัวเซฟหน่วง 400ms — รอให้เขียนเสร็จก่อนค่อยโหลดรายการใหม่

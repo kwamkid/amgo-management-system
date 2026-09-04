@@ -181,7 +181,7 @@ export default function BurstCamera({
             <div key={s.id} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-white/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={s.preview} alt="" className="h-full w-full object-cover" />
-              <span className="absolute bottom-0 left-0 bg-black/60 px-1 text-[10px] text-white">{i + 1}</span>
+              <span className="absolute bottom-0 left-0 bg-black/60 px-1 text-xs text-white">{i + 1}</span>
               <button
                 type="button"
                 onClick={() => remove(s.id)}

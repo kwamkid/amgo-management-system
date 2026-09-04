@@ -495,7 +495,7 @@ export default function DocumentEditorPage({
                 '- รถเข็น Swan Pro ชิ้นละ 200 บาท\n' +
                 '- STOKKE : Sleepi ชิ้นละ 500 บาท'
               }
-              className={`${AREA} font-mono text-[13px] leading-7`}
+              className={`${AREA} font-mono text-xs leading-7`}
             />
             <div className="mt-2 space-y-0.5 text-[11.5px] leading-5 text-gray-400">
               <p>
@@ -650,7 +650,7 @@ function Labeled({
     <label className={full ? 'block sm:col-span-2' : 'block'}>
       <span className="text-xs font-medium text-gray-600">{label}</span>
       <div className="mt-1">{children}</div>
-      {hint && <p className="mt-1 text-[11px] text-gray-400">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
     </label>
   )
 }

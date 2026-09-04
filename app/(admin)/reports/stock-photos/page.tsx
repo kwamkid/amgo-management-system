@@ -307,10 +307,10 @@ export default function StockPhotosReportPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.url} alt="" className="h-full w-full object-cover" />
                         ) : null}
-                        <span className={`absolute left-1 top-1 rounded px-1 text-[10px] text-white ${p.kind === 'storefront' ? 'bg-sky-600' : 'bg-amber-600'}`}>
+                        <span className={`absolute left-1 top-1 rounded px-1 text-xs text-white ${p.kind === 'storefront' ? 'bg-sky-600' : 'bg-amber-600'}`}>
                           {KIND_LABEL[p.kind]}
                         </span>
-                        <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
+                        <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-xs text-white">
                           {format(new Date(p.takenAt), 'HH:mm')}
                         </span>
                       </button>

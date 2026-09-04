@@ -164,7 +164,7 @@ export default function DataTable<T>({
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
               {cardCols.map((c) => (
                 <div key={c.key} className="min-w-0">
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-xs text-gray-400">
                     {c.mobileLabel ?? (typeof c.header === 'string' ? c.header : c.key)}
                   </p>
                   <div className="truncate text-sm text-gray-800">{c.cell(row, i)}</div>

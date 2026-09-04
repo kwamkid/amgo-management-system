@@ -125,12 +125,12 @@ export default function WebsitesPage() {
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900">{s.siteName}</span>
           {s.downSince && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-600">
+            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">
               <AlertTriangle size={11} /> ล่ม
             </span>
           )}
           {!s.isActive && (
-            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ปิดแล้ว</span>
+            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ปิดแล้ว</span>
           )}
         </div>
       ),

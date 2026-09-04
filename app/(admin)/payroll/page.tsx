@@ -422,7 +422,7 @@ export default function PayrollPage() {
                     {r.name}
                   </button>
                   {!r.isPrimary && (
-                    <p className="text-[11px] font-medium text-amber-700">
+                    <p className="text-xs font-medium text-amber-700">
                       ค่าตอบแทนจาก {companyCode(r.companyId) || 'บริษัทอื่น'}
                     </p>
                   )}

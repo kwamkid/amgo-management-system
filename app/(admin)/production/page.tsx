@@ -251,7 +251,7 @@ export default function ProductionMixPage() {
                 {/* รูปนำ ชื่อตาม — ฝ่ายผลิตจำจากรูป */}
                 <span className="block text-4xl leading-none">{r.image || '🧃'}</span>
                 <span className="mt-1.5 block text-base font-semibold">{r.name}</span>
-                <span className="mt-0.5 block text-[11px] text-gray-400">
+                <span className="mt-0.5 block text-xs text-gray-400">
                   {r.recipeType === 'brix' ? `วัด Brix · เป้า ${r.targetBrix ?? '?'}` : 'สูตรคงที่'}
                 </span>
               </button>

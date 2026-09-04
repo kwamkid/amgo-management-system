@@ -1181,7 +1181,7 @@ export default function WebJobsPage() {
         <div>
           <span className="font-medium text-gray-900">{j.siteName || j.hostName || '—'}</span>
           {!j.siteName && j.hostName && (
-            <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ทั้งโฮสต์</span>
+            <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ทั้งโฮสต์</span>
           )}
         </div>
       ),

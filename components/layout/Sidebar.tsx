@@ -331,7 +331,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
           return (
             <div key={section.title ?? i} className="space-y-0.5">
               {section.title && (
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
                   {section.title}
                 </p>
               )}

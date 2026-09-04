@@ -1,15 +1,20 @@
 'use client'
 
+// หน้าเข้าสู่ระบบ — หน้าแรกที่ทุกคนเห็น
+//
+// โทนมืด "high-tech" ตามที่เจ้าของขอ (4 ก.ย. 69): พื้นเกือบดำอุ่น + ตารางเส้นจาง +
+// แสงส้มแบรนด์ + การ์ดกระจก · ปุ่ม LINE สูง 56px ใช้โลโก้ LINE จริง สีเขียวทางการ
+// #06C755 · ตัวอักษรเล็กสุด 14px ทั้งหน้า
+//
+// หน้านี้อยู่นอก layout หลังบ้าน จึงตั้งพื้นหลังเองได้ (ทั้งแอปล็อกโหมดสว่างอยู่)
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
 import { signInBoth } from '@/lib/auth/dual-session'
 import { useLoading } from '@/lib/contexts/LoadingContext'
-import Image from 'next/image'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { LineIcon } from '@/components/icons/LineIcon'
 
-// แยก Component ที่ใช้ useSearchParams
 function LoginForm() {
   const { showLoading } = useLoading()
   const router = useRouter()
@@ -21,17 +26,16 @@ function LoginForm() {
 
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    if (errorParam) {
-      switch (errorParam) {
-        case 'access_denied':
-          setError('คุณปฏิเสธการเข้าถึงข้อมูล')
-          break
-        case 'auth_failed':
-          setError('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
-          break
-        default:
-          setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
-      }
+    if (!errorParam) return
+    switch (errorParam) {
+      case 'access_denied':
+        setError('คุณปฏิเสธการเข้าถึงข้อมูล')
+        break
+      case 'auth_failed':
+        setError('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
+        break
+      default:
+        setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
     }
   }, [searchParams])
 
@@ -55,132 +59,143 @@ function LoginForm() {
   const handleLineLogin = () => {
     showLoading()
     setIsLoading(true)
-    
+
     const state = Math.random().toString(36).substring(2, 15)
-    
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('line_auth_state', state)
     }
-    
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?` +
+
+    const lineAuthUrl =
+      `https://access.line.me/oauth2/v2.1/authorize?` +
       `response_type=code&` +
       `client_id=${process.env.NEXT_PUBLIC_LINE_CHANNEL_ID}&` +
       `redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL + '/api/auth/line/callback')}&` +
       `state=${state}&` +
       `scope=profile%20openid`
-    
+
     window.location.href = lineAuthUrl
   }
 
   return (
     <>
-      {/* Error Message */}
       {error && (
-        <Alert variant="error" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-300" />
+          <span>{error}</span>
+        </div>
       )}
 
-      {/* Login Button */}
-      <Button
+      {/* ปุ่ม LINE — สีเขียวทางการของ LINE · สูง 56px · โลโก้ซ้าย */}
+      <button
         onClick={handleLineLogin}
         disabled={isLoading}
-        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 text-lg font-medium"
-        size="lg"
+        className="lg-line-btn flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#06C755] px-5 text-base font-semibold text-white transition-all hover:bg-[#05B34C] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {/* LINE Icon */}
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" className="mr-3">
-          <path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.66 8.87 8.41 9.77.61.11.83-.26.83-.58 0-.29-.01-1.04-.01-2.04-3.34.73-4.04-1.61-4.04-1.61-.55-1.41-1.34-1.78-1.34-1.78-1.11-.76.08-.75.08-.75 1.22.09 1.86 1.25 1.86 1.25 1.08 1.87 2.86 1.33 3.54 1.02.11-.79.42-1.33.77-1.63-2.66-.3-5.46-1.35-5.46-6.01 0-1.33.47-2.41 1.25-3.25-.12-.3-.54-1.54.12-3.21 0 0 1.02-.33 3.35 1.25.97-.27 2.01-.4 3.05-.41 1.03 0 2.07.14 3.05.41 2.32-1.58 3.34-1.25 3.34-1.25.66 1.66.24 2.91.12 3.21.78.84 1.25 1.92 1.25 3.25 0 4.67-2.81 5.7-5.48 6 .43.37.81 1.1.81 2.22v3.29c0 .32.21.69.82.58C20.34 20.87 24 16.84 24 12c0-5.52-4.48-10-10-10z"/>
-        </svg>
-        {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
-      </Button>
+        {isLoading ? <Loader2 size={26} className="animate-spin" /> : <LineIcon size={28} />}
+        {isLoading ? 'กำลังเปิด LINE…' : 'เข้าสู่ระบบด้วย LINE'}
+      </button>
 
-      {/* Dev Login — development only */}
       {isDev && (
-        <Button
+        <button
           onClick={handleDevLogin}
           disabled={devLoading}
-          variant="outline"
-          className="w-full mt-3 border-dashed border-orange-400 text-orange-600 hover:bg-orange-50"
-          size="lg"
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-400/10 disabled:opacity-60"
         >
-          🛠️ {devLoading ? 'กำลังเข้าสู่ระบบ...' : 'Dev Login (Admin)'}
-        </Button>
+          🛠️ {devLoading ? 'กำลังเข้าสู่ระบบ…' : 'Dev Login (Admin)'}
+        </button>
       )}
     </>
   )
 }
 
-// Main Component with Suspense
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8">
+    <div className="lg-root relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 text-white">
+      <style>{`
+        .lg-root {
+          background:
+            radial-gradient(60% 50% at 15% 10%, rgba(249, 161, 27, 0.22), transparent 70%),
+            radial-gradient(50% 45% at 90% 90%, rgba(239, 74, 34, 0.18), transparent 70%),
+            #0f0b09;
+        }
+        /* ตารางเส้นจาง ๆ ให้ความรู้สึก "แผงควบคุม" */
+        .lg-grid {
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+          background-size: 36px 36px;
+          mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
+          -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
+        }
+        /* เส้นสแกนวิ่งลงช้า ๆ */
+        .lg-scan {
+          background: linear-gradient(180deg, transparent, rgba(249, 161, 27, 0.10), transparent);
+          height: 28vh;
+          animation: lg-scan 9s linear infinite;
+        }
+        @keyframes lg-scan { from { transform: translateY(-40vh); } to { transform: translateY(120vh); } }
+        /* วงแหวนหมุนรอบโลโก้ */
+        .lg-ring::before {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 9999px;
+          background: conic-gradient(from 0deg, transparent 0 60%, rgba(249, 161, 27, 0.9) 85%, transparent 100%);
+          animation: lg-spin 6s linear infinite;
+        }
+        @keyframes lg-spin { to { transform: rotate(360deg); } }
+        .lg-dot { animation: lg-pulse 2s ease-in-out infinite; }
+        @keyframes lg-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(6, 199, 85, 0.5); } 50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(6, 199, 85, 0); } }
+        .lg-line-btn { box-shadow: 0 0 0 1px rgba(6, 199, 85, 0.35), 0 10px 32px rgba(6, 199, 85, 0.30); }
+        .lg-line-btn:hover { box-shadow: 0 0 0 1px rgba(6, 199, 85, 0.5), 0 12px 36px rgba(6, 199, 85, 0.42); }
+        @media (prefers-reduced-motion: reduce) {
+          .lg-scan, .lg-ring::before, .lg-dot { animation: none; }
+        }
+      `}</style>
+
+      {/* ฉากหลัง */}
+      <div className="lg-grid pointer-events-none absolute inset-0" aria-hidden />
+      <div className="lg-scan pointer-events-none absolute inset-x-0 top-0" aria-hidden />
+
       <div className="relative w-full max-w-md">
-        <Card className="backdrop-blur-xl bg-white/90 shadow-2xl">
-          <CardContent className="p-8 sm:p-10">
-            {/* Logo */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center mb-4">
-                <Image 
-                  src="/amgo-logo.svg" 
-                  alt="AMGO Logo" 
-                  width={150} 
-                  height={60}
-                  className="h-30 w-auto"
-                />
-              </div>
-              <p className="text-gray-600 mt-2 text-sm sm:text-base">ระบบบริหารจัดการพนักงาน</p>
-            </div>
-
-            {/* Login Form */}
-            <Suspense fallback={
-              <div className="w-full py-4 text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
-              </div>
-            }>
-              <LoginForm />
-            </Suspense>
-
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full h-px bg-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-400">หรือ</span>
+        {/* การ์ดกระจก */}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-10">
+          {/* โลโก้ + ชื่อ */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="lg-ring relative mb-5 h-24 w-24 rounded-full">
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-[#0f0b09]">
+                <Image src="/amgo-logo.svg" alt="AMGO" width={72} height={72} priority className="h-[72px] w-[72px]" />
               </div>
             </div>
+            <h1 className="text-3xl font-semibold tracking-tight">AMGO</h1>
+            <p className="mt-1 font-mono text-sm uppercase tracking-[0.22em] text-amber-400">Management System</p>
+            <p className="mt-3 text-base text-gray-300">ระบบบริหารจัดการพนักงาน</p>
+          </div>
 
-            {/* Info Box */}
-            <Alert variant="info" className="bg-gradient-to-r from-red-50 to-rose-50">
-              <AlertDescription>
-                <h3 className="font-semibold text-red-900 text-sm mb-2">สำหรับพนักงาน AMGO เท่านั้น</h3>
-                <ul className="space-y-1 text-xs text-red-700">
-                  <li>• ใช้บัญชี LINE ส่วนตัวในการเข้าสู่ระบบ</li>
-                  <li>• ติดต่อ HR หากยังไม่ได้รับอนุมัติ</li>
-                  <li>• ข้อมูลของคุณจะถูกเก็บอย่างปลอดภัย</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
+          <Suspense
+            fallback={
+              <div className="flex h-14 items-center justify-center">
+                <Loader2 size={24} className="animate-spin text-gray-400" />
+              </div>
+            }
+          >
+            <LoginForm />
+          </Suspense>
 
-            {/* Footer */}
-            <div className="mt-8 text-center">
-              <p className="text-xs text-gray-400">
-                ติดต่อ HR: hr@amgo.co.th | 02-XXX-XXXX
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Security Note */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            การเชื่อมต่อของคุณได้รับการเข้ารหัสและปลอดภัย
+          <p className="mt-5 text-center text-sm text-gray-400">
+            ใช้บัญชี LINE ส่วนตัว · สำหรับพนักงาน AMGO เท่านั้น
           </p>
+
+          <div className="mt-6 flex items-center justify-center gap-2 border-t border-white/10 pt-5 font-mono text-sm text-gray-500">
+            <span className="lg-dot inline-block h-2 w-2 rounded-full bg-[#06C755]" />
+            SECURE · LINE LOGIN
+          </div>
         </div>
+
+        <p className="mt-6 px-2 text-center text-sm leading-6 text-gray-500">
+          <ShieldCheck size={16} className="-mt-0.5 mr-1.5 inline" />
+          การเชื่อมต่อเข้ารหัส · ยังเข้าไม่ได้ ติดต่อ HR เพื่อขออนุมัติบัญชี
+        </p>
       </div>
     </div>
   )

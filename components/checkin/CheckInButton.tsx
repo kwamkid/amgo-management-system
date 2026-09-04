@@ -14,7 +14,6 @@ import {
   MapPin,
   Loader2,
   AlertCircle,
-  Clock,
   CheckCircle,
   Home,
   Camera
@@ -25,7 +24,6 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import TechLoader from '@/components/shared/TechLoader'
 import ShiftSelector from './ShiftSelector'

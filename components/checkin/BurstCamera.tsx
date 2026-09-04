@@ -3,8 +3,8 @@
 // กล้องถ่ายรัว — สำหรับรูปสต็อก/หน้าร้านที่ต้องถ่ายทีละหลายจุด
 //
 // เจ้าของสั่ง 4 ก.ย. 69:
-//   · ถ่ายสดเท่านั้น ห้ามเลือกจากคลังรูป — ทางสำรองใช้ capture="environment"
-//     ซึ่งเรียกแอปกล้องตรง ๆ ไม่เปิดคลัง
+//   · ถ่ายสดเท่านั้น ห้ามเลือกจากคลังรูป — ไม่มีทางสำรองแบบเลือกไฟล์เลย
+//     (เจ้าของย้ำซ้ำ 4 ก.ย. 69) รูปทุกใบมาจาก canvas ที่วาดจาก stream กล้อง
 //   · กดถ่ายรัว ๆ ได้เลย ไม่ต้องปิด-เปิดกล้องทุกรูป แล้วค่อยอัปโหลดทีเดียว
 //   · ย่อรูปก่อนส่ง (resizeImage)
 //
@@ -78,7 +78,10 @@ export default function BurstCamera({
       }
       setTimeout(() => setCameraLoading(false), 2500)
     } catch {
-      setError('ไม่สามารถเข้าถึงกล้องได้ — ใช้ปุ่ม "ถ่ายด้วยแอปกล้องของเครื่อง" ด้านล่างแทนได้')
+      setError(
+        'ไม่สามารถเข้าถึงกล้องได้ — รูปสต็อกต้องถ่ายสดเท่านั้น ' +
+          'กรุณาอนุญาตการใช้กล้องในการตั้งค่าเบราว์เซอร์ แล้วกด "ลองอีกครั้ง"'
+      )
       setCameraLoading(false)
     }
   }
@@ -110,12 +113,6 @@ export default function BurstCamera({
     setFlash(true)
     setTimeout(() => setFlash(false), 120)
     canvas.toBlob((b) => b && addShot(b), 'image/jpeg', 0.92)
-  }
-
-  /** ทางสำรอง: แอปกล้องของเครื่อง — capture= บังคับกล้อง ไม่เปิดคลังรูป */
-  const fromFiles = async (files: FileList | null) => {
-    if (!files) return
-    for (const f of Array.from(files)) await addShot(f)
   }
 
   const remove = (id: number) =>
@@ -231,22 +228,9 @@ export default function BurstCamera({
           </Button>
         </div>
 
-        {/* ทางสำรองเมื่อเบราว์เซอร์ใช้กล้องไม่ได้ — capture= บังคับกล้อง ไม่เปิดคลัง */}
-        <label className="block cursor-pointer text-center text-xs text-gray-400 underline">
-          กล้องไม่ขึ้น? ถ่ายด้วยแอปกล้องของเครื่อง
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              fromFiles(e.target.files)
-              e.target.value = ''
-            }}
-          />
-        </label>
+        {/* ไม่มีทางสำรองแบบเลือกไฟล์ — เจ้าของย้ำ 4 ก.ย. 69 "ถ่ายสดนะ อัพโหลดรูปไม่ได้นะ"
+            <input type=file capture=…> บนเครื่องบางรุ่นยังเปิดคลังรูปได้ จึงตัดทิ้งทั้งก้อน
+            กล้องถูกบล็อก = ต้องไปเปิดสิทธิ์ ไม่มีประตูหลัง (ต่างจากเซลฟี่เช็คอินที่ยังมี) */}
       </div>
     </div>
   )

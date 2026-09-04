@@ -58,8 +58,9 @@ import {
   Printer,
   FileDown,
   FileText,
-  Undo2
-} from "lucide-react";
+  Undo2,
+  Smartphone,
+} from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Icon map — avoids dynamic imports, keeps tree-shaking manageable  */
@@ -123,6 +124,7 @@ const ICON_MAP: Record<string, React.FC<LucideProps>> = {
   FileDown,
   FileText,
   Undo2,
+  Smartphone,
 };
 
 /* ------------------------------------------------------------------ */

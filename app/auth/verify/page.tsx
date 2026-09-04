@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CircleCheck, Smartphone } from 'lucide-react'
+import { CircleCheck } from 'lucide-react'
 import { signInBoth } from '@/lib/auth/dual-session'
 import { isStandalone } from '@/lib/push/client'
 import { offerHandoff } from '@/lib/auth/pwaHandoff'
@@ -82,17 +82,35 @@ function VerifyAuth() {
   }, [])
 
   if (handoff === 'ok') {
+    // เลขขั้นตอนเป็นวงกลมขนาดเท่าบรรทัด (leading-7 = 28px · วง 24px + mt-0.5) จะได้ตรงกับ
+    // บรรทัดแรกของข้อความเสมอ ไม่ลอยขึ้นไปมุมบนเมื่อข้อความตัดสองบรรทัด
+    const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
+      <li className="flex gap-3">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
+          {n}
+        </span>
+        <span className="text-base leading-7 text-amber-950">{children}</span>
+      </li>
+    )
     return (
       <div className="text-center">
-        <CircleCheck size={48} className="mx-auto mb-4 text-[#06C755]" />
-        <h2 className="text-xl font-semibold text-gray-900">ยืนยันตัวตนกับ LINE แล้ว</h2>
-        <p className="mt-2 text-base text-gray-700">
-          กลับไปที่ <b>แอป AMGO</b> ได้เลย — ระบบจะเข้าให้เองภายในไม่กี่วินาที
+        <CircleCheck size={56} className="mx-auto mb-4 text-[#06C755]" />
+        <h2 className="text-2xl font-semibold text-gray-900">ยืนยันตัวตนกับ LINE แล้ว</h2>
+        <p className="mt-2 text-lg text-gray-700">ระบบจะเข้าแอปให้เองภายในไม่กี่วินาที</p>
+
+        <div className="mt-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-left">
+          <p className="text-base font-semibold text-amber-900">ขั้นตอนต่อไป</p>
+          <ol className="mt-2 space-y-2">
+            <Step n={1}>
+              สลับกลับไปที่ <b className="font-semibold">แอป AMGO</b> — เลือกจากรายการแอปล่าสุด
+            </Step>
+            <Step n={2}>ปิดหน้านี้ได้เลย</Step>
+          </ol>
+        </div>
+
+        <p className="mt-4 text-base leading-7 text-gray-600">
+          ถ้าแอปยังขึ้นหน้าเข้าสู่ระบบอยู่ ให้กดปุ่ม LINE ในแอปอีกครั้ง
         </p>
-        <p className="mt-4 flex items-center justify-center gap-1.5 text-sm text-gray-500">
-          <Smartphone size={16} /> สลับไปที่แอป AMGO จากรายการแอปล่าสุด แล้วปิดหน้านี้ได้
-        </p>
-        <p className="mt-2 text-sm text-gray-500">ถ้าแอปยังขึ้นหน้าเข้าสู่ระบบ ให้กดปุ่ม LINE ในแอปอีกครั้ง</p>
       </div>
     )
   }
@@ -111,7 +129,7 @@ function VerifyAuth() {
 export default function VerifyPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-lg">
+      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-7 shadow-lg sm:p-8">
         <Suspense
           fallback={
             <div className="text-center">

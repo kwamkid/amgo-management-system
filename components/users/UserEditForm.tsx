@@ -23,13 +23,15 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
-import { Phone, Calendar, Save, X, Banknote } from 'lucide-react'
+import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import Image from 'next/image'
 import { Label } from '@/components/ui/label'
+import { THAI_BANKS } from '@/lib/constants/banks'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -117,6 +119,8 @@ export default function UserEditForm({
     employmentType: user.employmentType ?? 'monthly',
     probationEndDate: user.probationEndDate ?? '',
     otEligible: user.otEligible ?? null,
+    bankName: user.bankName ?? null,
+    bankAccountNo: user.bankAccountNo ?? null,
     isActive: user.isActive
   })
 
@@ -595,6 +599,46 @@ export default function UserEditForm({
               <p className="mt-1.5 text-xs text-gray-500">
                 มีผลกับการเติมชั่วโมง OT อัตโนมัติในหน้าสรุปเงินเดือน — HR ยังพิมพ์เองได้เสมอ
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* บัญชีรับเงินเดือน — เจ้าของขอ 5 ก.ย. 69 (คอลัมน์มีอยู่แล้วแต่ไม่มีช่องกรอก ต้องใส่ทาง SQL)
+            เลือกธนาคารจากรายการมีโลโก้ · เก็บเป็นรหัส เช่น SCB ตามข้อมูลเดิม */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
+            <Landmark size={16} className="text-gray-400" /> บัญชีรับเงินเดือน
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label>ธนาคาร</Label>
+              <div className="mt-1.5">
+                <SelectMenu
+                  value={(formData.bankName as string | null) ?? null}
+                  onChange={(v) => setFormData({ ...formData, bankName: v })}
+                  options={THAI_BANKS.map((b) => ({
+                    value: b.code,
+                    label: b.nameTh,
+                    hint: b.code,
+                    icon: <Image src={b.logo} alt="" width={20} height={20} className="h-5 w-5 rounded" />,
+                  }))}
+                  placeholder="เลือกธนาคาร"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="bankAccountNo">เลขบัญชี</Label>
+              <Input
+                id="bankAccountNo"
+                value={(formData.bankAccountNo as string | null) ?? ''}
+                onChange={(e) => setFormData({ ...formData, bankAccountNo: e.target.value })}
+                placeholder="เช่น 409-686021-8"
+                className="mt-1.5 font-mono"
+                inputMode="numeric"
+                disabled={isLoading}
+              />
+              <p className="mt-1.5 text-xs text-gray-500">พิมพ์ตามหน้าสมุด/แอปธนาคาร มีขีดหรือไม่มีก็ได้</p>
             </div>
           </div>
         </div>

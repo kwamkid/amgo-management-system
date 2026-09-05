@@ -52,6 +52,9 @@ function toColumns(data: Partial<User> & Record<string, unknown>): UserUpdate {
   const wfh = (data.allowWorkFromHome ?? data.wfhEligible) as boolean | undefined
   set('wfh_eligible', wfh)
   set('requires_stock_photos', data.requiresStockPhotos as boolean | undefined)
+  // บัญชีรับเงินเดือน (แท็บเงินเดือนในฟอร์มแก้ไข — เพิ่ม 5 ก.ย. 69 เดิมกรอกได้แต่ทาง SQL)
+  set('bank_name', data.bankName as string | null | undefined)
+  set('bank_account_no', data.bankAccountNo as string | null | undefined)
   // null = กลับไปตามตำแหน่ง — ต้องเขียน null ลงจริง ไม่ใช่ข้าม
   set('ot_eligible', data.otEligible as boolean | null | undefined)
 

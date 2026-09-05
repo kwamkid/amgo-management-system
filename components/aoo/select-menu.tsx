@@ -31,6 +31,8 @@ export type SelectOption = {
   hint?: string
   /** จุดสีนำหน้า ใช้กับสถานะ */
   dot?: string
+  /** ไอคอน/โลโก้นำหน้า (เช่น โลโก้ธนาคาร) — โชว์ทั้งในรายการและปุ่ม */
+  icon?: ReactNode
   disabled?: boolean
 }
 
@@ -298,6 +300,7 @@ export function SelectMenu({
         }}
       >
         {selected?.dot && <Dot color={selected.dot} />}
+        {selected?.icon && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{selected.icon}</span>}
         <span
           style={{
             flex: 1,
@@ -430,6 +433,7 @@ export function SelectMenu({
                   >
                     {row.value === CREATE && <Plus size={14} style={{ flexShrink: 0 }} />}
                     {opt.dot && <Dot color={opt.dot} />}
+                    {opt.icon && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{opt.icon}</span>}
                     <span
                       style={{
                         flex: 1,

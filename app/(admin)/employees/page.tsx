@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { getBank } from '@/lib/constants/banks'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useUsers, useUserStatistics } from '@/hooks/useUsers'
@@ -359,9 +360,15 @@ export default function EmployeesPage() {
       sortValue: (u) => u.bankName ?? null,
       cell: (u) =>
         u.bankAccountNo ? (
-          <div className="text-sm">
-            <p className="text-gray-800">{u.bankName}</p>
-            <p className="font-mono text-xs tabular-nums text-gray-500">{u.bankAccountNo}</p>
+          <div className="flex items-center gap-2 text-sm">
+            {getBank(u.bankName)?.logo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={getBank(u.bankName)!.logo} alt="" className="h-6 w-6 shrink-0 rounded-md" />
+            )}
+            <div>
+              <p className="text-gray-800">{getBank(u.bankName)?.nameTh ?? u.bankName}</p>
+              <p className="font-mono text-xs tabular-nums text-gray-500">{u.bankAccountNo}</p>
+            </div>
           </div>
         ) : (
           <span className="text-gray-300">—</span>

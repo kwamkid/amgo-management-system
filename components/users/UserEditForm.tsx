@@ -23,12 +23,11 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem, SelectMenu } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu, Input } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import Image from 'next/image'
 import { Label } from '@/components/ui/label'
 import { THAI_BANKS } from '@/lib/constants/banks'
@@ -242,7 +241,6 @@ export default function UserEditForm({
                 type="text"
                 value={user.lineDisplayName}
                 disabled
-                className="bg-gray-50"
               />
             </div>
             
@@ -253,7 +251,6 @@ export default function UserEditForm({
                 type="text"
                 value={user.lineUserId}
                 disabled
-                className="bg-gray-50"
               />
             </div>
           </div>
@@ -297,13 +294,13 @@ export default function UserEditForm({
             <div>
               <Label htmlFor="phone">เบอร์โทรศัพท์ *</Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   id="phone"
+                  prefix={<Phone size={16} />}
+                  mono
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="pl-10"
                   placeholder="0812345678"
                   required
                   disabled={isLoading}
@@ -314,13 +311,12 @@ export default function UserEditForm({
             <div>
               <Label htmlFor="birthDate">วันเกิด *</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   id="birthDate"
+                  prefix={<Calendar size={16} />}
                   type="date"
                   value={getBirthDateValue()}
                   onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                  className="pl-10"
                   required
                   disabled={isLoading}
                 />
@@ -334,9 +330,9 @@ export default function UserEditForm({
             <div>
               <Label htmlFor="startDate">วันเริ่มงาน</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   id="startDate"
+                  prefix={<Calendar size={16} />}
                   type="date"
                   value={(formData.startDate as string) || ''}
                   onChange={(e) =>
@@ -346,7 +342,6 @@ export default function UserEditForm({
                       startDateVerified: !!e.target.value,
                     })
                   }
-                  className="pl-10"
                   disabled={isLoading}
                 />
               </div>
@@ -362,6 +357,7 @@ export default function UserEditForm({
               <Input
                 id="nationalId"
                 type="text"
+                mono
                 inputMode="numeric"
                 maxLength={13}
                 value={(formData.nationalId as string) ?? ''}
@@ -629,15 +625,17 @@ export default function UserEditForm({
             </div>
             <div>
               <Label htmlFor="bankAccountNo">เลขบัญชี</Label>
-              <Input
-                id="bankAccountNo"
-                value={(formData.bankAccountNo as string | null) ?? ''}
-                onChange={(e) => setFormData({ ...formData, bankAccountNo: e.target.value })}
-                placeholder="เช่น 409-686021-8"
-                className="mt-1.5 font-mono"
-                inputMode="numeric"
-                disabled={isLoading}
-              />
+              <div className="mt-1.5">
+                <Input
+                  id="bankAccountNo"
+                  value={(formData.bankAccountNo as string | null) ?? ''}
+                  onChange={(e) => setFormData({ ...formData, bankAccountNo: e.target.value })}
+                  placeholder="เช่น 409-686021-8"
+                  inputMode="numeric"
+                  mono
+                  disabled={isLoading}
+                />
+              </div>
               <p className="mt-1.5 text-xs text-gray-500">พิมพ์ตามหน้าสมุด/แอปธนาคาร มีขีดหรือไม่มีก็ได้</p>
             </div>
           </div>

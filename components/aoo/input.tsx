@@ -47,12 +47,14 @@ export interface InputProps
   prefix?: React.ReactNode;
   /** Whether the input is in an error state */
   error?: boolean;
+  /** ตัวเลขที่ต้องอ่านเป็นหลัก (เลขบัญชี เบอร์โทร) — ฟอนต์ mono ให้ตัวเลขเรียงตรง */
+  mono?: boolean;
   style?: CSSProperties;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   function Input(
-    { prefix, error, className, style: styleProp, ...rest },
+    { prefix, error, mono, className, style: styleProp, ...rest },
     ref,
   ) {
     const [focused, setFocused] = React.useState(false);
@@ -72,7 +74,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       border: "none",
       outline: "none",
       background: "transparent",
-      fontFamily: "var(--font-sans)",
+      fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
       fontSize: CONTROL_FONT_SIZE,
       color: "var(--fg-1)",
       lineHeight: 1,

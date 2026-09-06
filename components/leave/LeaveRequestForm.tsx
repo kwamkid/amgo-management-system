@@ -1,52 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format, differenceInDays, addDays, isWeekend } from 'date-fns';
-import { CalendarIcon, Upload, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+import { format } from 'date-fns';
+import { AlertTriangle } from 'lucide-react';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
 import { calculateLeaveDays, validateLeaveRequest } from '@/lib/services/leaveService';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { Alert, Button } from '@/components/aoo'
+import { Alert, Button, Field, Select, DatePicker, Textarea, Input, ConfirmDialog, toIso } from '@/components/aoo'
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
@@ -269,132 +232,69 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
   const remainingQuota = quota?.[watchType]?.remaining || 0;
   const canSubmit = urgentCharge <= remainingQuota;
 
+  const errors = form.formState.errors
+  const todayIso = toIso(new Date())
+  const startIso = watchStartDate ? toIso(watchStartDate) : ''
+  const fromIso = (s: string) => new Date(`${s}T00:00:00`)
+  const backdateOk = LEAVE_RULES[watchType].allowBackdate
+
   return (
-    <Form {...form}>
+    <>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {autoUrgent && watchType !== 'sick' && (
           <Alert tone="warning" className="mb-4">
             <div>
-              <strong>การลาด่วน:</strong> เนื่องจากไม่ได้แจ้งล่วงหน้าตามกำหนด ({LEAVE_RULES[watchType].advanceNotice} วัน) 
+              <strong>การลาด่วน:</strong> เนื่องจากไม่ได้แจ้งล่วงหน้าตามกำหนด ({LEAVE_RULES[watchType].advanceNotice} วัน)
               จะถูกคิดโควต้า {LEAVE_RULES[watchType].urgentMultiplier} เท่า ({urgentCharge} วัน)
             </div>
           </Alert>
         )}
 
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ประเภทการลา</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกประเภทการลา" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{label}</span>
-                        <span className="text-sm text-gray-500 ml-2">
-                          (เหลือ {quota?.[value as LeaveType]?.remaining || 0} วัน)
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+        <Field label="ประเภทการลา" error={errors.type?.message} asDiv>
+          <Controller
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <Select value={field.value} onChange={(e) => field.onChange(e.target.value as LeaveType)}>
+                {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label} (เหลือ {quota?.[value as LeaveType]?.remaining || 0} วัน)
+                  </option>
+                ))}
               </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>วันที่เริ่มลา</FormLabel>
-                <Popover>
-                  <PopoverTrigger>
-                    <FormControl>
-                      <Button variant="soft" className={cn( "w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground" )}>
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>เลือกวันที่</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => {
-                        // Disable based on leave type rules
-                        if (!LEAVE_RULES[watchType].allowBackdate) {
-                          return date < new Date();
-                        }
-                        return false;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
             )}
           />
+        </Field>
 
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>วันที่สิ้นสุด</FormLabel>
-                <Popover>
-                  <PopoverTrigger>
-                    <FormControl>
-                      <Button variant="soft" className={cn( "w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground" )}>
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>เลือกวันที่</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => {
-                        // ต้องไม่น้อยกว่าวันที่เริ่มลา
-                        if (watchStartDate && date < watchStartDate) {
-                          return true;
-                        }
-                        // ถ้าวันที่เริ่มไม่สามารถลาย้อนหลัง วันสิ้นสุดก็ต้องไม่น้อยกว่าวันนี้
-                        if (!LEAVE_RULES[watchType].allowBackdate && date < new Date()) {
-                          return true;
-                        }
-                        return false;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="วันที่เริ่มลา" error={errors.startDate?.message} asDiv>
+            <Controller
+              control={form.control}
+              name="startDate"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value ? toIso(field.value) : ''}
+                  onChange={(v) => field.onChange(v ? fromIso(v) : undefined)}
+                  min={backdateOk ? undefined : todayIso}
+                  placeholder="เลือกวันที่"
+                />
+              )}
+            />
+          </Field>
+          <Field label="วันที่สิ้นสุด" error={errors.endDate?.message} asDiv>
+            <Controller
+              control={form.control}
+              name="endDate"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value ? toIso(field.value) : ''}
+                  onChange={(v) => field.onChange(v ? fromIso(v) : undefined)}
+                  min={startIso || (backdateOk ? undefined : todayIso)}
+                  placeholder="เลือกวันที่"
+                />
+              )}
+            />
+          </Field>
         </div>
 
         {totalDays > 0 && (
@@ -402,91 +302,53 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             <div>
               จำนวนวันลา: {totalDays} วัน (รวมเสาร์-อาทิตย์)
               {urgentCharge > totalDays && (
-                <span className="text-orange-600 font-medium">
-                  {' '}| ลาด่วนคิด {urgentCharge} วัน
-                </span>
+                <span className="text-orange-600 font-medium"> | ลาด่วนคิด {urgentCharge} วัน</span>
               )}
             </div>
           </Alert>
         )}
 
-        <FormField
-          control={form.control}
-          name="reason"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>เหตุผลการลา</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="กรุณาระบุเหตุผลการลา..."
-                  className="resize-none"
-                  rows={4}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <Field label="เหตุผลการลา" error={errors.reason?.message} asDiv>
+          <Textarea placeholder="กรุณาระบุเหตุผลการลา..." rows={4} {...form.register('reason')} />
+        </Field>
 
         {(requireCertificate || (form.watch('attachments')?.length ?? 0) > 0) && (
-          <FormField
-            control={form.control}
-            name="attachments"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  แนบเอกสาร
-                  {requireCertificate && (
-                    <span className="text-orange-600 ml-1">(แนะนำ)</span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*,.pdf"
-                      multiple
-                      onChange={handleFileChange}
-                      className="cursor-pointer"
-                    />
-                    {requireCertificate && (
-                      <Alert tone="warning">
-                        <div>
-                          ลาป่วย<b>ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์</b>{' '}
-                          ตามพระราชบัญญัติคุ้มครองแรงงาน พ.ศ. 2541 มาตรา 32{' '}
-                          <a
-                            href="https://www.mol.go.th/forums/topic/ลาป่วยกรณีต้องใช้ใบรับรองแพทย์"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium underline"
-                          >
-                            อ่านข้อกฎหมาย (กระทรวงแรงงาน)
-                          </a>
-                          {(form.watch('attachments')?.length ?? 0) === 0 && (
-                            <span className="block mt-1 font-medium">
-                              ⚠️ ยังไม่ได้แนบใบรับรองแพทย์ — ส่งคำขอไม่ได้จนกว่าจะแนบ
-                            </span>
-                          )}
-                        </div>
-                      </Alert>
+          <Field
+            label={requireCertificate ? 'แนบเอกสาร (แนะนำ)' : 'แนบเอกสาร'}
+            help="รองรับไฟล์ JPG, PNG, PDF ขนาดไม่เกิน 5MB"
+            error={errors.attachments?.message as string | undefined}
+            asDiv
+          >
+            <div className="space-y-2">
+              <Input type="file" accept="image/*,.pdf" multiple onChange={handleFileChange} />
+              {requireCertificate && (
+                <Alert tone="warning">
+                  <div>
+                    ลาป่วย<b>ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์</b>{' '}
+                    ตามพระราชบัญญัติคุ้มครองแรงงาน พ.ศ. 2541 มาตรา 32{' '}
+                    <a
+                      href="https://www.mol.go.th/forums/topic/ลาป่วยกรณีต้องใช้ใบรับรองแพทย์"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium underline"
+                    >
+                      อ่านข้อกฎหมาย (กระทรวงแรงงาน)
+                    </a>
+                    {(form.watch('attachments')?.length ?? 0) === 0 && (
+                      <span className="block mt-1 font-medium">⚠️ ยังไม่ได้แนบใบรับรองแพทย์ — ส่งคำขอไม่ได้จนกว่าจะแนบ</span>
                     )}
                   </div>
-                </FormControl>
-                <FormDescription>
-                  รองรับไฟล์ JPG, PNG, PDF ขนาดไม่เกิน 5MB
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                </Alert>
+              )}
+            </div>
+          </Field>
         )}
+
+        {errors.root?.message && <Alert tone="error">{errors.root.message}</Alert>}
 
         {!canSubmit && (
           <Alert tone="error">
-            <div>
-              โควต้าไม่เพียงพอ! ต้องการ {urgentCharge} วัน แต่คงเหลือ {remainingQuota} วัน
-            </div>
+            <div>โควต้าไม่เพียงพอ! ต้องการ {urgentCharge} วัน แต่คงเหลือ {remainingQuota} วัน</div>
           </Alert>
         )}
 
@@ -496,42 +358,32 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
           </Button>
         </div>
       </form>
-      
-      {/* Urgent Confirm Dialog */}
-      <AlertDialog open={showUrgentConfirm} onOpenChange={setShowUrgentConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-              แจ้งเตือนการลาด่วน
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              การลา{LEAVE_TYPE_LABELS[watchType]}ควรแจ้งล่วงหน้า {LEAVE_RULES[watchType]?.advanceNotice || 0} วัน
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4 space-y-3">
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <p className="font-medium text-orange-900">หากดำเนินการต่อ:</p>
-              <ul className="mt-2 space-y-1 text-sm text-orange-800">
-                <li>• จะถูกคิดเป็นการลาด่วน</li>
-                <li>• หักโควต้า {LEAVE_RULES[watchType]?.urgentMultiplier || 1} เท่า (รวม {urgentCharge} วัน)</li>
-                <li>• คงเหลือ {remainingQuota - urgentCharge} วัน</li>
-              </ul>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingFormData(null)}>
-              ยกเลิก
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleUrgentConfirm}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              ยืนยันลาด่วน
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Form>
+
+      {/* ยืนยันลาด่วน */}
+      <ConfirmDialog
+        open={showUrgentConfirm}
+        title={
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-orange-600" />
+            แจ้งเตือนการลาด่วน
+          </span>
+        }
+        description={`การลา${LEAVE_TYPE_LABELS[watchType]}ควรแจ้งล่วงหน้า ${LEAVE_RULES[watchType]?.advanceNotice || 0} วัน`}
+        confirmLabel="ยืนยันลาด่วน"
+        cancelLabel="ยกเลิก"
+        tone="primary"
+        onConfirm={handleUrgentConfirm}
+        onClose={() => { setShowUrgentConfirm(false); setPendingFormData(null) }}
+      >
+        <div className="bg-orange-50 p-4 rounded-lg">
+          <p className="font-medium text-orange-900">หากดำเนินการต่อ:</p>
+          <ul className="mt-2 space-y-1 text-sm text-orange-800">
+            <li>• จะถูกคิดเป็นการลาด่วน</li>
+            <li>• หักโควต้า {LEAVE_RULES[watchType]?.urgentMultiplier || 1} เท่า (รวม {urgentCharge} วัน)</li>
+            <li>• คงเหลือ {remainingQuota - urgentCharge} วัน</li>
+          </ul>
+        </div>
+      </ConfirmDialog>
+    </>
   );
 }

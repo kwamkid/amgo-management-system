@@ -35,16 +35,8 @@ import {
   copyQuotaDefaults,
 } from '@/lib/services/leaveService'
 import Link from 'next/link'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, DataTable } from '@/components/shared'
 import { Button as AooButton } from '@/components/aoo'
 import UserAvatar from '@/components/shared/UserAvatar'
 
@@ -597,84 +589,66 @@ export default function LeaveQuotaManagementPage() {
 
       {/* Table */}
       <Card padding={0} className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-50 hover:to-gray-100">
-              <TableHead className="font-semibold text-gray-700">พนักงาน</TableHead>
-              {leaveTypes.map(({ type, label, icon, headerBg }) => (
-                <TableHead key={type} className="text-center">
-                  <div className={`flex items-center justify-center gap-2 p-2 rounded-lg ${headerBg}`}>
-                    {icon}
-                    <span className="font-semibold">{label}</span>
+        <DataTable
+          columns={[
+            {
+              key: 'user', header: 'พนักงาน', mobilePrimary: true, sortValue: ({ user }) => user.fullName,
+              cell: ({ user }) => (
+                <div className="flex items-center gap-3">
+                  <UserAvatar name={user.fullName} userId={user.id} size="md" />
+                  <div>
+                    <p className="font-medium">{user.fullName}</p>
+                    <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
                   </div>
-                </TableHead>
-              ))}
-              <TableHead className="text-center font-semibold text-gray-700">สถานะ</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedQuotas.map(({ user, quota }) => {
-              const noQuota = hasNoQuota(quota)
-              return (
-                <TableRow 
-                  key={user.id} 
-                  className={noQuota ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50'}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <UserAvatar name={user.fullName} userId={user.id} size="md" />
-                      <div>
-                        <p className="font-medium">{user.fullName}</p>
-                        <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
-                      </div>
+                </div>
+              ),
+            },
+            ...leaveTypes.map(({ type, label, icon, headerBg, bgColor }) => ({
+              key: type,
+              header: (
+                <div className={`flex items-center justify-center gap-2 p-2 rounded-lg ${headerBg}`}>
+                  {icon}
+                  <span className="font-semibold">{label}</span>
+                </div>
+              ),
+              align: 'center' as const,
+              mobileLabel: label,
+              cell: ({ quota }: { quota: (typeof paginatedQuotas)[number]['quota'] }) => (
+                <div className={`p-3 rounded-lg ${bgColor}`}>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="font-semibold text-lg">{quota?.[type].total || 0}</span>
+                    <div className="text-xs text-gray-600">
+                      ใช้ {quota?.[type].used || 0} / เหลือ {quota?.[type].remaining || 0}
                     </div>
-                  </TableCell>
-                  
-                  {leaveTypes.map(({ type, label, icon, iconColor, bgColor }) => (
-                    <TableCell key={type} className="text-center p-2">
-                      <div className={`p-3 rounded-lg ${bgColor}`}>
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="font-semibold text-lg">{quota?.[type].total || 0}</span>
-                          <div className="text-xs text-gray-600">
-                            ใช้ {quota?.[type].used || 0} / เหลือ {quota?.[type].remaining || 0}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                  ))}
-                  
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <QuotaEditAll
-                        userId={user.id}
-                        userName={user.fullName}
-                        userAvatar={user.linePictureUrl}
-                        quota={quota}
-                        onUpdate={(type, newValue) => handleQuotaUpdate(user.id, type, newValue)}
-                      />
-                      {noQuota ? (
-                        <Pill tone="warning" className="text-xs">
-                          ยังไม่กำหนด
-                        </Pill>
-                      ) : (
-                        <Pill tone="success" className="text-xs">
-                          กำหนดแล้ว
-                        </Pill>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-        
-        {filteredQuotas.length === 0 && (
-          <div className="py-12 text-center">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">ไม่พบข้อมูลพนักงาน</p>
-          </div>
-        )}
+                  </div>
+                </div>
+              ),
+            })),
+            {
+              key: 'status', header: 'สถานะ', align: 'center', mobileFooterAction: true,
+              cell: ({ user, quota }) => (
+                <div className="flex items-center justify-center gap-2">
+                  <QuotaEditAll
+                    userId={user.id}
+                    userName={user.fullName}
+                    userAvatar={user.linePictureUrl}
+                    quota={quota}
+                    onUpdate={(type, newValue) => handleQuotaUpdate(user.id, type, newValue)}
+                  />
+                  {hasNoQuota(quota) ? (
+                    <Pill tone="warning" className="text-xs">ยังไม่กำหนด</Pill>
+                  ) : (
+                    <Pill tone="success" className="text-xs">กำหนดแล้ว</Pill>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          rows={paginatedQuotas}
+          rowKey={({ user }) => user.id}
+          rowClassName={({ quota }) => (hasNoQuota(quota) ? 'bg-orange-50' : undefined)}
+          emptyTitle="ไม่พบข้อมูลพนักงาน"
+        />
 
         {/* Pagination */}
         {filteredQuotas.length > 0 && (

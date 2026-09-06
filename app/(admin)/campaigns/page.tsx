@@ -34,20 +34,13 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
-import { Input, Pill, Card, Button, Select, ActionMenu } from '@/components/aoo'
+import { Input, Pill, Card, Button, Select, ActionMenu, Progress } from '@/components/aoo'
 import TableFooter from '@/components/shared/TableFooter'
+import { DataTable } from '@/components/shared'
 export default function CampaignsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -559,209 +552,130 @@ export default function CampaignsPage() {
 
         {/* Desktop View - Table */}
         <div className="hidden lg:block overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[30px]"></TableHead>
-                <TableHead className="text-base">Campaign</TableHead>
-                <TableHead className="text-base">Influencers</TableHead>
-                <TableHead className="text-base">Brands & Products</TableHead>
-                <TableHead className="w-[120px] text-base">Timeline</TableHead>
-                <TableHead className="w-[100px] text-base">Progress</TableHead>
-                <TableHead className="w-[120px] text-base">สร้างโดย</TableHead>
-                <TableHead className="text-right w-[80px] text-base">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedCampaigns.map((campaign) => {
-                const status = statusConfig[campaign.status]
-                const StatusIcon = status.icon
-
-                // Calculate progress
-                const totalInfluencers = campaign.influencers?.length || 0
-                const submittedCount = campaign.influencers?.filter(
-                  inf => ['submitted', 'resubmitted', 'approved'].includes(inf.submissionStatus)
-                ).length || 0
-                const progress = totalInfluencers > 0
-                  ? Math.round((submittedCount / totalInfluencers) * 100)
-                  : 0
-
-                // Get brand names
-                const brandNames = campaign.brands?.map(brandId => {
-                  const brand = brands.find(b => b.id === brandId)
-                  return brand?.name || brandId
-                }).join(', ') || '-'
-
-                // Get product names with their brands
-                const productInfo = campaign.products?.slice(0, 2).map(productId => {
-                  const product = products.find(p => p.id === productId)
-                  const brand = product ? brands.find(b => b.id === product.brandId) : null
-                  return product ? {
-                    name: product.name,
-                    brandName: brand?.name || ''
-                  } : null
-                }).filter(Boolean) || []
-
-                return (
-                  <TableRow key={campaign.id} className="hover:bg-gray-50">
-                    {/* Status Icon */}
-                    <TableCell>
-                      <div className={`p-2 rounded-lg ${status.bgColor} inline-block`}>
-                        <StatusIcon className={`w-4 h-4 ${status.color}`} />
-                      </div>
-                    </TableCell>
-
-                    {/* Campaign Info */}
-                    <TableCell>
-                      <div>
-                        <Link 
-                          href={`/campaigns/${campaign.id}`}
-                          className="font-medium text-gray-900 hover:text-red-600 text-base"
-                        >
-                          {campaign.name}
-                        </Link>
-                        <p className="text-sm text-gray-500 line-clamp-1 max-w-xs">
-                          {campaign.description}
+          <DataTable
+            columns={[
+              {
+                key: 'status', header: '', width: 40,
+                cell: (campaign) => {
+                  const status = statusConfig[campaign.status]
+                  const StatusIcon = status.icon
+                  return (
+                    <div className={`p-2 rounded-lg ${status.bgColor} inline-block`}>
+                      <StatusIcon className={`w-4 h-4 ${status.color}`} />
+                    </div>
+                  )
+                },
+              },
+              {
+                key: 'campaign', header: 'Campaign', mobilePrimary: true, sortValue: (campaign) => campaign.name,
+                cell: (campaign) => {
+                  const status = statusConfig[campaign.status]
+                  return (
+                    <div>
+                      <Link href={`/campaigns/${campaign.id}`} className="font-medium text-gray-900 hover:text-red-600 text-base">
+                        {campaign.name}
+                      </Link>
+                      <p className="text-sm text-gray-500 line-clamp-1 max-w-xs">{campaign.description}</p>
+                      <Pill tone="accent" className={`${status.bgColor} ${status.color} mt-1`}>{status.label}</Pill>
+                    </div>
+                  )
+                },
+              },
+              {
+                key: 'influencers', header: 'Influencers', hideOnMobile: true,
+                cell: (campaign) =>
+                  campaign.influencers && campaign.influencers.length > 0 ? (
+                    <div className="text-base text-gray-600 space-y-0.5">
+                      {campaign.influencers.slice(0, 3).map((inf, idx) => (
+                        <p key={inf.influencerId} className="truncate">
+                          {campaign.influencers.length > 1 && `${idx + 1}. `}
+                          {inf.influencerName || 'Unknown'}
+                          {inf.influencerNickname && <span className="text-gray-400"> (@{inf.influencerNickname})</span>}
                         </p>
-                        <Pill tone="accent" className={`${status.bgColor} ${status.color} mt-1`}>
-                          {status.label}
-                        </Pill>
-                      </div>
-                    </TableCell>
-
-                    {/* Influencers */}
-                    <TableCell>
-                      <div>
-                        {campaign.influencers && campaign.influencers.length > 0 && (
-                          <div className="text-base text-gray-600 space-y-0.5">
-                            {campaign.influencers.slice(0, 3).map((inf, idx) => (
-                              <p key={inf.influencerId} className="truncate">
-                                {campaign.influencers.length > 1 && `${idx + 1}. `}
-                                {inf.influencerName || 'Unknown'}
-                                {inf.influencerNickname && (
-                                  <span className="text-gray-400"> (@{inf.influencerNickname})</span>
-                                )}
-                              </p>
-                            ))}
-                            {campaign.influencers.length > 3 && (
-                              <p className="text-gray-400 text-sm">+{campaign.influencers.length - 3} more</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Brands & Products */}
-                    <TableCell>
-                      <div>
-                        <p className="text-base font-medium text-gray-900">{brandNames}</p>
-                        {productInfo.length > 0 && (
-                          <div className="text-sm text-gray-600 mt-1 space-y-0.5">
-                            {productInfo.map((product, idx) => (
-                              <p key={idx} className="truncate">
-                                • {product?.name}
-                                {product?.brandName && (
-                                  <span className="text-gray-400"> ({product.brandName})</span>
-                                )}
-                              </p>
-                            ))}
-                            {campaign.products && campaign.products.length > 2 && (
-                              <p className="text-gray-400">+{campaign.products.length - 2} สินค้า</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Timeline */}
-                    <TableCell>
-                      <div className="text-sm">
-                        <p className="text-gray-500">
-                          {format(new Date(campaign.startDate), 'dd/MM', { locale: th })}
-                        </p>
-                        <p className="font-medium text-base">
-                          {format(new Date(campaign.deadline), 'dd/MM/yy', { locale: th })}
-                        </p>
-                      </div>
-                    </TableCell>
-
-                    {/* Progress */}
-                    <TableCell>
-                      {['active', 'reviewing', 'revising'].includes(campaign.status) && totalInfluencers > 0 ? (
-                        <div className="w-20">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600">{submittedCount}/{totalInfluencers}</span>
-                            <span className="font-medium">{progress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div 
-                              className="bg-gradient-to-r from-green-500 to-emerald-600 h-1.5 rounded-full transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
+                      ))}
+                      {campaign.influencers.length > 3 && <p className="text-gray-400 text-sm">+{campaign.influencers.length - 3} more</p>}
+                    </div>
+                  ) : null,
+              },
+              {
+                key: 'brands', header: 'Brands & Products', hideOnMobile: true,
+                cell: (campaign) => {
+                  const brandNames = campaign.brands?.map((brandId) => brands.find((b) => b.id === brandId)?.name || brandId).join(', ') || '-'
+                  const productInfo = (campaign.products?.slice(0, 2).map((productId) => {
+                    const product = products.find((p) => p.id === productId)
+                    const brand = product ? brands.find((b) => b.id === product.brandId) : null
+                    return product ? { name: product.name, brandName: brand?.name || '' } : null
+                  }) || []).filter(Boolean)
+                  return (
+                    <div>
+                      <p className="text-base font-medium text-gray-900">{brandNames}</p>
+                      {productInfo.length > 0 && (
+                        <div className="text-sm text-gray-600 mt-1 space-y-0.5">
+                          {productInfo.map((product, idx) => (
+                            <p key={idx} className="truncate">
+                              • {product?.name}
+                              {product?.brandName && <span className="text-gray-400"> ({product.brandName})</span>}
+                            </p>
+                          ))}
+                          {campaign.products && campaign.products.length > 2 && <p className="text-gray-400">+{campaign.products.length - 2} สินค้า</p>}
                         </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">-</span>
                       )}
-                    </TableCell>
-
-                    {/* Created By */}
-                    <TableCell>
-                      <p className="text-sm text-gray-600 truncate">{campaign.createdByName || '-'}</p>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="text-right">
-                      <ActionMenu
-                        items={[
-                          {
-                            label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`)
-                          },
-                          {
-                            label: 'แก้ไข Campaign', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`),
-                            disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
-                          },
-                          {
-                            label: 'ดู Brief', icon: 'FileText',
-                            onSelect: () => campaign.briefFileUrl && window.open(campaign.briefFileUrl, '_blank'),
-                            disabled: !campaign.briefFileUrl
-                          },
-                          { kind: 'divider' },
-                          ...(campaign.influencers?.slice(0, 3).map(inf => ({
-                            label: 'Copy: {inf.influencerName}', icon: 'Copy',
-                            onSelect: () => copySubmissionLink(inf.submissionLink!)
-                          })) || []),
-                          ...(campaign.influencers && campaign.influencers.length > 3 ? [{
-                            label: (
-                              <span className="text-sm text-gray-500">
-                                +{campaign.influencers.length - 3} more...
-                              </span>
-                            ),
-                            onSelect: () => router.push(`/campaigns/${campaign.id}`)
-                          }] : []),
-                          { kind: 'divider' },
-                          {
-                            label: 'ยกเลิก Campaign', icon: 'XCircle',
-                            onSelect: () => handleCancelCampaign(campaign.id!, campaign.name),
-                            disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
-                          },
-                          ...(isAdmin ? [{
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Trash2 className="w-4 h-4" />
-                                ลบถาวร (Admin)
-                              </span>
-                            ),
-                            onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const
-                          }] : [])
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                  )
+                },
+              },
+              {
+                key: 'timeline', header: 'Timeline', width: 120, sortValue: (campaign) => campaign.deadline ? String(campaign.deadline) : null,
+                cell: (campaign) => (
+                  <div className="text-sm">
+                    <p className="text-gray-500">{format(new Date(campaign.startDate), 'dd/MM', { locale: th })}</p>
+                    <p className="font-medium text-base">{format(new Date(campaign.deadline), 'dd/MM/yy', { locale: th })}</p>
+                  </div>
+                ),
+              },
+              {
+                key: 'progress', header: 'Progress', width: 100, hideOnMobile: true,
+                cell: (campaign) => {
+                  const totalInfluencers = campaign.influencers?.length || 0
+                  const submittedCount = campaign.influencers?.filter((inf) => ['submitted', 'resubmitted', 'approved'].includes(inf.submissionStatus)).length || 0
+                  const progress = totalInfluencers > 0 ? Math.round((submittedCount / totalInfluencers) * 100) : 0
+                  return ['active', 'reviewing', 'revising'].includes(campaign.status) && totalInfluencers > 0 ? (
+                    <div className="w-20">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-600">{submittedCount}/{totalInfluencers}</span>
+                        <span className="font-medium">{progress}%</span>
+                      </div>
+                      <Progress value={progress} tone="success" className="h-1.5" />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">-</span>
+                  )
+                },
+              },
+              { key: 'createdBy', header: 'สร้างโดย', width: 120, hideOnMobile: true, cell: (campaign) => <p className="text-sm text-gray-600 truncate">{campaign.createdByName || '-'}</p> },
+              {
+                key: 'actions', header: '', align: 'right', width: 60, mobileFooterAction: true,
+                cell: (campaign) => (
+                  <ActionMenu
+                    items={[
+                      { label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`) },
+                      { label: 'แก้ไข Campaign', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
+                      { label: 'ดู Brief', icon: 'FileText', onSelect: () => campaign.briefFileUrl && window.open(campaign.briefFileUrl, '_blank'), disabled: !campaign.briefFileUrl },
+                      { kind: 'divider' },
+                      ...(campaign.influencers?.slice(0, 3).map((inf) => ({ label: `Copy: ${inf.influencerName}`, icon: 'Copy', onSelect: () => copySubmissionLink(inf.submissionLink!) })) || []),
+                      ...(campaign.influencers && campaign.influencers.length > 3 ? [{ label: `+${campaign.influencers.length - 3} more...`, onSelect: () => router.push(`/campaigns/${campaign.id}`) }] : []),
+                      { kind: 'divider' },
+                      { label: 'ยกเลิก Campaign', icon: 'XCircle', onSelect: () => handleCancelCampaign(campaign.id!, campaign.name), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
+                      ...(isAdmin ? [{ label: 'ลบถาวร (Admin)', icon: 'Trash2', onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const }] : []),
+                    ]}
+                  />
+                ),
+              },
+            ]}
+            rows={paginatedCampaigns}
+            rowKey={(campaign) => campaign.id!}
+            emptyTitle="ไม่มีแคมเปญ"
+          />
         </div>
         
         {/* Empty State */}

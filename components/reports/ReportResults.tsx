@@ -2,22 +2,13 @@
 
 'use client'
 
-import { Skeleton } from '@/components/shared'
-
+import { Skeleton, DataTable } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select, TabBar, TabItem } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
 import { backfillWorkDay } from '@/lib/services/checkinService'
 import UserScheduleDialog from '@/components/users/UserScheduleDialog'
@@ -415,66 +406,30 @@ function DailyReportTable({
   
   return (
     <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>วันที่</TableHead>
-            <TableHead>ชื่อพนักงาน</TableHead>
-            <TableHead>เวลาเข้า</TableHead>
-            <TableHead>เวลาออก</TableHead>
-            <TableHead>รวม (ชม.)</TableHead>
-            <TableHead>สถานที่</TableHead>
-            <TableHead>สถานะ</TableHead>
-            <TableHead>หมายเหตุ</TableHead>
-            {canBackfill && <TableHead />}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((record, index) => (
-            <TableRow key={`${record.date}-${record.userId}-${index}`}>
-              <TableCell>
-                {format(new Date(record.date), 'dd/MM/yyyy')}
-              </TableCell>
-              <TableCell>{record.userName}</TableCell>
-              <TableCell>
-                <Pill tone={badgeTone(record.firstCheckIn === '-' ? 'secondary' : 'default')}>
-                  {record.firstCheckIn}
-                </Pill>
-              </TableCell>
-              <TableCell>
-                <Pill tone={badgeTone(record.lastCheckOut === '-' ? 'secondary' : 'default')}>
-                  {record.lastCheckOut}
-                </Pill>
-              </TableCell>
-              <TableCell>
-                {record.totalHours > 0 ? (
-                  <span className="font-medium">{record.totalHours}</span>
-                ) : '-'}
-              </TableCell>
-              <TableCell>{record.locationName || 'เช็คอินนอกสถานที่'}</TableCell>
-              <TableCell>
-                <AttendanceStatusBadge 
-                  status={record.status} 
-                  isLate={record.isLate}
-                  lateMinutes={record.lateMinutes}
-                />
-              </TableCell>
-              <TableCell className="text-sm text-gray-600">
-                {record.note || '-'}
-              </TableCell>
-              {canBackfill && (
-                <TableCell className="text-right">
-                  {record.status === 'absent' && (
-                    <Button variant="soft" size="sm" onClick={() => onBackfill(record)}>
-                      เติมวัน
-                    </Button>
-                  )}
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={[
+          { key: 'date', header: 'วันที่', mobilePrimary: true, cell: (record) => format(new Date(record.date), 'dd/MM/yyyy'), sortValue: (record) => record.date },
+          { key: 'name', header: 'ชื่อพนักงาน', cell: (record) => record.userName, sortValue: (record) => record.userName },
+          { key: 'in', header: 'เวลาเข้า', cell: (record) => <Pill tone={badgeTone(record.firstCheckIn === '-' ? 'secondary' : 'default')}>{record.firstCheckIn}</Pill> },
+          { key: 'out', header: 'เวลาออก', cell: (record) => <Pill tone={badgeTone(record.lastCheckOut === '-' ? 'secondary' : 'default')}>{record.lastCheckOut}</Pill> },
+          { key: 'hours', header: 'รวม (ชม.)', cell: (record) => (record.totalHours > 0 ? <span className="font-medium">{record.totalHours}</span> : '-'), sortValue: (record) => record.totalHours },
+          { key: 'location', header: 'สถานที่', hideOnMobile: true, cell: (record) => record.locationName || 'เช็คอินนอกสถานที่' },
+          { key: 'status', header: 'สถานะ', cell: (record) => <AttendanceStatusBadge status={record.status} isLate={record.isLate} lateMinutes={record.lateMinutes} /> },
+          { key: 'note', header: 'หมายเหตุ', hideOnMobile: true, cell: (record) => <span className="text-sm text-gray-600">{record.note || '-'}</span> },
+          ...(canBackfill
+            ? [{
+                key: 'backfill', header: '', align: 'right' as const, mobileFooterAction: true,
+                cell: (record: (typeof data)[number]) =>
+                  record.status === 'absent' ? (
+                    <Button variant="soft" size="sm" onClick={() => onBackfill(record)}>เติมวัน</Button>
+                  ) : null,
+              }]
+            : []),
+        ]}
+        rows={data}
+        rowKey={(record, index) => `${record.date}-${record.userId}-${index}`}
+        emptyTitle="ไม่มีข้อมูล"
+      />
     </div>
   )
 }
@@ -509,64 +464,31 @@ function SummaryReportTable({
           ถ้าพิสูจน์ได้ว่ามาทำงานจริง กดเติมวันได้ในแท็บรายวัน
         </div>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ชื่อพนักงาน</TableHead>
-            <TableHead className="text-center">ควรมา</TableHead>
-            <TableHead className="text-center">มาจริง</TableHead>
-            <TableHead className="text-center">วันขาด</TableHead>
-            <TableHead className="text-center">วันสาย</TableHead>
-            <TableHead className="text-center">รวมชั่วโมง</TableHead>
-            <TableHead className="text-center">เฉลี่ย/วัน</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((summary, index) => (
-            <TableRow
-              key={summary.userId || index}
-              className={summary.absentDays > 0 ? 'bg-red-50/60' : undefined}
-            >
-              <TableCell className="font-medium">
-                {onNameClick && summary.userId ? (
-                  <button
-                    type="button"
-                    onClick={() => onNameClick(summary.userId, summary.userName)}
-                    className="text-left hover:text-indigo-600 hover:underline"
-                    title="กดเพื่อดูรายงานรายคน"
-                  >
-                    {summary.userName}
-                  </button>
-                ) : (
-                  summary.userName
-                )}
-              </TableCell>
-              <TableCell className="text-center text-gray-600">
-                {summary.expectedDays ?? summary.presentDays + summary.absentDays}
-              </TableCell>
-              <TableCell className="text-center">
-                <Pill tone="success">{summary.presentDays}</Pill>
-              </TableCell>
-              <TableCell className="text-center">
-                <Pill tone={badgeTone(summary.absentDays > 0 ? 'error' : 'secondary')}>
-                  {summary.absentDays}
-                </Pill>
-              </TableCell>
-              <TableCell className="text-center">
-                <Pill tone={badgeTone(summary.lateDays > 0 ? 'warning' : 'secondary')}>
-                  {summary.lateDays}
-                </Pill>
-              </TableCell>
-              <TableCell className="text-center font-medium">
-                {summary.totalHours.toFixed(2)}
-              </TableCell>
-              <TableCell className="text-center">
-                {(summary.averageHoursPerDay || 0).toFixed(2)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={[
+          {
+            key: 'name', header: 'ชื่อพนักงาน', mobilePrimary: true, sortValue: (summary) => summary.userName,
+            cell: (summary) =>
+              onNameClick && summary.userId ? (
+                <button type="button" onClick={() => onNameClick(summary.userId, summary.userName)} className="text-left font-medium hover:text-red-600 hover:underline" title="กดเพื่อดูรายงานรายคน">
+                  {summary.userName}
+                </button>
+              ) : (
+                <span className="font-medium">{summary.userName}</span>
+              ),
+          },
+          { key: 'expected', header: 'ควรมา', align: 'center', cell: (summary) => <span className="text-gray-600">{summary.expectedDays ?? summary.presentDays + summary.absentDays}</span> },
+          { key: 'present', header: 'มาจริง', align: 'center', sortValue: (summary) => summary.presentDays, cell: (summary) => <Pill tone="success">{summary.presentDays}</Pill> },
+          { key: 'absent', header: 'วันขาด', align: 'center', sortValue: (summary) => summary.absentDays, cell: (summary) => <Pill tone={badgeTone(summary.absentDays > 0 ? 'error' : 'secondary')}>{summary.absentDays}</Pill> },
+          { key: 'late', header: 'วันสาย', align: 'center', sortValue: (summary) => summary.lateDays, cell: (summary) => <Pill tone={badgeTone(summary.lateDays > 0 ? 'warning' : 'secondary')}>{summary.lateDays}</Pill> },
+          { key: 'hours', header: 'รวมชั่วโมง', align: 'center', sortValue: (summary) => summary.totalHours, cell: (summary) => <span className="font-medium">{summary.totalHours.toFixed(2)}</span> },
+          { key: 'avg', header: 'เฉลี่ย/วัน', align: 'center', hideOnMobile: true, cell: (summary) => (summary.averageHoursPerDay || 0).toFixed(2) },
+        ]}
+        rows={sorted}
+        rowKey={(summary, index) => String(summary.userId || index)}
+        rowClassName={(summary) => (summary.absentDays > 0 ? 'bg-red-50/60' : undefined)}
+        emptyTitle="ไม่มีข้อมูล"
+      />
     </div>
   )
 }

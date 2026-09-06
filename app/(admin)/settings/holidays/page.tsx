@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Button as AooButton, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, DataTable } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
 import { useLocations } from '@/hooks/useLocations'
@@ -27,14 +27,6 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table'
 import TechLoader from '@/components/shared/TechLoader'
 import { gradients } from '@/lib/theme/colors'
 import TableFooter from '@/components/shared/TableFooter'
@@ -256,80 +248,67 @@ export default function HolidaysPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>วันที่</TableHead>
-                    <TableHead>ชื่อวันหยุด</TableHead>
-                    <TableHead>ประเภท</TableHead>
-                    <TableHead>การทำงาน</TableHead>
-                    <TableHead>OT Rate</TableHead>
-                    <TableHead>สาขา</TableHead>
-                    <TableHead className="text-right">จัดการ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedHolidays.map(holiday => (
-                    <TableRow key={holiday.id}>
-                      <TableCell>
-                        {format(new Date(holiday.date), 'dd MMM yyyy', { locale: th })}
-                      </TableCell>
-                      <TableCell className="font-medium">
+              <DataTable
+                columns={[
+                  { key: 'date', header: 'วันที่', cell: (holiday) => format(new Date(holiday.date), 'dd MMM yyyy', { locale: th }), sortValue: (holiday) => new Date(holiday.date).getTime(), mobilePrimary: true },
+                  {
+                    key: 'name', header: 'ชื่อวันหยุด', sortValue: (holiday) => holiday.name,
+                    cell: (holiday) => (
+                      <div className="font-medium">
                         {holiday.name}
-                        {holiday.description && (
-                          <p className="text-sm text-gray-500">{holiday.description}</p>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Pill tone={badgeTone(
-                          holiday.type === 'public' ? 'info' : 
-                          holiday.type === 'company' ? 'success' : 
-                          'secondary'
-                        )}>
-                          {HOLIDAY_TYPE_LABELS[holiday.type]}
-                        </Pill>
-                      </TableCell>
-                      <TableCell>
-                        {holiday.isWorkingDay ? (
-                          <Pill tone="warning">
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            ทำงาน
-                          </Pill>
-                        ) : (
-                          <Pill tone="neutral">
-                            <XCircle className="w-4 h-4 mr-1" />
-                            หยุด
-                          </Pill>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {holiday.overtimeRates && (
-                          <div className="text-sm space-y-1">
-                            <div>Office: {holiday.overtimeRates.office}x</div>
-                            <div>Retail: {holiday.overtimeRates.retail}x</div>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {holiday.applicableLocationIds && holiday.applicableLocationIds.length > 0 ? (
-                          <Pill tone="neutral">
-                            {holiday.applicableLocationIds.length} สาขา
-                          </Pill>
-                        ) : (
-                          <Pill tone="success">ทุกสาขา</Pill>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button onClick={() => handleDelete(holiday.id!, holiday.name)}
- variant="ghost"
- size="sm">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        {holiday.description && <p className="text-sm font-normal text-gray-500">{holiday.description}</p>}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'type', header: 'ประเภท',
+                    cell: (holiday) => (
+                      <Pill tone={badgeTone(holiday.type === 'public' ? 'info' : holiday.type === 'company' ? 'success' : 'secondary')}>
+                        {HOLIDAY_TYPE_LABELS[holiday.type]}
+                      </Pill>
+                    ),
+                  },
+                  {
+                    key: 'working', header: 'การทำงาน',
+                    cell: (holiday) =>
+                      holiday.isWorkingDay ? (
+                        <Pill tone="warning"><CheckCircle className="w-4 h-4 mr-1" />ทำงาน</Pill>
+                      ) : (
+                        <Pill tone="neutral"><XCircle className="w-4 h-4 mr-1" />หยุด</Pill>
+                      ),
+                  },
+                  {
+                    key: 'ot', header: 'OT Rate', hideOnMobile: true,
+                    cell: (holiday) =>
+                      holiday.overtimeRates ? (
+                        <div className="text-sm space-y-1">
+                          <div>Office: {holiday.overtimeRates.office}x</div>
+                          <div>Retail: {holiday.overtimeRates.retail}x</div>
+                        </div>
+                      ) : null,
+                  },
+                  {
+                    key: 'branches', header: 'สาขา', hideOnMobile: true,
+                    cell: (holiday) =>
+                      holiday.applicableLocationIds && holiday.applicableLocationIds.length > 0 ? (
+                        <Pill tone="neutral">{holiday.applicableLocationIds.length} สาขา</Pill>
+                      ) : (
+                        <Pill tone="success">ทุกสาขา</Pill>
+                      ),
+                  },
+                  {
+                    key: 'actions', header: '', align: 'right', mobileFooterAction: true,
+                    cell: (holiday) => (
+                      <Button onClick={() => handleDelete(holiday.id!, holiday.name)} variant="ghost" size="sm" aria-label="ลบ">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    ),
+                  },
+                ]}
+                rows={paginatedHolidays}
+                rowKey={(holiday) => holiday.id!}
+                emptyTitle="ไม่มีวันหยุด"
+              />
 
               {/* Pagination */}
               {filteredHolidays.length > 0 && (

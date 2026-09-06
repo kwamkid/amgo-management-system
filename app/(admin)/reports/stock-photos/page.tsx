@@ -315,18 +315,20 @@ export default function StockPhotosReportPage() {
         <div className="space-y-6">
           {byLocation.map((g) => (
             <section key={g.id}>
-              <h3 className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-semibold text-gray-900">
-                <MapPin size={16} className="text-gray-400" />
+              <h3 className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-lg font-semibold text-gray-900">
+                <MapPin size={18} className="text-red-500" />
                 {g.name}
                 <span className="text-sm font-normal text-gray-500">
                   {g.people.length} คน · หน้าร้าน {g.storefront} · สต็อก {g.stock}
                 </span>
               </h3>
-              <div className="space-y-4">
+              {/* พื้นสีอยู่ที่การ์ดสาขา · คนข้างในเป็นแถวเรียบคั่นด้วยเส้น (เจ้าของทัก 7 ก.ย. 69
+                  ว่าใส่พื้นสีที่คนแล้วสาขาที่มี 2 คนยังอ่านยาก) · รูปโปรไฟล์ดึงจาก userId */}
+              <div className="divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-gray-50 px-4">
                 {g.people.map((person) => (
-                  <div key={person.userId} className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <UserCell name={person.userName} />
+                  <div key={person.userId} className="py-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <UserCell name={person.userName} userId={person.userId} size="md" />
                       <span className="text-sm text-gray-500">
                         หน้าร้าน {person.storefront.length} · สต็อก {person.stock.length}
                       </span>
@@ -438,7 +440,7 @@ export default function StockPhotosReportPage() {
               <img src={lightbox.url} alt="" className="mx-auto max-h-[85vh] w-auto rounded-lg" />
             )}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-white/90">
-              <UserCell name={lightbox.userName} />
+              <UserCell name={lightbox.userName} userId={lightbox.userId} />
               <span>{KIND_LABEL[lightbox.kind]}</span>
               <span>{lightbox.locationName}</span>
               <span>{format(new Date(lightbox.takenAt), 'd MMM yyyy HH:mm', { locale: th })}</span>

@@ -145,7 +145,7 @@ export default function SwapManagementPage() {
           <div className="divide-y divide-gray-100">
             {unfiled.map((u) => (
               <div key={`${u.userId}|${u.workDate}`} className="flex items-center gap-3 py-2.5">
-                <UserCell name={u.userName} />
+                <UserCell name={u.userName} userId={u.userId} />
                 <span className="text-sm text-gray-600">{thaiDate(u.workDate)}</span>
               </div>
             ))}

@@ -4811,6 +4811,15 @@ export type Database = {
         Returns: number
       }
       srp_role: { Args: { b_id: string }; Returns: string }
+      storage_usage: {
+        Args: never
+        Returns: {
+          bucket: string
+          bytes: number
+          files: number
+          oldest: string
+        }[]
+      }
       sum_total_hours: {
         Args: never
         Returns: {

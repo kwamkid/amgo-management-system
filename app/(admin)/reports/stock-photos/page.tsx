@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
 import { DatePicker, EmptyState } from '@/components/aoo'
 import { FilterBar, FilterSelect, PageHeader, SectionCard, Segmented, Skeleton, UserCell } from '@/components/shared'
+import StorageStatusCard from '@/components/reports/StorageStatusCard'
 import {
   listPhotos,
   listPhotoDays,
@@ -166,6 +167,37 @@ export default function StockPhotosReportPage() {
 
   const shift = (n: number) => setDay(iso(addDays(new Date(`${day}T00:00:00`), n)))
 
+  // ลำดับรูปใน lightbox = ลำดับที่เห็นบนจอ (สาขา → คน → หน้าร้าน → สต็อก / รายคน: วันล่าสุดก่อน)
+  // เจ้าของขอ 7 ก.ย. 69: กด ←/→ ดูรูปถัดไปได้เลย · Esc หรือคลิกนอกรูป = ปิด
+  const lightboxList = useMemo<StockPhoto[]>(
+    () =>
+      mode === 'day'
+        ? byLocation.flatMap((l) => l.people.flatMap((g) => [...g.storefront, ...g.stock]))
+        : rangeByDay.flatMap((d) => d.photos),
+    [mode, byLocation, rangeByDay]
+  )
+  const lightboxIndex = lightbox ? lightboxList.findIndex((p) => p.id === lightbox.id) : -1
+  const goLightbox = useCallback(
+    (step: number) => {
+      const n = lightboxIndex + step
+      if (n >= 0 && n < lightboxList.length) setLightbox(lightboxList[n])
+    },
+    [lightboxIndex, lightboxList]
+  )
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightbox(null)
+      else if (e.key === 'ArrowLeft') goLightbox(-1)
+      else if (e.key === 'ArrowRight') goLightbox(1)
+    }
+    window.addEventListener('keydown', onKey)
+    // โหลดรูปถัดไปรอไว้ — กดแล้วขึ้นทันที
+    const next = lightboxList[lightboxIndex + 1]
+    if (next?.url) new Image().src = next.url
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, lightboxIndex, lightboxList, goLightbox])
+
   const kindBlock = (kind: StockPhotoKind, list: StockPhoto[]) => {
     return (
       <SectionCard key={kind} title={`${KIND_LABEL[kind]} (${list.length})`}>
@@ -206,6 +238,9 @@ export default function StockPhotosReportPage() {
         icon={Camera}
       />
 
+      {/* ใกล้เต็มยัง — เจ้าของขอ 7 ก.ย. 69 · admin แก้โควตาได้เมื่ออัปเกรดแพลน */}
+      <StorageStatusCard canEditQuota={userData?.role === 'admin'} />
+
       <FilterBar>
         <Segmented
           value={mode}
@@ -219,12 +254,12 @@ export default function StockPhotosReportPage() {
           <>
             <FilterSelect label="สาขา" value={locationId} options={locations} onChange={setLocationId} />
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => shift(-1)} className="rounded-lg border border-gray-200 p-1.5 hover:bg-gray-50">
-                <ChevronLeft size={16} />
+              <button type="button" onClick={() => shift(-1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+                <ChevronLeft size={18} />
               </button>
               <DatePicker value={day} onChange={setDay} />
-              <button type="button" onClick={() => shift(1)} className="rounded-lg border border-gray-200 p-1.5 hover:bg-gray-50">
-                <ChevronRight size={16} />
+              <button type="button" onClick={() => shift(1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+                <ChevronRight size={18} />
               </button>
             </div>
           </>
@@ -369,19 +404,49 @@ export default function StockPhotosReportPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={() => setLightbox(null)}
         >
-          <button type="button" className="absolute right-4 top-4 text-white" onClick={() => setLightbox(null)}>
-            <X size={24} />
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            onClick={() => setLightbox(null)}
+            aria-label="ปิด"
+          >
+            <X size={22} />
           </button>
-          <div className="max-h-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+          {lightboxIndex > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); goLightbox(-1) }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+              aria-label="รูปก่อนหน้า"
+            >
+              <ChevronLeft size={28} />
+            </button>
+          )}
+          {lightboxIndex >= 0 && lightboxIndex < lightboxList.length - 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); goLightbox(1) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
+              aria-label="รูปถัดไป"
+            >
+              <ChevronRight size={28} />
+            </button>
+          )}
+          <div className="max-h-full max-w-5xl text-center" onClick={(e) => e.stopPropagation()}>
             {lightbox.url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={lightbox.url} alt="" className="max-h-[85vh] w-auto rounded-lg" />
+              <img src={lightbox.url} alt="" className="mx-auto max-h-[85vh] w-auto rounded-lg" />
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/90">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-white/90">
               <UserCell name={lightbox.userName} />
               <span>{KIND_LABEL[lightbox.kind]}</span>
               <span>{lightbox.locationName}</span>
               <span>{format(new Date(lightbox.takenAt), 'd MMM yyyy HH:mm', { locale: th })}</span>
+              {lightboxIndex >= 0 && (
+                <span className="tabular-nums text-white/60">
+                  {lightboxIndex + 1} / {lightboxList.length}
+                </span>
+              )}
             </div>
           </div>
         </div>

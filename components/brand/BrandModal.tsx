@@ -9,16 +9,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { Brand } from '@/types/influencer'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-
-import { Textarea, Label, Input, Button } from '@/components/aoo'
+import { Textarea, Label, Input, Button, Modal } from '@/components/aoo'
 interface BrandModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -120,17 +111,9 @@ export default function BrandModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Modal open={open} onClose={() => ((onOpenChange))(false)} title={<>{mode === 'create' ? 'เพิ่ม Brand ใหม่' : 'แก้ไข Brand'}</>} description={<>กรอกข้อมูล Brand สำหรับใช้ใน Campaign</>} maxWidth={500}>
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'เพิ่ม Brand ใหม่' : 'แก้ไข Brand'}
-            </DialogTitle>
-            <DialogDescription>
-              กรอกข้อมูล Brand สำหรับใช้ใน Campaign
-            </DialogDescription>
-          </DialogHeader>
+          
 
           <div className="space-y-4 py-4">
             {/* Brand Name */}
@@ -209,7 +192,7 @@ export default function BrandModal({
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="soft" onClick={() => onOpenChange(false)}
  disabled={isSubmitting}>
               ยกเลิก
@@ -224,9 +207,8 @@ export default function BrandModal({
                 mode === 'create' ? 'เพิ่ม Brand' : 'บันทึกการแก้ไข'
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </Modal>
   )
 }

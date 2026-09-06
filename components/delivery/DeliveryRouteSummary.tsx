@@ -16,14 +16,7 @@ import {
   Share2,
   CheckCircle
 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-
-import { Progress, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Progress, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Modal } from '@/components/aoo'
 interface DeliveryRouteSummaryProps {
   deliveries: DeliveryPoint[]
   date: string
@@ -242,11 +235,8 @@ export default function DeliveryRouteSummary({
       </Card>
 
       {/* Share Dialog */}
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>แชร์สรุปประจำวัน</DialogTitle>
-          </DialogHeader>
+      <Modal open={showShareDialog} onClose={() => ((setShowShareDialog))(false)} title={<>แชร์สรุปประจำวัน</>}>
+          
           
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-lg p-4">
@@ -267,8 +257,7 @@ export default function DeliveryRouteSummary({
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </Modal>
     </>
   )
 }

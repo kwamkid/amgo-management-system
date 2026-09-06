@@ -10,15 +10,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { Product, Brand } from '@/types/influencer'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Textarea, Label, Input, Button, Select } from '@/components/aoo'
+import { Textarea, Label, Input, Button, Select, Modal } from '@/components/aoo'
 interface ProductModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -135,17 +127,9 @@ export default function ProductModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Modal open={open} onClose={() => ((onOpenChange))(false)} title={<>{mode === 'create' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขสินค้า'}</>} description={<>กรอกข้อมูลสินค้าสำหรับใช้ใน Campaign</>} maxWidth={500}>
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขสินค้า'}
-            </DialogTitle>
-            <DialogDescription>
-              กรอกข้อมูลสินค้าสำหรับใช้ใน Campaign
-            </DialogDescription>
-          </DialogHeader>
+          
 
           <div className="space-y-4 py-4">
             {/* Brand Selection */}
@@ -251,7 +235,7 @@ export default function ProductModal({
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="soft" onClick={() => onOpenChange(false)}
  disabled={isSubmitting}>
               ยกเลิก
@@ -266,9 +250,8 @@ export default function ProductModal({
                 mode === 'create' ? 'เพิ่มสินค้า' : 'บันทึกการแก้ไข'
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </Modal>
   )
 }

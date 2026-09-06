@@ -21,23 +21,13 @@ import {
 } from 'lucide-react'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
 import { PageHeader } from '@/components/shared'
-import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
+import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select, Modal } from '@/components/aoo'
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
 }
@@ -485,43 +475,23 @@ export default function LeaveManagementPage() {
       )}
       
       {/* Approve Dialog */}
-      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              ยืนยันการอนุมัติ
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณต้องการอนุมัติคำขอลานี้หรือไม่?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedLeaveId(null)}>
+      <Modal open={approveDialogOpen} onClose={() => ((setApproveDialogOpen))(false)} title={<><span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" />
+              ยืนยันการอนุมัติ</span></>} description={<>คุณต้องการอนุมัติคำขอลานี้หรือไม่?</>}>
+          
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => { (() => setSelectedLeaveId(null))(); ((setApproveDialogOpen))(false) }}>
               ยกเลิก
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmApprove}
-              className="bg-green-600 hover:bg-green-700"
-            >
+            </Button>
+            <Button onClick={async () => { await (confirmApprove)(); ((setApproveDialogOpen))(false) }}>
               อนุมัติ
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
       
       {/* Reject Dialog */}
-      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-600" />
-              ไม่อนุมัติคำขอลา
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              กรุณาระบุเหตุผลที่ไม่อนุมัติคำขอลานี้
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+      <Modal open={rejectDialogOpen} onClose={() => ((setRejectDialogOpen))(false)} title={<><span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-red-600" />
+              ไม่อนุมัติคำขอลา</span></>} description={<>กรุณาระบุเหตุผลที่ไม่อนุมัติคำขอลานี้</>}>
+          
           <div className="py-4">
             <Textarea
               placeholder="ระบุเหตุผล..."
@@ -530,36 +500,25 @@ export default function LeaveManagementPage() {
               className="min-h-[100px]"
             />
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => { (() => {
               setSelectedLeaveId(null)
               setRejectReason('')
-            }}>
+            })(); ((setRejectDialogOpen))(false) }}>
               ยกเลิก
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmReject}
-              disabled={!rejectReason.trim()}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            </Button>
+            <Button variant="danger" onClick={async () => { await (confirmReject)(); ((setRejectDialogOpen))(false) }} 
+ 
+ disabled={!rejectReason.trim()}>
               ไม่อนุมัติ
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
       
       {/* Cancel Approved Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-orange-600" />
-              ยกเลิกคำขอที่อนุมัติแล้ว
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              การยกเลิกจะคืนโควต้าให้กับพนักงาน กรุณาระบุเหตุผล
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+      <Modal open={cancelDialogOpen} onClose={() => ((setCancelDialogOpen))(false)} title={<><span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-orange-600" />
+              ยกเลิกคำขอที่อนุมัติแล้ว</span></>} description={<>การยกเลิกจะคืนโควต้าให้กับพนักงาน กรุณาระบุเหตุผล</>}>
+          
           <div className="py-4 space-y-3">
             <Textarea
               placeholder="ระบุเหตุผลที่ยกเลิก..."
@@ -573,23 +532,20 @@ export default function LeaveManagementPage() {
               </div>
             </Alert>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => { (() => {
               setSelectedLeaveId(null)
               setCancelReason('')
-            }}>
+            })(); ((setCancelDialogOpen))(false) }}>
               ไม่ยกเลิก
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmCancelApproved}
-              disabled={!cancelReason.trim()}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
+            </Button>
+            <Button variant="danger" onClick={async () => { await (confirmCancelApproved)(); ((setCancelDialogOpen))(false) }} 
+ 
+ disabled={!cancelReason.trim()}>
               ยืนยันยกเลิก
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button as AooButton, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Button as AooButton, Pill, Card, CardContent, CardHeader, CardTitle, Button, Modal } from '@/components/aoo'
 import { Skeleton, PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
 import { 
@@ -22,16 +22,6 @@ import { useLeave } from '@/hooks/useLeave';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toDate } from '@/lib/utils/date'
 
 
@@ -355,56 +345,34 @@ export default function LeaveHistoryPage() {
       )}
       
       {/* Cancel Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการยกเลิกคำขอลา</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณต้องการยกเลิกคำขอลานี้หรือไม่? การยกเลิกไม่สามารถแก้ไขได้
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ไม่ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleCancelLeave}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
+      <Modal open={cancelDialogOpen} onClose={() => ((setCancelDialogOpen))(false)} title={<>ยืนยันการยกเลิกคำขอลา</>} description={<>คุณต้องการยกเลิกคำขอลานี้หรือไม่? การยกเลิกไม่สามารถแก้ไขได้</>}>
+          
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => ((setCancelDialogOpen))(false)}>ไม่ยกเลิก</Button>
+            <Button variant="danger" onClick={async () => { await (handleCancelLeave)(); ((setCancelDialogOpen))(false) }}>
               ยืนยันยกเลิก
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
       
       {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              ยกเลิกคำขอลาสำเร็จ
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              คำขอลาของคุณถูกยกเลิกเรียบร้อยแล้ว
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+      <Modal open={showSuccessDialog} onClose={() => ((setShowSuccessDialog))(false)} title={<><span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" />
+              ยกเลิกคำขอลาสำเร็จ</span></>} description={<>คำขอลาของคุณถูกยกเลิกเรียบร้อยแล้ว</>}>
+          
           <div className="py-4">
             <p className="font-medium text-center">ต้องการยื่นคำขอลาใหม่หรือไม่?</p>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ปิด</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => ((setShowSuccessDialog))(false)}>ปิด</Button>
+            <Button onClick={async () => { await (() => {
                 setShowSuccessDialog(false);
                 router.push('/leaves/request');
-              }}
-              className="bg-gradient-to-r from-red-500 to-rose-600"
-            >
+              })(); ((setShowSuccessDialog))(false) }}>
               <Plus className="w-4 h-4 mr-2" />
               ยื่นคำขอใหม่
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
     </div>
   );
 }

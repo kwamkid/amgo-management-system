@@ -4,18 +4,8 @@ import { useState } from 'react'
 import { User } from '@/types/user'
 import { deleteUser, softDeleteUser } from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Trash2, AlertTriangle, Info } from 'lucide-react'
-import { Checkbox, Label, Alert, Button } from '@/components/aoo'
+import { Checkbox, Label, Alert, Button, Modal } from '@/components/aoo'
 interface DeleteUserDialogProps {
   user: User | null
   open: boolean
@@ -71,18 +61,11 @@ export default function DeleteUserDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => {
+    <Modal open={open} onClose={() => (((isOpen) => {
       onOpenChange(isOpen)
       if (!isOpen) resetDialog()
-    }}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-            <AlertTriangle className="w-5 h-5" />
-            ลบพนักงาน
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            <div className="space-y-4">
+    }))(false)} title={<><span className="flex items-center gap-2 text-red-600"><AlertTriangle className="w-5 h-5" />
+            ลบพนักงาน</span></>} description={<><div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="font-medium text-gray-900">
                   {user.fullName || user.lineDisplayName}
@@ -171,14 +154,16 @@ export default function DeleteUserDialog({
                   ฉันเข้าใจและยืนยันที่จะ{deleteType === 'soft' ? 'ปิดการใช้งาน' : 'ลบ'}พนักงานคนนี้
                 </Label>
               </div>
-            </div>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+            </div></>} maxWidth={448}>
         
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>
+        
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={() => (((isOpen) => {
+      onOpenChange(isOpen)
+      if (!isOpen) resetDialog()
+    }))(false)} disabled={isDeleting}>
             ยกเลิก
-          </AlertDialogCancel>
+          </Button>
           <Button onClick={handleDelete} disabled={!confirmChecked || isDeleting} className={deleteType === 'permanent' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700' }>
             {isDeleting ? (
               <>
@@ -192,8 +177,7 @@ export default function DeleteUserDialog({
               </>
             )}
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </div>
+      </Modal>
   )
 }

@@ -22,24 +22,9 @@ import {
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import FilterBar, { FilterSelect } from '@/components/shared/FilterBar'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/useToast'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Card, CardContent, Button } from '@/components/aoo'
+import { DatePicker, Card, CardContent, Button, Modal } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -884,9 +869,8 @@ export default function DeliveryMapPage() {
       </div>
 
       {/* Lightbox Dialog */}
-      <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
-        <DialogContent className="max-w-4xl p-0 [&>button]:hidden">
-          <DialogTitle className="sr-only">รูปภาพการส่งของ</DialogTitle>
+      <Modal open={showLightbox} onClose={() => ((setShowLightbox))(false)} maxWidth={896} hideCloseButton>
+          
           <div className="relative">
             <img
               src={lightboxImage}
@@ -897,31 +881,20 @@ export default function DeliveryMapPage() {
               <X className="w-4 h-4" />
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </Modal>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการลบ</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณแน่ใจหรือไม่ที่จะลบจุดส่งของนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletePointId(null)}>
+      <Modal open={showDeleteDialog} onClose={() => ((setShowDeleteDialog))(false)} title={<>ยืนยันการลบ</>} description={<>คุณแน่ใจหรือไม่ที่จะลบจุดส่งของนี้? การกระทำนี้ไม่สามารถย้อนกลับได้</>}>
+          
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => { (() => setDeletePointId(null))(); ((setShowDeleteDialog))(false) }}>
               ยกเลิก
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            </Button>
+            <Button variant="danger" onClick={async () => { await (handleDelete)(); ((setShowDeleteDialog))(false) }}>
               ลบ
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </Modal>
     </div>
   )
 }

@@ -2,14 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   ArrowRight,
   Loader2,
   CheckCircle,
@@ -29,7 +21,7 @@ import {
 import { carryOverQuotaForAllUsers, checkCarryOverExists, checkQuotaExistsForYear } from '@/lib/services/leaveService'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Toggle, Checkbox, Label, Input, Alert, Pill, Button } from '@/components/aoo'
+import { Toggle, Checkbox, Label, Input, Alert, Pill, Button, Modal } from '@/components/aoo'
 interface CarryOverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -166,17 +158,9 @@ export default function CarryOverDialog({
   ]
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-red-600" />
-            ยกยอดโควต้าวันลา
-          </DialogTitle>
-          <DialogDescription>
-            ยกยอดวันลาคงเหลือจากปี {fromYear} ไปปี {toYear}
-          </DialogDescription>
-        </DialogHeader>
+    <Modal open={open} onClose={() => ((handleClose))()} title={<><span className="flex items-center gap-2"><RefreshCw className="w-5 h-5 text-red-600" />
+            ยกยอดโควต้าวันลา</span></>} description={<>ยกยอดวันลาคงเหลือจากปี {fromYear} ไปปี {toYear}</>} maxWidth={512}>
+        
 
         {/* Step: Config */}
         {step === 'config' && (
@@ -308,7 +292,7 @@ export default function CarryOverDialog({
               ))}
             </div>
 
-            <DialogFooter>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button variant="soft" onClick={handleClose}>
                 ยกเลิก
               </Button>
@@ -325,7 +309,7 @@ export default function CarryOverDialog({
                 ถัดไป
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
 
@@ -409,14 +393,14 @@ export default function CarryOverDialog({
               </div>
             )}
 
-            <DialogFooter>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button variant="soft" onClick={() => setStep('config')}>
                 ย้อนกลับ
               </Button>
               <Button onClick={handleCarryOver} className="-" disabled={previousCarryOver && !confirmDuplicate}>
                 ยืนยันยกยอด
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
 
@@ -510,14 +494,13 @@ export default function CarryOverDialog({
               </div>
             )}
 
-            <DialogFooter>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button onClick={handleClose} className="w-full">
                 ปิด
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </Modal>
   )
 }

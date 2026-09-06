@@ -3,12 +3,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   Cake,
   Gift,
   PartyPopper,
@@ -17,7 +11,7 @@ import { UserData } from '@/hooks/useAuth';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 
-import { Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
+import { Pill, Card, CardContent, CardHeader, CardTitle, Modal, Button } from '@/components/aoo'
 interface EmployeeSectionProps {
   userData: UserData;
 }
@@ -344,14 +338,9 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
       </div>
 
       {/* Birthday Dialog */}
-      <Dialog open={showBirthdayDialog} onOpenChange={setShowBirthdayDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Cake className="w-5 h-5 text-pink-600" />
-              วันเกิดวันที่ {selectedDate && format(selectedDate, 'dd MMMM', { locale: th })}
-            </DialogTitle>
-          </DialogHeader>
+      <Modal open={showBirthdayDialog} onClose={() => ((setShowBirthdayDialog))(false)} title={<><span className="flex items-center gap-2"><Cake className="w-5 h-5 text-pink-600" />
+              วันเกิดวันที่ {selectedDate && format(selectedDate, 'dd MMMM', { locale: th })}</span></>}>
+          
           <div className="space-y-4 mt-4">
             {selectedDate && getBirthdaysForDay(selectedDate).map(user => {
               const age = new Date().getFullYear() - user.birthDate.getFullYear();
@@ -380,8 +369,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
               );
             })}
           </div>
-        </DialogContent>
-      </Dialog>
+        </Modal>
     </div>
   );
 }

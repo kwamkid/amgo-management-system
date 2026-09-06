@@ -11,16 +11,9 @@ import {
   User
 } from 'lucide-react'
 import { Child } from '@/types/influencer'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Label, Input, Pill, Card, Button } from '@/components/aoo'
+import { Label, Input, Pill, Card, Button, Select } from '@/components/aoo'
 interface ChildrenManagerProps {
   childrenData: Child[]
   onChange: (children: Child[]) => void
@@ -219,28 +212,16 @@ export default function ChildrenManager({
                 <Label htmlFor="child-gender">เพศ</Label>
                 <Select
                   value={newChild.gender}
-                  onValueChange={(value: 'male' | 'female') => 
+                  onChange={(e) => ((value: 'male' | 'female') => 
                     setNewChild({ ...newChild, gender: value })
-                  }
+                  )(e.target.value as 'male' | 'female')}
                   disabled={disabled}
                 >
-                  <SelectTrigger id="child-gender">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                        ชาย
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="female">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-pink-500 rounded-full" />
-                        หญิง
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
+                  
+                  
+                    <option value="male">ชาย</option>
+                    <option value="female">หญิง</option>
+                  
                 </Select>
               </div>
             </div>

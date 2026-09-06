@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,13 +19,6 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
 import { backfillWorkDay } from '@/lib/services/checkinService'
 import UserScheduleDialog from '@/components/users/UserScheduleDialog'
@@ -352,16 +345,14 @@ function PaginationControls({
         <span className="text-xs text-gray-500">แสดง</span>
         <Select
           value={String(pageSize ?? 50)}
-          onValueChange={(v) => onPageSizeChange?.(Number(v))}
-        >
-          <SelectTrigger className="h-7 w-16 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
+          onChange={(e) => ((v) => onPageSizeChange?.(Number(v)))(e.target.value)}
+         className="h-7 w-16 text-xs">
+          
+          
             {[20, 50, 100, 200].map(n => (
-              <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+              <option key={n} value={String(n)} className="text-xs">{n}</option>
             ))}
-          </SelectContent>
+          
         </Select>
         <span className="text-xs text-gray-500">รายการ/หน้า</span>
         {pagination && (

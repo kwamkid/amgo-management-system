@@ -18,15 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-
-import { Textarea, Label, Input, Button } from '@/components/aoo'
+import { Textarea, Label, Input, Button, Select } from '@/components/aoo'
 interface ProductModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -164,31 +156,19 @@ export default function ProductModal({
               </Label>
               <Select
                 value={formData.brandId}
-                onValueChange={(value) => {
+                onChange={(e) => ((value) => {
                   setFormData({ ...formData, brandId: value })
                   setErrors({ ...errors, brandId: '' })
-                }}
+                })(e.target.value)}
                 disabled={mode === 'edit'}
               >
-                <SelectTrigger id="product-brand" className={errors.brandId ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="เลือก Brand" />
-                </SelectTrigger>
-                <SelectContent>
+<option value="">เลือก Brand</option>
+                
+                
                   {brands.map(brand => (
-                    <SelectItem key={brand.id} value={brand.id!}>
-                      <div className="flex items-center gap-2">
-                        {brand.logo && (
-                          <img 
-                            src={brand.logo} 
-                            alt={brand.name}
-                            className="w-5 h-5 object-contain"
-                          />
-                        )}
-                        {brand.name}
-                      </div>
-                    </SelectItem>
+                    <option key={brand.id} value={brand.id!}>{brand.name}</option>
                   ))}
-                </SelectContent>
+                
               </Select>
               {errors.brandId && (
                 <p className="text-sm text-red-600 mt-1">{errors.brandId}</p>

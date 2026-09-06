@@ -23,19 +23,11 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
 import Image from 'next/image'
 import { THAI_BANKS } from '@/lib/constants/banks'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-
 const ROLE_TH: Record<string, string> = {
   admin: 'ผู้ดูแลระบบ — แก้ได้ทุกคน',
   hr: 'ฝ่ายบุคคล — แก้ได้ทุกคน (ยกเว้นผู้ดูแลระบบ)',
@@ -393,19 +385,16 @@ export default function UserEditForm({
                 <Label htmlFor="company">บริษัท</Label>
                 <Select
                   value={formData.companyId ?? ''}
-                  onValueChange={(v) => setFormData({ ...formData, companyId: v || null })}
+                  onChange={(e) => ((v) => setFormData({ ...formData, companyId: v || null }))(e.target.value)}
                   disabled={isLoading}
                 >
-                  <SelectTrigger id="company">
-                    <SelectValue placeholder="— ยังไม่ระบุ —" />
-                  </SelectTrigger>
-                  <SelectContent>
+<option value="">— ยังไม่ระบุ —</option>
+                  
+                  
                     {companies.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.code} · {c.name_th}
-                      </SelectItem>
+                      <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>
                     ))}
-                  </SelectContent>
+                  
                 </Select>
               </div>
 
@@ -413,19 +402,16 @@ export default function UserEditForm({
                 <Label htmlFor="jobFunction">ตำแหน่ง</Label>
                 <Select
                   value={formData.jobFunctionId ?? ''}
-                  onValueChange={(v) => setFormData({ ...formData, jobFunctionId: v || null })}
+                  onChange={(e) => ((v) => setFormData({ ...formData, jobFunctionId: v || null }))(e.target.value)}
                   disabled={isLoading}
                 >
-                  <SelectTrigger id="jobFunction">
-                    <SelectValue placeholder="— ยังไม่ระบุ —" />
-                  </SelectTrigger>
-                  <SelectContent>
+<option value="">— ยังไม่ระบุ —</option>
+                  
+                  
                     {functions.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.name_th}
-                      </SelectItem>
+                      <option key={f.id} value={f.id}>{f.name_th}</option>
                     ))}
-                  </SelectContent>
+                  
                 </Select>
                 {(() => {
                   const picked = functions.find((f) => f.id === formData.jobFunctionId)

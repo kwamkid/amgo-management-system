@@ -19,7 +19,6 @@ import {
   FileText,
   ChevronRight
 } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import {
@@ -38,7 +37,7 @@ import { th } from 'date-fns/locale'
 import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
 import { PageHeader } from '@/components/shared'
-import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
 }
@@ -327,17 +326,16 @@ export default function LeaveManagementPage() {
               </div>
             </div>
             
-            <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="สถานะ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ทั้งหมด</SelectItem>
-                <SelectItem value="pending">รออนุมัติ</SelectItem>
-                <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
-                <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
-                <SelectItem value="cancelled">ยกเลิก</SelectItem>
-              </SelectContent>
+            <Select value={filter} onChange={(e) => ((value: any) => setFilter(value))(e.target.value)} className="w-full md:w-48">
+<option value="">สถานะ</option>
+              
+              
+                <option value="all">ทั้งหมด</option>
+                <option value="pending">รออนุมัติ</option>
+                <option value="approved">อนุมัติแล้ว</option>
+                <option value="rejected">ไม่อนุมัติ</option>
+                <option value="cancelled">ยกเลิก</option>
+              
             </Select>
           </div>
         </CardContent>

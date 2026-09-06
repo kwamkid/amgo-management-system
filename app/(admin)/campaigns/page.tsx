@@ -37,13 +37,6 @@ import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -56,7 +49,7 @@ import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
 import { Pagination } from '@/components/ui/pagination'
-import { Input, Pill, Card, Button } from '@/components/aoo'
+import { Input, Pill, Card, Button, Select } from '@/components/aoo'
 export default function CampaignsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -424,19 +417,16 @@ export default function CampaignsPage() {
                 </label>
                 <Select
                   value={creatorFilter || "all"}
-                  onValueChange={(value) => setCreatorFilter(value === "all" ? "" : value)}
-                >
-                  <SelectTrigger className="text-base">
-                    <SelectValue placeholder="เลือกผู้สร้าง" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
+                  onChange={(e) => ((value) => setCreatorFilter(value === "all" ? "" : value))(e.target.value)}
+                 className="text-base">
+<option value="">เลือกผู้สร้าง</option>
+                  
+                  
+                    <option value="all">ทั้งหมด</option>
                     {uniqueCreators.map(creator => (
-                      <SelectItem key={creator.id} value={creator.id}>
-                        {creator.name}
-                      </SelectItem>
+                      <option key={creator.id} value={creator.id}>{creator.name}</option>
                     ))}
-                  </SelectContent>
+                  
                 </Select>
               </div>
             </div>

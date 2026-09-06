@@ -17,15 +17,7 @@ import {
   MapPin,
   AlertCircle
 } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-
-import { Textarea, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Textarea, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 interface InviteLinkFormProps {
   initialData?: InviteLink
   onSubmit: (data: CreateInviteLinkData) => Promise<boolean>
@@ -165,18 +157,16 @@ export default function InviteLinkForm({
               <Label htmlFor="defaultRole">สิทธิ์การใช้งาน</Label>
               <Select
                 value={formData.defaultRole}
-                onValueChange={(value) => setFormData({ ...formData, defaultRole: value as any })}
+                onChange={(e) => ((value) => setFormData({ ...formData, defaultRole: value as any }))(e.target.value)}
                 disabled={isSubmitting}
               >
-                <SelectTrigger id="defaultRole">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">พนักงาน</SelectItem>
-                  <SelectItem value="manager">ผู้จัดการ</SelectItem>
-                  <SelectItem value="hr">ฝ่ายบุคคล</SelectItem>
-                  <SelectItem value="driver">พนักงานขับรถ</SelectItem>
-                </SelectContent>
+                
+                
+                  <option value="employee">พนักงาน</option>
+                  <option value="manager">ผู้จัดการ</option>
+                  <option value="hr">ฝ่ายบุคคล</option>
+                  <option value="driver">พนักงานขับรถ</option>
+                
               </Select>
             </div>
             

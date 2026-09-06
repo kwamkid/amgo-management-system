@@ -24,7 +24,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react'
-import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
@@ -48,13 +48,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Pagination } from '@/components/ui/pagination'
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
 import { PageHeader } from '@/components/shared'
@@ -593,16 +586,14 @@ export default function LeaveQuotaManagementPage() {
               </div>
             </div>
             
-            <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-              <SelectTrigger className="w-full md:w-48">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="กรองข้อมูล" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">แสดงทั้งหมด</SelectItem>
-                <SelectItem value="has-quota">มีโควต้าแล้ว</SelectItem>
-                <SelectItem value="no-quota">ยังไม่มีโควต้า</SelectItem>
-              </SelectContent>
+            <Select value={filterType} onChange={(e) => ((value: any) => setFilterType(value))(e.target.value)} className="w-full md:w-48">
+<option value="">กรองข้อมูล</option>
+              
+              
+                <option value="all">แสดงทั้งหมด</option>
+                <option value="has-quota">มีโควต้าแล้ว</option>
+                <option value="no-quota">ยังไม่มีโควต้า</option>
+              
             </Select>
           </div>
         </CardContent>

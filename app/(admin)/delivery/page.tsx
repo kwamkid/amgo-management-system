@@ -22,14 +22,7 @@ import {
 } from 'lucide-react'
 import TechLoader from '@/components/shared/TechLoader'
 import { getDeliveryPoints } from '@/lib/services/deliveryService'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { SelectMenu, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { SelectMenu, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 export default function DeliveryDashboardPage() {
   const router = useRouter()
   const { userData } = useAuth()

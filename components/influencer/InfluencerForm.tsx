@@ -25,14 +25,7 @@ import {
 } from '@/types/influencer'
 import SocialChannelManager from './SocialChannelManager'
 import ChildrenManager from './ChildrenManager'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 interface InfluencerFormProps {
   influencer?: Influencer | null // For edit mode
   onSubmit: (data: CreateInfluencerData) => Promise<string | null | boolean>
@@ -266,20 +259,18 @@ export default function InfluencerForm({
               <Select
                 key={`tier-${formData.tier}`}
                 value={formData.tier || 'nano'}
-                onValueChange={(value: InfluencerTier) => {
+                onChange={(e) => ((value: InfluencerTier) => {
                   console.log('Tier changing from', formData.tier, 'to', value)
                   setFormData(prev => ({ ...prev, tier: value }))
-                }}
+                })(e.target.value as InfluencerTier)}
               >
-                <SelectTrigger id="tier">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nano">Nano (&lt;10K)</SelectItem>
-                  <SelectItem value="micro">Micro (10K-100K)</SelectItem>
-                  <SelectItem value="macro">Macro (100K-1M)</SelectItem>
-                  <SelectItem value="mega">Mega (&gt;1M)</SelectItem>
-                </SelectContent>
+                
+                
+                  <option value="nano">Nano (&lt;10K)</option>
+                  <option value="micro">Micro (10K-100K)</option>
+                  <option value="macro">Macro (100K-1M)</option>
+                  <option value="mega">Mega (&gt;1M)</option>
+                
               </Select>
               <p className="text-xs text-gray-500 mt-1">
                 จะคำนวณอัตโนมัติจาก total followers
@@ -397,18 +388,15 @@ export default function InfluencerForm({
               <Label htmlFor="province">จังหวัด</Label>
               <Select
                 value={formData.province}
-                onValueChange={(value) => setFormData({ ...formData, province: value })}
+                onChange={(e) => ((value) => setFormData({ ...formData, province: value }))(e.target.value)}
               >
-                <SelectTrigger id="province">
-                  <SelectValue placeholder="เลือกจังหวัด" />
-                </SelectTrigger>
-                <SelectContent>
+<option value="">เลือกจังหวัด</option>
+                
+                
                   {THAILAND_PROVINCES.map(province => (
-                    <SelectItem key={province} value={province}>
-                      {province}
-                    </SelectItem>
+                    <option key={province} value={province}>{province}</option>
                   ))}
-                </SelectContent>
+                
               </Select>
             </div>
           </CardContent>

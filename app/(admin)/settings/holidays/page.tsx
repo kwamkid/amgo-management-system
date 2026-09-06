@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button as AooButton, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Button as AooButton, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
 import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
@@ -27,13 +27,6 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -212,33 +205,27 @@ export default function HolidaysPage() {
             
             <Select
               value={selectedYear.toString()}
-              onValueChange={(value) => setSelectedYear(Number(value))}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              onChange={(e) => ((value) => setSelectedYear(Number(value)))(e.target.value)}
+             className="w-40">
+              
+              
                 {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(year => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
+                  <option key={year} value={year.toString()}>{year}</option>
                 ))}
-              </SelectContent>
+              
             </Select>
             
             <Select
               value={selectedType}
-              onValueChange={setSelectedType}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ทุกประเภท</SelectItem>
-                <SelectItem value="public">วันหยุดราชการ</SelectItem>
-                <SelectItem value="company">วันหยุดบริษัท</SelectItem>
-                <SelectItem value="special">วันหยุดพิเศษ</SelectItem>
-              </SelectContent>
+              onChange={(e) => (setSelectedType)(e.target.value)}
+             className="w-48">
+              
+              
+                <option value="all">ทุกประเภท</option>
+                <option value="public">วันหยุดราชการ</option>
+                <option value="company">วันหยุดบริษัท</option>
+                <option value="special">วันหยุดพิเศษ</option>
+              
             </Select>
           </div>
         </CardContent>

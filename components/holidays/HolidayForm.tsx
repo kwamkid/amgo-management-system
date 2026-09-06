@@ -22,15 +22,8 @@ import {
 } from 'lucide-react'
 import { format, eachDayOfInterval, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select'
 import { gradients } from '@/lib/theme/colors'
-import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
 interface HolidayFormProps {
   initialData?: Holiday
   onSubmit: (data: HolidayFormData) => Promise<boolean>
@@ -252,18 +245,14 @@ export default function HolidayForm({
               <Label htmlFor="type">ประเภทวันหยุด</Label>
               <Select
                 value={formData.type}
-                onValueChange={(value: Holiday['type']) => setFormData({...formData, type: value})}
+                onChange={(e) => ((value: Holiday['type']) => setFormData({...formData, type: value}))(e.target.value as 'public' | 'company' | 'special')}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+                
+                
                   {Object.entries(HOLIDAY_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
+                    <option key={value} value={value}>{label}</option>
                   ))}
-                </SelectContent>
+                
               </Select>
             </div>
             

@@ -28,14 +28,7 @@ import {
   validateSocialMediaUrl,
   extractUsernameFromUrl
 } from '@/lib/influencer/socialFetchers'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label, Input, Alert, Pill, Card, Button } from '@/components/aoo'
+import { Label, Input, Alert, Pill, Card, Button, Select } from '@/components/aoo'
 interface SocialChannelManagerProps {
   channels: SocialChannel[]
   onChange: (channels: SocialChannel[]) => void
@@ -265,28 +258,21 @@ export default function SocialChannelManager({
               <Label>Platform</Label>
               <Select
                 value={newChannel.platform}
-                onValueChange={(value) => {
+                onChange={(e) => ((value) => {
                   setNewChannel({ ...newChannel, platform: value as SocialPlatform })
                   setUrlError('')
-                }}
+                })(e.target.value)}
                 disabled={disabled}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+                
+                
                   {Object.entries(PLATFORM_INFO).map(([key, info]) => {
                     const Icon = PLATFORM_ICONS[key as SocialPlatform]
                     return (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4" style={{ color: info.color }} />
-                          {info.name}
-                        </div>
-                      </SelectItem>
+                      <option key={key} value={key}>{info.name}</option>
                     )
                   })}
-                </SelectContent>
+                
               </Select>
             </div>
 

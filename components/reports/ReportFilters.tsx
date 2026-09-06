@@ -11,14 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -250,17 +243,16 @@ export default function ReportFilters({
             ) : (
               <Select
                 value={selectedLocation || 'all'}
-                onValueChange={(v) => setSelectedLocation(v === 'all' ? '' : v)}
-              >
-                <SelectTrigger className="h-[42px]">
-                  <SelectValue placeholder="ทั้งหมด" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทั้งหมด</SelectItem>
+                onChange={(e) => ((v) => setSelectedLocation(v === 'all' ? '' : v))(e.target.value)}
+               className="h-[42px]">
+<option value="">ทั้งหมด</option>
+                
+                
+                  <option value="all">ทั้งหมด</option>
                   {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
                   ))}
-                </SelectContent>
+                
               </Select>
             )}
           </div>

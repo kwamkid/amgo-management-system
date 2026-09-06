@@ -30,15 +30,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
   facebook: Facebook,
@@ -215,36 +208,34 @@ export default function InfluencersPage() {
         
         <Select
           value={tierFilter}
-          onValueChange={setTierFilter}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="ทุกระดับ" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">ทุกระดับ</SelectItem>
-            <SelectItem value="nano">Nano (&lt;10K)</SelectItem>
-            <SelectItem value="micro">Micro (10K-100K)</SelectItem>
-            <SelectItem value="macro">Macro (100K-1M)</SelectItem>
-            <SelectItem value="mega">Mega (&gt;1M)</SelectItem>
-          </SelectContent>
+          onChange={(e) => (setTierFilter)(e.target.value)}
+         className="w-[180px]">
+<option value="">ทุกระดับ</option>
+          
+          
+            <option value="all">ทุกระดับ</option>
+            <option value="nano">Nano (&lt;10K)</option>
+            <option value="micro">Micro (10K-100K)</option>
+            <option value="macro">Macro (100K-1M)</option>
+            <option value="mega">Mega (&gt;1M)</option>
+          
         </Select>
         
         <Select
           value={platformFilter}
-          onValueChange={setPlatformFilter}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="ทุก Platform" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">ทุก Platform</SelectItem>
-            <SelectItem value="facebook">Facebook</SelectItem>
-            <SelectItem value="instagram">Instagram</SelectItem>
-            <SelectItem value="tiktok">TikTok</SelectItem>
-            <SelectItem value="youtube">YouTube</SelectItem>
-            <SelectItem value="twitter">Twitter/X</SelectItem>
-            <SelectItem value="lemon8">Lemon8</SelectItem>
-          </SelectContent>
+          onChange={(e) => (setPlatformFilter)(e.target.value)}
+         className="w-[180px]">
+<option value="">ทุก Platform</option>
+          
+          
+            <option value="all">ทุก Platform</option>
+            <option value="facebook">Facebook</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="youtube">YouTube</option>
+            <option value="twitter">Twitter/X</option>
+            <option value="lemon8">Lemon8</option>
+          
         </Select>
       </div>
 

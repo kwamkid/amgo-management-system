@@ -29,15 +29,8 @@ import {
 } from 'lucide-react'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, Circle } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Input, Pill, Card, CardContent, Button } from '@/components/aoo'
+import { DatePicker, Input, Pill, Card, CardContent, Button, Select } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -443,15 +436,14 @@ export default function CheckinMapPage() {
 
           {/* Filter */}
           <div className="mt-2">
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-              <SelectTrigger className="text-sm h-8">
-                <SelectValue placeholder="ประเภท" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ทั้งหมด</SelectItem>
-                <SelectItem value="onsite">ในสถานที่</SelectItem>
-                <SelectItem value="offsite">นอกสถานที่</SelectItem>
-              </SelectContent>
+            <Select value={filterType} onChange={(e) => ((v: any) => setFilterType(v))(e.target.value)} className="text-sm h-8">
+<option value="">ประเภท</option>
+              
+              
+                <option value="all">ทั้งหมด</option>
+                <option value="onsite">ในสถานที่</option>
+                <option value="offsite">นอกสถานที่</option>
+              
             </Select>
           </div>
         </div>
@@ -516,15 +508,13 @@ export default function CheckinMapPage() {
               />
             </div>
 
-            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-              <SelectTrigger className="h-7 text-xs w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ทั้งหมด</SelectItem>
-                <SelectItem value="onsite">ในสถานที่</SelectItem>
-                <SelectItem value="offsite">นอกสถานที่</SelectItem>
-              </SelectContent>
+            <Select value={filterType} onChange={(e) => ((v: any) => setFilterType(v))(e.target.value)} className="h-7 text-xs w-[100px]">
+              
+              
+                <option value="all">ทั้งหมด</option>
+                <option value="onsite">ในสถานที่</option>
+                <option value="offsite">นอกสถานที่</option>
+              
             </Select>
           </div>
 

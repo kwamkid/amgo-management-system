@@ -7,10 +7,9 @@ import { Skeleton } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select, TabBar, TabItem } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -126,15 +125,15 @@ export default function ReportResults({
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="calendar">ตารางวัน</TabsTrigger>
-            <TabsTrigger value="daily">รายวัน</TabsTrigger>
-            <TabsTrigger value="summary">สรุปรายคน</TabsTrigger>
-          </TabsList>
+        <>
+          <TabBar className="grid w-full grid-cols-3">
+            <TabItem active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} label="ตารางวัน" />
+            <TabItem active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} label="รายวัน" />
+            <TabItem active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} label="สรุปรายคน" />
+          </TabBar>
 
           {/* Day slot — ช่องวันของทุกคนเรียงตรงกัน เห็นทั้งเดือนในตาเดียว */}
-          <TabsContent value="calendar" className="mt-4">
+          {activeTab === 'calendar' && (<div className="mt-4">
             {activeTab === 'calendar' && (
               <DaySlotGrid
                 filters={filters}
@@ -143,11 +142,11 @@ export default function ReportResults({
                 onNameClick={openPerson}
               />
             )}
-          </TabsContent>
+          </div>)}
 
 
           {/* Daily Report */}
-          <TabsContent value="daily" className="mt-4">
+          {activeTab === 'daily' && (<div className="mt-4">
             {loadingPage ? (
               <div className="space-y-2">
                 <Skeleton rows={10} />
@@ -168,13 +167,13 @@ export default function ReportResults({
                 />
               </>
             )}
-          </TabsContent>
+          </div>)}
           
           {/* Summary Report */}
-          <TabsContent value="summary" className="mt-4">
+          {activeTab === 'summary' && (<div className="mt-4">
             <SummaryReportTable data={summaryData} onNameClick={openPerson} />
-          </TabsContent>
-        </Tabs>
+          </div>)}
+        </>
       </CardContent>
 
       {backfillFor && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { getBank } from '@/lib/constants/banks'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -19,8 +19,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { sortRows, type SortState } from '@/components/shared/DataTable'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button, ActionMenu, useConfirm, Checkbox } from '@/components/aoo'
+import { Button, ActionMenu, useConfirm, Checkbox, Popover } from '@/components/aoo'
 import { useToast } from '@/hooks/useToast'
 import { reactivateUser } from '@/lib/services/userService'
 import {
@@ -81,6 +80,8 @@ function tenureLabel(start: Date): string {
 }
 
 export default function EmployeesPage() {
+  const [colsOpen, setColsOpen] = useState(false)
+  const colsBtnRef = useRef<HTMLButtonElement>(null)
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<string | null>(null)
@@ -534,18 +535,17 @@ export default function EmployeesPage() {
           options={companies.map((c) => ({ value: c.id, label: c.name_th }))}
           onChange={setCompany}
         />
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              title="เลือกคอลัมน์ที่แสดง"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Settings2 size={15} className="text-gray-400" />
-              คอลัมน์
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-3">
+        <button
+          ref={colsBtnRef}
+          type="button"
+          title="เลือกคอลัมน์ที่แสดง"
+          onClick={() => setColsOpen((o) => !o)}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          <Settings2 size={15} className="text-gray-400" />
+          คอลัมน์
+        </button>
+        <Popover open={colsOpen} onClose={() => setColsOpen(false)} anchor={colsBtnRef.current} align="end" minWidth={224} padding={12}>
             <p className="mb-2 text-xs font-medium text-gray-500">คอลัมน์ที่แสดง (จำไว้ในเครื่องนี้)</p>
             <div className="space-y-2">
               {TOGGLEABLE_COLUMNS.map((c) => (
@@ -558,7 +558,6 @@ export default function EmployeesPage() {
                 </label>
               ))}
             </div>
-          </PopoverContent>
         </Popover>
       </FilterBar>
 

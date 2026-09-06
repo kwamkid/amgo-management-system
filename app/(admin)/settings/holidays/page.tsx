@@ -37,8 +37,7 @@ import {
 } from '@/components/ui/table'
 import TechLoader from '@/components/shared/TechLoader'
 import { gradients } from '@/lib/theme/colors'
-import { Pagination } from '@/components/ui/pagination'
-
+import TableFooter from '@/components/shared/TableFooter'
 export default function HolidaysPage() {
   const router = useRouter()
   const currentYear = new Date().getFullYear()
@@ -335,14 +334,7 @@ export default function HolidaysPage() {
               {/* Pagination */}
               {filteredHolidays.length > 0 && (
                 <div className="mt-4">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={filteredHolidays.length}
-                    itemsPerPage={itemsPerPage}
-                onItemsPerPageChange={setItemsPerPage}
-                    onPageChange={setCurrentPage}
-                  />
+                  <TableFooter page={currentPage} pageSize={itemsPerPage} total={filteredHolidays.length} onPageChange={setCurrentPage} onPageSizeChange={setItemsPerPage} />
                 </div>
               )}
             </div>

@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsers } from '@/hooks/useUsers'
@@ -24,7 +24,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react'
-import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, Popover } from '@/components/aoo'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
@@ -36,11 +36,6 @@ import {
 } from '@/lib/services/leaveService'
 import Link from 'next/link'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
   Table,
   TableBody,
   TableCell,
@@ -48,12 +43,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Pagination } from '@/components/ui/pagination'
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
 import { PageHeader } from '@/components/shared'
 import { Button as AooButton } from '@/components/aoo'
 import UserAvatar from '@/components/shared/UserAvatar'
 
+import TableFooter from '@/components/shared/TableFooter'
 interface UserQuota {
   user: {
     id: string
@@ -81,6 +76,7 @@ function QuotaEditAll({
   onUpdate 
 }: QuotaEditAllProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const editBtnRef = useRef<HTMLButtonElement>(null)
   const [values, setValues] = useState({
     sick: quota?.sick.total || 0,
     personal: quota?.personal.total || 0,
@@ -158,17 +154,17 @@ function QuotaEditAll({
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open)
-      if (!open) resetValues()
-    }}>
-      <PopoverTrigger>
-        <Button variant="ghost" size="sm">
-          <Edit3 className="w-4 h-4" />
-        </Button>
-      </PopoverTrigger>
-      
-      <PopoverContent className="w-80 p-4 border-0 shadow-lg" align="end">
+    <>
+      <button
+        ref={editBtnRef}
+        type="button"
+        onClick={() => { if (isOpen) { setIsOpen(false); resetValues() } else setIsOpen(true) }}
+        className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+        aria-label="แก้โควตา"
+      >
+        <Edit3 className="w-4 h-4" />
+      </button>
+      <Popover open={isOpen} onClose={() => { setIsOpen(false); resetValues() }} anchor={editBtnRef.current} align="end" minWidth={320} padding={16}>
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2 pb-2">
@@ -247,8 +243,8 @@ function QuotaEditAll({
             </Button>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </Popover>
+    </>
   )
 }
 
@@ -683,14 +679,7 @@ export default function LeaveQuotaManagementPage() {
         {/* Pagination */}
         {filteredQuotas.length > 0 && (
           <div className="p-4 border-t border-gray-100">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredQuotas.length}
-              itemsPerPage={itemsPerPage}
-                onItemsPerPageChange={setItemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+            <TableFooter page={currentPage} pageSize={itemsPerPage} total={filteredQuotas.length} onPageChange={setCurrentPage} onPageSizeChange={setItemsPerPage} />
           </div>
         )}
       </Card>

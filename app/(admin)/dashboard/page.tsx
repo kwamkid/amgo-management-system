@@ -10,11 +10,12 @@ import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import ProbationZone from '@/components/dashboard/ProbationZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, LogIn, CheckCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Alert, Button } from '@/components/aoo'
+import { Button as AooButton, Alert, Button, TabBar, TabItem } from '@/components/aoo'
+import { useState } from 'react'
 export default function DashboardPage() {
+  const [tab, setTab] = useState('birthday')
   const { userData, loading, error } = useAuth();
   const { currentCheckIn } = useCheckIn();
   const router = useRouter();
@@ -77,24 +78,24 @@ export default function DashboardPage() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="birthday">
-        <TabsList className="mb-4">
-          <TabsTrigger value="birthday">ปฏิทินวันเกิด</TabsTrigger>
+      <>
+        <TabBar className="mb-4">
+          <TabItem active={tab === 'birthday'} onClick={() => setTab('birthday')} label="ปฏิทินวันเกิด" />
           {isManagement && (
-            <TabsTrigger value="attendance">การทำงานวันนี้</TabsTrigger>
+            <TabItem active={tab === 'attendance'} onClick={() => setTab('attendance')} label="การทำงานวันนี้" />
           )}
-        </TabsList>
+        </TabBar>
 
-        <TabsContent value="birthday">
+        {tab === 'birthday' && (<div>
           <EmployeeSection userData={userData} />
-        </TabsContent>
+        </div>)}
 
-        {isManagement && (
-          <TabsContent value="attendance">
+        {isManagement && tab === 'attendance' && (
+          <div>
             <AttendanceSection userData={userData} />
-          </TabsContent>
+          </div>
         )}
-      </Tabs>
+      </>
     </div>
   );
 }

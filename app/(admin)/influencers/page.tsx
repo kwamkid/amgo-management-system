@@ -29,9 +29,8 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
-import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Pagination } from '@/components/ui/pagination'
-import { Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select, ActionMenu } from '@/components/aoo'
+import TableFooter from '@/components/shared/TableFooter'
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
   facebook: Facebook,
@@ -350,33 +349,15 @@ export default function InfluencersPage() {
                     </td>
                     
                     <td className="px-6 py-4 text-right">
-                      <DropdownMenu
+                      <ActionMenu
                         items={[
                           {
-                            label: (
-                              <Link 
-                                href={`/influencers/${influencer.id}`} 
-                                className="flex items-center gap-2"
-                              >
-                                <Eye className="w-4 h-4" />
-                                ดูรายละเอียด
-                              </Link>
-                            ),
-                            onClick: () => {}
+                            label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/influencers/${influencer.id}`)
                           },
                           {
-                            label: (
-                              <Link 
-                                href={`/influencers/${influencer.id}/edit`} 
-                                className="flex items-center gap-2"
-                              >
-                                <Edit className="w-4 h-4" />
-                                แก้ไขข้อมูล
-                              </Link>
-                            ),
-                            onClick: () => {}
+                            label: 'แก้ไขข้อมูล', icon: 'Edit', onSelect: () => router.push(`/influencers/${influencer.id}/edit`)
                           },
-                          { divider: true },
+                          { kind: 'divider' },
                           {
                             label: (
                               <span className="flex items-center gap-2">
@@ -384,8 +365,7 @@ export default function InfluencersPage() {
                                 ลบ
                               </span>
                             ),
-                            onClick: () => handleDelete(influencer.id!, influencer.fullName),
-                            className: 'text-red-600 hover:bg-red-50'
+                            onSelect: () => handleDelete(influencer.id!, influencer.fullName), tone: 'danger'
                           }
                         ]}
                       />
@@ -416,14 +396,7 @@ export default function InfluencersPage() {
         {/* Pagination */}
         {influencers.length > 0 && (
           <div className="p-4 border-t border-gray-100">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={influencers.length}
-              itemsPerPage={itemsPerPage}
-                onItemsPerPageChange={setItemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+            <TableFooter page={currentPage} pageSize={itemsPerPage} total={influencers.length} onPageChange={setCurrentPage} onPageSizeChange={setItemsPerPage} />
           </div>
         )}
       </Card>

@@ -6,12 +6,7 @@ import { useState, useEffect } from 'react'
 import React from 'react'
 import { Loader2, Users, Search, MapPin, Check } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, SelectMenu } from '@/components/aoo'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -54,15 +49,7 @@ export default function ReportFilters({
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
 
   const [selectedLocation, setSelectedLocation] = useState<string>('')
-
-  const [openLocationSelect, setOpenLocationSelect] = useState(false)
   const [userSearchTerm, setUserSearchTerm] = useState('')
-  const [locationSearchTerm, setLocationSearchTerm] = useState('')
-
-
-  const filteredLocations = locationSearchTerm
-    ? locations.filter(l => l.name.toLowerCase().includes(locationSearchTerm.toLowerCase()))
-    : locations
 
   // ก้อนข้อมูลเต็มช่วง (ไม่กรองคน/สาขา) — ดึงครั้งเดียวต่อช่วงวันที่ แล้วกรองสดในเบราว์เซอร์
   const datasetRef = React.useRef<{ key: string; dataset: ReportDataset } | null>(null)
@@ -173,9 +160,6 @@ export default function ReportFilters({
     }
   }, [startDate, endDate, userSearchTerm, selectedLocation, pageSize, users, usersByLocation])
 
-  const useLocationCombobox = locations.length > 7
-  const selectedLocationName = locations.find(l => l.id === selectedLocation)?.name
-
   return (
     <Card padding={0}>
       <CardHeader className="pb-3">
@@ -198,63 +182,15 @@ export default function ReportFilters({
           {/* Location filter — combobox when >7, plain select otherwise */}
           <div>
             <Label className="text-gray-500 mb-1">สถานที่</Label>
-            {useLocationCombobox ? (
-              <Popover open={openLocationSelect} onOpenChange={setOpenLocationSelect}>
-                <PopoverTrigger>
-                  <Button variant="soft" role="combobox" className="w-full h-[42px] justify-between font-normal px-3">
-                    <span className="flex items-center gap-2 truncate">
-                      <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-                      <span className="truncate">{selectedLocationName || 'ทั้งหมด'}</span>
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0">
-                  <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
-                    <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                    <input
-                      placeholder="ค้นหาสถานที่..."
-                      value={locationSearchTerm}
-                      onChange={(e) => setLocationSearchTerm(e.target.value)}
-                      className="h-7 w-full bg-white rounded px-2 text-sm outline-none border border-gray-200 focus:border-gray-400"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="max-h-[240px] overflow-auto">
-                    <div
-                      onClick={() => { setSelectedLocation(''); setOpenLocationSelect(false); setLocationSearchTerm('') }}
-                      className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      <Check className={`mr-2 h-3.5 w-3.5 ${!selectedLocation ? 'opacity-100' : 'opacity-0'}`} />
-                      ทั้งหมด
-                    </div>
-                    {filteredLocations.map(loc => (
-                      <div
-                        key={loc.id}
-                        onClick={() => { setSelectedLocation(loc.id); setOpenLocationSelect(false); setLocationSearchTerm('') }}
-                        className="flex cursor-pointer items-center px-4 py-2 text-sm hover:bg-gray-100"
-                      >
-                        <Check className={`mr-2 h-3.5 w-3.5 ${selectedLocation === loc.id ? 'opacity-100' : 'opacity-0'}`} />
-                        {loc.name}
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Select
-                value={selectedLocation || 'all'}
-                onChange={(e) => ((v) => setSelectedLocation(v === 'all' ? '' : v))(e.target.value)}
-               className="h-[42px]">
-<option value="">ทั้งหมด</option>
-                
-                
-                  <option value="all">ทั้งหมด</option>
-                  {locations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
-                
-              </Select>
-            )}
+            {/* สาขา — SelectMenu ของชุดกลาง ค้นหาได้เองเมื่อมีหลายสาขา (แทน combobox ที่เขียนเองด้วย Popover) */}
+            <SelectMenu
+              value={selectedLocation || null}
+              onChange={(v) => setSelectedLocation(v ?? '')}
+              options={[{ value: '', label: 'ทั้งหมด' }, ...locations.map((l) => ({ value: l.id, label: l.name }))]}
+              placeholder="ทั้งหมด"
+              clearable={false}
+              searchThreshold={8}
+            />
           </div>
 
           {/* User filter — พิมพ์แล้วกรองสดทันทีจากข้อมูลที่ดึงไว้ ไม่ยิง query */}

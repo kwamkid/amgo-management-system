@@ -34,8 +34,6 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
-import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -48,8 +46,8 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
-import { Pagination } from '@/components/ui/pagination'
-import { Input, Pill, Card, Button, Select } from '@/components/aoo'
+import { Input, Pill, Card, Button, Select, ActionMenu } from '@/components/aoo'
+import TableFooter from '@/components/shared/TableFooter'
 export default function CampaignsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -487,43 +485,19 @@ export default function CampaignsPage() {
                       </p>
                     </div>
                   </div>
-                  <DropdownMenu
+                  <ActionMenu
                     items={[
                       {
-                        label: (
-                          <Link 
-                            href={`/campaigns/${campaign.id}`}
-                            className="flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            ดูรายละเอียด
-                          </Link>
-                        ),
-                        onClick: () => {}
+                        label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`)
                       },
                       {
-                        label: (
-                          <Link 
-                            href={`/campaigns/${campaign.id}/edit`}
-                            className="flex items-center gap-2"
-                          >
-                            <Edit className="w-4 h-4" />
-                            แก้ไข
-                          </Link>
-                        ),
-                        onClick: () => {},
+                        label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`),
                         disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                       },
-                      { divider: true },
+                      { kind: 'divider' },
                       {
-                        label: (
-                          <span className="flex items-center gap-2">
-                            <XCircle className="w-4 h-4" />
-                            ยกเลิก
-                          </span>
-                        ),
-                        onClick: () => handleCancelCampaign(campaign.id!, campaign.name),
-                        className: 'text-orange-600 hover:bg-orange-50',
+                        label: 'ยกเลิก', icon: 'XCircle',
+                        onSelect: () => handleCancelCampaign(campaign.id!, campaign.name),
                         disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                       },
                       ...(isAdmin ? [{
@@ -533,8 +507,7 @@ export default function CampaignsPage() {
                             ลบถาวร
                           </span>
                         ),
-                        onClick: () => handleDeleteCampaign(campaign.id!, campaign.name),
-                        className: 'text-red-600 hover:bg-red-50'
+                        onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const
                       }] : [])
                     ]}
                   />
@@ -739,53 +712,24 @@ export default function CampaignsPage() {
 
                     {/* Actions */}
                     <TableCell className="text-right">
-                      <DropdownMenu
+                      <ActionMenu
                         items={[
                           {
-                            label: (
-                              <Link 
-                                href={`/campaigns/${campaign.id}`}
-                                className="flex items-center gap-2"
-                              >
-                                <Eye className="w-4 h-4" />
-                                ดูรายละเอียด
-                              </Link>
-                            ),
-                            onClick: () => {}
+                            label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`)
                           },
                           {
-                            label: (
-                              <Link 
-                                href={`/campaigns/${campaign.id}/edit`}
-                                className="flex items-center gap-2"
-                              >
-                                <Edit className="w-4 h-4" />
-                                แก้ไข Campaign
-                              </Link>
-                            ),
-                            onClick: () => {},
+                            label: 'แก้ไข Campaign', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`),
                             disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                           },
                           {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <FileText className="w-4 h-4" />
-                                ดู Brief
-                              </span>
-                            ),
-                            onClick: () => campaign.briefFileUrl && window.open(campaign.briefFileUrl, '_blank'),
+                            label: 'ดู Brief', icon: 'FileText',
+                            onSelect: () => campaign.briefFileUrl && window.open(campaign.briefFileUrl, '_blank'),
                             disabled: !campaign.briefFileUrl
                           },
-                          { divider: true },
+                          { kind: 'divider' },
                           ...(campaign.influencers?.slice(0, 3).map(inf => ({
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Copy className="w-4 h-4" />
-                                Copy: {inf.influencerName}
-                              </span>
-                            ),
-                            onClick: () => copySubmissionLink(inf.submissionLink!),
-                            className: 'text-sm'
+                            label: 'Copy: {inf.influencerName}', icon: 'Copy',
+                            onSelect: () => copySubmissionLink(inf.submissionLink!)
                           })) || []),
                           ...(campaign.influencers && campaign.influencers.length > 3 ? [{
                             label: (
@@ -793,19 +737,12 @@ export default function CampaignsPage() {
                                 +{campaign.influencers.length - 3} more...
                               </span>
                             ),
-                            onClick: () => router.push(`/campaigns/${campaign.id}`),
-                            className: 'text-sm'
+                            onSelect: () => router.push(`/campaigns/${campaign.id}`)
                           }] : []),
-                          { divider: true },
+                          { kind: 'divider' },
                           {
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <XCircle className="w-4 h-4" />
-                                ยกเลิก Campaign
-                              </span>
-                            ),
-                            onClick: () => handleCancelCampaign(campaign.id!, campaign.name),
-                            className: 'text-orange-600 hover:bg-orange-50',
+                            label: 'ยกเลิก Campaign', icon: 'XCircle',
+                            onSelect: () => handleCancelCampaign(campaign.id!, campaign.name),
                             disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                           },
                           ...(isAdmin ? [{
@@ -815,8 +752,7 @@ export default function CampaignsPage() {
                                 ลบถาวร (Admin)
                               </span>
                             ),
-                            onClick: () => handleDeleteCampaign(campaign.id!, campaign.name),
-                            className: 'text-red-600 hover:bg-red-50'
+                            onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const
                           }] : [])
                         ]}
                       />
@@ -849,14 +785,7 @@ export default function CampaignsPage() {
         {/* Pagination */}
         {filteredCampaigns.length > 0 && (
           <div className="p-4 border-t border-gray-100">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredCampaigns.length}
-              itemsPerPage={itemsPerPage}
-                onItemsPerPageChange={setItemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+            <TableFooter page={currentPage} pageSize={itemsPerPage} total={filteredCampaigns.length} onPageChange={setCurrentPage} onPageSizeChange={setItemsPerPage} />
           </div>
         )}
       </Card>

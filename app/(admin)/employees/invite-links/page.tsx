@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Button as AooButton, Alert, Pill, badgeTone, Card, CardContent, Button } from '@/components/aoo'
+import { Button as AooButton, Alert, Pill, badgeTone, Card, CardContent, Button, ActionMenu } from '@/components/aoo'
 import { PageHeader } from '@/components/shared'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import { InviteLink } from '@/types/invite'
@@ -21,10 +21,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Pagination } from '@/components/ui/pagination'
-
+import TableFooter from '@/components/shared/TableFooter'
+import { useRouter } from 'next/navigation'
 export default function InviteLinksPage() {
+  const router = useRouter()
   const { inviteLinks, loading, copyInviteLink, deleteInviteLink } = useInviteLinks()
   const [showQR, setShowQR] = useState<string | null>(null)
 
@@ -206,37 +206,20 @@ export default function InviteLinksPage() {
                     </div>
 
                     {/* Actions */}
-                    <DropdownMenu
+                    <ActionMenu
                       items={[
                         {
-                          label: (
-                            <Link href={`/employees/invite-links/${link.id}`} className="flex items-center gap-2">
-                              <Users className="w-4 h-4" />
-                              ดูผู้ใช้งาน
-                            </Link>
-                          ),
-                          onClick: () => {}
+                          label: 'ดูผู้ใช้งาน', icon: 'Users', onSelect: () => router.push(`/employees/invite-links/${link.id}`)
                         },
                         {
-                          label: (
-                            <Link href={`/employees/invite-links/${link.id}/edit`} className="flex items-center gap-2">
-                              <Edit className="w-4 h-4" />
-                              แก้ไข
-                            </Link>
-                          ),
-                          onClick: () => {}
+                          label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/employees/invite-links/${link.id}/edit`)
                         },
-                        { divider: true },
+                        { kind: 'divider' },
                         {
-                          label: (
-                            <span className="flex items-center gap-2">
-                              <QrCode className="w-4 h-4" />
-                              QR Code
-                            </span>
-                          ),
-                          onClick: () => setShowQR(link.code)
+                          label: 'QR Code', icon: 'QrCode',
+                          onSelect: () => setShowQR(link.code)
                         },
-                        { divider: true },
+                        { kind: 'divider' },
                         {
                           label: (
                             <span className="flex items-center gap-2">
@@ -244,8 +227,7 @@ export default function InviteLinksPage() {
                               ปิดใช้งาน
                             </span>
                           ),
-                          onClick: () => handleDelete(link),
-                          className: 'text-red-600 hover:bg-red-50',
+                          onSelect: () => handleDelete(link), tone: 'danger',
                           disabled: !link.isActive
                         }
                       ]}
@@ -354,37 +336,20 @@ export default function InviteLinksPage() {
                       </td>
 
                       <td className="px-6 py-4 text-right">
-                        <DropdownMenu
+                        <ActionMenu
                           items={[
                             {
-                              label: (
-                                <Link href={`/employees/invite-links/${link.id}`} className="flex items-center gap-2">
-                                  <Users className="w-4 h-4" />
-                                  ดูผู้ใช้งาน
-                                </Link>
-                              ),
-                              onClick: () => {}
+                              label: 'ดูผู้ใช้งาน', icon: 'Users', onSelect: () => router.push(`/employees/invite-links/${link.id}`)
                             },
                             {
-                              label: (
-                                <Link href={`/employees/invite-links/${link.id}/edit`} className="flex items-center gap-2">
-                                  <Edit className="w-4 h-4" />
-                                  แก้ไข
-                                </Link>
-                              ),
-                              onClick: () => {}
+                              label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/employees/invite-links/${link.id}/edit`)
                             },
-                            { divider: true },
+                            { kind: 'divider' },
                             {
-                              label: (
-                                <span className="flex items-center gap-2">
-                                  <QrCode className="w-4 h-4" />
-                                  QR Code
-                                </span>
-                              ),
-                              onClick: () => setShowQR(link.code)
+                              label: 'QR Code', icon: 'QrCode',
+                              onSelect: () => setShowQR(link.code)
                             },
-                            { divider: true },
+                            { kind: 'divider' },
                             {
                               label: (
                                 <span className="flex items-center gap-2">
@@ -392,8 +357,7 @@ export default function InviteLinksPage() {
                                   ปิดใช้งาน
                                 </span>
                               ),
-                              onClick: () => handleDelete(link),
-                              className: 'text-red-600 hover:bg-red-50',
+                              onSelect: () => handleDelete(link), tone: 'danger',
                               disabled: !link.isActive
                             }
                           ]}
@@ -409,14 +373,7 @@ export default function InviteLinksPage() {
           {/* Pagination */}
           {inviteLinks.length > 0 && (
             <div className="mt-4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={inviteLinks.length}
-                itemsPerPage={itemsPerPage}
-                onItemsPerPageChange={setItemsPerPage}
-                onPageChange={setCurrentPage}
-              />
+              <TableFooter page={currentPage} pageSize={itemsPerPage} total={inviteLinks.length} onPageChange={setCurrentPage} onPageSizeChange={setItemsPerPage} />
             </div>
           )}
         </>

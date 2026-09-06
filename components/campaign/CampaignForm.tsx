@@ -31,15 +31,10 @@ import {
 import { useInfluencers } from '@/hooks/useInfluencers'
 import { useBrands } from '@/hooks/useBrands'
 import { useProducts } from '@/hooks/useProducts'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import BrandModal from '@/components/brand/BrandModal'
 import ProductModal from '@/components/product/ProductModal'
-import { Textarea, Label, Input } from '@/components/aoo'
-
+import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface CampaignFormProps {
   campaign?: Campaign | null
   onSubmit: (data: CreateCampaignData) => Promise<string | null | boolean>
@@ -315,12 +310,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/campaigns')}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/campaigns')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -329,7 +319,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         </div>
 
         {/* Campaign Details */}
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-red-600" />
@@ -464,7 +454,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         </Card>
 
         {/* Select Influencers */}
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="w-5 h-5 text-red-600" />
@@ -489,14 +479,14 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {/* Selected count */}
             <div className="mb-3">
-              <Badge variant="secondary">
+              <Pill tone="neutral">
                 เลือกแล้ว {formData.influencerIds.length} คน
-              </Badge>
+              </Pill>
             </div>
 
             {errors.influencers && (
-              <Alert variant="error" className="mb-4">
-                <AlertDescription>{errors.influencers}</AlertDescription>
+              <Alert tone="error" className="mb-4">
+                <div>{errors.influencers}</div>
               </Alert>
             )}
 
@@ -534,9 +524,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                           @{influencer.nickname}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
+                          <Pill tone="neutral" className="text-xs">
                             {influencer.tier}
-                          </Badge>
+                          </Pill>
                           <span className="text-xs text-gray-500">
                             {influencer.totalFollowers?.toLocaleString() || 0} followers
                           </span>
@@ -553,30 +543,25 @@ const handleSubmit = async (e: React.FormEvent) => {
         {/* Select Brands & Products */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Brands */}
-          <Card>
+          <Card padding={0}>
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Package className="w-5 h-5 text-red-600" />
                   เลือก Brand <span className="text-red-500">*</span>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setBrandModalData({ mode: 'create' })
-                    setBrandModalOpen(true)
-                  }}
-                >
+                <Button type="button" size="sm" variant="ghost" onClick={() => {
+ setBrandModalData({ mode: 'create' })
+ setBrandModalOpen(true)
+ }}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {errors.brands && (
-                <Alert variant="error" className="mb-4">
-                  <AlertDescription>{errors.brands}</AlertDescription>
+                <Alert tone="error" className="mb-4">
+                  <div>{errors.brands}</div>
                 </Alert>
               )}
 
@@ -609,31 +594,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                       )}
                       <span className="font-medium flex-1">{brand.name}</span>
                       <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setBrandModalData({ mode: 'edit', brand })
-                            setBrandModalOpen(true)
-                          }}
-                        >
+                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
+ e.stopPropagation()
+ setBrandModalData({ mode: 'edit', brand })
+ setBrandModalOpen(true)
+ }}>
                           <Edit className="w-3 h-3" />
                         </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-red-600 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (confirm(`ลบ Brand "${brand.name}"?`)) {
-                              deleteBrand(brand.id!)
-                            }
-                          }}
-                        >
+                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
+ e.stopPropagation()
+ if (confirm(`ลบ Brand "${brand.name}"?`)) {
+ deleteBrand(brand.id!)
+ }
+ }}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
@@ -645,7 +618,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </Card>
 
           {/* Products */}
-          <Card>
+          <Card padding={0}>
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -653,18 +626,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                   เลือกสินค้า <span className="text-red-500">*</span>
                 </div>
                 {formData.brandIds.length > 0 && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setProductModalData({ 
-                        mode: 'create',
-                        defaultBrandId: formData.brandIds[0]
-                      })
-                      setProductModalOpen(true)
-                    }}
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => {
+ setProductModalData({ 
+ mode: 'create',
+ defaultBrandId: formData.brandIds[0]
+ })
+ setProductModalOpen(true)
+ }}>
                     <Plus className="w-4 h-4" />
                   </Button>
                 )}
@@ -672,8 +640,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             </CardHeader>
             <CardContent>
               {errors.products && (
-                <Alert variant="error" className="mb-4">
-                  <AlertDescription>{errors.products}</AlertDescription>
+                <Alert tone="error" className="mb-4">
+                  <div>{errors.products}</div>
                 </Alert>
               )}
 
@@ -721,31 +689,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                             <p className="text-xs text-gray-600">{brand?.name}</p>
                           </div>
                           <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setProductModalData({ mode: 'edit', product })
-                                setProductModalOpen(true)
-                              }}
-                            >
+                            <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
+ e.stopPropagation()
+ setProductModalData({ mode: 'edit', product })
+ setProductModalOpen(true)
+ }}>
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 text-red-600 hover:bg-red-50"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (confirm(`ลบสินค้า "${product.name}"?`)) {
-                                  deleteProduct(product.id!)
-                                }
-                              }}
-                            >
+                            <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
+ e.stopPropagation()
+ if (confirm(`ลบสินค้า "${product.name}"?`)) {
+ deleteProduct(product.id!)
+ }
+ }}>
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
@@ -761,19 +717,11 @@ const handleSubmit = async (e: React.FormEvent) => {
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/campaigns')}
-            disabled={isSubmitting}
-          >
+          <Button type="button" variant="soft" onClick={() => router.push('/campaigns')}
+ disabled={isSubmitting}>
             ยกเลิก
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-          >
+          <Button type="submit" disabled={isSubmitting} className="-">
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

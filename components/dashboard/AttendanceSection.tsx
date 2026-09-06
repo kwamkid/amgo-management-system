@@ -2,9 +2,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
   Users, 
   Clock, 
@@ -30,6 +27,7 @@ import { safeFormatDate } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/shared/UserAvatar'
 
+import { Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface AttendanceSectionProps {
   userData: UserData;
 }
@@ -124,9 +122,9 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
     };
     
     return (
-      <Badge className={`text-xs ${shiftColors[record.selectedShiftName] || 'bg-gray-100 text-gray-700'}`}>
+      <Pill tone="accent" className={`text-xs ${shiftColors[record.selectedShiftName] || 'bg-gray-100 text-gray-700'}`}>
         {record.selectedShiftName}
-      </Badge>
+      </Pill>
     );
   };
 
@@ -156,12 +154,10 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </p>
         </div>
         
-        <Button
-          onClick={() => fetchAttendanceData(true)}
-          disabled={refreshing}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={() => fetchAttendanceData(true)}
+ disabled={refreshing}
+ variant="secondary"
+ size="sm">
           {refreshing ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
@@ -173,7 +169,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
 
       {/* Summary Stats - แสดงแค่ 4 cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -186,7 +182,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -199,7 +195,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -212,7 +208,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -229,7 +225,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
       {/* Main Content - 2 Columns */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Checked In */}
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-600" />
@@ -278,13 +274,13 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                         <div className="flex items-center gap-2">
                           {getShiftBadge(record)}
                           {record.isLate && (
-                            <Badge variant="error" className="text-xs">
+                            <Pill tone="danger" className="text-xs">
                               สาย {record.lateMinutes} นาที
-                            </Badge>
+                            </Pill>
                           )}
-                          <Badge variant="success" className="text-xs">
+                          <Pill tone="success" className="text-xs">
                             {workingHours} ชม.
-                          </Badge>
+                          </Pill>
                         </div>
                       </div>
                     );
@@ -295,7 +291,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
         </Card>
 
         {/* Not Checked In */}
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
             <CardTitle className="text-lg flex items-center gap-2">
               <XCircle className="w-5 h-5 text-red-600" />
@@ -326,13 +322,13 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                     </div>
                     <div className="flex items-center gap-2">
                       {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Pill tone="neutral" className="text-xs">
                           {user.allowedLocationIds.length} สาขา
-                        </Badge>
+                        </Pill>
                       )}
-                      <Badge variant="error" className="text-xs">
+                      <Pill tone="danger" className="text-xs">
                         ยังไม่มา
-                      </Badge>
+                      </Pill>
                     </div>
                   </div>
                 ))}

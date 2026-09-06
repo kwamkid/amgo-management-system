@@ -23,11 +23,9 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import {
@@ -227,7 +225,7 @@ export default function UserEditForm({
 
       {/* ── แท็บ 1 · ข้อมูล + สถานะ ─────────────────────────── */}
       <div hidden={tab !== 'info'} className="space-y-5">
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="pt-6">
           {/* LINE Info (Read-only) */}
           <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -383,7 +381,7 @@ export default function UserEditForm({
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">ตำแหน่งและสถานะ</CardTitle>
         </CardHeader>
@@ -514,13 +512,8 @@ export default function UserEditForm({
               </div>
 
               {user.id && !['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-red-200 text-red-600 hover:bg-red-50"
-                  onClick={() => setShowEndDialog(true)}
-                  disabled={isLoading}
-                >
+                <Button type="button" variant="soft" onClick={() => setShowEndDialog(true)}
+ disabled={isLoading}>
                   สิ้นสุดการเป็นพนักงาน…
                 </Button>
               )}
@@ -652,7 +645,7 @@ export default function UserEditForm({
        * ไล่ตอบทีละคำถาม: ต้องเช็คอินไหม → ถ้าต้อง ค่อยเลือกสาขา
        * และตอบว่านอกสถานที่ได้ไหม — ไม่ต้องเช็คอินก็ไม่มีอะไรให้ตั้งต่อ */}
       <div hidden={tab !== 'location'}>
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="space-y-4 pt-6">
             <div className="flex items-center space-x-3">
               <Checkbox
@@ -789,20 +782,11 @@ export default function UserEditForm({
         className="flex items-center justify-end gap-3"
       >
 
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="outline"
-          disabled={isLoading}
-        >
+        <Button type="button" onClick={onCancel} variant="soft" disabled={isLoading}>
           <X className="w-4 h-4 mr-2" />
           ยกเลิก
         </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
+        <Button type="submit" disabled={isLoading} className="-">
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>

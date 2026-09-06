@@ -20,9 +20,6 @@ import {
   Users,
   User
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import TechLoader from '@/components/shared/TechLoader'
 import { getDeliveryPoints } from '@/lib/services/deliveryService'
 import {
@@ -32,8 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SelectMenu } from '@/components/aoo'
-
+import { SelectMenu, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function DeliveryDashboardPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -132,7 +128,7 @@ export default function DeliveryDashboardPage() {
 
       {/* Quick Action */}
       <Link href="/delivery/checkin">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-red-200 bg-gradient-to-r from-red-50 to-rose-50 mb-6">
+        <Card padding={0} className="transition- cursor-pointer border-2 - mb-6">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -152,7 +148,7 @@ export default function DeliveryDashboardPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -164,7 +160,7 @@ export default function DeliveryDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -176,7 +172,7 @@ export default function DeliveryDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -191,7 +187,7 @@ export default function DeliveryDashboardPage() {
 
       {/* Working Time */}
       {totalPoints > 0 && firstDelivery && lastDelivery && viewMode === 'mine' && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg">ข้อมูลการทำงาน</CardTitle>
           </CardHeader>
@@ -219,7 +215,7 @@ export default function DeliveryDashboardPage() {
 
       {/* Recent Deliveries */}
       {totalPoints > 0 && (
-        <Card>
+        <Card padding={0}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Truck className="w-5 h-5" />
@@ -265,9 +261,9 @@ export default function DeliveryDashboardPage() {
                     </p>
                   </div>
 
-                  <Badge variant={point.deliveryType === 'pickup' ? 'info' : 'secondary'} className="text-sm">
+                  <Pill tone={badgeTone(point.deliveryType === 'pickup' ? 'info' : 'secondary')} className="text-sm">
                     {point.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
-                  </Badge>
+                  </Pill>
                 </div>
               ))}
             </div>
@@ -277,7 +273,7 @@ export default function DeliveryDashboardPage() {
 
       {/* Empty State */}
       {totalPoints === 0 && (
-        <Card>
+        <Card padding={0}>
           <CardContent className="py-12 text-center">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-base text-gray-600 mb-4">

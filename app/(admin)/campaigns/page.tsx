@@ -35,9 +35,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
@@ -59,8 +56,7 @@ import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
 import { Pagination } from '@/components/ui/pagination'
-import { Input } from '@/components/aoo'
-
+import { Input, Pill, Card, Button } from '@/components/aoo'
 export default function CampaignsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -263,26 +259,16 @@ export default function CampaignsPage() {
           </p>
         </div>
         
-        <Button
-          asChild
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
-          <Link href="/campaigns/create">
+        <Link href="/campaigns/create"><Button className="-">
             <Plus className="w-5 h-5 mr-2" />
             สร้าง Campaign
-          </Link>
-        </Button>
+          </Button></Link>
       </div>
 
       {/* Stats Cards - Clickable */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-          <Card 
-            className={cn(
-              "p-3 md:p-4 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'all' && "ring-2 ring-red-500"
-            )}
-            onClick={() => handleStatCardClick('all')}
+          <Card padding={0} className={cn( "p-3 md:p-4 cursor-pointer transition-all hover:shadow-md", statusFilter === 'all' && "ring-2 ring-red-500" )} onClick={() => handleStatCardClick('all')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -293,12 +279,7 @@ export default function CampaignsPage() {
             </div>
           </Card>
           
-          <Card 
-            className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-blue-50 to-indigo-100 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'active' && "ring-2 ring-blue-600"
-            )}
-            onClick={() => handleStatCardClick('active')}
+          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-blue-50 to-indigo-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'active' && "ring-2 ring-blue-600" )} onClick={() => handleStatCardClick('active')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -309,12 +290,7 @@ export default function CampaignsPage() {
             </div>
           </Card>
           
-          <Card 
-            className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-orange-50 to-amber-100 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'revising' && "ring-2 ring-orange-600"
-            )}
-            onClick={() => handleStatCardClick('revising')}
+          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-orange-50 to-amber-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'revising' && "ring-2 ring-orange-600" )} onClick={() => handleStatCardClick('revising')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -325,12 +301,7 @@ export default function CampaignsPage() {
             </div>
           </Card>
           
-          <Card 
-            className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-yellow-50 to-amber-100 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'reviewing' && "ring-2 ring-yellow-600"
-            )}
-            onClick={() => handleStatCardClick('reviewing')}
+          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-yellow-50 to-amber-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'reviewing' && "ring-2 ring-yellow-600" )} onClick={() => handleStatCardClick('reviewing')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -341,12 +312,7 @@ export default function CampaignsPage() {
             </div>
           </Card>
           
-          <Card 
-            className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-green-50 to-emerald-100 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'completed' && "ring-2 ring-green-600"
-            )}
-            onClick={() => handleStatCardClick('completed')}
+          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-green-50 to-emerald-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'completed' && "ring-2 ring-green-600" )} onClick={() => handleStatCardClick('completed')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -357,12 +323,7 @@ export default function CampaignsPage() {
             </div>
           </Card>
 
-          <Card 
-            className={cn(
-              "p-3 md:p-4 bg-gradient-to-br from-red-50 to-rose-100 cursor-pointer transition-all hover:shadow-md",
-              statusFilter === 'cancelled' && "ring-2 ring-red-600"
-            )}
-            onClick={() => handleStatCardClick('cancelled')}
+          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-red-50 to-rose-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'cancelled' && "ring-2 ring-red-600" )} onClick={() => handleStatCardClick('cancelled')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -389,20 +350,17 @@ export default function CampaignsPage() {
             />
           </div>
           
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "flex items-center gap-2 w-full sm:w-auto justify-center",
-              showFilters && "bg-gray-100"
-            )}
-          >
+          <Button variant="soft" onClick={() => setShowFilters(!showFilters)}
+ className={cn(
+ "flex items-center gap-2 w-full sm:w-auto justify-center",
+ showFilters && "bg-gray-100"
+ )}>
             <Filter className="w-4 h-4" />
             <span className="sm:inline">Filters</span>
             {(brandFilter || productFilter || creatorFilter !== 'all') && (
-              <Badge variant="error" className="ml-1">
+              <Pill tone="danger" className="ml-1">
                 {[brandFilter, productFilter, creatorFilter !== 'all' ? creatorFilter : ''].filter(Boolean).length}
-              </Badge>
+              </Pill>
             )}
           </Button>
         </div>
@@ -485,16 +443,11 @@ export default function CampaignsPage() {
 
             {/* Clear All Filters */}
             <div className="mt-4 flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setBrandFilter('')
-                  setProductFilter('')
-                  setCreatorFilter('all')
-                }}
-                className="text-gray-600 text-sm"
-              >
+              <Button variant="ghost" size="sm" onClick={() => {
+ setBrandFilter('')
+ setProductFilter('')
+ setCreatorFilter('all')
+ }}>
                 ล้าง Filter ทั้งหมด
               </Button>
             </div>
@@ -503,7 +456,7 @@ export default function CampaignsPage() {
       </div>
 
       {/* Campaign Table - Mobile Card View / Desktop Table View */}
-      <Card>
+      <Card padding={0}>
         {/* Mobile View - Cards */}
         <div className="lg:hidden">
           {paginatedCampaigns.map((campaign) => {
@@ -629,9 +582,9 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <Badge className={`${status.bgColor} ${status.color}`}>
+                  <Pill tone="accent" className={`${status.bgColor} ${status.color}`}>
                     {status.label}
-                  </Badge>
+                  </Pill>
                   <span className="text-xs text-gray-500">
                     by {campaign.createdByName || '-'}
                   </span>
@@ -707,9 +660,9 @@ export default function CampaignsPage() {
                         <p className="text-sm text-gray-500 line-clamp-1 max-w-xs">
                           {campaign.description}
                         </p>
-                        <Badge className={`${status.bgColor} ${status.color} mt-1`}>
+                        <Pill tone="accent" className={`${status.bgColor} ${status.color} mt-1`}>
                           {status.label}
-                        </Badge>
+                        </Pill>
                       </div>
                     </TableCell>
 
@@ -895,16 +848,10 @@ export default function CampaignsPage() {
                 : 'ยังไม่มี Campaign'}
             </p>
             {!searchTerm && statusFilter === 'all' && !brandFilter && !productFilter && creatorFilter === 'all' && (
-              <Button
-                asChild
-                variant="ghost"
-                className="mt-4 text-red-600 hover:bg-red-50"
-              >
-                <Link href="/campaigns/create">
+              <Link href="/campaigns/create"><Button variant="ghost" className="mt-4">
                   <Plus className="w-5 h-5 mr-2" />
                   สร้าง Campaign แรก
-                </Link>
-              </Button>
+                </Button></Link>
             )}
           </div>
         )}

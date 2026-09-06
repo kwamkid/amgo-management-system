@@ -49,3 +49,15 @@ export function Pill({ children, tone = 'neutral', className, style }: PillProps
     </span>
   )
 }
+
+/** แปลง variant ของ Badge ชุดเก่า (shadcn) → tone ของ Pill — ใช้ตอนย้ายหน้าเก่า 7 ก.ย. 69 */
+export function badgeTone(variant?: string | null): PillTone {
+  switch (variant) {
+    case 'success': return 'success'
+    case 'warning': return 'warning'
+    case 'error': case 'destructive': return 'danger'
+    case 'info': return 'info'
+    case 'secondary': case 'outline': return 'neutral'
+    default: return 'accent'
+  }
+}

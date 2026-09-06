@@ -27,9 +27,6 @@ import {
   Building,
   MapPinOff
 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, Circle } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import {
@@ -40,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Input } from '@/components/aoo'
+import { DatePicker, Input, Pill, Card, CardContent, Button } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -250,12 +247,7 @@ export default function CheckinMapPage() {
       ) : (
         <div className="space-y-2">
           {filteredRecords.map((record) => (
-            <Card
-              key={record.id}
-              className={`cursor-pointer transition-all hover:shadow-sm ${
-                selectedRecord?.id === record.id ? 'ring-2 ring-red-500' : ''
-              }`}
-              onClick={() => handleSelectRecord(record)}
+            <Card padding={0} key={record.id} className={`cursor-pointer transition-all hover:shadow-sm ${ selectedRecord?.id === record.id ? 'ring-2 ring-red-500' : '' }`} onClick={() => handleSelectRecord(record)}
             >
               <CardContent className="p-3">
                 <div className="flex gap-3">
@@ -278,21 +270,21 @@ export default function CheckinMapPage() {
                     {/* Location and Type */}
                     <div className="flex items-center gap-2">
                       {record.checkinType === 'offsite' ? (
-                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                        <Pill tone="neutral" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
                           <MapPinOff className="w-3 h-3 mr-1" />
                           นอกสถานที่
-                        </Badge>
+                        </Pill>
                       ) : (
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-200">
+                        <Pill tone="neutral" className="text-xs bg-green-50 text-green-600 border-green-200">
                           <Building className="w-3 h-3 mr-1" />
                           {record.primaryLocationName || 'ในสถานที่'}
-                        </Badge>
+                        </Pill>
                       )}
 
                       {record.isLate && (
-                        <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
+                        <Pill tone="neutral" className="text-xs bg-red-50 text-red-600 border-red-200">
                           สาย {record.lateMinutes} นาที
-                        </Badge>
+                        </Pill>
                       )}
                     </div>
                   </div>
@@ -354,34 +346,29 @@ export default function CheckinMapPage() {
 
           {/* Type Badge */}
           {isOffsite ? (
-            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200 mb-2">
+            <Pill tone="neutral" className="text-xs bg-orange-50 text-orange-600 border-orange-200 mb-2">
               <MapPinOff className="w-3 h-3 mr-1" />
               เช็คอินนอกสถานที่
-            </Badge>
+            </Pill>
           ) : (
-            <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-200 mb-2">
+            <Pill tone="neutral" className="text-xs bg-green-50 text-green-600 border-green-200 mb-2">
               <Building className="w-3 h-3 mr-1" />
               {selectedRecord.primaryLocationName || 'ในสถานที่'}
-            </Badge>
+            </Pill>
           )}
 
           {/* Late Badge */}
           {selectedRecord.isLate && (
-            <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200 mb-2 ml-1">
+            <Pill tone="neutral" className="text-xs bg-red-50 text-red-600 border-red-200 mb-2 ml-1">
               สาย {selectedRecord.lateMinutes} นาที
-            </Badge>
+            </Pill>
           )}
 
           {/* Navigation Button */}
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full h-7 text-xs mt-2"
-            onClick={() => {
-              const url = `https://www.google.com/maps?q=${selectedRecord.checkinLat},${selectedRecord.checkinLng}`
-              window.open(url, '_blank')
-            }}
-          >
+          <Button size="sm" className="w-full h-7 mt-2" onClick={() => {
+ const url = `https://www.google.com/maps?q=${selectedRecord.checkinLat},${selectedRecord.checkinLng}`
+ window.open(url, '_blank')
+ }}>
             <Navigation className="w-3 h-3 mr-1" />
             ดูใน Google Maps
           </Button>
@@ -400,13 +387,9 @@ export default function CheckinMapPage() {
 
           {/* Date Navigation */}
           <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(-1)}
-              disabled={loading}
-              className="h-8 w-8"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
+ disabled={loading}
+ className="h-8 w-8">
               <ChevronLeft className="w-3 h-3" />
             </Button>
 
@@ -417,40 +400,30 @@ export default function CheckinMapPage() {
               className="flex-1 flex-1 text-sm h-8"
             />
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-8 w-8"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
+ disabled={loading || selectedDate === getLocalDateString(new Date())}
+ className="h-8 w-8">
               <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
 
           {/* Stats */}
           <div className="mt-3 flex items-center gap-2 text-xs">
-            <Badge variant="secondary" className="bg-gray-100">
+            <Pill tone="neutral" className="bg-gray-100">
               ทั้งหมด {stats.total}
-            </Badge>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
+            </Pill>
+            <Pill tone="neutral" className="bg-green-100 text-green-700">
               ในสถานที่ {stats.onsite}
-            </Badge>
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            </Pill>
+            <Pill tone="neutral" className="bg-orange-100 text-orange-700">
               นอกสถานที่ {stats.offsite}
-            </Badge>
+            </Pill>
           </div>
 
           {/* View All Button */}
           <div className="mt-2 flex justify-end">
             {filteredRecords.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={viewAllPoints}
-                disabled={loading}
-                className="h-7 text-xs"
-              >
+              <Button variant="soft" size="sm" onClick={viewAllPoints} disabled={loading} className="h-7">
                 <Eye className="w-3 h-3 mr-1" />
                 ดูทั้งหมด
               </Button>
@@ -496,21 +469,13 @@ export default function CheckinMapPage() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-semibold text-gray-900">แผนที่การเช็คอิน</h2>
             <div className="flex gap-1">
-              <Button
-                variant={activeView === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('list')}
-                className="h-7 text-xs"
-              >
+              <Button variant={activeView === 'list' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveView('list')}
+ className="h-7">
                 <Menu className="w-3 h-3 mr-1" />
                 รายการ
               </Button>
-              <Button
-                variant={activeView === 'map' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('map')}
-                className="h-7 text-xs"
-              >
+              <Button variant={activeView === 'map' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveView('map')}
+ className="h-7">
                 <MapIcon className="w-3 h-3 mr-1" />
                 แผนที่
               </Button>
@@ -519,13 +484,9 @@ export default function CheckinMapPage() {
 
           {/* Date Navigation */}
           <div className="flex items-center gap-1 mb-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(-1)}
-              disabled={loading}
-              className="h-7 w-7"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
+ disabled={loading}
+ className="h-7 w-7">
               <ChevronLeft className="w-3 h-3" />
             </Button>
 
@@ -536,13 +497,9 @@ export default function CheckinMapPage() {
               className="flex-1 flex-1 h-7 text-xs"
             />
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-7 w-7"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
+ disabled={loading || selectedDate === getLocalDateString(new Date())}
+ className="h-7 w-7">
               <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
@@ -573,15 +530,15 @@ export default function CheckinMapPage() {
 
           {/* Stats */}
           <div className="mt-2 flex items-center gap-2 text-xs">
-            <Badge variant="secondary" className="bg-gray-100 text-xs">
+            <Pill tone="neutral" className="bg-gray-100 text-xs">
               ทั้งหมด {stats.total}
-            </Badge>
-            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+            </Pill>
+            <Pill tone="neutral" className="bg-green-100 text-green-700 text-xs">
               ในสถานที่ {stats.onsite}
-            </Badge>
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
+            </Pill>
+            <Pill tone="neutral" className="bg-orange-100 text-orange-700 text-xs">
               นอกสถานที่ {stats.offsite}
-            </Badge>
+            </Pill>
           </div>
         </div>
 

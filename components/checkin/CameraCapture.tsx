@@ -2,9 +2,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
 import { Camera, RotateCcw, Check, X, Loader2, AlertCircle } from 'lucide-react'
 
+import { Button } from '@/components/aoo'
 interface CameraCaptureProps {
   onCapture: (blob: Blob) => void
   onCancel: () => void
@@ -182,29 +182,16 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
           {!photo ? (
             <div className="space-y-3">
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={onCancel}
-                  disabled={uploading}
-                >
+                <Button variant="soft" className="flex-1" onClick={onCancel} disabled={uploading}>
                   ยกเลิก
                 </Button>
                 {error ? (
-                  <Button
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-                    onClick={startCamera}
-                    disabled={uploading}
-                  >
+                  <Button className="flex-1" onClick={startCamera} disabled={uploading}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     ลองอีกครั้ง
                   </Button>
                 ) : (
-                  <Button
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-                    onClick={capturePhoto}
-                    disabled={cameraLoading || uploading}
-                  >
+                  <Button className="flex-1" onClick={capturePhoto} disabled={cameraLoading || uploading}>
                     <Camera className="w-4 h-4 mr-2" />
                     ถ่ายรูป
                   </Button>
@@ -229,20 +216,11 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
             </div>
           ) : (
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={retake}
-                disabled={uploading}
-              >
+              <Button variant="soft" className="flex-1" onClick={retake} disabled={uploading}>
                 <RotateCcw className="w-4 h-4 mr-2" />
                 ถ่ายใหม่
               </Button>
-              <Button
-                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-                onClick={confirm}
-                disabled={uploading}
-              >
+              <Button className="flex-1" onClick={confirm} disabled={uploading}>
                 {uploading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (

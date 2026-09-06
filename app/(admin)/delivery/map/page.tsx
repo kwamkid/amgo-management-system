@@ -19,8 +19,6 @@ import {
   Menu,
   Map as MapIcon,
 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import FilterBar, { FilterSelect } from '@/components/shared/FilterBar'
@@ -41,8 +39,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/useToast'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker } from '@/components/aoo'
-
+import { DatePicker, Card, CardContent, Button } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -480,12 +477,7 @@ export default function DeliveryMapPage() {
       ) : (
         <div className="space-y-2">
           {filteredPoints.map((point, index) => (
-            <Card
-              key={point.id}
-              className={`cursor-pointer transition-all hover:shadow-sm ${
-                selectedPoint?.id === point.id ? 'ring-2 ring-red-500' : ''
-              }`}
-              onClick={() => handleSelectPoint(point)}
+            <Card padding={0} key={point.id} className={`cursor-pointer transition-all hover:shadow-sm ${ selectedPoint?.id === point.id ? 'ring-2 ring-red-500' : '' }`} onClick={() => handleSelectPoint(point)}
             >
               <CardContent className="p-3">
                 <div className="flex gap-3">
@@ -536,16 +528,11 @@ export default function DeliveryMapPage() {
                         
                         {/* Delete button for admin */}
                         {userData?.role === 'admin' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeletePointId(point.id)
-                              setShowDeleteDialog(true)
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" className="h-6 w-6" onClick={(e) => {
+ e.stopPropagation()
+ setDeletePointId(point.id)
+ setShowDeleteDialog(true)
+ }}>
                             <Trash2 className="w-3 h-3 text-red-600" />
                           </Button>
                         )}
@@ -592,13 +579,9 @@ export default function DeliveryMapPage() {
           
           {/* Date Navigation */}
           <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(-1)}
-              disabled={loading}
-              className="h-10 w-10"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
+ disabled={loading}
+ className="h-10 w-10">
               <ChevronLeft className="w-4 h-4" />
             </Button>
             
@@ -609,13 +592,9 @@ export default function DeliveryMapPage() {
               className="flex-1"
             />
             
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-10 w-10"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
+ disabled={loading || selectedDate === getLocalDateString(new Date())}
+ className="h-10 w-10">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -627,22 +606,12 @@ export default function DeliveryMapPage() {
             </span>
             {mapPoints.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant={showRoutes ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowRoutes(v => !v)}
-                  className="h-8 text-sm cursor-pointer"
-                  title="เปิด/ปิดเส้นลำดับการส่ง"
-                >
+                <Button variant={showRoutes ? 'primary' : 'secondary'} size="sm" onClick={() => setShowRoutes(v => !v)}
+ className="h-8 cursor-pointer"
+ title="เปิด/ปิดเส้นลำดับการส่ง">
                   เส้นทาง
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={viewAllPoints}
-                  disabled={loading}
-                  className="h-8 text-sm cursor-pointer hover:bg-gray-100"
-                >
+                <Button variant="soft" size="sm" onClick={viewAllPoints} disabled={loading} className="h-8 cursor-pointer">
                   <Eye className="w-3.5 h-3.5 mr-1" />
                   ดูทั้งหมด
                 </Button>
@@ -686,21 +655,13 @@ export default function DeliveryMapPage() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
             <div className="flex gap-1">
-              <Button
-                variant={activeView === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('list')}
-                className="h-8 text-sm"
-              >
+              <Button variant={activeView === 'list' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveView('list')}
+ className="h-8">
                 <Menu className="w-3.5 h-3.5 mr-1" />
                 รายการ
               </Button>
-              <Button
-                variant={activeView === 'map' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('map')}
-                className="h-8 text-sm"
-              >
+              <Button variant={activeView === 'map' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveView('map')}
+ className="h-8">
                 <MapIcon className="w-3.5 h-3.5 mr-1" />
                 แผนที่
               </Button>
@@ -709,13 +670,9 @@ export default function DeliveryMapPage() {
 
           {/* Date Navigation */}
           <div className="flex items-center gap-2 mb-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(-1)}
-              disabled={loading}
-              className="h-10 w-10"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
+ disabled={loading}
+ className="h-10 w-10">
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
@@ -726,13 +683,9 @@ export default function DeliveryMapPage() {
               className="flex-1"
             />
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === getLocalDateString(new Date())}
-              className="h-10 w-10"
-            >
+            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
+ disabled={loading || selectedDate === getLocalDateString(new Date())}
+ className="h-10 w-10">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -742,22 +695,12 @@ export default function DeliveryMapPage() {
             <span className="text-sm text-gray-600">พบ {filteredPoints.length} จุด</span>
             {mapPoints.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant={showRoutes ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowRoutes(v => !v)}
-                  className="h-8 text-sm cursor-pointer"
-                  title="เปิด/ปิดเส้นลำดับการส่ง"
-                >
+                <Button variant={showRoutes ? 'primary' : 'secondary'} size="sm" onClick={() => setShowRoutes(v => !v)}
+ className="h-8 cursor-pointer"
+ title="เปิด/ปิดเส้นลำดับการส่ง">
                   เส้นทาง
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={viewAllPoints}
-                  disabled={loading}
-                  className="h-8 text-sm cursor-pointer hover:bg-gray-100"
-                >
+                <Button variant="soft" size="sm" onClick={viewAllPoints} disabled={loading} className="h-8 cursor-pointer">
                   <Eye className="w-3.5 h-3.5 mr-1" />
                   ดูทั้งหมด
                 </Button>
@@ -852,15 +795,10 @@ export default function DeliveryMapPage() {
                   )}
 
                   {/* Navigation Button */}
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="w-full h-7 text-xs"
-                    onClick={() => {
-                      const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
-                      window.open(url, '_blank')
-                    }}
-                  >
+                  <Button size="sm" className="w-full h-7" onClick={() => {
+ const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
+ window.open(url, '_blank')
+ }}>
                     <Navigation className="w-3 h-3 mr-1" />
                     นำทาง
                   </Button>
@@ -932,15 +870,10 @@ export default function DeliveryMapPage() {
                 )}
 
                 {/* Navigation Button */}
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full h-7 text-xs"
-                  onClick={() => {
-                    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
-                    window.open(url, '_blank')
-                  }}
-                >
+                <Button size="sm" className="w-full h-7" onClick={() => {
+ const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPoint.lat},${selectedPoint.lng}`
+ window.open(url, '_blank')
+ }}>
                   <Navigation className="w-3 h-3 mr-1" />
                   นำทาง
                 </Button>
@@ -960,12 +893,7 @@ export default function DeliveryMapPage() {
               alt="Delivery Photo"
               className="w-full h-auto max-h-[90vh] object-contain"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-              onClick={() => setShowLightbox(false)}
-            >
+            <Button variant="ghost" size="sm" className="absolute top-2 right-2 /80" onClick={() => setShowLightbox(false)}>
               <X className="w-4 h-4" />
             </Button>
           </div>

@@ -17,13 +17,8 @@ import {
 import { format, differenceInHours } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
-import { Textarea, Checkbox, Label, Input } from '@/components/aoo'
-
+import { Textarea, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface PendingCheckoutsProps {
   records: CheckInRecord[]
   onApprove: (
@@ -111,14 +106,7 @@ export default function PendingCheckouts({
           const hoursSince = getHoursSinceCheckin(record)
           
           return (
-            <Card
-              key={record.id}
-              className={`border-2 ${
-                type === 'forgot' 
-                  ? 'border-orange-200' 
-                  : 'border-purple-200'
-              }`}
-            >
+            <Card padding={0} key={record.id} className={`border-2 ${ type === 'forgot' ? 'border-orange-200' : 'border-purple-200' }`}>
               <CardContent className="p-4">
                 {/* Employee Info */}
                 <div className="flex items-start justify-between mb-3">
@@ -136,15 +124,13 @@ export default function PendingCheckouts({
                   </div>
                   
                   {/* Quick Actions for Mobile */}
-                  <Button
-                    onClick={() => handleSelectRecord(record)}
-                    disabled={processing === record.id}
-                    variant={type === 'forgot' ? 'outline' : 'secondary'}
-                    className={type === 'forgot' 
-                      ? 'border-orange-500 text-orange-600 hover:bg-orange-50' 
-                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                    }
-                  >
+                  <Button onClick={() => handleSelectRecord(record)}
+ disabled={processing === record.id}
+ variant={type === 'forgot' ? 'secondary' : 'soft'}
+ className={type === 'forgot' 
+ ? 'border-orange-500 text-orange-600 hover:bg-orange-50' 
+ : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+ }>
                     {processing === record.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
@@ -183,7 +169,7 @@ export default function PendingCheckouts({
 
                 {/* Note if any */}
                 {record.note && (
-                  <Card className="mt-3 border-gray-100">
+                  <Card padding={0} className="mt-3">
                     <CardContent className="p-3">
                       <p className="text-sm text-gray-600">
                         <MessageSquare className="w-4 h-4 inline mr-1" />
@@ -201,7 +187,7 @@ export default function PendingCheckouts({
       {/* Approval Modal */}
       {showReasonModal && selectedRecord && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
+          <Card padding={0} className="w-full max-w-md">
             <CardHeader>
               <CardTitle>
                 {type === 'forgot' ? 'กำหนดเวลาเช็คเอาท์' : 'อนุมัติการทำงานล่วงเวลา'}
@@ -209,7 +195,7 @@ export default function PendingCheckouts({
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Employee Info */}
-              <Card className={`bg-gradient-to-r ${gradients.grayLight} border-0`}>
+              <Card padding={0} className={`bg-gradient-to-r ${gradients.grayLight} border-0`}>
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
                     <UserAvatar name={selectedRecord.userName} userId={selectedRecord.userId} imageUrl={selectedRecord.userAvatar} size="md" />
@@ -235,7 +221,7 @@ export default function PendingCheckouts({
 
               {/* OT Approval (for overtime type) */}
               {type === 'overtime' && (
-                <Card className="border-purple-200">
+                <Card padding={0}>
                   <CardContent className="p-4">
                     <div className="flex items-start space-x-3">
                       <Checkbox
@@ -277,22 +263,11 @@ export default function PendingCheckouts({
 
               {/* Actions */}
               <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowReasonModal(false)}
-                  className="flex-1"
-                >
+                <Button variant="soft" onClick={() => setShowReasonModal(false)}
+ className="flex-1">
                   ยกเลิก
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!reason.trim() || processing === selectedRecord.id}
-                  className={`flex-1 ${
-                    type === 'forgot'
-                      ? `bg-gradient-to-r ${gradients.warning}`
-                      : `bg-gradient-to-r ${gradients.purple}`
-                  }`}
-                >
+                <Button onClick={handleSubmit} disabled={!reason.trim() || processing === selectedRecord.id} className={`flex-1 ${ type === 'forgot' ? `bg-gradient-to-r ${gradients.warning}` : `bg-gradient-to-r ${gradients.purple}` }`}>
                   {processing === selectedRecord.id ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />

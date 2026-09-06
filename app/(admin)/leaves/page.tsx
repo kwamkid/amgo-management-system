@@ -4,7 +4,7 @@
 
 import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Progress } from '@/components/aoo'
+import { Button as AooButton, Progress, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useLeave } from '@/hooks/useLeave'
 import { 
@@ -20,10 +20,6 @@ import {
   CalendarCheck,
   Users
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients, colorClasses } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import LeaveBalance from '@/components/leave/LeaveBalance'
@@ -95,11 +91,10 @@ export default function LeavePage() {
 
       {/* Pending Alert */}
       {pendingCount > 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <Clock className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800">
+        <Alert tone="info">
+          <div className="text-orange-800">
             คุณมี <strong>{pendingCount}</strong> คำขอลาที่รอการอนุมัติ
-          </AlertDescription>
+          </div>
         </Alert>
       )}
 
@@ -110,7 +105,7 @@ export default function LeavePage() {
           
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardContent className="p-6 text-center">
                 <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl mb-3`}>
                   <Clock className="w-6 h-6 text-orange-600" />
@@ -120,7 +115,7 @@ export default function LeavePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardContent className="p-6 text-center">
                 <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl mb-3`}>
                   <CheckCircle className="w-6 h-6 text-teal-600" />
@@ -130,7 +125,7 @@ export default function LeavePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardContent className="p-6 text-center">
                 <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl mb-3`}>
                   <XCircle className="w-6 h-6 text-red-600" />
@@ -142,7 +137,7 @@ export default function LeavePage() {
           </div>
 
           {/* Recent Leave Requests */}
-          <Card className="border-0 shadow-md">
+          <Card padding={0}>
             <CardHeader>
               <CardTitle>คำขอลาล่าสุด</CardTitle>
               <CardDescription>
@@ -155,7 +150,7 @@ export default function LeavePage() {
                   <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">ยังไม่มีประวัติการลา</p>
                   <Link href="/leaves/request">
-                    <Button variant="outline" className="mt-4">
+                    <Button variant="soft" className="mt-4">
                       <Plus className="w-4 h-4 mr-2" />
                       ขอลาครั้งแรก
                     </Button>
@@ -164,7 +159,7 @@ export default function LeavePage() {
               ) : (
                 <div className="space-y-3">
                   {myLeaves.slice(0, 5).map((leave) => (
-                    <Card key={leave.id} className="border-gray-100">
+                    <Card padding={0} key={leave.id}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
@@ -172,19 +167,19 @@ export default function LeavePage() {
                               <p className="font-medium">
                                 {LEAVE_TYPE_LABELS[leave.type]}
                               </p>
-                              <Badge 
-                                variant={
+                              <Pill 
+                                tone={badgeTone(
                                   leave.status === 'approved' ? 'success' :
                                   leave.status === 'rejected' ? 'error' :
                                   leave.status === 'cancelled' ? 'secondary' :
                                   'warning'
-                                }
+                                )}
                               >
                                 {leave.status === 'approved' && 'อนุมัติแล้ว'}
                                 {leave.status === 'rejected' && 'ไม่อนุมัติ'}
                                 {leave.status === 'pending' && 'รออนุมัติ'}
                                 {leave.status === 'cancelled' && 'ยกเลิก'}
-                              </Badge>
+                              </Pill>
                             </div>
                             <p className="text-sm text-gray-600">
                               {formatDateRange(leave.startDate, leave.endDate, 'dd MMM yyyy')}
@@ -218,19 +213,19 @@ export default function LeavePage() {
         {/* Right Sidebar */}
         <div className="lg:col-span-1 space-y-6">
           {/* Quick Actions */}
-          <Card className="border-0 shadow-md">
+          <Card padding={0}>
             <CardHeader>
               <CardTitle className="text-lg">การดำเนินการ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Link href="/leaves/request" className="block">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="soft">
                   <CalendarCheck className="w-4 h-4 mr-2" />
                   ขอลาใหม่
                 </Button>
               </Link>
               <Link href="/leaves/history" className="block">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="soft">
                   <History className="w-4 h-4 mr-2" />
                   ดูประวัติการลา
                 </Button>
@@ -240,7 +235,7 @@ export default function LeavePage() {
 
           {/* Upcoming Leaves */}
           {upcomingLeaves.length > 0 && (
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-red-600" />
@@ -263,7 +258,7 @@ export default function LeavePage() {
           )}
 
           {/* Tips */}
-          <Card className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
+          <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
             <CardHeader>
               <CardTitle className="text-lg text-blue-900">
                 💡 เคล็ดลับ
@@ -281,7 +276,7 @@ export default function LeavePage() {
 
           {/* Management Card for HR/Admin */}
           {isManagement && (
-            <Card className={`border-0 shadow-md bg-gradient-to-r ${gradients.purpleLight}`}>
+            <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.purpleLight}`}>
               <CardHeader>
                 <CardTitle className="text-lg text-purple-900 flex items-center gap-2">
                   <Users className="w-5 h-5" />
@@ -290,7 +285,7 @@ export default function LeavePage() {
               </CardHeader>
               <CardContent>
                 <Link href="/leaves/management">
-                  <Button className="w-full justify-start" variant="outline">
+                  <Button className="w-full justify-start" variant="soft">
                     <FileText className="w-4 h-4 mr-2" />
                     จัดการคำขอลาพนักงาน
                   </Button>

@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button as AooButton } from '@/components/aoo'
+import { Button as AooButton, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { Skeleton, PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -141,7 +138,7 @@ export default function LeaveHistoryPage() {
     };
     
     const variant = variants[status] || variants.cancelled;
-    return <Badge className={variant.className}>{variant.text}</Badge>;
+    return <Pill tone="accent" className={variant.className}>{variant.text}</Pill>;
   };
 
   const handleCancelLeave = async () => {
@@ -174,7 +171,7 @@ export default function LeaveHistoryPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-green-900">
               อนุมัติแล้ว
@@ -188,7 +185,7 @@ export default function LeaveHistoryPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-amber-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-yellow-900">
               รออนุมัติ
@@ -202,7 +199,7 @@ export default function LeaveHistoryPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-rose-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-red-900">
               ไม่อนุมัติ
@@ -216,7 +213,7 @@ export default function LeaveHistoryPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-slate-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-gray-900">
               ยกเลิก
@@ -232,7 +229,7 @@ export default function LeaveHistoryPage() {
       </div>
 
       {/* Filters */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -244,12 +241,7 @@ export default function LeaveHistoryPage() {
         <CardContent>
           <div className="flex gap-2">
             {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((status) => (
-              <Button
-                key={status}
-                variant={filter === status ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter(status as any)}
-              >
+              <Button key={status} variant={filter === status ? 'primary' : 'secondary'} size="sm" onClick={() => setFilter(status as any)}>
                 {status === 'all' && 'ทั้งหมด'}
                 {status === 'pending' && 'รออนุมัติ'}
                 {status === 'approved' && 'อนุมัติแล้ว'}
@@ -263,13 +255,13 @@ export default function LeaveHistoryPage() {
 
       {/* Leave History List */}
       {loading ? (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-12 text-center">
             <Skeleton />
           </CardContent>
         </Card>
       ) : filteredLeaves.length === 0 ? (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-12 text-center">
             <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <p className="text-gray-500">ไม่พบประวัติการลา</p>
@@ -279,7 +271,7 @@ export default function LeaveHistoryPage() {
         Object.entries(leavesByYear)
           .sort(([a], [b]) => Number(b) - Number(a))
           .map(([year, leaves]) => (
-            <Card key={year} className="border-0 shadow-md">
+            <Card padding={0} key={year}>
               <CardHeader>
                 <CardTitle className="text-lg">ปี {year}</CardTitle>
               </CardHeader>
@@ -338,23 +330,18 @@ export default function LeaveHistoryPage() {
                               {safeFormatDate(leave.createdAt, 'dd/MM/yyyy HH:mm')}
                             </p>
                             {leave.urgentMultiplier > 1 && (
-                              <Badge variant="outline" className="mt-1">
+                              <Pill tone="neutral" className="mt-1">
                                 ลาด่วน x{leave.urgentMultiplier}
-                              </Badge>
+                              </Pill>
                             )}
                           </div>
                           
                           {/* Cancel button for pending leaves */}
                           {leave.status === 'pending' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openCancelDialog(leave.id!);
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
+                            <Button variant="ghost" size="sm" onClick={(e) => {
+ e.stopPropagation();
+ openCancelDialog(leave.id!);
+ }}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}

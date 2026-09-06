@@ -7,7 +7,6 @@ import * as z from 'zod';
 import { format, differenceInDays, addDays, isWeekend } from 'date-fns';
 import { CalendarIcon, Upload, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Form,
@@ -33,7 +32,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
 import { calculateLeaveDays, validateLeaveRequest } from '@/lib/services/leaveService';
@@ -48,6 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { Alert, Button } from '@/components/aoo'
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
@@ -181,12 +180,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
 
   if (!hasQuota) {
     return (
-      <Alert variant="warning">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
+      <Alert tone="warning">
+        <div>
           <p className="font-medium mb-2">ยังไม่สามารถขอลาได้</p>
           <p>คุณยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล</p>
-        </AlertDescription>
+        </div>
       </Alert>
     );
   }
@@ -275,12 +273,11 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {autoUrgent && watchType !== 'sick' && (
-          <Alert variant="warning" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert tone="warning" className="mb-4">
+            <div>
               <strong>การลาด่วน:</strong> เนื่องจากไม่ได้แจ้งล่วงหน้าตามกำหนด ({LEAVE_RULES[watchType].advanceNotice} วัน) 
               จะถูกคิดโควต้า {LEAVE_RULES[watchType].urgentMultiplier} เท่า ({urgentCharge} วัน)
-            </AlertDescription>
+            </div>
           </Alert>
         )}
 
@@ -322,15 +319,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               <FormItem className="flex flex-col">
                 <FormLabel>วันที่เริ่มลา</FormLabel>
                 <Popover>
-                  <PopoverTrigger asChild>
+                  <PopoverTrigger>
                     <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
+                      <Button variant="soft" className={cn( "w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground" )}>
                         {field.value ? (
                           format(field.value, "dd/MM/yyyy")
                         ) : (
@@ -368,15 +359,9 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
               <FormItem className="flex flex-col">
                 <FormLabel>วันที่สิ้นสุด</FormLabel>
                 <Popover>
-                  <PopoverTrigger asChild>
+                  <PopoverTrigger>
                     <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
+                      <Button variant="soft" className={cn( "w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground" )}>
                         {field.value ? (
                           format(field.value, "dd/MM/yyyy")
                         ) : (
@@ -413,16 +398,15 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         </div>
 
         {totalDays > 0 && (
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
+          <Alert tone="info">
+            <div>
               จำนวนวันลา: {totalDays} วัน (รวมเสาร์-อาทิตย์)
               {urgentCharge > totalDays && (
                 <span className="text-orange-600 font-medium">
                   {' '}| ลาด่วนคิด {urgentCharge} วัน
                 </span>
               )}
-            </AlertDescription>
+            </div>
           </Alert>
         )}
 
@@ -467,9 +451,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                       className="cursor-pointer"
                     />
                     {requireCertificate && (
-                      <Alert variant="warning">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
+                      <Alert tone="warning">
+                        <div>
                           ลาป่วย<b>ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์</b>{' '}
                           ตามพระราชบัญญัติคุ้มครองแรงงาน พ.ศ. 2541 มาตรา 32{' '}
                           <a
@@ -485,7 +468,7 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
                               ⚠️ ยังไม่ได้แนบใบรับรองแพทย์ — ส่งคำขอไม่ได้จนกว่าจะแนบ
                             </span>
                           )}
-                        </AlertDescription>
+                        </div>
                       </Alert>
                     )}
                   </div>
@@ -500,20 +483,15 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
         )}
 
         {!canSubmit && (
-          <Alert variant="error">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert tone="error">
+            <div>
               โควต้าไม่เพียงพอ! ต้องการ {urgentCharge} วัน แต่คงเหลือ {remainingQuota} วัน
-            </AlertDescription>
+            </div>
           </Alert>
         )}
 
         <div className="flex gap-2">
-          <Button 
-            type="submit" 
-            disabled={loading || !canSubmit}
-            className="flex-1"
-          >
+          <Button type="submit" disabled={loading || !canSubmit} className="flex-1">
             {loading ? 'กำลังส่งคำขอ...' : 'ส่งคำขอลา'}
           </Button>
         </div>

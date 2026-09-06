@@ -5,11 +5,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { GoogleMap, Marker, Circle, useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api'
 import { MapPin, Search } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { Input } from '@/components/aoo'
-
+import { Input, Alert, Card, CardContent } from '@/components/aoo'
 interface LocationMapPickerProps {
   lat: number
   lng: number
@@ -148,7 +145,7 @@ export default function LocationMapPicker({
 
   if (loadError) {
     return (
-      <Card className="border-red-200">
+      <Card padding={0}>
         <CardContent className="p-8 text-center">
           <p className="text-red-600">Error loading maps</p>
         </CardContent>
@@ -158,7 +155,7 @@ export default function LocationMapPicker({
 
   if (!isLoaded) {
     return (
-      <Card className="border-gray-200">
+      <Card padding={0}>
         <CardContent className="p-8 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
           <p className="text-gray-600 mt-2">Loading map...</p>
@@ -190,7 +187,7 @@ export default function LocationMapPicker({
       </StandaloneSearchBox>
 
       {/* Map */}
-      <Card className="border-gray-200 overflow-hidden">
+      <Card padding={0} className="overflow-hidden">
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={markerPosition}
@@ -228,16 +225,15 @@ export default function LocationMapPicker({
       </Card>
 
       {/* Instructions */}
-      <Alert>
-        <MapPin className="h-4 w-4" />
-        <AlertDescription>
+      <Alert tone="info">
+        <div>
           <ul className="space-y-1 text-sm">
             <li>• คลิกบนแผนที่เพื่อเลือกตำแหน่งใหม่</li>
             <li>• ลากหมุดเพื่อย้ายตำแหน่ง</li>
             <li>• ค้นหาด้วยชื่อสถานที่ในช่องค้นหา</li>
             <li className="text-red-600 font-medium">• วงกลมสีแดงแสดงรัศมี {radius} เมตร สำหรับการเช็คอิน</li>
           </ul>
-        </AlertDescription>
+        </div>
       </Alert>
     </div>
   )

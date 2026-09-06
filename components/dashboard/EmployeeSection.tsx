@@ -2,8 +2,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +17,7 @@ import { UserData } from '@/hooks/useAuth';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 
+import { Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
 interface EmployeeSectionProps {
   userData: UserData;
 }
@@ -124,7 +123,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column - Calendar */}
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
             <CardTitle className="text-xl font-medium flex items-center gap-2">
               <Cake className="w-6 h-6 text-pink-600" />
@@ -252,7 +251,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
         {/* Right Column - Upcoming Birthdays */}
         <div className="space-y-6">
           {/* Upcoming Birthdays */}
-          <Card className="border-0 shadow-md bg-gradient-to-br from-pink-50 to-purple-100">
+          <Card padding={0} className="-">
             <CardHeader>
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <PartyPopper className="w-5 h-5 text-purple-600" />
@@ -294,9 +293,9 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                           </p>
                         </div>
                         {isToday && (
-                          <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+                          <Pill tone="accent" className="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
                             HBD!
-                          </Badge>
+                          </Pill>
                         )}
                       </div>
                     );
@@ -313,7 +312,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
 
           {/* All Birthdays in Month */}
           {monthBirthdays.length > 0 && (
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardHeader>
                 <CardTitle className="text-lg font-medium flex items-center gap-2">
                   <Cake className="w-5 h-5 text-pink-600" />

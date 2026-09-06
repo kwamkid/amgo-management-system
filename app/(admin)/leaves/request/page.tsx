@@ -2,16 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calendar, CheckCircle, Heart, Briefcase, Activity } from 'lucide-react';
 import LeaveRequestForm from '@/components/leave/LeaveRequestForm';
 import { useLeave } from '@/hooks/useLeave';
 import { useAuth } from '@/hooks/useAuth';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared'
 
-import { Progress } from '@/components/aoo'
+import { Progress, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 export default function LeaveRequestPage() {
   const router = useRouter();
   const { userData } = useAuth();
@@ -72,7 +69,7 @@ export default function LeaveRequestPage() {
             const percentage = data.total > 0 ? (data.used / data.total) * 100 : 0;
             
             return (
-              <Card key={type} className="border-0 shadow-md">
+              <Card padding={0} key={type}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -112,7 +109,7 @@ export default function LeaveRequestPage() {
         {/* Main Form - อยู่ซ้าย */}
         <div className="lg:col-span-8">
           {showForm ? (
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardHeader>
                 <CardTitle>แบบฟอร์มขอลา</CardTitle>
                 <CardDescription>
@@ -124,7 +121,7 @@ export default function LeaveRequestPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-0 shadow-md">
+            <Card padding={0}>
               <CardContent className="py-16 text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
                   <CheckCircle className="w-10 h-10 text-green-600" />
@@ -144,7 +141,7 @@ export default function LeaveRequestPage() {
         {/* Sidebar Info - อยู่ขวา */}
         <div className="lg:col-span-4 space-y-4">
           {/* Quick Info */}
-          <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-50">
+          <Card padding={0} className="-">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
@@ -192,7 +189,7 @@ export default function LeaveRequestPage() {
           </Card>
 
           {/* Additional Tips */}
-          <Card className="border-0 shadow-md">
+          <Card padding={0}>
             <CardHeader>
               <CardTitle className="text-base">💡 เคล็ดลับ</CardTitle>
             </CardHeader>

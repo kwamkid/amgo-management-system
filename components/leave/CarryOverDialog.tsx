@@ -9,9 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   ArrowRight,
   Loader2,
@@ -32,8 +29,7 @@ import {
 import { carryOverQuotaForAllUsers, checkCarryOverExists, checkQuotaExistsForYear } from '@/lib/services/leaveService'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Toggle, Checkbox, Label, Input } from '@/components/aoo'
-
+import { Toggle, Checkbox, Label, Input, Alert, Pill, Button } from '@/components/aoo'
 interface CarryOverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -187,17 +183,16 @@ export default function CarryOverDialog({
           <div className="space-y-4">
             {/* Loading state */}
             {checkingPrevious ? (
-              <Alert>
+              <Alert tone="info">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <AlertDescription>
+                <div>
                   กำลังตรวจสอบข้อมูล...
-                </AlertDescription>
+                </div>
               </Alert>
             ) : quotaStatus && !quotaStatus.hasQuota ? (
               /* Error: ยังไม่มีโควต้าปีใหม่ */
-              <Alert variant="error" className="border-red-300 bg-red-50">
-                <XCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
+              <Alert tone="error">
+                <div className="text-red-800">
                   <strong className="block mb-1">❌ ยังไม่มีโควต้าปี {toYear}</strong>
                   <span className="text-sm">
                     กรุณาตั้งโควต้าปี {toYear} ให้กับพนักงานก่อน จึงจะสามารถยกยอดได้
@@ -205,13 +200,12 @@ export default function CarryOverDialog({
                   <p className="text-sm mt-2">
                     ไปที่ <strong>การลา → จัดการโควต้า</strong> เพื่อตั้งค่าโควต้าปี {toYear}
                   </p>
-                </AlertDescription>
+                </div>
               </Alert>
             ) : quotaStatus && quotaStatus.usersWithoutQuota.length > 0 ? (
               /* Warning: มีบางคนยังไม่มีโควต้าปีใหม่ */
-              <Alert variant="warning" className="border-amber-300 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800">
+              <Alert tone="warning">
+                <div className="text-amber-800">
                   <strong className="block mb-1">⚠️ มีพนักงานบางคนยังไม่มีโควต้าปี {toYear}</strong>
                   <span className="text-sm">
                     มีโควต้าแล้ว: {quotaStatus.usersWithQuota} คน
@@ -221,13 +215,12 @@ export default function CarryOverDialog({
                   <p className="text-sm mt-2">
                     พนักงานที่ยังไม่มีโควต้าปี {toYear} จะถูกสร้างโควต้าใหม่พร้อมยอดยกมา (โควต้าพื้นฐาน = 0)
                   </p>
-                </AlertDescription>
+                </div>
               </Alert>
             ) : previousCarryOver ? (
               /* Warning: เคยยกยอดไปแล้ว */
-              <Alert variant="error" className="border-red-300 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
+              <Alert tone="error">
+                <div className="text-red-800">
                   <strong className="block mb-1">⚠️ เคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว!</strong>
                   <span className="text-sm">
                     ยกยอดล่าสุดเมื่อ: {format(new Date(previousCarryOver.executedAt), 'd MMMM yyyy HH:mm น.', { locale: th })}
@@ -239,20 +232,19 @@ export default function CarryOverDialog({
                   <p className="text-sm mt-2 font-medium text-red-700">
                     หากยกยอดอีกครั้ง โควต้าจะถูกเพิ่มซ้ำ (ไม่ใช่การแทนที่)
                   </p>
-                </AlertDescription>
+                </div>
               </Alert>
             ) : (
               /* Normal state */
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
+              <Alert tone="info">
+                <div className="text-green-800">
                   <strong className="block mb-1">✓ พร้อมยกยอด</strong>
                   <span className="text-sm">
                     พนักงาน {quotaStatus?.usersWithQuota || 0} คน มีโควต้าปี {toYear} เรียบร้อย
                     <br />
                     ระบบจะเพิ่มวันลาคงเหลือจากปี {fromYear} ไปยังโควต้าปี {toYear}
                   </span>
-                </AlertDescription>
+                </div>
               </Alert>
             )}
 
@@ -317,21 +309,19 @@ export default function CarryOverDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="soft" onClick={handleClose}>
                 ยกเลิก
               </Button>
-              <Button
-                onClick={() => {
-                  setConfirmDuplicate(false)
-                  setStep('confirm')
-                }}
-                className="bg-gradient-to-r from-red-500 to-rose-600"
-                disabled={
-                  (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
-                  checkingPrevious ||
-                  (quotaStatus !== null && !quotaStatus.hasQuota)
-                }
-              >
+              <Button onClick={() => {
+ setConfirmDuplicate(false)
+ setStep('confirm')
+ }}
+ className="-"
+ disabled={
+ (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
+ checkingPrevious ||
+ (quotaStatus !== null && !quotaStatus.hasQuota)
+ }>
                 ถัดไป
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -343,43 +333,41 @@ export default function CarryOverDialog({
         {step === 'confirm' && (
           <div className="space-y-4">
             {previousCarryOver ? (
-              <Alert variant="error" className="border-red-300 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
+              <Alert tone="error">
+                <div className="text-red-800">
                   <strong>⚠️ คำเตือน: กำลังยกยอดซ้ำ!</strong>
                   <br />
                   <span className="text-sm">
                     คุณเคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว
                     การยกยอดอีกครั้งจะทำให้โควต้าถูกเพิ่มซ้ำ
                   </span>
-                </AlertDescription>
+                </div>
               </Alert>
             ) : (
-              <Alert variant="warning">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
+              <Alert tone="warning">
+                <div>
                   <strong>ยืนยันการยกยอดโควต้า</strong>
                   <br />
                   การดำเนินการนี้ไม่สามารถยกเลิกได้
-                </AlertDescription>
+                </div>
               </Alert>
             )}
 
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">จากปี</span>
-                <Badge variant="outline">{fromYear}</Badge>
+                <Pill tone="neutral">{fromYear}</Pill>
               </div>
               <div className="flex items-center justify-center">
                 <ArrowRight className="w-4 h-4 text-gray-400" />
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">ไปปี</span>
-                <Badge variant="outline">{toYear}</Badge>
+                <Pill tone="neutral">{toYear}</Pill>
               </div>
               <div className="flex items-center justify-between text-sm pt-2 border-t">
                 <span className="text-gray-600">จำนวนพนักงาน</span>
-                <Badge>{users.length} คน</Badge>
+                <Pill tone="accent">{users.length} คน</Pill>
               </div>
             </div>
 
@@ -387,19 +375,19 @@ export default function CarryOverDialog({
               <Label className="text-sm text-gray-600">การยกยอดที่เลือก:</Label>
               <div className="flex flex-wrap gap-2">
                 {rules.sick.enabled && (
-                  <Badge variant="secondary" className="bg-pink-100 text-pink-700">
+                  <Pill tone="neutral" className="bg-pink-100 text-pink-700">
                     ลาป่วย {rules.sick.maxDays ? `(สูงสุด ${rules.sick.maxDays} วัน)` : '(ไม่จำกัด)'}
-                  </Badge>
+                  </Pill>
                 )}
                 {rules.personal.enabled && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  <Pill tone="neutral" className="bg-blue-100 text-blue-700">
                     ลากิจ {rules.personal.maxDays ? `(สูงสุด ${rules.personal.maxDays} วัน)` : '(ไม่จำกัด)'}
-                  </Badge>
+                  </Pill>
                 )}
                 {rules.vacation.enabled && (
-                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                  <Pill tone="neutral" className="bg-emerald-100 text-emerald-700">
                     ลาพักร้อน {rules.vacation.maxDays ? `(สูงสุด ${rules.vacation.maxDays} วัน)` : '(ไม่จำกัด)'}
-                  </Badge>
+                  </Pill>
                 )}
               </div>
             </div>
@@ -422,14 +410,10 @@ export default function CarryOverDialog({
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('config')}>
+              <Button variant="soft" onClick={() => setStep('config')}>
                 ย้อนกลับ
               </Button>
-              <Button
-                onClick={handleCarryOver}
-                className="bg-gradient-to-r from-red-500 to-rose-600"
-                disabled={previousCarryOver && !confirmDuplicate}
-              >
+              <Button onClick={handleCarryOver} className="-" disabled={previousCarryOver && !confirmDuplicate}>
                 ยืนยันยกยอด
               </Button>
             </DialogFooter>
@@ -451,25 +435,22 @@ export default function CarryOverDialog({
         {step === 'result' && result && (
           <div className="space-y-4">
             {result.successCount === result.totalUsers ? (
-              <Alert className="bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
+              <Alert tone="info">
+                <div className="text-green-800">
                   ยกยอดโควต้าสำเร็จทั้งหมด {result.successCount} คน
-                </AlertDescription>
+                </div>
               </Alert>
             ) : result.failedCount === result.totalUsers ? (
-              <Alert variant="error">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
+              <Alert tone="error">
+                <div>
                   ยกยอดโควต้าล้มเหลวทั้งหมด
-                </AlertDescription>
+                </div>
               </Alert>
             ) : (
-              <Alert variant="warning">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
+              <Alert tone="warning">
+                <div>
                   ยกยอดสำเร็จ {result.successCount} คน, ล้มเหลว {result.failedCount} คน
-                </AlertDescription>
+                </div>
               </Alert>
             )}
 
@@ -503,19 +484,19 @@ export default function CarryOverDialog({
                         <span className="text-gray-700">{r.userName}</span>
                         <div className="flex gap-2">
                           {r.sick.carriedOver > 0 && (
-                            <Badge variant="secondary" className="bg-pink-50 text-pink-600 text-xs">
+                            <Pill tone="neutral" className="bg-pink-50 text-pink-600 text-xs">
                               ป่วย +{r.sick.carriedOver}
-                            </Badge>
+                            </Pill>
                           )}
                           {r.personal.carriedOver > 0 && (
-                            <Badge variant="secondary" className="bg-blue-50 text-blue-600 text-xs">
+                            <Pill tone="neutral" className="bg-blue-50 text-blue-600 text-xs">
                               กิจ +{r.personal.carriedOver}
-                            </Badge>
+                            </Pill>
                           )}
                           {r.vacation.carriedOver > 0 && (
-                            <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs">
+                            <Pill tone="neutral" className="bg-emerald-50 text-emerald-600 text-xs">
                               พักร้อน +{r.vacation.carriedOver}
-                            </Badge>
+                            </Pill>
                           )}
                         </div>
                       </div>

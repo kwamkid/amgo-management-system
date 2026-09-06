@@ -30,9 +30,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -41,8 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { Input } from '@/components/aoo'
-
+import { Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
   facebook: Facebook,
@@ -117,7 +113,7 @@ export default function InfluencersPage() {
     }
     
     const config = tierConfig[tier] || tierConfig.nano
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   // Handle delete
@@ -144,21 +140,16 @@ export default function InfluencersPage() {
           </p>
         </div>
         
-        <Button
-          asChild
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
-          <Link href="/influencers/create">
+        <Link href="/influencers/create"><Button className="-">
             <Plus className="w-5 h-5 mr-2" />
             เพิ่ม Influencer
-          </Link>
-        </Button>
+          </Button></Link>
       </div>
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
+          <Card padding={0}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -170,7 +161,7 @@ export default function InfluencersPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-100">
+          <Card padding={0} className="-">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -182,7 +173,7 @@ export default function InfluencersPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-purple-50 to-violet-100">
+          <Card padding={0} className="-">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -194,7 +185,7 @@ export default function InfluencersPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-amber-50 to-orange-100">
+          <Card padding={0} className="-">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -258,7 +249,7 @@ export default function InfluencersPage() {
       </div>
 
       {/* Influencer List */}
-      <Card>
+      <Card padding={0}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -423,16 +414,10 @@ export default function InfluencersPage() {
               {searchTerm ? 'ไม่พบข้อมูลที่ค้นหา' : 'ยังไม่มีข้อมูล Influencer'}
             </p>
             {!searchTerm && (
-              <Button
-                asChild
-                variant="ghost"
-                className="mt-4 text-red-600 hover:bg-red-50"
-              >
-                <Link href="/influencers/create">
+              <Link href="/influencers/create"><Button variant="ghost" className="mt-4">
                   <Plus className="w-5 h-5 mr-2" />
                   เพิ่ม Influencer คนแรก
-                </Link>
-              </Button>
+                </Button></Link>
             )}
           </div>
         )}

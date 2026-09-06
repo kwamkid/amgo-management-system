@@ -14,13 +14,9 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Input } from '@/components/aoo'
+import { Button as AooButton, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 export default function UsersSettingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -47,7 +43,7 @@ export default function UsersSettingsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -61,7 +57,7 @@ export default function UsersSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -75,7 +71,7 @@ export default function UsersSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -89,7 +85,7 @@ export default function UsersSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -105,7 +101,7 @@ export default function UsersSettingsPage() {
       </div>
 
       {/* Search Bar */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-6">
           <div className="relative">
                         <Input
@@ -120,7 +116,7 @@ export default function UsersSettingsPage() {
       </Card>
 
       {/* Coming Soon Notice */}
-      <Card className={`border-0 shadow-md bg-gradient-to-r ${gradients.primaryLight}`}>
+      <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.primaryLight}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-900">
             <AlertCircle className="w-5 h-5" />
@@ -164,7 +160,7 @@ export default function UsersSettingsPage() {
       </Card>
 
       {/* Mock User List */}
-      <Card className="border-0 shadow-md opacity-50">
+      <Card padding={0} className="opacity-50">
         <CardHeader>
           <CardTitle>รายชื่อผู้ใช้</CardTitle>
           <CardDescription>แสดงรายชื่อผู้ใช้ทั้งหมดในระบบ</CardDescription>
@@ -181,8 +177,8 @@ export default function UsersSettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">Loading...</Badge>
-                  <Button size="sm" variant="outline" disabled>
+                  <Pill tone="neutral">Loading...</Pill>
+                  <Button size="sm" variant="soft" disabled>
                     จัดการ
                   </Button>
                 </div>

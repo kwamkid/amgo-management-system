@@ -22,15 +22,12 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/useToast'
 import { User as UserType } from '@/types/user'
 import { PageHeader } from '@/components/shared'
 import UserAvatar from '@/components/shared/UserAvatar'
 
+import { Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function InviteLinkDetailPage({ 
   params 
 }: { 
@@ -57,36 +54,36 @@ export default function InviteLinkDetailPage({
     
     if (inviteLink.expiresAt && new Date(inviteLink.expiresAt) < now) {
       return (
-        <Badge variant="secondary">
+        <Pill tone="neutral">
           <XCircle className="w-4 h-4 mr-1" />
           หมดอายุ
-        </Badge>
+        </Pill>
       )
     }
     
     if (inviteLink.maxUses && inviteLink.usedCount >= inviteLink.maxUses) {
       return (
-        <Badge variant="warning">
+        <Pill tone="warning">
           <AlertCircle className="w-4 h-4 mr-1" />
           ใช้ครบแล้ว
-        </Badge>
+        </Pill>
       )
     }
     
     if (!inviteLink.isActive) {
       return (
-        <Badge variant="error">
+        <Pill tone="danger">
           <XCircle className="w-4 h-4 mr-1" />
           ปิดใช้งาน
-        </Badge>
+        </Pill>
       )
     }
     
     return (
-      <Badge variant="success">
+      <Pill tone="success">
         <CheckCircle className="w-4 h-4 mr-1" />
         ใช้งานได้
-      </Badge>
+      </Pill>
     )
   }
 
@@ -99,7 +96,7 @@ export default function InviteLinkDetailPage({
     }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   const getLocationNames = (locationIds?: string[]) => {
@@ -117,23 +114,16 @@ export default function InviteLinkDetailPage({
   if (error || !inviteLink) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูล Invite Link'}
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
-              <Link href="/employees/invite-links">
+            <Link href="/employees/invite-links"><Button variant="soft">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 กลับไปหน้ารายการ
-              </Link>
-            </Button>
-          </AlertDescription>
+              </Button></Link>
+          </div>
         </Alert>
       </div>
     )
@@ -156,7 +146,7 @@ export default function InviteLinkDetailPage({
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -170,7 +160,7 @@ export default function InviteLinkDetailPage({
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Card padding={0} className="-">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -182,7 +172,7 @@ export default function InviteLinkDetailPage({
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md bg-gradient-to-br from-teal-50 to-emerald-100">
+        <Card padding={0} className="-">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -196,7 +186,7 @@ export default function InviteLinkDetailPage({
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-100">
+        <Card padding={0} className="-">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -212,7 +202,7 @@ export default function InviteLinkDetailPage({
       </div>
 
       {/* Link Details */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">รายละเอียด</CardTitle>
         </CardHeader>
@@ -225,11 +215,7 @@ export default function InviteLinkDetailPage({
                   <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm break-all">
                     {window.location.origin}/register/invite?invite={inviteLink.code}
                   </code>
-                  <Button
-                    onClick={copyInviteLink}
-                    variant="ghost"
-                    size="icon"
-                  >
+                  <Button onClick={copyInviteLink} variant="ghost" size="sm">
                     <Copy className="w-4 h-4 text-gray-600" />
                   </Button>
                 </div>
@@ -283,7 +269,7 @@ export default function InviteLinkDetailPage({
       </Card>
 
       {/* Users Table */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">พนักงานที่ใช้ลิงก์นี้</CardTitle>
         </CardHeader>
@@ -326,20 +312,20 @@ export default function InviteLinkDetailPage({
                     
                     <td className="px-6 py-4">
                       {user.isActive ? (
-                        <Badge variant="success">
+                        <Pill tone="success">
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Active
-                        </Badge>
+                        </Pill>
                       ) : user.needsApproval ? (
-                        <Badge variant="warning">
+                        <Pill tone="warning">
                           <Clock className="w-3 h-3 mr-1" />
                           รออนุมัติ
-                        </Badge>
+                        </Pill>
                       ) : (
-                        <Badge variant="error">
+                        <Pill tone="danger">
                           <XCircle className="w-3 h-3 mr-1" />
                           Inactive
-                        </Badge>
+                        </Pill>
                       )}
                     </td>
                     
@@ -350,16 +336,9 @@ export default function InviteLinkDetailPage({
                     </td>
                     
                     <td className="px-6 py-4 text-right">
-                      <Button
-                        asChild
-                        variant="link"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Link href={`/employees/${user.id}/edit`}>
+                      <Link href={`/employees/${user.id}/edit`}><Button variant="ghost" size="sm">
                           ดูรายละเอียด
-                        </Link>
-                      </Button>
+                        </Button></Link>
                     </td>
                   </tr>
                 ))}
@@ -375,9 +354,7 @@ export default function InviteLinkDetailPage({
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedUser(null)}
         >
-          <Card
-            className="max-w-md w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+          <Card padding={0} className="max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}
           >
             <CardHeader>
               <CardTitle>รายละเอียดผู้สมัคร</CardTitle>
@@ -422,7 +399,7 @@ export default function InviteLinkDetailPage({
                   {selectedUser.inviteLinkCode && (
                     <div>
                       <p className="text-sm text-gray-500">Invite Link</p>
-                      <Badge variant="secondary">{selectedUser.inviteLinkCode}</Badge>
+                      <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
                     </div>
                   )}
                   
@@ -445,11 +422,9 @@ export default function InviteLinkDetailPage({
               </div>
 
               <div className="mt-6">
-                <Button
-                  onClick={() => setSelectedUser(null)}
-                  variant="outline"
-                  className="w-full"
-                >
+                <Button onClick={() => setSelectedUser(null)}
+ variant="secondary"
+ className="w-full">
                   ปิด
                 </Button>
               </div>

@@ -16,9 +16,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Camera, Check, Loader2, RotateCcw, Trash2, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { resizeImage } from '@/lib/utils/resizeImage'
 
+import { Button } from '@/components/aoo'
 interface Shot {
   id: number
   blob: Blob
@@ -198,7 +198,7 @@ export default function BurstCamera({
       {/* ปุ่ม */}
       <div className="space-y-2 bg-black px-4 pb-6 pt-3">
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="flex-1" onClick={onCancel} disabled={uploading}>
+          <Button variant="soft" className="flex-1" onClick={onCancel} disabled={uploading}>
             ยกเลิก
           </Button>
 
@@ -218,11 +218,7 @@ export default function BurstCamera({
             </button>
           )}
 
-          <Button
-            className="flex-1 bg-teal-600 text-white hover:bg-teal-700"
-            onClick={finish}
-            disabled={shots.length === 0 || uploading || processing}
-          >
+          <Button className="flex-1" onClick={finish} disabled={shots.length === 0 || uploading || processing}>
             <Check className="mr-2 h-4 w-4" />
             อัปโหลด {shots.length > 0 ? `${shots.length} รูป` : ''}
           </Button>

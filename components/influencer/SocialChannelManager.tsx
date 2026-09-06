@@ -28,8 +28,6 @@ import {
   validateSocialMediaUrl,
   extractUsernameFromUrl
 } from '@/lib/influencer/socialFetchers'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -37,10 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Label, Input } from '@/components/aoo'
-
+import { Label, Input, Alert, Pill, Card, Button } from '@/components/aoo'
 interface SocialChannelManagerProps {
   channels: SocialChannel[]
   onChange: (channels: SocialChannel[]) => void
@@ -190,10 +185,10 @@ export default function SocialChannelManager({
                         {platformInfo.name}
                       </span>
                       {channel.isVerified && (
-                        <Badge variant="info" className="text-xs">
+                        <Pill tone="info" className="text-xs">
                           <Check className="w-3 h-3 mr-1" />
                           Verified
-                        </Badge>
+                        </Pill>
                       )}
                       {channel.username && (
                         <span className="text-sm text-gray-500">
@@ -246,12 +241,9 @@ export default function SocialChannelManager({
 
                   {/* Actions */}
                   {!disabled && (
-                    <Button
-                      onClick={() => handleRemoveChannel(channel.id!)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:bg-red-50"
-                    >
+                    <Button onClick={() => handleRemoveChannel(channel.id!)}
+ variant="ghost"
+ size="sm">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
@@ -264,7 +256,7 @@ export default function SocialChannelManager({
 
       {/* Add New Channel Form */}
       {showAddForm ? (
-        <Card className="p-4 border-2 border-dashed">
+        <Card className="p-4 border-2">
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900">เพิ่มช่องทาง Social Media</h4>
             
@@ -314,13 +306,7 @@ export default function SocialChannelManager({
                   className={urlError ? 'border-red-500' : ''}
                 />
                 {SocialMediaFetcherFactory.canFetch(newChannel.platform!) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    disabled={!newChannel.profileUrl || fetchingData}
-                    title="ดึงข้อมูลอัตโนมัติ"
-                  >
+                  <Button type="button" variant="soft" size="sm" disabled={!newChannel.profileUrl || fetchingData} title="ดึงข้อมูลอัตโนมัติ">
                     <RefreshCw className={`w-4 h-4 ${fetchingData ? 'animate-spin' : ''}`} />
                   </Button>
                 )}
@@ -350,50 +336,41 @@ export default function SocialChannelManager({
 
             {/* Auto-fetch info */}
             {!SocialMediaFetcherFactory.canFetch(newChannel.platform!) && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-sm">
+              <Alert tone="info">
+                <div className="text-sm">
                   ระบบยังไม่รองรับการดึงข้อมูลอัตโนมัติสำหรับ {PLATFORM_INFO[newChannel.platform!].name}
                   กรุณากรอกข้อมูลด้วยตนเอง
-                </AlertDescription>
+                </div>
               </Alert>
             )}
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button
-                onClick={handleAddChannel}
-                disabled={disabled || fetchingData || !newChannel.profileUrl}
-                className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-              >
+              <Button onClick={handleAddChannel} disabled={disabled || fetchingData || !newChannel.profileUrl} className="-">
                 <Plus className="w-4 h-4 mr-2" />
                 เพิ่ม
               </Button>
-              <Button
-                onClick={() => {
-                  setShowAddForm(false)
-                  setNewChannel({
-                    platform: 'instagram' as SocialPlatform,
-                    profileUrl: '',
-                    followerCount: undefined
-                  })
-                  setUrlError('')
-                }}
-                variant="outline"
-                disabled={fetchingData}
-              >
+              <Button onClick={() => {
+ setShowAddForm(false)
+ setNewChannel({
+ platform: 'instagram' as SocialPlatform,
+ profileUrl: '',
+ followerCount: undefined
+ })
+ setUrlError('')
+ }}
+ variant="secondary"
+ disabled={fetchingData}>
                 ยกเลิก
               </Button>
             </div>
           </div>
         </Card>
       ) : (
-        <Button
-          onClick={() => setShowAddForm(true)}
-          variant="outline"
-          disabled={disabled}
-          className="w-full border-2 border-dashed"
-        >
+        <Button onClick={() => setShowAddForm(true)}
+ variant="secondary"
+ disabled={disabled}
+ className="w-full border-2">
           <Plus className="w-4 h-4 mr-2" />
           เพิ่มช่องทาง Social Media
         </Button>

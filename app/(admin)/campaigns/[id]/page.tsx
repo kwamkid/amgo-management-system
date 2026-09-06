@@ -32,16 +32,11 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { safeFormatDate } from '@/lib/utils/date'
 import { th } from 'date-fns/locale'
 import { CampaignStatus, SubmissionStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
-import { Textarea, Label } from '@/components/aoo'
-
+import { Textarea, Label, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 // Platform icons config
 const PLATFORM_ICONS: Record<string, any> = {
   instagram: '📷',
@@ -214,23 +209,16 @@ export default function CampaignDetailPage({
   if (error || !campaign) {
     return (
       <div className="max-w-4xl px-4">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูล Campaign'}
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
-              <Link href="/campaigns">
+            <Link href="/campaigns"><Button variant="soft">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 กลับไปหน้ารายการ
-              </Link>
-            </Button>
-          </AlertDescription>
+              </Button></Link>
+          </div>
         </Alert>
       </div>
     )
@@ -244,12 +232,8 @@ export default function CampaignDetailPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/campaigns')}
-            className="flex-shrink-0"
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.push('/campaigns')}
+ className="flex-shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
@@ -257,10 +241,10 @@ export default function CampaignDetailPage({
               {campaign.name}
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-1">
-              <Badge className={`${status.bgColor} ${status.color}`}>
+              <Pill tone="accent" className={`${status.bgColor} ${status.color}`}>
                 <StatusIcon className="w-4 h-4 mr-1" />
                 {status.label}
-              </Badge>
+              </Pill>
               <span className="text-gray-500 text-sm">•</span>
               <span className="text-sm text-gray-600">
                 สร้างโดย {campaign.createdByName}
@@ -271,33 +255,22 @@ export default function CampaignDetailPage({
         
         <div className="flex gap-2 self-end sm:self-auto">
           {campaign.status !== 'cancelled' && campaign.status !== 'completed' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:bg-red-50"
-              onClick={handleCancel}
-            >
+            <Button variant="soft" size="sm" onClick={handleCancel}>
               <XCircle className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">ยกเลิก</span>
               <span className="sm:hidden">ยกเลิก</span>
             </Button>
           )}
-          <Button
-            asChild
-            size="sm"
-            className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-          >
-            <Link href={`/campaigns/${id}/edit`}>
+          <Link href={`/campaigns/${id}/edit`}><Button size="sm" className="-">
               <Edit className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">แก้ไข</span>
               <span className="sm:hidden">แก้ไข</span>
-            </Link>
-          </Button>
+            </Button></Link>
         </div>
       </div>
 
       {/* Campaign Info */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">รายละเอียด Campaign</CardTitle>
         </CardHeader>
@@ -345,12 +318,8 @@ export default function CampaignDetailPage({
           {/* Files */}
           <div className="flex flex-col sm:flex-row gap-2">
             {campaign.briefFileUrl && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(campaign.briefFileUrl, '_blank')}
-                className="justify-start"
-              >
+              <Button variant="soft" size="sm" onClick={() => window.open(campaign.briefFileUrl, '_blank')}
+ className="justify-start">
                 <FileText className="w-4 h-4 mr-2" />
                 ดู Brief
                 <ExternalLink className="w-3 h-3 ml-2" />
@@ -358,12 +327,8 @@ export default function CampaignDetailPage({
             )}
             
             {campaign.trackingUrl && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(campaign.trackingUrl, '_blank')}
-                className="justify-start"
-              >
+              <Button variant="soft" size="sm" onClick={() => window.open(campaign.trackingUrl, '_blank')}
+ className="justify-start">
                 <LinkIcon className="w-4 h-4 mr-2" />
                 Link ส่งของ
                 <ExternalLink className="w-3 h-3 ml-2" />
@@ -380,9 +345,9 @@ export default function CampaignDetailPage({
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {campaign.brands?.map(brandId => (
-                  <Badge key={brandId} variant="secondary" className="text-xs">
+                  <Pill key={brandId} tone="neutral" className="text-xs">
                     {getBrandName(brandId)}
-                  </Badge>
+                  </Pill>
                 ))}
               </div>
             </div>
@@ -394,9 +359,9 @@ export default function CampaignDetailPage({
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {campaign.products?.map(productId => (
-                  <Badge key={productId} variant="secondary" className="text-xs">
+                  <Pill key={productId} tone="neutral" className="text-xs">
                     {getProductName(productId)}
-                  </Badge>
+                  </Pill>
                 ))}
               </div>
             </div>
@@ -414,13 +379,7 @@ export default function CampaignDetailPage({
           const canReview = ['submitted', 'resubmitted'].includes(inf.submissionStatus)
           
           return (
-            <Card 
-              key={inf.influencerId}
-              className={cn(
-                "transition-all",
-                canReview && "ring-2 ring-yellow-500"
-              )}
-            >
+            <Card padding={0} key={inf.influencerId} className={cn( "transition-all", canReview && "ring-2 ring-yellow-500" )}>
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -431,20 +390,15 @@ export default function CampaignDetailPage({
                       )}
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <Badge className={`${subStatus.bgColor} ${subStatus.color} text-xs`}>
+                      <Pill tone="accent" className={`${subStatus.bgColor} ${subStatus.color} text-xs`}>
                         {subStatus.label}
-                      </Badge>
+                      </Pill>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span>Link:</span>
                         <code className="bg-gray-100 px-1.5 py-0.5 rounded">
                           {inf.submissionLink}
                         </code>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-5 w-5"
-                          onClick={() => copySubmissionLink(inf.submissionLink!)}
-                        >
+                        <Button size="sm" variant="ghost" className="h-5 w-5" onClick={() => copySubmissionLink(inf.submissionLink!)}>
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
@@ -503,12 +457,10 @@ export default function CampaignDetailPage({
                       <div className="pt-3 border-t">
                         {!isReviewing ? (
                           <div className="flex flex-col sm:flex-row gap-2">
-                            <Button
-                              onClick={() => handleReviewSubmission(inf.influencerId, 'approve')}
-                              disabled={processingReview === inf.influencerId}
-                              className="bg-green-600 hover:bg-green-700"
-                              size="sm"
-                            >
+                            <Button onClick={() => handleReviewSubmission(inf.influencerId, 'approve')}
+ disabled={processingReview === inf.influencerId}
+ 
+ size="sm">
                               {processingReview === inf.influencerId ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               ) : (
@@ -516,12 +468,10 @@ export default function CampaignDetailPage({
                               )}
                               อนุมัติ
                             </Button>
-                            <Button
-                              onClick={() => setReviewingId(inf.influencerId)}
-                              variant="outline"
-                              className="text-orange-600 hover:bg-orange-50"
-                              size="sm"
-                            >
+                            <Button onClick={() => setReviewingId(inf.influencerId)}
+ variant="secondary"
+ 
+ size="sm">
                               <RefreshCw className="w-4 h-4 mr-2" />
                               ขอแก้ไข
                             </Button>
@@ -542,12 +492,10 @@ export default function CampaignDetailPage({
                               />
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2">
-                              <Button
-                                onClick={() => handleReviewSubmission(inf.influencerId, 'reject')}
-                                disabled={processingReview === inf.influencerId}
-                                className="bg-orange-600 hover:bg-orange-700"
-                                size="sm"
-                              >
+                              <Button onClick={() => handleReviewSubmission(inf.influencerId, 'reject')}
+ disabled={processingReview === inf.influencerId}
+ 
+ size="sm">
                                 {processingReview === inf.influencerId ? (
                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (
@@ -555,14 +503,12 @@ export default function CampaignDetailPage({
                                 )}
                                 ส่งคำขอแก้ไข
                               </Button>
-                              <Button
-                                onClick={() => {
-                                  setReviewingId(null)
-                                  setReviewNotes({ ...reviewNotes, [inf.influencerId]: '' })
-                                }}
-                                variant="outline"
-                                size="sm"
-                              >
+                              <Button onClick={() => {
+ setReviewingId(null)
+ setReviewNotes({ ...reviewNotes, [inf.influencerId]: '' })
+ }}
+ variant="secondary"
+ size="sm">
                                 ยกเลิก
                               </Button>
                             </div>
@@ -607,7 +553,7 @@ export default function CampaignDetailPage({
         
         {/* Empty state */}
         {(!campaign.influencers || campaign.influencers.length === 0) && (
-          <Card>
+          <Card padding={0}>
             <CardContent className="py-8">
               <p className="text-center text-gray-500">
                 ยังไม่มี Influencer ในแคมเปญนี้

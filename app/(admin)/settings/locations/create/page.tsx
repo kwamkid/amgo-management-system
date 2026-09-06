@@ -8,11 +8,10 @@ import LocationForm from '@/components/locations/LocationForm'
 import { LocationFormData } from '@/types/location'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 export default function CreateLocationPage() {
   const router = useRouter()
   const { createLocation } = useLocations()

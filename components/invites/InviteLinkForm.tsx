@@ -17,9 +17,6 @@ import {
   MapPin,
   AlertCircle
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -28,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import { Textarea, Checkbox, Label, Input } from '@/components/aoo'
+import { Textarea, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface InviteLinkFormProps {
   initialData?: InviteLink
   onSubmit: (data: CreateInviteLinkData) => Promise<boolean>
@@ -105,7 +102,7 @@ export default function InviteLinkForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Info className="w-5 h-5 text-red-600" />
@@ -129,13 +126,7 @@ export default function InviteLinkForm({
                   maxLength={20}
                 />
                 {!initialData && (
-                  <Button
-                    type="button"
-                    onClick={handleGenerateCode}
-                    variant="outline"
-                    size="icon"
-                    disabled={isSubmitting}
-                  >
+                  <Button type="button" onClick={handleGenerateCode} variant="soft" size="sm" disabled={isSubmitting}>
                     <RefreshCw className="w-4 h-4" />
                   </Button>
                 )}
@@ -161,7 +152,7 @@ export default function InviteLinkForm({
       </Card>
 
       {/* Default Settings */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader className="bg-gradient-to-r from-red-50 to-rose-100">
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Shield className="w-5 h-5 text-red-600" />
@@ -250,7 +241,7 @@ export default function InviteLinkForm({
       </Card>
 
       {/* Usage Limits */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-100">
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Users className="w-5 h-5 text-orange-600" />
@@ -299,9 +290,8 @@ export default function InviteLinkForm({
       </Card>
 
       {/* Preview */}
-      <Alert className="bg-blue-50 border-blue-200">
-        <AlertCircle className="h-4 w-4 text-blue-600" />
-        <AlertDescription>
+      <Alert tone="info">
+        <div>
           <h3 className="font-semibold mb-2 text-blue-900">ตัวอย่างลิงก์</h3>
           <div className="bg-white rounded-lg p-4 border border-blue-200">
             <p className="text-sm text-gray-600 mb-2">พนักงานจะได้รับลิงก์:</p>
@@ -309,25 +299,16 @@ export default function InviteLinkForm({
               {typeof window !== 'undefined' ? window.location.origin : ''}/register/invite?invite={formData.code || 'CODE'}
             </code>
           </div>
-        </AlertDescription>
+        </div>
       </Alert>
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="outline"
-          disabled={isSubmitting}
-        >
+        <Button type="button" onClick={onCancel} variant="soft" disabled={isSubmitting}>
           <X className="w-4 h-4 mr-2" />
           ยกเลิก
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
+        <Button type="submit" disabled={isSubmitting} className="-">
           <Save className="w-4 h-4 mr-2" />
           {isSubmitting ? 'กำลังบันทึก...' : initialData ? 'บันทึก' : 'สร้างลิงก์'}
         </Button>

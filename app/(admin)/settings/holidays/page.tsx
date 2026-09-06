@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button as AooButton, Input } from '@/components/aoo'
+import { Button as AooButton, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
@@ -27,10 +27,6 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Select,
   SelectContent,
@@ -133,7 +129,7 @@ export default function HolidaysPage() {
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -147,7 +143,7 @@ export default function HolidaysPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -161,7 +157,7 @@ export default function HolidaysPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -175,7 +171,7 @@ export default function HolidaysPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -192,17 +188,16 @@ export default function HolidaysPage() {
       
       {/* Next Holiday Alert */}
       {stats.nextHoliday && (
-        <Alert className="border-red-200 bg-red-50">
-          <Calendar className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
+        <Alert tone="info">
+          <div className="text-red-800">
             <strong>วันหยุดถัดไป:</strong> {stats.nextHoliday.name} - {' '}
             {format(new Date(stats.nextHoliday.date), 'EEEE dd MMMM yyyy', { locale: th })}
-          </AlertDescription>
+          </div>
         </Alert>
       )}
       
       {/* Filters */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -250,7 +245,7 @@ export default function HolidaysPage() {
       </Card>
       
       {/* Holidays Table */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle>รายการวันหยุด</CardTitle>
           <CardDescription>
@@ -265,11 +260,9 @@ export default function HolidaysPage() {
                 {searchTerm ? 'ไม่พบวันหยุดที่ค้นหา' : 'ยังไม่มีวันหยุด'}
               </p>
               {!searchTerm && (
-                <Button
-                  onClick={() => setShowImportDialog(true)}
-                  variant="outline"
-                  className="mt-4 cursor-pointer"
-                >
+                <Button onClick={() => setShowImportDialog(true)}
+ variant="secondary"
+ className="mt-4 cursor-pointer">
                   <Download className="w-5 h-5 mr-2" />
                   นำเข้าวันหยุดราชการ
                 </Button>
@@ -302,25 +295,25 @@ export default function HolidaysPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={
+                        <Pill tone={badgeTone(
                           holiday.type === 'public' ? 'info' : 
                           holiday.type === 'company' ? 'success' : 
                           'secondary'
-                        }>
+                        )}>
                           {HOLIDAY_TYPE_LABELS[holiday.type]}
-                        </Badge>
+                        </Pill>
                       </TableCell>
                       <TableCell>
                         {holiday.isWorkingDay ? (
-                          <Badge variant="warning">
+                          <Pill tone="warning">
                             <CheckCircle className="w-4 h-4 mr-1" />
                             ทำงาน
-                          </Badge>
+                          </Pill>
                         ) : (
-                          <Badge variant="secondary">
+                          <Pill tone="neutral">
                             <XCircle className="w-4 h-4 mr-1" />
                             หยุด
-                          </Badge>
+                          </Pill>
                         )}
                       </TableCell>
                       <TableCell>
@@ -333,20 +326,17 @@ export default function HolidaysPage() {
                       </TableCell>
                       <TableCell>
                         {holiday.applicableLocationIds && holiday.applicableLocationIds.length > 0 ? (
-                          <Badge variant="outline">
+                          <Pill tone="neutral">
                             {holiday.applicableLocationIds.length} สาขา
-                          </Badge>
+                          </Pill>
                         ) : (
-                          <Badge variant="success">ทุกสาขา</Badge>
+                          <Pill tone="success">ทุกสาขา</Pill>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          onClick={() => handleDelete(holiday.id!, holiday.name)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
+                        <Button onClick={() => handleDelete(holiday.id!, holiday.name)}
+ variant="ghost"
+ size="sm">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </TableCell>

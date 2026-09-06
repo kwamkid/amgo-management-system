@@ -3,8 +3,6 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, 
   Activity,
@@ -14,9 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { LeaveQuotaYear } from '@/types/leave';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-import { Progress } from '@/components/aoo'
+import { Progress, Alert, Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
 interface LeaveBalanceProps {
   quota: LeaveQuotaYear | null;
   loading?: boolean;
@@ -25,7 +21,7 @@ interface LeaveBalanceProps {
 export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
   if (loading) {
     return (
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <div className="animate-pulse rounded-lg bg-gray-100 h-6 w-32" />
         </CardHeader>
@@ -40,7 +36,7 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
 
   if (!quota) {
   return (
-    <Card className="border-0 shadow-md">
+    <Card padding={0}>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Calendar className="w-5 h-5 text-red-600" />
@@ -48,11 +44,10 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="warning">
+          <div>
             ยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล
-          </AlertDescription>
+          </div>
         </Alert>
       </CardContent>
     </Card>
@@ -90,16 +85,16 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
   ];
 
   return (
-    <Card className="border-0 shadow-md">
+    <Card padding={0}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar className="w-5 h-5 text-red-600" />
             สิทธิ์การลาประจำปี {quota.year}
           </CardTitle>
-          <Badge variant="outline" className="font-normal">
+          <Pill tone="neutral" className="font-normal">
             อัพเดท: {quota.updatedAt ? new Date(quota.updatedAt).toLocaleDateString('th-TH') : '-'}
-          </Badge>
+          </Pill>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

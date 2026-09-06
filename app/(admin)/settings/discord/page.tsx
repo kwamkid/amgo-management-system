@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimePicker, Checkbox, Label, Input } from '@/components/aoo'
+import { TimePicker, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { 
@@ -31,10 +31,6 @@ import {
   DEFAULT_DISCORD_SETTINGS,
   type DiscordSettings,
 } from '@/lib/discord/settings'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { PageHeader } from '@/components/shared'
@@ -142,17 +138,16 @@ export default function DiscordSettingsPage() {
 
       {/* Permission Warning */}
       {!canEdit && (
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>สิทธิ์ไม่เพียงพอ</AlertTitle>
-          <AlertDescription>
+        <Alert tone="warning">
+          <p className="font-semibold">สิทธิ์ไม่เพียงพอ</p>
+          <div>
             เฉพาะ Admin และ HR เท่านั้นที่สามารถแก้ไขการตั้งค่าได้
-          </AlertDescription>
+          </div>
         </Alert>
       )}
 
       {/* Webhook URLs */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -187,13 +182,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('checkIn')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('checkIn')}
+ className="h-8 w-8">
                     {showWebhooks.checkIn ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -201,23 +191,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.checkIn && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.checkIn)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.checkIn)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('checkIn')}
-                disabled={!settings.webhooks.checkIn || testing === 'checkIn'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('checkIn')}
+ disabled={!settings.webhooks.checkIn || testing === 'checkIn'}
+ variant="secondary">
                 {testing === 'checkIn' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -246,13 +229,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('leave')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('leave')}
+ className="h-8 w-8">
                     {showWebhooks.leave ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -260,23 +238,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.leave && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.leave)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.leave)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('leave')}
-                disabled={!settings.webhooks.leave || testing === 'leave'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('leave')}
+ disabled={!settings.webhooks.leave || testing === 'leave'}
+ variant="secondary">
                 {testing === 'leave' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -305,13 +276,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('hr')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('hr')}
+ className="h-8 w-8">
                     {showWebhooks.hr ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -319,23 +285,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.hr && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.hr)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.hr)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('hr')}
-                disabled={!settings.webhooks.hr || testing === 'hr'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('hr')}
+ disabled={!settings.webhooks.hr || testing === 'hr'}
+ variant="secondary">
                 {testing === 'hr' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -364,13 +323,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('campaign')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('campaign')}
+ className="h-8 w-8">
                     {showWebhooks.campaign ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -378,23 +332,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.campaign && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.campaign)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.campaign)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('campaign')}
-                disabled={!settings.webhooks.campaign || testing === 'campaign'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('campaign')}
+ disabled={!settings.webhooks.campaign || testing === 'campaign'}
+ variant="secondary">
                 {testing === 'campaign' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -423,13 +370,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('alerts')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('alerts')}
+ className="h-8 w-8">
                     {showWebhooks.alerts ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -437,23 +379,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.alerts && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.alerts)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.alerts)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('alerts')}
-                disabled={!settings.webhooks.alerts || testing === 'alerts'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('alerts')}
+ disabled={!settings.webhooks.alerts || testing === 'alerts'}
+ variant="secondary">
                 {testing === 'alerts' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -483,13 +418,8 @@ export default function DiscordSettingsPage() {
                   disabled={!canEdit}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => toggleWebhookVisibility('birthday')}
-                    className="h-8 w-8"
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('birthday')}
+ className="h-8 w-8">
                     {showWebhooks.birthday ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
@@ -497,23 +427,16 @@ export default function DiscordSettingsPage() {
                     )}
                   </Button>
                   {settings.webhooks.birthday && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyWebhookUrl(settings.webhooks.birthday)}
-                      className="h-8 w-8"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.birthday)}
+ className="h-8 w-8">
                       <Copy className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <Button
-                onClick={() => testWebhook('birthday')}
-                disabled={!settings.webhooks.birthday || testing === 'birthday'}
-                variant="outline"
-              >
+              <Button onClick={() => testWebhook('birthday')}
+ disabled={!settings.webhooks.birthday || testing === 'birthday'}
+ variant="secondary">
                 {testing === 'birthday' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -529,7 +452,7 @@ export default function DiscordSettingsPage() {
       </Card>
 
       {/* Notification Settings */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-red-600" />
@@ -585,12 +508,7 @@ export default function DiscordSettingsPage() {
       {/* Save Button */}
       {canEdit && (
         <div className="flex justify-end">
-          <Button
-            onClick={saveSettings}
-            disabled={saving}
-            size="lg"
-            className={`bg-gradient-to-r ${gradients.primary}`}
-          >
+          <Button onClick={saveSettings} disabled={saving} size="lg" className={`bg-gradient-to-r ${gradients.primary}`}>
             {saving ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />

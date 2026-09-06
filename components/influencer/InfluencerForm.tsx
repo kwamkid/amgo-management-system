@@ -25,8 +25,6 @@ import {
 } from '@/types/influencer'
 import SocialChannelManager from './SocialChannelManager'
 import ChildrenManager from './ChildrenManager'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -34,10 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Textarea, Label, Input } from '@/components/aoo'
-
+import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface InfluencerFormProps {
   influencer?: Influencer | null // For edit mode
   onSubmit: (data: CreateInfluencerData) => Promise<string | null | boolean>
@@ -189,12 +184,7 @@ export default function InfluencerForm({
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
       {/* Header - ย้ายปุ่มกลับมาทางซ้าย */}
       <div className="flex items-center gap-4">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push('/influencers')}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/influencers')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h1 className="text-2xl font-bold text-gray-900">
@@ -203,7 +193,7 @@ export default function InfluencerForm({
       </div>
 
       {/* Personal Info */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <User className="w-5 h-5 text-red-600" />
@@ -300,7 +290,7 @@ export default function InfluencerForm({
       </Card>
 
       {/* Contact Info */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Phone className="w-5 h-5 text-red-600" />
@@ -376,7 +366,7 @@ export default function InfluencerForm({
       </Card>
 
       {/* Shipping Address (Optional) */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -384,12 +374,7 @@ export default function InfluencerForm({
               ที่อยู่จัดส่งสินค้า
             </div>
             {!showAddressSection && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAddressSection(true)}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddressSection(true)}>
                 เพิ่มที่อยู่
               </Button>
             )}
@@ -431,7 +416,7 @@ export default function InfluencerForm({
       </Card>
 
       {/* Children Info */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">ข้อมูลลูก</CardTitle>
         </CardHeader>
@@ -444,7 +429,7 @@ export default function InfluencerForm({
       </Card>
 
       {/* Social Media */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">
             Social Media <span className="text-red-500">*</span>
@@ -459,15 +444,15 @@ export default function InfluencerForm({
             }}
           />
           {errors.socialChannels && (
-            <Alert variant="error" className="mt-4">
-              <AlertDescription>{errors.socialChannels}</AlertDescription>
+            <Alert tone="error" className="mt-4">
+              <div>{errors.socialChannels}</div>
             </Alert>
           )}
         </CardContent>
       </Card>
 
       {/* Notes */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">หมายเหตุ</CardTitle>
         </CardHeader>
@@ -483,19 +468,11 @@ export default function InfluencerForm({
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push('/influencers')}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="soft" onClick={() => router.push('/influencers')}
+ disabled={isSubmitting}>
           ยกเลิก
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
+        <Button type="submit" disabled={isSubmitting} className="-">
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

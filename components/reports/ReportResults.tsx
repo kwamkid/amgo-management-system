@@ -7,13 +7,10 @@ import { Skeleton } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip, Textarea, Input } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -99,7 +96,7 @@ export default function ReportResults({
   // Empty State
   if (!loading && reportData.length === 0) {
     return (
-      <Card>
+      <Card padding={0}>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Clock className="w-12 h-12 text-gray-400 mb-4" />
           <p className="text-gray-500 text-center">
@@ -116,7 +113,7 @@ export default function ReportResults({
   }
   
   return (
-    <Card>
+    <Card padding={0}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="text-base">
@@ -128,10 +125,10 @@ export default function ReportResults({
             )}
           </CardTitle>
           {filters && (
-            <Badge variant="secondary" className="text-xs">
+            <Pill tone="neutral" className="text-xs">
               {format(filters.startDate, 'dd MMM', { locale: th })} –{' '}
               {format(filters.endDate, 'dd MMM yyyy', { locale: th })}
-            </Badge>
+            </Pill>
           )}
         </div>
       </CardHeader>
@@ -274,7 +271,7 @@ function BackfillDayDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
-      <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+      <Card padding={0} className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <CardContent className="space-y-4 p-5">
           <div>
             <h3 className="font-semibold text-gray-900">เติมวันทำงานย้อนหลัง</h3>
@@ -305,7 +302,7 @@ function BackfillDayDialog({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            <Button variant="soft" size="sm" onClick={onClose} disabled={saving}>
               ยกเลิก
             </Button>
             <Button size="sm" onClick={save} disabled={saving || !reason.trim()}>
@@ -377,13 +374,9 @@ function PaginationControls({
       {/* Right: page navigation */}
       {showPages && (
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(pagination!.currentPage - 1)}
-            disabled={!pagination!.hasPrev || loading}
-            className="h-7 w-7 p-0"
-          >
+          <Button variant="soft" size="sm" onClick={() => onPageChange?.(pagination!.currentPage - 1)}
+ disabled={!pagination!.hasPrev || loading}
+ className="h-7 w-7 p-0">
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
 
@@ -392,26 +385,18 @@ function PaginationControls({
               {page === '...' ? (
                 <span className="px-1.5 text-xs text-gray-400">...</span>
               ) : (
-                <Button
-                  variant={page === pagination!.currentPage ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => onPageChange?.(page as number)}
-                  disabled={loading}
-                  className="h-7 min-w-[28px] px-1.5 text-xs"
-                >
+                <Button variant={page === pagination!.currentPage ? 'primary' : 'secondary'} size="sm" onClick={() => onPageChange?.(page as number)}
+ disabled={loading}
+ className="h-7 min-w-[28px] px-1.5">
                   {page}
                 </Button>
               )}
             </div>
           ))}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(pagination!.currentPage + 1)}
-            disabled={!pagination!.hasNext || loading}
-            className="h-7 w-7 p-0"
-          >
+          <Button variant="soft" size="sm" onClick={() => onPageChange?.(pagination!.currentPage + 1)}
+ disabled={!pagination!.hasNext || loading}
+ className="h-7 w-7 p-0">
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -462,14 +447,14 @@ function DailyReportTable({
               </TableCell>
               <TableCell>{record.userName}</TableCell>
               <TableCell>
-                <Badge variant={record.firstCheckIn === '-' ? 'secondary' : 'default'}>
+                <Pill tone={badgeTone(record.firstCheckIn === '-' ? 'secondary' : 'default')}>
                   {record.firstCheckIn}
-                </Badge>
+                </Pill>
               </TableCell>
               <TableCell>
-                <Badge variant={record.lastCheckOut === '-' ? 'secondary' : 'default'}>
+                <Pill tone={badgeTone(record.lastCheckOut === '-' ? 'secondary' : 'default')}>
                   {record.lastCheckOut}
-                </Badge>
+                </Pill>
               </TableCell>
               <TableCell>
                 {record.totalHours > 0 ? (
@@ -490,7 +475,7 @@ function DailyReportTable({
               {canBackfill && (
                 <TableCell className="text-right">
                   {record.status === 'absent' && (
-                    <Button variant="outline" size="sm" onClick={() => onBackfill(record)}>
+                    <Button variant="soft" size="sm" onClick={() => onBackfill(record)}>
                       เติมวัน
                     </Button>
                   )}
@@ -570,17 +555,17 @@ function SummaryReportTable({
                 {summary.expectedDays ?? summary.presentDays + summary.absentDays}
               </TableCell>
               <TableCell className="text-center">
-                <Badge variant="success">{summary.presentDays}</Badge>
+                <Pill tone="success">{summary.presentDays}</Pill>
               </TableCell>
               <TableCell className="text-center">
-                <Badge variant={summary.absentDays > 0 ? 'error' : 'secondary'}>
+                <Pill tone={badgeTone(summary.absentDays > 0 ? 'error' : 'secondary')}>
                   {summary.absentDays}
-                </Badge>
+                </Pill>
               </TableCell>
               <TableCell className="text-center">
-                <Badge variant={summary.lateDays > 0 ? 'warning' : 'secondary'}>
+                <Pill tone={badgeTone(summary.lateDays > 0 ? 'warning' : 'secondary')}>
                   {summary.lateDays}
-                </Badge>
+                </Pill>
               </TableCell>
               <TableCell className="text-center font-medium">
                 {summary.totalHours.toFixed(2)}
@@ -607,22 +592,22 @@ function AttendanceStatusBadge({
   lateMinutes: number
 }) {
   if (status === 'absent') {
-    return <Badge variant="error">ขาด</Badge>
+    return <Pill tone="danger">ขาด</Pill>
   }
   
   if (status === 'holiday') {
-    return <Badge variant="secondary">วันหยุด</Badge>
+    return <Pill tone="neutral">วันหยุด</Pill>
   }
   
   if (status === 'late' || isLate) {
     return (
-      <Badge variant="warning">
+      <Pill tone="warning">
         สาย {lateMinutes > 0 ? `${lateMinutes} นาที` : ''}
-      </Badge>
+      </Pill>
     )
   }
   
-  return <Badge variant="success">ปกติ</Badge>
+  return <Pill tone="success">ปกติ</Pill>
 }
 
 /* ------------------------------------------------------------------ *

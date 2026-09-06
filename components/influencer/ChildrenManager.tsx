@@ -11,8 +11,6 @@ import {
   User
 } from 'lucide-react'
 import { Child } from '@/types/influencer'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -20,11 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Label, Input } from '@/components/aoo'
-
+import { Label, Input, Pill, Card, Button } from '@/components/aoo'
 interface ChildrenManagerProps {
   childrenData: Child[]
   onChange: (children: Child[]) => void
@@ -149,9 +145,9 @@ export default function ChildrenManager({
                       <span className="font-medium text-gray-900">
                         ลูกคนที่ {index + 1}: {child.nickname}
                       </span>
-                      <Badge className={genderInfo.color}>
+                      <Pill tone="accent" className={genderInfo.color}>
                         {genderInfo.text}
-                      </Badge>
+                      </Pill>
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -173,12 +169,9 @@ export default function ChildrenManager({
 
                   {/* Actions */}
                   {!disabled && (
-                    <Button
-                      onClick={() => handleRemoveChild(child.id!)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:bg-red-50"
-                    >
+                    <Button onClick={() => handleRemoveChild(child.id!)}
+ variant="ghost"
+ size="sm">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
@@ -191,7 +184,7 @@ export default function ChildrenManager({
 
       {/* Add New Child Form */}
       {showAddForm ? (
-        <Card className="p-4 border-2 border-dashed">
+        <Card className="p-4 border-2">
           <div className="space-y-4">
             <h4 className="font-medium text-gray-900 flex items-center gap-2">
               <Baby className="w-5 h-5" />
@@ -286,38 +279,30 @@ export default function ChildrenManager({
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button
-                onClick={handleAddChild}
-                disabled={disabled}
-                className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-              >
+              <Button onClick={handleAddChild} disabled={disabled} className="-">
                 <Plus className="w-4 h-4 mr-2" />
                 เพิ่ม
               </Button>
-              <Button
-                onClick={() => {
-                  setShowAddForm(false)
-                  setNewChild({
-                    nickname: '',
-                    gender: 'male',
-                    birthDate: ''
-                  })
-                  setErrors({})
-                }}
-                variant="outline"
-              >
+              <Button onClick={() => {
+ setShowAddForm(false)
+ setNewChild({
+ nickname: '',
+ gender: 'male',
+ birthDate: ''
+ })
+ setErrors({})
+ }}
+ variant="secondary">
                 ยกเลิก
               </Button>
             </div>
           </div>
         </Card>
       ) : (
-        <Button
-          onClick={() => setShowAddForm(true)}
-          variant="outline"
-          disabled={disabled}
-          className="w-full border-2 border-dashed"
-        >
+        <Button onClick={() => setShowAddForm(true)}
+ variant="secondary"
+ disabled={disabled}
+ className="w-full border-2">
           <Plus className="w-4 h-4 mr-2" />
           เพิ่มข้อมูลลูก
         </Button>

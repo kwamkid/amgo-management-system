@@ -5,11 +5,10 @@ import { use, useState } from 'react'
 import { useCampaign, useCampaigns } from '@/hooks/useCampaigns'
 import CampaignForm from '@/components/campaign/CampaignForm'
 import TechLoader from '@/components/shared/TechLoader'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
+import { Alert, Button } from '@/components/aoo'
 export default function EditCampaignPage({ 
   params 
 }: { 
@@ -74,23 +73,16 @@ export default function EditCampaignPage({
   if (error || !campaign) {
     return (
       <div className="max-w-2xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูล Campaign'}
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
-              <Link href="/campaigns">
+            <Link href="/campaigns"><Button variant="soft">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 กลับไปหน้ารายการ
-              </Link>
-            </Button>
-          </AlertDescription>
+              </Button></Link>
+          </div>
         </Alert>
       </div>
     )

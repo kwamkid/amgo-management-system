@@ -21,17 +21,13 @@ import {
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import dynamic from 'next/dynamic'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import TechLoader from '@/components/shared/TechLoader'
 import ShiftSelector from './ShiftSelector'
 import CameraCapture from './CameraCapture'
 import { Shift } from '@/types/location'
 import { uploadImage } from '@/lib/supabase/storage'
 import StorageImage from '@/components/shared/StorageImage'
-import { Textarea } from '@/components/aoo'
-
+import { Textarea, Alert, Card, CardContent, Button } from '@/components/aoo'
 // Dynamic import CheckInMap
 const CheckInMap = dynamic(
   () => import('./CheckInMap'),
@@ -217,7 +213,7 @@ export default function CheckInButton() {
           </div>
         )}
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -251,11 +247,7 @@ export default function CheckInButton() {
                 </div>
               </div>
 
-              <Button
-                onClick={handleCheckOut}
-                disabled={isCheckingOut}
-                className="h-10 shrink-0 bg-gradient-to-r from-red-500 to-rose-600 px-4 text-sm font-medium"
-              >
+              <Button onClick={handleCheckOut} disabled={isCheckingOut} className="h-10 shrink-0 - px-4 font-medium">
                 {isCheckingOut ? (
                   <span className="flex items-center gap-1.5">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -342,7 +334,7 @@ export default function CheckInButton() {
 
   return (
     <>
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-4 sm:p-6">
           {/* Clock */}
           <div className="text-center mb-3 sm:mb-6">
@@ -359,32 +351,29 @@ export default function CheckInButton() {
 
           {/* Status Messages */}
           {!currentPosition && !error && (
-            <Alert className="mb-4">
-              <MapPin className="h-4 w-4" />
-              <AlertDescription>
+            <Alert tone="info" className="mb-4">
+              <div>
                 กำลังขอตำแหน่ง กรุณาอนุญาตการเข้าถึงตำแหน่ง
-              </AlertDescription>
+              </div>
             </Alert>
           )}
 
           {error && (
-            <Alert variant="error" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+            <Alert tone="error" className="mb-4">
+              <div>{error}</div>
             </Alert>
           )}
 
           {locationCheckResult && !locationCheckResult.canCheckIn && (
-            <Alert variant="error" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
+            <Alert tone="error" className="mb-4">
+              <div>
                 {locationCheckResult.reason}
                 {locationCheckResult.nearestLocation && (
                   <span className="block text-sm mt-1">
                     ใกล้ {locationCheckResult.nearestLocation.name} ({locationCheckResult.nearestLocation.distance} เมตร)
                   </span>
                 )}
-              </AlertDescription>
+              </div>
             </Alert>
           )}
 
@@ -410,25 +399,21 @@ export default function CheckInButton() {
           {/* Check-in Button(s) */}
           {showWFHOption ? (
             <div className="space-y-2">
-              <Button
-                onClick={() => handleCheckInClick(false)}
-                disabled={isCheckingIn || isUploadingPhoto}
-                className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
-                size="lg"
-              >
+              <Button onClick={() => handleCheckInClick(false)}
+ disabled={isCheckingIn || isUploadingPhoto}
+ className="w-full h-12 font-medium -"
+ size="lg">
                 {isCheckingIn ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
                   </span>
                 ) : 'เช็คอินนอกสถานที่'}
               </Button>
-              <Button
-                onClick={() => handleCheckInClick(true)}
-                disabled={isCheckingIn || isUploadingPhoto}
-                variant="outline"
-                className="w-full h-12 text-base font-medium border-blue-400 text-blue-700 hover:bg-blue-50"
-                size="lg"
-              >
+              <Button onClick={() => handleCheckInClick(true)}
+ disabled={isCheckingIn || isUploadingPhoto}
+ variant="secondary"
+ className="w-full h-12 font-medium"
+ size="lg">
                 {isCheckingIn ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
@@ -441,12 +426,10 @@ export default function CheckInButton() {
               </Button>
             </div>
           ) : (
-            <Button
-              onClick={() => handleCheckInClick(false)}
-              disabled={isCheckingIn || isUploadingPhoto || !locationCheckResult?.canCheckIn}
-              className="w-full h-12 text-base font-medium bg-gradient-to-r from-teal-500 to-emerald-600"
-              size="lg"
-            >
+            <Button onClick={() => handleCheckInClick(false)}
+ disabled={isCheckingIn || isUploadingPhoto || !locationCheckResult?.canCheckIn}
+ className="w-full h-12 font-medium -"
+ size="lg">
               {isCheckingIn || isUploadingPhoto ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />

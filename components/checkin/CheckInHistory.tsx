@@ -19,12 +19,9 @@ import {
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { colorClasses, gradients } from '@/lib/theme/colors'
 
+import { Alert, Pill, badgeTone, Card, CardContent, Button } from '@/components/aoo'
 interface CheckInHistoryProps {
   limit?: number
   showViewAll?: boolean
@@ -121,9 +118,8 @@ export default function CheckInHistory({
 
   if (error) {
     return (
-      <Alert variant="error">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+      <Alert tone="error">
+        <div>{error}</div>
       </Alert>
     )
   }
@@ -150,10 +146,7 @@ export default function CheckInHistory({
           : null
 
         return (
-          <Card 
-            key={record.id}
-            className="border-0 shadow-sm hover:shadow-md transition-shadow"
-          >
+          <Card padding={0} key={record.id} className="transition-">
             <CardContent className="p-4">
               {/* Date Header */}
               <div className="flex items-center justify-between mb-2">
@@ -165,9 +158,9 @@ export default function CheckInHistory({
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(record)}
-                  <Badge variant={getStatusVariant(record)} className="text-xs">
+                  <Pill tone={badgeTone(getStatusVariant(record))} className="text-xs">
                     {getStatusText(record)}
-                  </Badge>
+                  </Pill>
                 </div>
               </div>
 
@@ -207,9 +200,9 @@ export default function CheckInHistory({
                     <MapPin className="w-4 h-4 text-gray-400" />
                     <span>{record.primaryLocationName || 'เช็คอินนอกสถานที่'}</span>
                     {record.isLate && (
-                      <Badge variant="error" className="ml-auto text-xs">
+                      <Pill tone="danger" className="ml-auto text-xs">
                         สาย {record.lateMinutes} นาที
-                      </Badge>
+                      </Pill>
                     )}
                   </div>
                   
@@ -224,21 +217,21 @@ export default function CheckInHistory({
 
               {/* Note or Warning */}
               {record.autoCheckout && (
-                <Alert variant="info" className="mt-2 py-2 bg-blue-50 border-blue-200">
-                  <AlertDescription className="text-xs text-blue-700">
+                <Alert tone="info" className="mt-2 py-2">
+                  <div className="text-xs text-blue-700">
                     🤖 ระบบเช็คเอาท์อัตโนมัติ (ลืมเช็คเอาท์เกิน 12 ชั่วโมง)
-                  </AlertDescription>
+                  </div>
                 </Alert>
               )}
               {record.needsOvertimeApproval && (
-                <Alert variant="warning" className="mt-2 py-2">
-                  <AlertDescription className="text-xs">
+                <Alert tone="warning" className="mt-2 py-2">
+                  <div className="text-xs">
                     ⏰ ทำงานเกินเวลาปิด รอ HR อนุมัติ
-                  </AlertDescription>
+                  </div>
                 </Alert>
               )}
               {record.note && (
-                <Card className="mt-2 border-gray-100">
+                <Card padding={0} className="mt-2">
                   <CardContent className="p-3">
                     <p className="text-xs text-gray-600">💬 {record.note}</p>
                   </CardContent>
@@ -252,10 +245,7 @@ export default function CheckInHistory({
       {/* View All Link */}
       {showViewAll && records.length >= limit && (
         <Link href="/checkin/history">
-          <Button
-            variant="ghost"
-            className="w-full hover:bg-red-50"
-          >
+          <Button variant="ghost" className="w-full">
             <span className="font-medium">ดูประวัติทั้งหมด</span>
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>

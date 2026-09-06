@@ -8,10 +8,10 @@ import HolidayForm from '@/components/holidays/HolidayForm'
 import { HolidayFormData } from '@/types/holiday'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
 
+import { Button } from '@/components/aoo'
 export default function CreateHolidayPage() {
   const router = useRouter()
   const { createHoliday } = useHolidays()

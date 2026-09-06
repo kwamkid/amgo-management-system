@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { FileSpreadsheet, Download, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -19,8 +17,7 @@ import ReportFilters from '@/components/reports/ReportFilters'
 import ReportResults from '@/components/reports/ReportResults'
 import { useLocations } from '@/hooks/useLocations'
 import { PageHeader } from '@/components/shared'
-import { ActionMenu } from '@/components/aoo'
-
+import { ActionMenu, Alert, Button } from '@/components/aoo'
 function downloadCSV(rows: (string | number)[][], filename: string) {
   const csv = rows
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -149,9 +146,8 @@ export default function CheckInReportPage() {
   if (!['admin', 'hr', 'manager'].includes(userData?.role || '')) {
     return (
       <div className="p-8">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>คุณไม่มีสิทธิ์เข้าถึงหน้านี้</AlertDescription>
+        <Alert tone="error">
+          <div>คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>
         </Alert>
       </div>
     )

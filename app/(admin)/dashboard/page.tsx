@@ -10,13 +10,10 @@ import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import ProbationZone from '@/components/dashboard/ProbationZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, LogIn, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton } from '@/components/aoo'
-
+import { Button as AooButton, Alert, Button } from '@/components/aoo'
 export default function DashboardPage() {
   const { userData, loading, error } = useAuth();
   const { currentCheckIn } = useCheckIn();
@@ -29,9 +26,8 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="p-6">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+        <Alert tone="error">
+          <div>{error}</div>
         </Alert>
       </div>
     );

@@ -19,11 +19,7 @@ import {
   FileText,
   ChevronRight
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import {
@@ -42,8 +38,7 @@ import { th } from 'date-fns/locale'
 import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
 import { PageHeader } from '@/components/shared'
-import { Textarea, Input } from '@/components/aoo'
-
+import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
 }
@@ -204,16 +199,15 @@ export default function LeaveManagementPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
-          <AlertDescription>
+        <Alert tone="error">
+          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+          <div>
             เฉพาะ HR, Admin และ Manager เท่านั้น
-          </AlertDescription>
+          </div>
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/leaves">
-            <Button variant="outline">
+            <Button variant="soft">
               กลับไปหน้าการลา
             </Button>
           </Link>
@@ -237,7 +231,7 @@ export default function LeaveManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -251,7 +245,7 @@ export default function LeaveManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -265,7 +259,7 @@ export default function LeaveManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -279,7 +273,7 @@ export default function LeaveManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -293,7 +287,7 @@ export default function LeaveManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -310,17 +304,16 @@ export default function LeaveManagementPage() {
 
       {/* Pending Alert */}
       {stats.pending > 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertTitle className="text-orange-900">มีคำขอรออนุมัติ</AlertTitle>
-          <AlertDescription className="text-orange-800">
+        <Alert tone="info">
+          <p className="font-semibold text-orange-900">มีคำขอรออนุมัติ</p>
+          <div className="text-orange-800">
             มี <strong>{stats.pending}</strong> คำขอลาที่รอการอนุมัติจากคุณ
-          </AlertDescription>
+          </div>
         </Alert>
       )}
 
       {/* Filters */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -352,7 +345,7 @@ export default function LeaveManagementPage() {
 
       {/* Leave Requests List */}
       {filteredLeaves.length === 0 ? (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-16 text-center">
             <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">ไม่พบคำขอลา</p>
@@ -363,7 +356,7 @@ export default function LeaveManagementPage() {
           {filteredLeaves.map((leave) => {
             const style = leaveTypeStyles[leave.type];
             return (
-              <Card key={leave.id} className={`border ${style.border} ${style.bg} hover:shadow-md transition-shadow`}>
+              <Card padding={0} key={leave.id} className={`border ${style.border} ${style.bg} hover:shadow-md transition-shadow`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -390,14 +383,14 @@ export default function LeaveManagementPage() {
                             <span className="font-medium">{leave.userName}</span>
                           </div>
                           
-                          <Badge variant="outline" className="text-xs">
+                          <Pill tone="neutral" className="text-xs">
                             {LEAVE_TYPE_LABELS[leave.type]}
-                          </Badge>
+                          </Pill>
                           
                           {leave.urgentMultiplier > 1 && (
-                            <Badge variant="error" className="text-xs">
+                            <Pill tone="danger" className="text-xs">
                               ลาด่วน x{leave.urgentMultiplier}
-                            </Badge>
+                            </Pill>
                           )}
                           
                           {leave.attachments && leave.attachments.length > 0 && (
@@ -409,20 +402,20 @@ export default function LeaveManagementPage() {
                         </div>
                         
                         {/* Status Badge */}
-                        <Badge
-                          variant={
+                        <Pill
+                          tone={badgeTone(
                             leave.status === 'approved' ? 'success' :
                             leave.status === 'rejected' ? 'error' :
                             leave.status === 'cancelled' ? 'secondary' :
                             'warning'
-                          }
+                          )}
                           className="text-xs"
                         >
                           {leave.status === 'approved' && 'อนุมัติแล้ว'}
                           {leave.status === 'rejected' && 'ไม่อนุมัติ'}
                           {leave.status === 'pending' && 'รออนุมัติ'}
                           {leave.status === 'cancelled' && 'ยกเลิก'}
-                        </Badge>
+                        </Pill>
                       </div>
                       
                       {/* Row 2: Date + Reason */}
@@ -460,22 +453,15 @@ export default function LeaveManagementPage() {
                       {/* Action Buttons */}
                       {leave.status === 'pending' && (
                         <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleApprove(leave.id!)}
-                            disabled={loading}
-                            className={`h-8 px-3 bg-gradient-to-r ${gradients.success}`}
-                          >
+                          <Button size="sm" onClick={() => handleApprove(leave.id!)}
+ disabled={loading}
+ className={`h-8 px-3 bg-gradient-to-r ${gradients.success}`}>
                             <CheckCircle className="w-3.5 h-3.5 mr-1" />
                             อนุมัติ
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReject(leave.id!)}
-                            disabled={loading}
-                            className="h-8 px-3 border-red-500 text-red-600 hover:bg-red-50"
-                          >
+                          <Button size="sm" variant="soft" onClick={() => handleReject(leave.id!)}
+ disabled={loading}
+ className="h-8 px-3">
                             <XCircle className="w-3.5 h-3.5 mr-1" />
                             ไม่อนุมัติ
                           </Button>
@@ -484,13 +470,9 @@ export default function LeaveManagementPage() {
                       
                       {/* Cancel button for approved leaves (HR/Admin only) */}
                       {leave.status === 'approved' && ['hr', 'manager', 'admin'].includes(userData?.role || '') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCancelApproved(leave.id!)}
-                          disabled={loading}
-                          className="h-8 px-3 border-orange-500 text-orange-600 hover:bg-orange-50"
-                        >
+                        <Button size="sm" variant="soft" onClick={() => handleCancelApproved(leave.id!)}
+ disabled={loading}
+ className="h-8 px-3">
                           <XCircle className="w-3.5 h-3.5 mr-1" />
                           ยกเลิก
                         </Button>
@@ -587,11 +569,10 @@ export default function LeaveManagementPage() {
               onChange={(e) => setCancelReason(e.target.value)}
               className="min-h-[100px]"
             />
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
+            <Alert tone="info">
+              <div>
                 <strong>หมายเหตุ:</strong> โควต้าจะถูกคืนให้พนักงานโดยอัตโนมัติ
-              </AlertDescription>
+              </div>
             </Alert>
           </div>
           <AlertDialogFooter>

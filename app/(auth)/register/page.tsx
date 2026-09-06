@@ -5,10 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { InviteLink } from '@/types/invite'
 import Image from 'next/image'
 import { AlertCircle, CheckCircle } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Label, Input } from '@/components/aoo'
+import { Label, Input, Alert, Card, CardContent, Button } from '@/components/aoo'
 async function validateInviteCode(code: string): Promise<{ valid: boolean; link?: InviteLink; error?: string }> {
   const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`)
   return res.json()
@@ -194,19 +191,15 @@ function RegisterForm() {
 
   if (error && !formData.lineUserId) {
     return (
-      <Alert variant="error">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
+      <Alert tone="error">
+        <div>
           <h3 className="text-lg font-semibold mb-2">เกิดข้อผิดพลาด</h3>
           <p className="mb-4">{error}</p>
-          <Button
-            onClick={() => router.push('/login')}
-            variant="outline"
-            className="bg-red-50 hover:bg-red-100 text-red-700"
-          >
+          <Button onClick={() => router.push('/login')}
+ variant="secondary">
             กลับไปหน้า Login
           </Button>
-        </AlertDescription>
+        </div>
       </Alert>
     )
   }
@@ -215,9 +208,8 @@ function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Invite Link Info */}
       {inviteLink && (
-        <Alert variant="success" className="bg-gradient-to-r from-teal-50 to-emerald-50">
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="success" className="-">
+          <div>
             <p className="text-teal-800 text-sm font-medium">
               ใช้ลิงก์: <code className="bg-teal-100 px-2 py-1 rounded">{inviteLink.code}</code>
             </p>
@@ -235,7 +227,7 @@ function RegisterForm() {
               )}
               <p>• {inviteLink.requireApproval ? 'ต้องรอ HR อนุมัติ' : 'ใช้งานได้ทันที'}</p>
             </div>
-          </AlertDescription>
+          </div>
         </Alert>
       )}
 
@@ -256,8 +248,8 @@ function RegisterForm() {
 
       {/* Error Message */}
       {error && (
-        <Alert variant="error">
-          <AlertDescription>{error}</AlertDescription>
+        <Alert tone="error">
+          <div>{error}</div>
         </Alert>
       )}
 
@@ -338,21 +330,10 @@ function RegisterForm() {
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
           <p className="whitespace-pre-line text-sm text-amber-900">{duplicateWarning}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSubmitting}
-              onClick={(e) => handleSubmit(e, true)}
-            >
+            <Button type="button" variant="soft" size="sm" disabled={isSubmitting} onClick={(e) => handleSubmit(e, true)}>
               เป็นคนละคน — สมัครต่อ
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setDuplicateWarning('')}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setDuplicateWarning('')}>
               ยกเลิก
             </Button>
           </div>
@@ -360,12 +341,7 @@ function RegisterForm() {
       )}
 
       {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={isSubmitting || !!duplicateWarning}
-        className="w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        size="lg"
-      >
+      <Button type="submit" disabled={isSubmitting || !!duplicateWarning} className="w-full -" size="lg">
         {isSubmitting ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
       </Button>
 
@@ -390,7 +366,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8">
       <div className="relative w-full max-w-md">
-        <Card className="backdrop-blur-xl bg-white/90 shadow-2xl">
+        <Card padding={0} className="backdrop-blur-xl /90">
           <CardContent className="p-8">
             {/* Header */}
             <div className="text-center mb-8">

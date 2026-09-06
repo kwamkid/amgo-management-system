@@ -19,14 +19,9 @@ import {
   X,
   Loader2
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
-import { Input } from '@/components/aoo'
-
+import { Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 const CONFIRMATION_TEXT = 'DELETE ALL DATA'
 
 interface DataCollection {
@@ -135,12 +130,11 @@ export default function DeleteAllDataPage() {
   if (!isAdmin) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>ไม่มีสิทธิ์เข้าถึง</AlertTitle>
-          <AlertDescription>
+        <Alert tone="error">
+          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึง</p>
+          <div>
             เฉพาะ Admin เท่านั้นที่สามารถเข้าถึงหน้านี้ได้
-          </AlertDescription>
+          </div>
         </Alert>
       </div>
     )
@@ -155,10 +149,9 @@ export default function DeleteAllDataPage() {
       />
 
       {/* Warning */}
-      <Alert variant="error" className="border-2 border-red-600">
-        <AlertTriangle className="h-5 w-5" />
-        <AlertTitle className="text-lg">⚠️ คำเตือน! การกระทำนี้ไม่สามารถย้อนกลับได้</AlertTitle>
-        <AlertDescription className="mt-2 space-y-2">
+      <Alert tone="error" className="border-2">
+        <p className="font-semibold text-lg">⚠️ คำเตือน! การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+        <div className="mt-2 space-y-2">
           <p>การลบข้อมูลจะทำให้:</p>
           <ul className="list-disc list-inside space-y-1 ml-4">
             <li>ข้อมูลการเช็คอิน/เอาท์ทั้งหมดถูกลบ</li>
@@ -178,11 +171,11 @@ export default function DeleteAllDataPage() {
           <p className="font-semibold text-red-600 mt-2">
             ⚠️ ผู้ใช้จะต้องสร้างข้อมูลสถานที่ใหม่ก่อนจึงจะสามารถเช็คอินได้
           </p>
-        </AlertDescription>
+        </div>
       </Alert>
 
       {/* Data Collections */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle>ข้อมูลที่จะถูกลบ</CardTitle>
           <CardDescription>
@@ -231,7 +224,7 @@ export default function DeleteAllDataPage() {
       </Card>
 
       {/* Confirmation */}
-      <Card className={`border-2 border-red-600 bg-gradient-to-r ${gradients.errorLight}`}>
+      <Card padding={0} className={`border-2 border-red-600 bg-gradient-to-r ${gradients.errorLight}`}>
         <CardHeader>
           <CardTitle className="text-red-900">ยืนยันการลบข้อมูล</CardTitle>
           <CardDescription className="text-red-700">
@@ -250,12 +243,7 @@ export default function DeleteAllDataPage() {
             />
           </div>
           
-          <Button
-            onClick={handleDeleteAllData}
-            disabled={confirmText !== CONFIRMATION_TEXT || isDeleting}
-            className={`w-full bg-gradient-to-r ${gradients.error} text-white`}
-            size="lg"
-          >
+          <Button onClick={handleDeleteAllData} disabled={confirmText !== CONFIRMATION_TEXT || isDeleting} className={`w-full bg-gradient-to-r ${gradients.error} text-white`} size="lg">
             {isDeleting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -273,7 +261,7 @@ export default function DeleteAllDataPage() {
 
       {/* Progress */}
       {isDeleting && deletedCollections.length > 0 && (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader>
             <CardTitle>ความคืบหน้า</CardTitle>
           </CardHeader>

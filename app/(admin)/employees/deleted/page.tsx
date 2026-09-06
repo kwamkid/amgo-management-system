@@ -14,11 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-
+import { Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface DeletedUser {
   id: string
   fullName: string
@@ -100,7 +96,7 @@ export default function DeletedUsersPage() {
     }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   if (loading) return <TechLoader />
@@ -116,7 +112,7 @@ export default function DeletedUsersPage() {
 
       {/* Soft Deleted Users */}
       {softDeletedUsers.length > 0 && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-orange-600" />
@@ -148,12 +144,9 @@ export default function DeletedUsersPage() {
                     </div>
                   </div>
                   
-                  <Button
-                    onClick={() => handleRestore(user.id)}
-                    disabled={restoringId === user.id}
-                    variant="outline"
-                    className="text-orange-600 hover:bg-orange-100"
-                  >
+                  <Button onClick={() => handleRestore(user.id)}
+ disabled={restoringId === user.id}
+ variant="secondary">
                     {restoringId === user.id ? (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -175,7 +168,7 @@ export default function DeletedUsersPage() {
 
       {/* Permanently Deleted Users */}
       {deletedUsers.length > 0 && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-red-600" />
@@ -183,10 +176,10 @@ export default function DeletedUsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Alert variant="error" className="mb-4">
-              <AlertDescription>
+            <Alert tone="error" className="mb-4">
+              <div>
                 พนักงานเหล่านี้ถูกลบออกจากระบบแล้ว ข้อมูลที่แสดงเป็นเพียงประวัติเท่านั้น
-              </AlertDescription>
+              </div>
             </Alert>
             
             <div className="space-y-3">
@@ -216,9 +209,9 @@ export default function DeletedUsersPage() {
                     </div>
                   </div>
                   
-                  <Badge variant="secondary" className="bg-red-100 text-red-700">
+                  <Pill tone="neutral" className="bg-red-100 text-red-700">
                     ลบถาวร
-                  </Badge>
+                  </Pill>
                 </div>
               ))}
             </div>
@@ -228,7 +221,7 @@ export default function DeletedUsersPage() {
 
       {/* Empty State */}
       {softDeletedUsers.length === 0 && deletedUsers.length === 0 && (
-        <Card>
+        <Card padding={0}>
           <CardContent className="text-center py-12">
             <Trash2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">ไม่มีพนักงานที่ถูกลบ</p>

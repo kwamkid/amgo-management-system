@@ -30,14 +30,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { PLATFORM_INFO } from '@/types/influencer'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 
+import { Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
   facebook: Facebook,
@@ -77,7 +74,7 @@ export default function InfluencerDetailPage({
     }
     
     const config = tierConfig[tier as keyof typeof tierConfig] || tierConfig.nano
-    return <Badge variant={config.variant}>{config.label} Influencer</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label} Influencer</Pill>
   }
 
   // Calculate age
@@ -106,23 +103,16 @@ export default function InfluencerDetailPage({
   if (error || !influencer) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูล Influencer'}
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
-              <Link href="/influencers">
+            <Link href="/influencers"><Button variant="soft">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 กลับไปหน้ารายการ
-              </Link>
-            </Button>
-          </AlertDescription>
+              </Button></Link>
+          </div>
         </Alert>
       </div>
     )
@@ -133,11 +123,7 @@ export default function InfluencerDetailPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/influencers')}
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.push('/influencers')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -152,20 +138,15 @@ export default function InfluencerDetailPage({
           </div>
         </div>
         
-        <Button
-          asChild
-          className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-        >
-          <Link href={`/influencers/${id}/edit`}>
+        <Link href={`/influencers/${id}/edit`}><Button className="-">
             <Edit className="w-4 h-4 mr-2" />
             แก้ไขข้อมูล
-          </Link>
-        </Button>
+          </Button></Link>
       </div>
 
       {/* Overview Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Total Reach</p>
             <p className="text-2xl font-bold text-gray-900">
@@ -174,7 +155,7 @@ export default function InfluencerDetailPage({
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Channels</p>
             <p className="text-2xl font-bold text-gray-900">
@@ -183,7 +164,7 @@ export default function InfluencerDetailPage({
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">จำนวนลูก</p>
             <p className="text-2xl font-bold text-gray-900">
@@ -192,14 +173,14 @@ export default function InfluencerDetailPage({
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">สถานะ</p>
             <div className="mt-1">
               {influencer.isActive ? (
-                <Badge variant="success">Active</Badge>
+                <Pill tone="success">Active</Pill>
               ) : (
-                <Badge variant="error">Inactive</Badge>
+                <Pill tone="danger">Inactive</Pill>
               )}
             </div>
           </CardContent>
@@ -207,7 +188,7 @@ export default function InfluencerDetailPage({
       </div>
 
       {/* Personal Info */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <User className="w-5 h-5 text-red-600" />
@@ -270,7 +251,7 @@ export default function InfluencerDetailPage({
 
       {/* Address */}
       {(influencer.shippingAddress || influencer.province) && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MapPin className="w-5 h-5 text-red-600" />
@@ -289,7 +270,7 @@ export default function InfluencerDetailPage({
       )}
 
       {/* Social Media Channels */}
-      <Card>
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg">Social Media Channels</CardTitle>
         </CardHeader>
@@ -316,10 +297,10 @@ export default function InfluencerDetailPage({
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{platformInfo.name}</p>
                         {channel.isVerified && (
-                          <Badge variant="info" className="text-xs">
+                          <Pill tone="info" className="text-xs">
                             <Check className="w-3 h-3 mr-1" />
                             Verified
-                          </Badge>
+                          </Pill>
                         )}
                       </div>
                       {channel.username && (
@@ -354,7 +335,7 @@ export default function InfluencerDetailPage({
 
       {/* Children Info */}
       {influencer.children && influencer.children.length > 0 && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Baby className="w-5 h-5 text-red-600" />
@@ -404,7 +385,7 @@ export default function InfluencerDetailPage({
 
       {/* Notes */}
       {influencer.notes && (
-        <Card>
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="text-lg">หมายเหตุ</CardTitle>
           </CardHeader>
@@ -415,7 +396,7 @@ export default function InfluencerDetailPage({
       )}
 
       {/* Metadata */}
-      <Card className="bg-gray-50">
+      <Card padding={0}>
         <CardContent className="pt-6">
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <div>

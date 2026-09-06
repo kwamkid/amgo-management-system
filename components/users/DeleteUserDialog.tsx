@@ -14,11 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Trash2, AlertTriangle, Info } from 'lucide-react'
-import { Checkbox, Label } from '@/components/aoo'
-
+import { Checkbox, Label, Alert, Button } from '@/components/aoo'
 interface DeleteUserDialogProps {
   user: User | null
   open: boolean
@@ -84,7 +81,7 @@ export default function DeleteUserDialog({
             <AlertTriangle className="w-5 h-5" />
             ลบพนักงาน
           </AlertDialogTitle>
-          <AlertDialogDescription asChild>
+          <AlertDialogDescription>
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="font-medium text-gray-900">
@@ -145,21 +142,19 @@ export default function DeleteUserDialog({
 
               {/* Warning for permanent delete */}
               {deleteType === 'permanent' && (
-                <Alert variant="error">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert tone="error">
+                  <div>
                     <strong>คำเตือน:</strong> การลบถาวรไม่สามารถกู้คืนได้ 
                     ข้อมูลทั้งหมดของพนักงานจะถูกลบออกจากระบบ
-                  </AlertDescription>
+                  </div>
                 </Alert>
               )}
 
               {/* Info about data backup */}
-              <Alert variant="info">
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-sm">
+              <Alert tone="info">
+                <div className="text-sm">
                   ระบบจะสำรองข้อมูลไว้ใน deleted_users collection ก่อนลบ
-                </AlertDescription>
+                </div>
               </Alert>
 
               {/* Confirmation checkbox */}
@@ -184,14 +179,7 @@ export default function DeleteUserDialog({
           <AlertDialogCancel disabled={isDeleting}>
             ยกเลิก
           </AlertDialogCancel>
-          <Button
-            onClick={handleDelete}
-            disabled={!confirmChecked || isDeleting}
-            className={deleteType === 'permanent' 
-              ? 'bg-red-600 hover:bg-red-700' 
-              : 'bg-orange-600 hover:bg-orange-700'
-            }
-          >
+          <Button onClick={handleDelete} disabled={!confirmChecked || isDeleting} className={deleteType === 'permanent' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700' }>
             {isDeleting ? (
               <>
                 <span className="animate-spin mr-2">⏳</span>

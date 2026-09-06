@@ -4,10 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Card, CardContent } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-
+import { Alert, Card, CardContent, Button } from '@/components/aoo'
 export default function RegisterSuccessPage() {
   const router = useRouter()
 
@@ -22,7 +19,7 @@ export default function RegisterSuccessPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-rose-50 px-4">
-      <Card className="max-w-md w-full shadow-2xl">
+      <Card padding={0} className="max-w-md w-full">
         <CardContent className="p-8 text-center">
           {/* Logo */}
           <div className="mb-6">
@@ -48,24 +45,20 @@ export default function RegisterSuccessPage() {
             <p>ข้อมูลของคุณถูกส่งให้ HR แล้ว</p>
             <p className="text-sm">กรุณารอการอนุมัติภายใน 1-2 วันทำการ</p>
             
-            <Alert variant="info" className="bg-red-50 mt-6">
-              <AlertDescription>
+            <Alert tone="info" className="mt-6">
+              <div>
                 <p className="text-red-800 font-medium text-sm mb-2">ขั้นตอนถัดไป:</p>
                 <ol className="text-left text-sm text-red-700 space-y-1">
                   <li>1. HR จะตรวจสอบข้อมูล</li>
                   <li>2. คุณจะได้รับแจ้งผ่าน LINE</li>
                   <li>3. เมื่ออนุมัติแล้วจะสามารถเข้าใช้งานได้</li>
                 </ol>
-              </AlertDescription>
+              </div>
             </Alert>
           </div>
 
           <div className="mt-8">
-            <Button
-              variant="link"
-              onClick={() => router.push('/login')}
-              className="text-red-600 hover:text-red-700"
-            >
+            <Button variant="ghost" onClick={() => router.push('/login')}>
               กลับหน้าเข้าสู่ระบบ
             </Button>
           </div>

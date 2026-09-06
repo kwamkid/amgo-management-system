@@ -11,11 +11,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { StickyNote, Plus, Trash2 } from 'lucide-react'
-import { Textarea } from '@/components/aoo'
-
+import { Textarea, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface Remark {
   id: string
   remark: string
@@ -89,7 +86,7 @@ export default function RemarksCard({ userId }: { userId: string }) {
     })
 
   return (
-    <Card className="border-0 shadow-md">
+    <Card padding={0}>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <StickyNote className="w-5 h-5 text-amber-600" />

@@ -3,14 +3,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimeRangePicker, Checkbox, Label, Input } from '@/components/aoo'
+import { TimeRangePicker, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { Location, LocationFormData, WorkingHours, Shift } from '@/types/location'
 import { MapPin, Clock, Calendar, Plus, Trash2, Save, X, Building } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 
 // Dynamic import for Google Maps (client-side only)
@@ -217,7 +213,7 @@ export default function LocationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-red-600" />
@@ -280,7 +276,7 @@ export default function LocationForm({
       </Card>
 
       {/* Working Hours */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -290,31 +286,16 @@ export default function LocationForm({
             
             {/* Preset Buttons */}
             <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => applyPreset('office')}
-                disabled={isLoading}
-              >
+              <Button type="button" size="sm" variant="soft" onClick={() => applyPreset('office')}
+ disabled={isLoading}>
                 สำนักงาน
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => applyPreset('departmentStore')}
-                disabled={isLoading}
-              >
+              <Button type="button" size="sm" variant="soft" onClick={() => applyPreset('departmentStore')}
+ disabled={isLoading}>
                 ห้าง
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => applyPreset('standAlone')}
-                disabled={isLoading}
-              >
+              <Button type="button" size="sm" variant="soft" onClick={() => applyPreset('standAlone')}
+ disabled={isLoading}>
                 ร้านค้า
               </Button>
             </div>
@@ -353,7 +334,7 @@ export default function LocationForm({
                   )}
                   
                   {hours.isClosed && (
-                    <Badge variant="error">ปิดทำการ</Badge>
+                    <Pill tone="danger">ปิดทำการ</Pill>
                   )}
                 </div>
               )
@@ -378,20 +359,14 @@ export default function LocationForm({
       </Card>
 
       {/* Shifts */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-red-600" />
               กะการทำงาน
             </CardTitle>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleAddShift}
-              variant="outline"
-              disabled={isLoading}
-            >
+            <Button type="button" size="sm" onClick={handleAddShift} variant="soft" disabled={isLoading}>
               <Plus className="w-4 h-4 mr-1" />
               เพิ่มกะ
             </Button>
@@ -400,7 +375,7 @@ export default function LocationForm({
         <CardContent>
           <div className="space-y-3">
             {formData.shifts.map((shift, index) => (
-              <Card key={index} className="border-gray-200">
+              <Card padding={0} key={index}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <Input
@@ -438,14 +413,8 @@ export default function LocationForm({
                       <span className="text-sm text-gray-500">นาที</span>
                     </div>
                     
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleRemoveShift(index)}
-                      disabled={isLoading || formData.shifts.length === 1}
-                      className="text-red-600 hover:bg-red-50"
-                    >
+                    <Button type="button" size="sm" variant="ghost" onClick={() => handleRemoveShift(index)}
+ disabled={isLoading || formData.shifts.length === 1}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -457,7 +426,7 @@ export default function LocationForm({
       </Card>
 
       {/* Status */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-6">
           <label className="flex items-center gap-3">
             <Checkbox
@@ -472,20 +441,11 @@ export default function LocationForm({
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="soft" onClick={onCancel} disabled={isLoading}>
           <X className="w-4 h-4 mr-2" />
           ยกเลิก
         </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className={`bg-gradient-to-r ${gradients.primary}`}
-        >
+        <Button type="submit" disabled={isLoading} className={`bg-gradient-to-r ${gradients.primary}`}>
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>

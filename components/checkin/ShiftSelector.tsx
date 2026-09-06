@@ -5,10 +5,7 @@
 import { useState } from 'react'
 import { Shift } from '@/types/location'
 import { Clock, Check } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-
+import { Pill, Card, CardContent, Button } from '@/components/aoo'
 interface ShiftSelectorProps {
   shifts: Shift[]
   onSelect: (shift: Shift) => void
@@ -81,7 +78,7 @@ export default function ShiftSelector({
       
       {/* Popover */}
       <div className="fixed inset-x-0 bottom-0 z-50 p-4 sm:inset-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-sm sm:w-full">
-        <Card className="border-0 shadow-xl">
+        <Card padding={0}>
           <CardContent className="p-4">
             <h3 className="font-semibold text-gray-900 mb-3 text-center">
               เลือกกะการทำงาน
@@ -116,9 +113,9 @@ export default function ShiftSelector({
                     
                     <div className="flex items-center gap-2">
                       {status.isLate && (
-                        <Badge variant="warning" className="text-xs">
+                        <Pill tone="warning" className="text-xs">
                           สาย {status.lateMinutes} นาที
-                        </Badge>
+                        </Pill>
                       )}
                       {isSelected && (
                         <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
@@ -132,20 +129,10 @@ export default function ShiftSelector({
             </div>
             
             <div className="flex gap-2 mt-4">
-              <Button
-                onClick={onCancel}
-                variant="outline"
-                size="sm"
-                className="flex-1"
-              >
+              <Button onClick={onCancel} variant="soft" size="sm" className="flex-1">
                 ยกเลิก
               </Button>
-              <Button
-                onClick={handleConfirm}
-                disabled={selectedShiftIndex === null}
-                size="sm"
-                className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-              >
+              <Button onClick={handleConfirm} disabled={selectedShiftIndex === null} size="sm" className="flex-1 -">
                 ยืนยัน
               </Button>
             </div>

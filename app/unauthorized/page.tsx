@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldX, Home, ArrowLeft } from 'lucide-react'
 import { getViewAs } from '@/lib/utils/viewAs'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-
+import { Alert, Card, CardContent, Button } from '@/components/aoo'
 export default function UnauthorizedPage() {
   const router = useRouter()
 
@@ -27,7 +24,7 @@ export default function UnauthorizedPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4">
-      <Card className="max-w-md w-full shadow-2xl">
+      <Card padding={0} className="max-w-md w-full">
         <CardContent className="p-8 text-center">
           {/* Icon */}
           <div className="mb-8 inline-flex">
@@ -51,32 +48,27 @@ export default function UnauthorizedPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button
-              onClick={() => router.back()}
-              variant="outline"
-              className="bg-white hover:bg-gray-50"
-            >
+            <Button onClick={() => router.back()}
+ variant="secondary">
               <ArrowLeft className="w-5 h-5 mr-2" />
               ย้อนกลับ
             </Button>
             
-            <Button
-              onClick={() => router.push('/dashboard')}
-              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-            >
+            <Button onClick={() => router.push('/dashboard')}
+ className="-">
               <Home className="w-5 h-5 mr-2" />
               กลับหน้าหลัก
             </Button>
           </div>
 
           {/* Help text */}
-          <Alert variant="default" className="mt-12 bg-gray-50">
-            <AlertDescription className="text-sm text-gray-600">
+          <Alert tone="info" className="mt-12">
+            <div className="text-sm text-gray-600">
               ต้องการความช่วยเหลือ? 
               <a href="mailto:hr@amgo.com" className="text-red-600 hover:text-red-700 font-medium ml-1">
                 ติดต่อ HR
               </a>
-            </AlertDescription>
+            </div>
           </Alert>
         </CardContent>
       </Card>

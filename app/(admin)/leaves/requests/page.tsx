@@ -3,9 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Skeleton, PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -23,6 +20,7 @@ import { LEAVE_TYPE_LABELS } from '@/types/leave';
 import { getLeaveRequests } from '@/lib/services/leaveService';
 import { LeaveRequest } from '@/types/leave';
 
+import { Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function LeaveRequestsPage() {
   const router = useRouter();
   const { userData } = useAuth();
@@ -108,7 +106,7 @@ export default function LeaveRequestsPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-gray-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">ทั้งหมด</CardTitle>
           </CardHeader>
@@ -118,7 +116,7 @@ export default function LeaveRequestsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-amber-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-yellow-900">รออนุมัติ</CardTitle>
           </CardHeader>
@@ -128,7 +126,7 @@ export default function LeaveRequestsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-green-900">อนุมัติแล้ว</CardTitle>
           </CardHeader>
@@ -138,7 +136,7 @@ export default function LeaveRequestsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-rose-100">
+        <Card padding={0} className="-">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium text-red-900">ไม่อนุมัติ</CardTitle>
           </CardHeader>
@@ -150,7 +148,7 @@ export default function LeaveRequestsPage() {
       </div>
 
       {/* Filter */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Filter className="w-5 h-5" />
@@ -160,12 +158,7 @@ export default function LeaveRequestsPage() {
         <CardContent>
           <div className="flex gap-2">
             {['all', 'pending', 'approved', 'rejected'].map((status) => (
-              <Button
-                key={status}
-                variant={filter === status ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter(status as any)}
-              >
+              <Button key={status} variant={filter === status ? 'primary' : 'secondary'} size="sm" onClick={() => setFilter(status as any)}>
                 {status === 'all' && 'ทั้งหมด'}
                 {status === 'pending' && 'รออนุมัติ'}
                 {status === 'approved' && 'อนุมัติแล้ว'}
@@ -178,13 +171,13 @@ export default function LeaveRequestsPage() {
 
       {/* Leave Requests List */}
       {fetching ? (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-12 text-center">
             <Skeleton />
           </CardContent>
         </Card>
       ) : leaves.length === 0 ? (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-12 text-center">
             <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <p className="text-gray-500">ไม่พบคำขอลา</p>
@@ -193,7 +186,7 @@ export default function LeaveRequestsPage() {
       ) : (
         <div className="space-y-4">
           {leaves.map((leave) => (
-            <Card key={leave.id} className="border-0 shadow-md">
+            <Card padding={0} key={leave.id}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
@@ -204,13 +197,13 @@ export default function LeaveRequestsPage() {
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="font-medium">{leave.userName}</span>
                         </div>
-                        <Badge variant="outline">
+                        <Pill tone="neutral">
                           {LEAVE_TYPE_LABELS[leave.type]}
-                        </Badge>
+                        </Pill>
                         {leave.urgentMultiplier > 1 && (
-                          <Badge variant="error">
+                          <Pill tone="danger">
                             ลาด่วน x{leave.urgentMultiplier}
-                          </Badge>
+                          </Pill>
                         )}
                       </div>
                       
@@ -246,23 +239,13 @@ export default function LeaveRequestsPage() {
                     
                     {leave.status === 'pending' && (
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleApprove(leave.id!)}
-                          disabled={loading}
-                        >
+                        <Button size="sm" variant="soft" onClick={() => handleApprove(leave.id!)}
+ disabled={loading}>
                           <CheckCircle className="w-4 h-4 mr-1" />
                           อนุมัติ
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleReject(leave.id!)}
-                          disabled={loading}
-                        >
+                        <Button size="sm" variant="soft" onClick={() => handleReject(leave.id!)}
+ disabled={loading}>
                           <XCircle className="w-4 h-4 mr-1" />
                           ไม่อนุมัติ
                         </Button>
@@ -270,15 +253,15 @@ export default function LeaveRequestsPage() {
                     )}
                     
                     {leave.status === 'approved' && (
-                      <Badge className="bg-green-100 text-green-700">
+                      <Pill tone="accent" className="bg-green-100 text-green-700">
                         อนุมัติแล้ว
-                      </Badge>
+                      </Pill>
                     )}
                     
                     {leave.status === 'rejected' && (
-                      <Badge className="bg-red-100 text-red-700">
+                      <Pill tone="accent" className="bg-red-100 text-red-700">
                         ไม่อนุมัติ
-                      </Badge>
+                      </Pill>
                     )}
                   </div>
                 </div>

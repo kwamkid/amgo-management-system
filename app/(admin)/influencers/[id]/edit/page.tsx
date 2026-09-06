@@ -6,11 +6,10 @@ import { use, useState } from 'react'
 import { useInfluencer, useInfluencers } from '@/hooks/useInfluencers'
 import InfluencerForm from '@/components/influencer/InfluencerForm'
 import TechLoader from '@/components/shared/TechLoader'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
+import { Alert, Button } from '@/components/aoo'
 export default function EditInfluencerPage({ 
   params 
 }: { 
@@ -41,23 +40,16 @@ export default function EditInfluencerPage({
   if (error || !influencer) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูล Influencer'}
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
-              <Link href="/influencers">
+            <Link href="/influencers"><Button variant="soft">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 กลับไปหน้ารายการ
-              </Link>
-            </Button>
-          </AlertDescription>
+              </Button></Link>
+          </div>
         </Alert>
       </div>
     )

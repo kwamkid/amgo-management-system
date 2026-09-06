@@ -22,8 +22,6 @@ import {
 } from 'lucide-react'
 import { format, eachDayOfInterval, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { 
   Select,
   SelectContent,
@@ -31,10 +29,8 @@ import {
   SelectTrigger,
   SelectValue 
 } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
-import { Textarea, Toggle, Checkbox, Label, Input } from '@/components/aoo'
-
+import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 interface HolidayFormProps {
   initialData?: Holiday
   onSubmit: (data: HolidayFormData) => Promise<boolean>
@@ -184,7 +180,7 @@ export default function HolidayForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-red-600" />
@@ -244,11 +240,10 @@ export default function HolidayForm({
           </div>
           
           {useRangeDate && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
+            <Alert tone="info">
+              <div>
                 ระบบจะสร้างวันหยุดสำหรับทุกวันในช่วงที่กำหนด โดยจะเพิ่มวันที่ต่อท้ายชื่อวันหยุด
-              </AlertDescription>
+              </div>
             </Alert>
           )}
           
@@ -300,7 +295,7 @@ export default function HolidayForm({
       </Card>
       
       {/* OT Rates */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
@@ -400,7 +395,7 @@ export default function HolidayForm({
       </Card>
       
       {/* Applicable Locations */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle>สาขาที่ใช้</CardTitle>
           <CardDescription>
@@ -409,11 +404,10 @@ export default function HolidayForm({
         </CardHeader>
         <CardContent>
           {locations.length === 0 ? (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
+            <Alert tone="info">
+              <div>
                 ยังไม่มีข้อมูลสาขา
-              </AlertDescription>
+              </div>
             </Alert>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -435,7 +429,7 @@ export default function HolidayForm({
       </Card>
       
       {/* Applicable Roles */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle>ประเภทพนักงานที่ใช้</CardTitle>
           <CardDescription>
@@ -462,20 +456,11 @@ export default function HolidayForm({
       
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={loading}
-        >
+        <Button type="button" variant="soft" onClick={onCancel} disabled={loading}>
           <X className="w-4 h-4 mr-2" />
           ยกเลิก
         </Button>
-        <Button
-          type="submit"
-          disabled={loading}
-          className={`bg-gradient-to-r ${gradients.primary}`}
-        >
+        <Button type="submit" disabled={loading} className={`bg-gradient-to-r ${gradients.primary}`}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

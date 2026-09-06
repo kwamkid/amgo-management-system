@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Button as AooButton } from '@/components/aoo'
+import { Button as AooButton, Alert, Pill, badgeTone, Card, CardContent, Button } from '@/components/aoo'
 import { PageHeader } from '@/components/shared'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import { InviteLink } from '@/types/invite'
@@ -22,10 +22,6 @@ import {
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Pagination } from '@/components/ui/pagination'
 
 export default function InviteLinksPage() {
@@ -48,18 +44,18 @@ export default function InviteLinksPage() {
     const now = new Date()
     
     if (link.expiresAt && new Date(link.expiresAt) < now) {
-      return <Badge variant="secondary">หมดอายุ</Badge>
+      return <Pill tone="neutral">หมดอายุ</Pill>
     }
     
     if (link.maxUses && link.usedCount >= link.maxUses) {
-      return <Badge variant="warning">ใช้ครบแล้ว</Badge>
+      return <Pill tone="warning">ใช้ครบแล้ว</Pill>
     }
     
     if (!link.isActive) {
-      return <Badge variant="error">ปิดใช้งาน</Badge>
+      return <Pill tone="danger">ปิดใช้งาน</Pill>
     }
     
-    return <Badge variant="success">ใช้งานได้</Badge>
+    return <Pill tone="success">ใช้งานได้</Pill>
   }
 
   const getRoleBadge = (role: string) => {
@@ -71,7 +67,7 @@ export default function InviteLinksPage() {
   }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   const formatDate = (date: Date | string | undefined) => {
@@ -111,7 +107,7 @@ export default function InviteLinksPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -123,7 +119,7 @@ export default function InviteLinksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-teal-50">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -137,7 +133,7 @@ export default function InviteLinksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-blue-50">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -151,7 +147,7 @@ export default function InviteLinksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gray-50">
+        <Card padding={0}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -168,20 +164,14 @@ export default function InviteLinksPage() {
 
       {/* Links List */}
       {inviteLinks.length === 0 ? (
-        <Card>
+        <Card padding={0}>
           <CardContent className="text-center py-12">
             <LinkIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">ยังไม่มีลิงก์</p>
-            <Button
-              asChild
-              variant="ghost"
-              className="mt-4 text-red-600 hover:bg-red-50"
-            >
-              <Link href="/employees/invite-links/create">
+            <Link href="/employees/invite-links/create"><Button variant="ghost" className="mt-4">
                 <Plus className="w-5 h-5 mr-2" />
                 สร้างลิงก์แรก
-              </Link>
-            </Button>
+              </Button></Link>
           </CardContent>
         </Card>
       ) : (
@@ -189,7 +179,7 @@ export default function InviteLinksPage() {
           {/* Mobile: Card View */}
           <div className="md:hidden space-y-3">
             {paginatedLinks.map((link) => (
-              <Card key={link.id} className="overflow-hidden">
+              <Card padding={0} key={link.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     {/* Link Info */}
@@ -287,7 +277,7 @@ export default function InviteLinksPage() {
           </div>
 
           {/* Desktop: Table View */}
-          <Card className="hidden md:block">
+          <Card padding={0} className="hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -438,9 +428,7 @@ export default function InviteLinksPage() {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => setShowQR(null)}
         >
-          <Card
-            className="max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
+          <Card padding={0} className="max-w-sm w-full" onClick={(e) => e.stopPropagation()}
           >
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4">QR Code</h3>
@@ -450,11 +438,9 @@ export default function InviteLinksPage() {
               <p className="text-center mt-4 text-sm text-gray-600">
                 QR Code สำหรับ: {showQR}
               </p>
-              <Button
-                onClick={() => setShowQR(null)}
-                variant="outline"
-                className="w-full mt-4"
-              >
+              <Button onClick={() => setShowQR(null)}
+ variant="secondary"
+ className="w-full mt-4">
                 ปิด
               </Button>
             </CardContent>

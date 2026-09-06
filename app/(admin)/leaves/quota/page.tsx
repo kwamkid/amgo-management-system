@@ -24,11 +24,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react'
-import { SelectMenu, Input } from '@/components/aoo'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
@@ -173,12 +169,8 @@ function QuotaEditAll({
       setIsOpen(open)
       if (!open) resetValues()
     }}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="hover:bg-gray-100"
-        >
+      <PopoverTrigger>
+        <Button variant="ghost" size="sm">
           <Edit3 className="w-4 h-4" />
         </Button>
       </PopoverTrigger>
@@ -245,24 +237,15 @@ function QuotaEditAll({
           
           {/* Actions */}
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                resetValues()
-                setIsOpen(false)
-              }}
-              disabled={isUpdating}
-              className="flex-1 h-8 border-gray-200"
-            >
+            <Button variant="soft" size="sm" onClick={() => {
+ resetValues()
+ setIsOpen(false)
+ }}
+ disabled={isUpdating}
+ className="flex-1 h-8">
               ยกเลิก
             </Button>
-            <Button
-              size="sm"
-              onClick={handleUpdate}
-              disabled={isUpdating || !hasChanges()}
-              className={`flex-1 h-8 bg-gradient-to-r ${gradients.primary}`}
-            >
+            <Button size="sm" onClick={handleUpdate} disabled={isUpdating || !hasChanges()} className={`flex-1 h-8 bg-gradient-to-r ${gradients.primary}`}>
               {isUpdating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -421,16 +404,15 @@ export default function LeaveQuotaManagementPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
-          <AlertDescription>
+        <Alert tone="error">
+          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+          <div>
             เฉพาะ HR และ Admin เท่านั้น
-          </AlertDescription>
+          </div>
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/leaves">
-            <Button variant="outline">
+            <Button variant="soft">
               กลับไปหน้าการลา
             </Button>
           </Link>
@@ -485,10 +467,9 @@ export default function LeaveQuotaManagementPage() {
   return (
     <div className="space-y-6">
       {nextYearReady === false && (
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>ยังไม่ได้ตั้งโควต้าตั้งต้นของปี {nextYear + 543}</AlertTitle>
-          <AlertDescription>
+        <Alert tone="warning">
+          <p className="font-semibold">ยังไม่ได้ตั้งโควต้าตั้งต้นของปี {nextYear + 543}</p>
+          <div>
             <p>
               ต้องตั้งไว้ก่อนขึ้นปีใหม่ ไม่งั้นวันที่ 1 มกราคม พนักงานจะยื่นใบลาไม่ได้
               เพราะไม่มีโควต้า
@@ -502,7 +483,7 @@ export default function LeaveQuotaManagementPage() {
             >
               {copyingDefaults ? 'กำลังตั้งค่า...' : `คัดลอกค่าจากปี ${nextYear + 542}`}
             </AooButton>
-          </AlertDescription>
+          </div>
         </Alert>
       )}
 
@@ -540,7 +521,7 @@ export default function LeaveQuotaManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -554,7 +535,7 @@ export default function LeaveQuotaManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -568,7 +549,7 @@ export default function LeaveQuotaManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -582,7 +563,7 @@ export default function LeaveQuotaManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -598,7 +579,7 @@ export default function LeaveQuotaManagementPage() {
       </div>
 
       {/* Filters */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -628,7 +609,7 @@ export default function LeaveQuotaManagementPage() {
       </Card>
 
       {/* Table */}
-      <Card className="border-0 shadow-md overflow-hidden">
+      <Card padding={0} className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-50 hover:to-gray-100">
@@ -685,13 +666,13 @@ export default function LeaveQuotaManagementPage() {
                         onUpdate={(type, newValue) => handleQuotaUpdate(user.id, type, newValue)}
                       />
                       {noQuota ? (
-                        <Badge variant="warning" className="text-xs">
+                        <Pill tone="warning" className="text-xs">
                           ยังไม่กำหนด
-                        </Badge>
+                        </Pill>
                       ) : (
-                        <Badge variant="success" className="text-xs">
+                        <Pill tone="success" className="text-xs">
                           กำหนดแล้ว
-                        </Badge>
+                        </Pill>
                       )}
                     </div>
                   </TableCell>

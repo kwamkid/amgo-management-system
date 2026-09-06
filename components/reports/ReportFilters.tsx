@@ -6,9 +6,6 @@ import { useState, useEffect } from 'react'
 import React from 'react'
 import { Loader2, Users, Search, MapPin, Check } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Popover,
   PopoverContent,
@@ -21,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DateRangePicker, Label } from '@/components/aoo'
+import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -187,7 +184,7 @@ export default function ReportFilters({
   const selectedLocationName = locations.find(l => l.id === selectedLocation)?.name
 
   return (
-    <Card>
+    <Card padding={0}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">ตัวกรองข้อมูล</CardTitle>
       </CardHeader>
@@ -210,12 +207,8 @@ export default function ReportFilters({
             <Label className="text-gray-500 mb-1">สถานที่</Label>
             {useLocationCombobox ? (
               <Popover open={openLocationSelect} onOpenChange={setOpenLocationSelect}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full h-[42px] justify-between font-normal px-3"
-                  >
+                <PopoverTrigger>
+                  <Button variant="soft" role="combobox" className="w-full h-[42px] justify-between font-normal px-3">
                     <span className="flex items-center gap-2 truncate">
                       <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">{selectedLocationName || 'ทั้งหมด'}</span>

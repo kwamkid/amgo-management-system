@@ -2,7 +2,7 @@
 
 import { usePendingUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/shared'
-import { Pill } from '@/components/aoo'
+import { Pill, Alert, badgeTone, Card, CardContent, Button } from '@/components/aoo'
 import { useUsers } from '@/hooks/useUsers'
 import { useLocations } from '@/hooks/useLocations'
 import { User } from '@/types/user'
@@ -23,10 +23,6 @@ import {
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import UserAvatar from '@/components/shared/UserAvatar'
 
 export default function PendingUsersPage() {
@@ -63,7 +59,7 @@ export default function PendingUsersPage() {
   }
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   const getLocationNames = (locationIds?: string[]) => {
@@ -94,7 +90,7 @@ export default function PendingUsersPage() {
 
       {/* Pending Users */}
       {pendingUsers.length === 0 ? (
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-12 text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
               <Clock className="w-10 h-10 text-gray-400" />
@@ -106,10 +102,7 @@ export default function PendingUsersPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {pendingUsers.map((user) => (
-            <Card
-              key={user.id}
-              className="hover:shadow-lg transition-all"
-            >
+            <Card padding={0} key={user.id} className="transition-all">
               {/* Card Header - User Info */}
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-start gap-4">
@@ -163,7 +156,7 @@ export default function PendingUsersPage() {
                 {user.inviteLinkCode && (
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <LinkIcon className="w-4 h-4 text-gray-400" />
-                    <span>ใช้ลิงก์: <Badge variant="secondary">{user.inviteLinkCode}</Badge></span>
+                    <span>ใช้ลิงก์: <Pill tone="neutral">{user.inviteLinkCode}</Pill></span>
                   </div>
                 )}
 
@@ -177,27 +170,20 @@ export default function PendingUsersPage() {
 
               {/* Card Footer - Actions */}
               <div className="p-6 pt-0 flex gap-2">
-                <Button
-                  onClick={() => handleApprove(user)}
-                  className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
-                >
+                <Button onClick={() => handleApprove(user)}
+ className="flex-1 -">
                   <CheckCircle className="w-4 h-4 mr-2" />
                   อนุมัติ
                 </Button>
-                <Button
-                  onClick={() => handleReject(user)}
-                  variant="outline"
-                  className="flex-1 text-red-600 hover:bg-red-50"
-                >
+                <Button onClick={() => handleReject(user)}
+ variant="secondary"
+ className="flex-1">
                   <XCircle className="w-4 h-4 mr-2" />
                   ปฏิเสธ
                 </Button>
-                <Button
-                  onClick={() => setSelectedUser(user)}
-                  variant="outline"
-                  size="icon"
-                  className="hover:bg-gray-50"
-                >
+                <Button onClick={() => setSelectedUser(user)}
+ variant="secondary"
+ size="sm">
                   <Eye className="w-4 h-4" />
                 </Button>
               </div>
@@ -212,9 +198,7 @@ export default function PendingUsersPage() {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedUser(null)}
         >
-          <Card
-            className="max-w-md w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+          <Card padding={0} className="max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}
           >
             <CardContent className="p-6">
               <h3 className="text-xl font-semibold mb-4">รายละเอียดผู้สมัคร</h3>
@@ -259,7 +243,7 @@ export default function PendingUsersPage() {
                     <div>
                       <p className="text-sm text-gray-500">Invite Link</p>
                       <p className="font-medium">
-                        <Badge variant="secondary">{selectedUser.inviteLinkCode}</Badge>
+                        <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
                       </p>
                     </div>
                   )}
@@ -283,20 +267,16 @@ export default function PendingUsersPage() {
               </div>
 
               <div className="mt-6 flex gap-2">
-                <Button
-                  onClick={() => {
-                    handleApprove(selectedUser)
-                    setSelectedUser(null)
-                  }}
-                  className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
-                >
+                <Button onClick={() => {
+ handleApprove(selectedUser)
+ setSelectedUser(null)
+ }}
+ className="flex-1 -">
                   อนุมัติ
                 </Button>
-                <Button
-                  onClick={() => setSelectedUser(null)}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={() => setSelectedUser(null)}
+ variant="secondary"
+ className="flex-1">
                   ปิด
                 </Button>
               </div>

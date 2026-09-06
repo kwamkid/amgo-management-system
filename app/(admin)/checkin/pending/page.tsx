@@ -22,12 +22,10 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { gradients, colorClasses } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 
+import { Alert, Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
 export default function PendingCheckoutsPage() {
   const { userData } = useAuth()
   const { showToast } = useToast()
@@ -106,12 +104,11 @@ export default function PendingCheckoutsPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>ไม่มีสิทธิ์เข้าถึงหน้านี้</AlertTitle>
-          <AlertDescription>
+        <Alert tone="error">
+          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+          <div>
             เฉพาะ HR และ Admin เท่านั้น
-          </AlertDescription>
+          </div>
         </Alert>
       </div>
     )
@@ -133,7 +130,7 @@ export default function PendingCheckoutsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -147,7 +144,7 @@ export default function PendingCheckoutsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -161,7 +158,7 @@ export default function PendingCheckoutsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -178,7 +175,7 @@ export default function PendingCheckoutsPage() {
 
       {/* Forgot Checkouts Section */}
       {pendingRecords.length > 0 && (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
@@ -201,7 +198,7 @@ export default function PendingCheckoutsPage() {
 
       {/* Overtime Approvals Section */}
       {overtimeRecords.length > 0 && (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-purple-500" />
@@ -224,7 +221,7 @@ export default function PendingCheckoutsPage() {
 
       {/* Empty State */}
       {totalPending === 0 && (
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="py-16">
             <div className="text-center">
               <div className={`inline-flex p-4 bg-gradient-to-br ${gradients.successLight} rounded-full mb-4`}>

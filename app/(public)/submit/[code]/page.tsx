@@ -13,10 +13,6 @@ import {
   Loader2
 } from 'lucide-react'
 import { useSubmission } from '@/hooks/useSubmission'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { safeFormatDate } from '@/lib/utils/date'
 import { th } from 'date-fns/locale'
 import TechLoader from '@/components/shared/TechLoader'
@@ -27,7 +23,7 @@ import {
   normalizeUrl 
 } from '@/lib/utils/submission'
 
-import { Input } from '@/components/aoo'
+import { Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function SubmissionPage({ 
   params 
 }: { 
@@ -148,7 +144,7 @@ export default function SubmissionPage({
   if (error || !campaign) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+        <Card padding={0} className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -174,7 +170,7 @@ export default function SubmissionPage({
   if (currentStatus === 'approved') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+        <Card padding={0} className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
@@ -184,9 +180,9 @@ export default function SubmissionPage({
               <p className="text-gray-600">
                 ขอบคุณสำหรับการส่งผลงาน ทีม Marketing จะตรวจสอบและติดต่อกลับ
               </p>
-              <Badge className="mt-4 bg-green-100 text-green-700">
+              <Pill tone="accent" className="mt-4 bg-green-100 text-green-700">
                 Status: ผ่านการตรวจสอบแล้ว
-              </Badge>
+              </Pill>
             </div>
           </CardContent>
         </Card>
@@ -198,7 +194,7 @@ export default function SubmissionPage({
   if (currentStatus === 'submitted' || currentStatus === 'resubmitted') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+        <Card padding={0} className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
               <Clock className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
@@ -208,9 +204,9 @@ export default function SubmissionPage({
               <p className="text-gray-600 mb-4">
                 คุณได้ส่งผลงานเรียบร้อยแล้ว กำลังรอทีม Marketing ตรวจสอบ
               </p>
-              <Badge className="bg-yellow-100 text-yellow-700">
+              <Pill tone="accent" className="bg-yellow-100 text-yellow-700">
                 Status: รอตรวจสอบ
-              </Badge>
+              </Pill>
               
               {/* Show submitted links */}
               {submission?.links && submission.links.length > 0 && (
@@ -244,7 +240,7 @@ export default function SubmissionPage({
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <Card className="mb-6">
+        <Card padding={0} className="mb-6">
           <CardHeader>
             <div className="space-y-1">
               <h1 className="text-2xl font-bold text-gray-900">
@@ -288,17 +284,16 @@ export default function SubmissionPage({
 
         {/* Show revision notes if any */}
         {currentStatus === 'revision' && submission?.reviewNotes && (
-          <Alert variant="warning" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert tone="warning" className="mb-6">
+            <div>
               <p className="font-medium mb-1">ต้องแก้ไขผลงาน:</p>
               <p>{submission.reviewNotes}</p>
-            </AlertDescription>
+            </div>
           </Alert>
         )}
 
         {/* Add Link Form */}
-        <Card className="mb-6">
+        <Card padding={0} className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">เพิ่ม Link ผลงาน</CardTitle>
           </CardHeader>
@@ -324,10 +319,7 @@ export default function SubmissionPage({
                   </div>
                 )}
               </div>
-              <Button
-                onClick={handleAddLink}
-                className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-              >
+              <Button onClick={handleAddLink} className="-">
                 <Plus className="w-5 h-5" />
               </Button>
             </div>
@@ -339,7 +331,7 @@ export default function SubmissionPage({
 
         {/* Links List */}
         {links.length > 0 && (
-          <Card className="mb-6">
+          <Card padding={0} className="mb-6">
             <CardHeader>
               <CardTitle className="text-lg">
                 Links ที่เพิ่มแล้ว ({links.length})
@@ -366,12 +358,7 @@ export default function SubmissionPage({
                         {link.url}
                       </p>
                     </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleRemoveLink(link.id)}
-                      className="text-red-600 hover:bg-red-50"
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveLink(link.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -383,28 +370,19 @@ export default function SubmissionPage({
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handleSaveDraft}
-            disabled={links.length === 0}
-            className="flex-1"
-          >
+          <Button variant="soft" onClick={handleSaveDraft} disabled={links.length === 0} className="flex-1">
             <Save className="w-4 h-4 mr-2" />
             บันทึกแบบร่าง
           </Button>
-          <Button
-            onClick={handleSubmitFinal}
-            disabled={links.length === 0}
-            className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-          >
+          <Button onClick={handleSubmitFinal} disabled={links.length === 0} className="flex-1 -">
             <Send className="w-4 h-4 mr-2" />
             {currentStatus === 'revision' ? 'ส่งผลงานแก้ไข' : 'ส่งผลงาน'}
           </Button>
         </div>
 
         {errors.submit && (
-          <Alert variant="error" className="mt-4">
-            <AlertDescription>{errors.submit}</AlertDescription>
+          <Alert tone="error" className="mt-4">
+            <div>{errors.submit}</div>
           </Alert>
         )}
 
@@ -412,19 +390,19 @@ export default function SubmissionPage({
         {submission && (
           <div className="mt-4 text-center">
             {currentStatus === 'submitted' && (
-              <Badge className="bg-yellow-100 text-yellow-700">
+              <Pill tone="accent" className="bg-yellow-100 text-yellow-700">
                 รอตรวจสอบ
-              </Badge>
+              </Pill>
             )}
             {currentStatus === 'revision' && (
-              <Badge className="bg-orange-100 text-orange-700">
+              <Pill tone="accent" className="bg-orange-100 text-orange-700">
                 ต้องแก้ไขตามคำแนะนำ
-              </Badge>
+              </Pill>
             )}
             {submission?.isDraft && currentStatus === 'pending' && (
-              <Badge className="bg-gray-100 text-gray-700">
+              <Pill tone="accent" className="bg-gray-100 text-gray-700">
                 บันทึกแบบร่างแล้ว
-              </Badge>
+              </Pill>
             )}
           </div>
         )}

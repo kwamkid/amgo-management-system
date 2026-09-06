@@ -11,11 +11,9 @@ import {
   FileText
 } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared'
 
+import { Pill, badgeTone, Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@/components/aoo'
 const reportMenuItems = [
   {
     title: 'รายงานการเข้างาน',
@@ -94,12 +92,7 @@ export default function ReportsPage() {
               href={isActive ? item.href : '#'}
               className={!isActive ? 'pointer-events-none' : ''}
             >
-              <Card 
-                className={`
-                  relative overflow-hidden transition-all duration-300 group
-                  ${isActive ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' : 'opacity-75'}
-                `}
-              >
+              <Card padding={0} className={` relative overflow-hidden transition-all duration-300 group ${isActive ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' : 'opacity-75'} `}>
                 {/* Gradient Background */}
                 <div 
                   className={`
@@ -118,9 +111,9 @@ export default function ReportsPage() {
                     >
                       <Icon className="w-6 h-6" />
                     </div>
-                    <Badge variant={item.badgeVariant}>
+                    <Pill tone={badgeTone(item.badgeVariant)}>
                       {item.badge}
-                    </Badge>
+                    </Pill>
                   </div>
                   
                   <CardTitle className="mt-4 text-lg">
@@ -147,7 +140,7 @@ export default function ReportsPage() {
       
       {/* Quick Stats */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -159,7 +152,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -173,7 +166,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -187,7 +180,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>

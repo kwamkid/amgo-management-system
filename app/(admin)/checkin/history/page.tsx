@@ -16,14 +16,10 @@ import {
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
-import { Input } from '@/components/aoo'
-
+import { Input, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function CheckInHistoryPage() {
   const { userData } = useAuth()
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -118,7 +114,7 @@ export default function CheckInHistoryPage() {
       />
 
       {/* Month Selector */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardContent className="p-6">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-gray-400" />
@@ -135,7 +131,7 @@ export default function CheckInHistoryPage() {
 
       {/* Monthly Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl mb-3`}>
               <Calendar className="w-6 h-6 text-red-600" />
@@ -146,7 +142,7 @@ export default function CheckInHistoryPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.infoLight} rounded-xl mb-3`}>
               <Calendar className="w-6 h-6 text-blue-600" />
@@ -157,7 +153,7 @@ export default function CheckInHistoryPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl mb-3`}>
               <Calendar className="w-6 h-6 text-orange-600" />
@@ -168,7 +164,7 @@ export default function CheckInHistoryPage() {
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-md">
+        <Card padding={0}>
           <CardContent className="p-6">
             <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl mb-3`}>
               <Calendar className="w-6 h-6 text-red-600" />
@@ -181,7 +177,7 @@ export default function CheckInHistoryPage() {
       </div>
 
       {/* History List */}
-      <Card className="border-0 shadow-md">
+      <Card padding={0}>
         <CardHeader>
           <CardTitle>
             รายละเอียด {format(new Date(selectedMonth + '-01'), 'MMMM yyyy', { locale: th })}
@@ -228,7 +224,7 @@ export default function CheckInHistoryPage() {
                   const hasLate = dayRecords.some(r => r.isLate)
                   
                   return (
-                    <Card key={dateStr} className="border-0 shadow-sm">
+                    <Card padding={0} key={dateStr}>
                       <CardContent className="p-4">
                         {/* Day Header */}
                         <div className="flex items-center justify-between mb-3">
@@ -243,9 +239,9 @@ export default function CheckInHistoryPage() {
                               {dayRecords.length} รายการ
                             </span>
                             {hasLate && (
-                              <Badge variant="error" className="text-xs">
+                              <Pill tone="danger" className="text-xs">
                                 มาสาย
-                              </Badge>
+                              </Pill>
                             )}
                           </div>
                         </div>
@@ -254,9 +250,9 @@ export default function CheckInHistoryPage() {
                         <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
                           <span>รวม {formatWorkingHours(dayHours)}</span>
                           {dayOT > 0 && (
-                            <Badge variant="warning" className="text-xs">
+                            <Pill tone="warning" className="text-xs">
                               OT {formatWorkingHours(dayOT)}
-                            </Badge>
+                            </Pill>
                           )}
                         </div>
                         
@@ -291,9 +287,9 @@ export default function CheckInHistoryPage() {
                                       @ {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
                                     </span>
                                     {record.selectedShiftName && (
-                                      <Badge variant="info" className="text-xs ml-2">
+                                      <Pill tone="info" className="text-xs ml-2">
                                         {record.selectedShiftName}
-                                      </Badge>
+                                      </Pill>
                                     )}
                                   </div>
                                   
@@ -304,14 +300,14 @@ export default function CheckInHistoryPage() {
                                       </span>
                                     )}
                                     {record.status === 'checked-in' && (
-                                      <Badge variant="success" className="text-xs">
+                                      <Pill tone="success" className="text-xs">
                                         กำลังทำงาน
-                                      </Badge>
+                                      </Pill>
                                     )}
                                     {record.status === 'pending' && (
-                                      <Badge variant="warning" className="text-xs">
+                                      <Pill tone="warning" className="text-xs">
                                         รออนุมัติ
-                                      </Badge>
+                                      </Pill>
                                     )}
                                   </div>
                                 </div>

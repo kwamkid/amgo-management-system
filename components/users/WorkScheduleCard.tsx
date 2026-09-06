@@ -15,11 +15,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { CalendarClock, Plus, Trash2 } from 'lucide-react'
-import { Input } from '@/components/aoo'
-
+import { Input, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 const DAYS = [
   { dow: 0, label: 'อา.' },
   { dow: 1, label: 'จ.' },
@@ -196,7 +193,7 @@ export default function WorkScheduleCard({
   if (loading) return null
 
   return (
-    <Card className="border-0 shadow-md">
+    <Card padding={0}>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <CalendarClock className="w-5 h-5 text-indigo-600" />
@@ -322,7 +319,7 @@ export default function WorkScheduleCard({
         <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
           {dirty && <span className="mr-auto text-xs text-orange-600">แก้แล้ว ยังไม่บันทึก</span>}
           {onCancel && (
-            <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={saving}>
+            <Button type="button" variant="soft" size="sm" onClick={onCancel} disabled={saving}>
               ยกเลิก
             </Button>
           )}

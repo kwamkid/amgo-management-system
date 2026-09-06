@@ -16,9 +16,6 @@ import {
   Share2,
   CheckCircle
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -26,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-import { Progress } from '@/components/aoo'
+import { Progress, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface DeliveryRouteSummaryProps {
   deliveries: DeliveryPoint[]
   date: string
@@ -119,7 +116,7 @@ export default function DeliveryRouteSummary({
 
   return (
     <>
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card padding={0} className="-">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -127,19 +124,11 @@ export default function DeliveryRouteSummary({
               สรุปเส้นทางประจำวัน
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowShareDialog(true)}
-              >
+              <Button variant="soft" size="sm" onClick={() => setShowShareDialog(true)}>
                 <Share2 className="w-4 h-4 mr-2" />
                 แชร์
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportToCSV}
-              >
+              <Button variant="soft" size="sm" onClick={exportToCSV}>
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
@@ -222,9 +211,9 @@ export default function DeliveryRouteSummary({
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{formatTime(delivery.checkInTime)}</span>
-                        <Badge variant={delivery.deliveryType === 'pickup' ? 'info' : 'secondary'} className="text-xs">
+                        <Pill tone={badgeTone(delivery.deliveryType === 'pickup' ? 'info' : 'secondary')} className="text-xs">
                           {delivery.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
-                        </Badge>
+                        </Pill>
                       </div>
                       {delivery.customerName && (
                         <p className="text-gray-600">{delivery.customerName}</p>
@@ -244,10 +233,10 @@ export default function DeliveryRouteSummary({
 
           {/* Success Badge */}
           <div className="flex items-center justify-center pt-4">
-            <Badge variant="success" className="text-base px-4 py-2 gap-2">
+            <Pill tone="success" className="text-base px-4 py-2 gap-2">
               <CheckCircle className="w-5 h-5" />
               ส่งครบทุกจุด สำเร็จ 100%
-            </Badge>
+            </Pill>
           </div>
         </CardContent>
       </Card>
@@ -267,19 +256,13 @@ export default function DeliveryRouteSummary({
             </div>
             
             <div className="flex gap-2">
-              <Button
-                onClick={shareToLine}
-                className="flex-1 bg-green-500 hover:bg-green-600"
-              >
+              <Button onClick={shareToLine} className="flex-1">
                 แชร์ผ่าน LINE
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(generateSummaryText())
-                  setShowShareDialog(false)
-                }}
-              >
+              <Button variant="soft" onClick={() => {
+ navigator.clipboard.writeText(generateSummaryText())
+ setShowShareDialog(false)
+ }}>
                 คัดลอก
               </Button>
             </div>

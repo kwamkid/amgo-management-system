@@ -9,7 +9,6 @@ import {
   Loader2
 } from 'lucide-react'
 import { Brand } from '@/types/influencer'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 
-import { Textarea, Label, Input } from '@/components/aoo'
+import { Textarea, Label, Input, Button } from '@/components/aoo'
 interface BrandModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -211,19 +210,11 @@ export default function BrandModal({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="soft" onClick={() => onOpenChange(false)}
+ disabled={isSubmitting}>
               ยกเลิก
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-            >
+            <Button type="submit" disabled={isSubmitting} className="-">
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

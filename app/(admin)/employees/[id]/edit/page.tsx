@@ -11,11 +11,9 @@ import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { PageHeader, StatusBadge } from '@/components/shared'
 
+import { Alert, Card, CardContent, Button } from '@/components/aoo'
 export default function EditUserPage({ 
   params 
 }: { 
@@ -93,20 +91,16 @@ export default function EditUserPage({
   if (error || !user) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertDescription>
+        <Alert tone="error">
+          <div>
             <p className="mb-4 text-base">
               {error || 'ไม่พบข้อมูลพนักงาน'}
             </p>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/employees')}
-              className="bg-red-50 hover:bg-red-100 text-red-700"
-            >
+            <Button variant="soft" onClick={() => router.push('/employees')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               กลับไปหน้ารายการ
             </Button>
-          </AlertDescription>
+          </div>
         </Alert>
       </div>
     )
@@ -122,12 +116,12 @@ export default function EditUserPage({
           // กดที่รูปเพื่อดึงรูปโปรไฟล์ล่าสุดจาก LINE มาใหม่
           <div className="flex items-center gap-3">
             <Link href={`/employees/${id}/contract`}>
-              <Button variant="outline" size="sm">
+              <Button variant="soft" size="sm">
                 <FileText className="mr-1.5 h-4 w-4" /> สัญญาจ้าง
               </Button>
             </Link>
             <Link href={`/employees/${id}/certificate`}>
-              <Button variant="outline" size="sm">
+              <Button variant="soft" size="sm">
                 <FileCheck className="mr-1.5 h-4 w-4" /> ใบรับรองเงินเดือน
               </Button>
             </Link>

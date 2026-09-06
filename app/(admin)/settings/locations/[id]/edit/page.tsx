@@ -10,12 +10,10 @@ import { LocationFormData } from '@/types/location'
 import { ArrowLeft, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
 
+import { Alert, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function EditLocationPage({ 
   params 
 }: { 
@@ -45,16 +43,15 @@ export default function EditLocationPage({
   if (error || !location) {
     return (
       <div className="max-w-4xl">
-        <Alert variant="error">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
-          <AlertDescription>
+        <Alert tone="error">
+          <p className="font-semibold">เกิดข้อผิดพลาด</p>
+          <div>
             {error || 'ไม่พบสถานที่ที่ต้องการแก้ไข'}
-          </AlertDescription>
+          </div>
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/settings/locations">
-            <Button variant="outline">
+            <Button variant="soft">
               <ArrowLeft className="w-4 h-4 mr-2" />
               กลับไปหน้ารายการ
             </Button>
@@ -74,7 +71,7 @@ export default function EditLocationPage({
       />
 
       {/* Current Info Card */}
-      <Card className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
+      <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-900">
             <MapPin className="w-5 h-5" />

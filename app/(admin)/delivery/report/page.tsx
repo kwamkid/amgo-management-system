@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/useToast'
 import { getDeliveryRangeSummary } from '@/lib/services/delivery/points'
 import { getAttendanceReportForExport } from '@/lib/services/reportService'
 import { FilterCard, FilterField, PageHeader, Skeleton, TechLoader } from '@/components/shared'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRangePicker } from '@/components/aoo'
 
 type Summary = Awaited<ReturnType<typeof getDeliveryRangeSummary>>
 /** `${YYYY-MM-DD}|${userId}` → สถานะจากรายงานเข้างาน */
@@ -193,9 +193,9 @@ export default function DeliveryReportPage() {
       >
         <FilterField label="ช่วงเวลา" width={280}>
           <DateRangePicker
-            startDate={range.start}
-            endDate={range.end}
-            onChange={(s, e) => setRange({ start: s, end: e })}
+            value={{ since: range.start, until: range.end }}
+            onChange={(v) => v && setRange({ start: v.since, end: v.until })}
+            clearable={false}
             className="w-full"
           />
         </FilterField>

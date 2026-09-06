@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
 import { getAttendanceReportForExport } from '@/lib/services/reportService'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRangePicker } from '@/components/aoo'
 import {
   DataTable,
   FilterCard,
@@ -286,9 +286,9 @@ export default function AttendancePerformancePage() {
       >
         <FilterField label="ช่วงเวลา" width={280}>
           <DateRangePicker
-            startDate={range.start}
-            endDate={range.end}
-            onChange={(s, e) => setRange({ start: s, end: e })}
+            value={{ since: range.start, until: range.end }}
+            onChange={(v) => v && setRange({ start: v.since, end: v.until })}
+            clearable={false}
             className="w-full"
           />
         </FilterField>

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRangePicker } from '@/components/aoo'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -199,9 +199,9 @@ export default function ReportFilters({
           <div>
             <Label className="text-gray-500 mb-1">ช่วงเวลา</Label>
             <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(s, e) => { setStartDate(s); setEndDate(e) }}
+              value={{ since: startDate, until: endDate }}
+              onChange={(v) => { if (v) { setStartDate(v.since); setEndDate(v.until) } }}
+              clearable={false}
               className="w-full"
             />
           </div>

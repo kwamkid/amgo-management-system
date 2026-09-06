@@ -19,7 +19,7 @@ import {
   getDeliveryPerformance,
   type DriverPerf,
 } from '@/lib/services/delivery/points'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRangePicker } from '@/components/aoo'
 import { HelpTooltip } from '@/components/aoo'
 import {
   DataTable,
@@ -354,9 +354,9 @@ export default function DeliveryPerformancePage() {
       >
         <FilterField label="ช่วงเวลา" width={280}>
           <DateRangePicker
-            startDate={range.start}
-            endDate={range.end}
-            onChange={(s, e) => setRange({ start: s, end: e })}
+            value={{ since: range.start, until: range.end }}
+            onChange={(v) => v && setRange({ start: v.since, end: v.until })}
+            clearable={false}
             className="w-full"
           />
         </FilterField>

@@ -12,7 +12,7 @@ import { th } from 'date-fns/locale'
 import { History } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRangePicker } from '@/components/aoo'
 import { Button, Modal } from '@/components/aoo'
 import {
   DataTable,
@@ -172,9 +172,10 @@ export default function ProductionHistoryPage() {
       <FilterCard>
         <FilterField label="ช่วงเวลา">
           <DateRangePicker
-            startDate={range.start}
-            endDate={range.end}
-            onChange={(start, end) => setRange({ start, end })}
+            value={{ since: range.start, until: range.end }}
+            onChange={(v) => v && setRange({ start: v.since, end: v.until })}
+            clearable={false}
+            className="w-full"
           />
         </FilterField>
       </FilterCard>

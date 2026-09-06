@@ -16,7 +16,7 @@ import { Camera, ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
-import { DatePicker, EmptyState } from '@/components/aoo'
+import { DatePicker, DateRangePicker, EmptyState } from '@/components/aoo'
 import { FilterBar, FilterSelect, PageHeader, SectionCard, Segmented, Skeleton, UserCell } from '@/components/shared'
 import StorageStatusCard from '@/components/reports/StorageStatusCard'
 import {
@@ -266,11 +266,13 @@ export default function StockPhotosReportPage() {
         ) : (
           <>
             <FilterSelect label="พนักงาน" value={personId} options={people} onChange={setPersonId} />
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <DatePicker value={rangeFrom} onChange={setRangeFrom} />
-              <span>–</span>
-              <DatePicker value={rangeTo} onChange={setRangeTo} />
-            </div>
+            <DateRangePicker
+              value={{ since: rangeFrom, until: rangeTo }}
+              onChange={(v) => { if (v) { setRangeFrom(v.since); setRangeTo(v.until) } }}
+              clearable={false}
+              maxDate={new Date()}
+              className="w-full sm:w-64"
+            />
           </>
         )}
       </FilterBar>

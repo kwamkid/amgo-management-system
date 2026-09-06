@@ -141,14 +141,27 @@ export default function StockPhotosReportPage() {
 
   // จัดกลุ่มตามสาขา — ไม่เลือกสาขา = ทุกสาขาในวันเดียว ต้องแยกให้เห็นว่าร้านไหนเป็นร้านไหน
   // (เจ้าของทัก 7 ก.ย. 69 ตอนเห็นรูป 55 ใบจาก 4 สาขาปนกัน)
+  // สาขา → คน → หน้าร้าน/สต็อก — ชื่อคนอยู่หัวแถวครั้งเดียว ไม่แปะซ้ำใต้ทุกรูป
+  // (เจ้าของทัก 7 ก.ย. 69 "แยกทีละรูปแล้วใส่ชื่อดูยาก")
+  type PersonGroup = { userId: string; userName: string; storefront: StockPhoto[]; stock: StockPhoto[] }
   const byLocation = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; storefront: StockPhoto[]; stock: StockPhoto[] }>()
+    const m = new Map<string, { id: string; name: string; people: Map<string, PersonGroup> }>()
     for (const p of photos) {
       const key = p.locationId ?? '-'
-      if (!m.has(key)) m.set(key, { id: key, name: p.locationName || 'ไม่ระบุสาขา', storefront: [], stock: [] })
-      m.get(key)![p.kind].push(p)
+      if (!m.has(key)) m.set(key, { id: key, name: p.locationName || 'ไม่ระบุสาขา', people: new Map() })
+      const loc = m.get(key)!
+      if (!loc.people.has(p.userId)) loc.people.set(p.userId, { userId: p.userId, userName: p.userName, storefront: [], stock: [] })
+      loc.people.get(p.userId)![p.kind].push(p)
     }
-    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'th'))
+    return [...m.values()]
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        people: [...l.people.values()].sort((a, b) => a.userName.localeCompare(b.userName, 'th')),
+        storefront: [...l.people.values()].reduce((n, g) => n + g.storefront.length, 0),
+        stock: [...l.people.values()].reduce((n, g) => n + g.stock.length, 0),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'th'))
   }, [photos])
 
   const shift = (n: number) => setDay(iso(addDays(new Date(`${day}T00:00:00`), n)))
@@ -174,11 +187,8 @@ export default function StockPhotosReportPage() {
                     <img src={p.thumbUrl ?? p.url ?? undefined} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition group-hover:scale-105" />
                   ) : null}
                 </div>
-                <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
-                  <span className="truncate text-gray-700">{p.userName}</span>
-                  <span className="shrink-0 tabular-nums text-gray-500">
-                    {format(new Date(p.takenAt), 'HH:mm')}
-                  </span>
+                <div className="px-2 py-1 text-center text-xs tabular-nums text-gray-500">
+                  {format(new Date(p.takenAt), 'HH:mm')}
                 </div>
               </button>
             ))}
@@ -274,12 +284,24 @@ export default function StockPhotosReportPage() {
                 <MapPin size={16} className="text-gray-400" />
                 {g.name}
                 <span className="text-sm font-normal text-gray-500">
-                  หน้าร้าน {g.storefront.length} · สต็อก {g.stock.length}
+                  {g.people.length} คน · หน้าร้าน {g.storefront} · สต็อก {g.stock}
                 </span>
               </h3>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {kindBlock('storefront', g.storefront)}
-                {kindBlock('stock', g.stock)}
+              <div className="space-y-4">
+                {g.people.map((person) => (
+                  <div key={person.userId} className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <UserCell name={person.userName} />
+                      <span className="text-sm text-gray-500">
+                        หน้าร้าน {person.storefront.length} · สต็อก {person.stock.length}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {kindBlock('storefront', person.storefront)}
+                      {kindBlock('stock', person.stock)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           ))}

@@ -16,6 +16,7 @@
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { uploadImage, getImageUrls } from '@/lib/supabase/storage'
+import { resizeImage } from '@/lib/utils/resizeImage'
 
 const sb = () => createClient()
 const BUCKET = 'stock-photos' as const
@@ -39,10 +40,14 @@ export interface StockPhoto {
   workDate: string
   kind: StockPhotoKind
   photoPath: string
+  /** รูปย่อ 320px สำหรับตาราง — null = รูปเก่าก่อน 7 ก.ย. 69 (ใช้รูปเต็มแทน) */
+  thumbPath: string | null
   note: string
   takenAt: string
   /** signed URL — เติมให้ตอน list (หมดอายุ 7 วัน ห้ามเก็บ) */
   url?: string | null
+  /** signed URL ของรูปย่อ — ตาราง/การ์ดใช้ตัวนี้ก่อน ไม่มีค่อยถอยไป url */
+  thumbUrl?: string | null
 }
 
 interface Row {
@@ -54,6 +59,7 @@ interface Row {
   work_date: string
   kind: string
   photo_path: string
+  thumb_path: string | null
   note: string | null
   taken_at: string
 }
@@ -67,14 +73,23 @@ const toPhoto = (r: Row): StockPhoto => ({
   workDate: r.work_date,
   kind: r.kind as StockPhotoKind,
   photoPath: r.photo_path,
+  thumbPath: r.thumb_path ?? null,
   note: r.note ?? '',
   takenAt: r.taken_at,
 })
 
 /** เติม signed URL ให้ทุกรูปทีเดียว */
 async function withUrls(photos: StockPhoto[]): Promise<StockPhoto[]> {
-  const urls = await getImageUrls(BUCKET, photos.map((p) => p.photoPath))
-  return photos.map((p) => ({ ...p, url: urls.get(p.photoPath) ?? null }))
+  // เซ็นทั้งรูปเต็มและรูปย่อในคำขอเดียว
+  const urls = await getImageUrls(BUCKET, [
+    ...photos.map((p) => p.photoPath),
+    ...photos.map((p) => p.thumbPath),
+  ])
+  return photos.map((p) => ({
+    ...p,
+    url: urls.get(p.photoPath) ?? null,
+    thumbUrl: p.thumbPath ? (urls.get(p.thumbPath) ?? null) : null,
+  }))
 }
 
 export const todayKey = () => format(new Date(), 'yyyy-MM-dd')
@@ -101,7 +116,13 @@ export async function addStockPhoto(params: {
   blob: Blob
   note?: string
 }): Promise<StockPhoto> {
-  const path = await uploadImage(BUCKET, params.userId, params.blob)
+  // รูปเต็ม + รูปย่อ (320px ≈ 15KB) คู่กัน — ตารางรายงานโชว์ 50 รูป/วัน ถ้าใช้รูปเต็มโหลดเป็นสิบ MB
+  const name = String(Date.now())
+  const thumbBlob = await resizeImage(params.blob, { maxSide: 320, quality: 0.7 })
+  const [path, thumbPath] = await Promise.all([
+    uploadImage(BUCKET, params.userId, params.blob, { name }),
+    uploadImage(BUCKET, params.userId, thumbBlob, { name: `${name}_thumb` }),
+  ])
 
   const { data, error } = await sb()
     .from('stock_photos')
@@ -113,6 +134,7 @@ export async function addStockPhoto(params: {
       work_date: todayKey(),
       kind: params.kind,
       photo_path: path,
+      thumb_path: thumbPath,
       note: params.note?.trim() ?? '',
     })
     .select('*')
@@ -134,11 +156,13 @@ export async function deleteMyPhotoToday(id: string): Promise<void> {
     .from('stock_photos')
     .delete()
     .eq('id', id)
-    .select('photo_path')
+    .select('photo_path, thumb_path')
     .maybeSingle()
   if (error) throw new Error(`ลบรูปไม่สำเร็จ: ${error.message}`)
   if (!data) throw new Error('ลบรูปไม่สำเร็จ: ลบได้เฉพาะรูปของตัวเองที่ถ่ายวันนี้')
-  const { error: fileErr } = await sb().storage.from(BUCKET).remove([data.photo_path])
+  const { error: fileErr } = await sb()
+    .storage.from(BUCKET)
+    .remove([data.photo_path, ...(data.thumb_path ? [data.thumb_path] : [])])
   if (fileErr) console.warn('[stock-photos] ลบไฟล์ไม่สำเร็จ (แถวลบแล้ว):', fileErr.message)
 }
 

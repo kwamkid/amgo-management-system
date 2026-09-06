@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addDays, eachDayOfInterval, format, subDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Camera, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
@@ -139,16 +139,21 @@ export default function StockPhotosReportPage() {
       .map((d) => ({ date: d, photos: byDate.get(d) ?? [] }))
   }, [rangePhotos, rangeFrom, rangeTo])
 
-  const byKind = useMemo(() => {
-    const m: Record<StockPhotoKind, StockPhoto[]> = { storefront: [], stock: [] }
-    for (const p of photos) m[p.kind].push(p)
-    return m
+  // จัดกลุ่มตามสาขา — ไม่เลือกสาขา = ทุกสาขาในวันเดียว ต้องแยกให้เห็นว่าร้านไหนเป็นร้านไหน
+  // (เจ้าของทัก 7 ก.ย. 69 ตอนเห็นรูป 55 ใบจาก 4 สาขาปนกัน)
+  const byLocation = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; storefront: StockPhoto[]; stock: StockPhoto[] }>()
+    for (const p of photos) {
+      const key = p.locationId ?? '-'
+      if (!m.has(key)) m.set(key, { id: key, name: p.locationName || 'ไม่ระบุสาขา', storefront: [], stock: [] })
+      m.get(key)![p.kind].push(p)
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'th'))
   }, [photos])
 
   const shift = (n: number) => setDay(iso(addDays(new Date(`${day}T00:00:00`), n)))
 
-  const kindBlock = (kind: StockPhotoKind) => {
-    const list = byKind[kind]
+  const kindBlock = (kind: StockPhotoKind, list: StockPhoto[]) => {
     return (
       <SectionCard key={kind} title={`${KIND_LABEL[kind]} (${list.length})`}>
         {list.length === 0 ? (
@@ -163,9 +168,10 @@ export default function StockPhotosReportPage() {
                 className="group overflow-hidden rounded-lg border border-gray-100 bg-gray-50 text-left"
               >
                 <div className="aspect-[4/3] w-full overflow-hidden">
-                  {p.url ? (
+                  {/* รูปย่อ 320px (≈15KB) — รูปเต็มโหลดเฉพาะตอนกดขยาย · รูปเก่าไม่มีรูปย่อใช้รูปเต็มไปก่อน */}
+                  {(p.thumbUrl ?? p.url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.url} alt="" className="h-full w-full object-cover transition group-hover:scale-105" />
+                    <img src={p.thumbUrl ?? p.url ?? undefined} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition group-hover:scale-105" />
                   ) : null}
                 </div>
                 <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
@@ -261,9 +267,22 @@ export default function StockPhotosReportPage() {
           body={locationId ? 'สาขานี้ยังไม่มีใครถ่ายรูปในวันนี้' : 'ยังไม่มีใครถ่ายรูปในวันนี้'}
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {kindBlock('storefront')}
-          {kindBlock('stock')}
+        <div className="space-y-6">
+          {byLocation.map((g) => (
+            <section key={g.id}>
+              <h3 className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-semibold text-gray-900">
+                <MapPin size={16} className="text-gray-400" />
+                {g.name}
+                <span className="text-sm font-normal text-gray-500">
+                  หน้าร้าน {g.storefront.length} · สต็อก {g.stock.length}
+                </span>
+              </h3>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {kindBlock('storefront', g.storefront)}
+                {kindBlock('stock', g.stock)}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
@@ -305,7 +324,7 @@ export default function StockPhotosReportPage() {
                       >
                         {p.url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.url} alt="" className="h-full w-full object-cover" />
+                          <img src={p.thumbUrl ?? p.url ?? undefined} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                         ) : null}
                         <span className={`absolute left-1 top-1 rounded px-1 text-xs text-white ${p.kind === 'storefront' ? 'bg-sky-600' : 'bg-amber-600'}`}>
                           {KIND_LABEL[p.kind]}

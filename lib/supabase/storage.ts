@@ -22,11 +22,11 @@ export async function uploadImage(
   bucket: Bucket,
   userId: string,
   blob: Blob,
-  opts: { ext?: string; contentType?: string } = {}
+  opts: { ext?: string; contentType?: string; /** ชื่อไฟล์ (ไม่รวมนามสกุล) — ค่าเริ่มต้น = เวลาปัจจุบัน */ name?: string } = {}
 ): Promise<string> {
   const sb = createClient()
   const ext = opts.ext ?? 'jpg'
-  const path = `${userId}/${format(new Date(), 'yyyy-MM-dd')}/${Date.now()}.${ext}`
+  const path = `${userId}/${format(new Date(), 'yyyy-MM-dd')}/${opts.name ?? Date.now()}.${ext}`
 
   const { error } = await sb.storage.from(bucket).upload(path, blob, {
     contentType: opts.contentType ?? 'image/jpeg',

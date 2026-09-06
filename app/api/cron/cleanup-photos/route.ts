@@ -149,14 +149,18 @@ async function cleanupStockPhotos(sb: Sb, limit: number) {
 
   const { data, error } = await sb
     .from('stock_photos')
-    .select('id, photo_path')
+    .select('id, photo_path, thumb_path')
     .lt('work_date', before)
     .order('work_date')
     .limit(limit)
   if (error) throw new Error(`หารูปสต็อกเก่าไม่สำเร็จ: ${error.message}`)
   if (!data?.length) return { rows: 0, files: 0, remaining: 0 }
 
-  const files = await removeFiles(sb, 'stock-photos', data.map((r) => r.photo_path))
+  const files = await removeFiles(
+    sb,
+    'stock-photos',
+    data.flatMap((r) => [r.photo_path, r.thumb_path]).filter((p): p is string => !!p)
+  )
 
   // แถวนี้ไม่มีค่าอะไรถ้าไม่มีรูป — ลบทั้งแถว (เซลฟี่ล้างแค่คอลัมน์เพราะแถว checkin
   // ยังมีเวลาเข้า-ออก/ชั่วโมงที่ต้องเก็บ)

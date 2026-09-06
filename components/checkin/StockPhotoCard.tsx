@@ -148,9 +148,9 @@ export default function StockPhotoCard({
           <div className="mt-2 flex flex-wrap gap-2">
             {mine.map((p) => (
               <div key={p.id} className="group relative h-20 w-20 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
-                {p.url ? (
+                {(p.thumbUrl ?? p.url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.url} alt="" className="h-full w-full object-cover" />
+                  <img src={p.thumbUrl ?? p.url ?? undefined} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : null}
                 <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 text-xs text-white">
                   {format(new Date(p.takenAt), 'HH:mm')}

@@ -11,6 +11,7 @@ export async function resizeImage(
   source: Blob,
   opts: { maxSide?: number; quality?: number } = {}
 ): Promise<Blob> {
+  // ค่าเริ่มต้น 1600/0.82 ≈ 300–500KB — รูปสต็อกใช้ 1280/0.72 ≈ 120–180KB (เจ้าของทัก 7 ก.ย. 69 ว่ายังใหญ่)
   const maxSide = opts.maxSide ?? 1600
   const quality = opts.quality ?? 0.82
 

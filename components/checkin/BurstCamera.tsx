@@ -94,7 +94,7 @@ export default function BurstCamera({
   const addShot = async (raw: Blob) => {
     setProcessing(true)
     try {
-      const blob = await resizeImage(raw)
+      const blob = await resizeImage(raw, { maxSide: 1280, quality: 0.72 })
       setShots((cur) => [...cur, { id: Date.now() + Math.random(), blob, preview: URL.createObjectURL(blob) }])
     } finally {
       setProcessing(false)

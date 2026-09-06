@@ -3086,6 +3086,7 @@ export type Database = {
           note: string
           photo_path: string
           taken_at: string
+          thumb_path: string | null
           user_id: string
           user_name: string
           work_date: string
@@ -3098,6 +3099,7 @@ export type Database = {
           note?: string
           photo_path: string
           taken_at?: string
+          thumb_path?: string | null
           user_id: string
           user_name?: string
           work_date: string
@@ -3110,6 +3112,7 @@ export type Database = {
           note?: string
           photo_path?: string
           taken_at?: string
+          thumb_path?: string | null
           user_id?: string
           user_name?: string
           work_date?: string

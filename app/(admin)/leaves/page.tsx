@@ -4,7 +4,7 @@
 
 import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton } from '@/components/aoo'
+import { Button as AooButton, Progress } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useLeave } from '@/hooks/useLeave'
 import { 
@@ -23,7 +23,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients, colorClasses } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'

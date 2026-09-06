@@ -3,15 +3,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimeRangePicker } from '@/components/aoo'
+import { TimeRangePicker, Checkbox, Label, Input } from '@/components/aoo'
 import { Location, LocationFormData, WorkingHours, Shift } from '@/types/location'
 import { MapPin, Clock, Calendar, Plus, Trash2, Save, X, Building } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
@@ -336,7 +333,7 @@ export default function LocationForm({
                   
                   <Checkbox
                     checked={!hours.isClosed}
-                    onCheckedChange={(checked) => handleWorkingHoursChange(key, 'isClosed', !checked)}
+                    onChange={(checked) => handleWorkingHoursChange(key, 'isClosed', !checked)}
                     disabled={isLoading}
                   />
                   
@@ -465,7 +462,7 @@ export default function LocationForm({
           <label className="flex items-center gap-3">
             <Checkbox
               checked={formData.isActive}
-              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked as boolean })}
+              onChange={(checked) => setFormData({ ...formData, isActive: checked as boolean })}
               disabled={isLoading}
             />
             <span className="font-medium text-gray-700">เปิดใช้งานสถานที่นี้</span>

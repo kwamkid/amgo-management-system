@@ -7,6 +7,7 @@ export type { ButtonProps, ButtonVariant, ButtonSize, IconButtonProps } from './
 export * from './card'
 export * from './badge'
 export * from './pill'
+export * from './progress'
 export * from './input'
 export * from './money-input'
 export * from './image-cropper'

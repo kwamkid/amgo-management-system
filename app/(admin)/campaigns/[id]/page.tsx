@@ -36,12 +36,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { safeFormatDate } from '@/lib/utils/date'
 import { th } from 'date-fns/locale'
 import { CampaignStatus, SubmissionStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
+import { Textarea, Label } from '@/components/aoo'
 
 // Platform icons config
 const PLATFORM_ICONS: Record<string, any> = {

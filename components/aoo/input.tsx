@@ -362,3 +362,31 @@ export function Field({
     </label>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Label — ป้ายช่องแบบยืนเดี่ยว (หน้าเก่าใช้คู่กับ Input/Select ตรง ๆ)  */
+/*  สไตล์เดียวกับป้ายของ Field · ถ้าเขียนฟอร์มใหม่ใช้ Field แทน         */
+/* ------------------------------------------------------------------ */
+
+export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+  children?: React.ReactNode;
+}
+
+export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(function Label(
+  { children, className, style: styleProp, ...rest },
+  ref,
+) {
+  const style: CSSProperties = {
+    display: "block",
+    fontSize: "var(--fs-meta)",
+    fontWeight: 600,
+    color: "var(--fg-2)",
+    marginBottom: 6,
+    ...styleProp,
+  };
+  return (
+    <label ref={ref} className={className} style={style} {...rest}>
+      {children}
+    </label>
+  );
+});

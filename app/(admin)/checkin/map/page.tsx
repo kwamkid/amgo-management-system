@@ -30,7 +30,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, Circle } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import {
@@ -41,8 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker } from '@/components/aoo'
-
+import { DatePicker, Input } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -461,13 +459,12 @@ export default function CheckinMapPage() {
 
           {/* Search */}
           <div className="mt-2 relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-            <Input
+                        <Input
+              prefix={<Search size={16} />}
               type="text"
               placeholder="ค้นหาชื่อพนักงาน..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 text-sm h-8"
+              onChange={(e) => setSearchTerm(e.target.value)} className="text-sm h-8"
             />
           </div>
 
@@ -553,13 +550,12 @@ export default function CheckinMapPage() {
           {/* Search and Filter */}
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-              <Input
+                            <Input
+                prefix={<Search size={16} />}
                 type="text"
                 placeholder="ค้นหา..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-7 text-xs"
+                onChange={(e) => setSearchTerm(e.target.value)} className="h-7 text-xs"
               />
             </div>
 

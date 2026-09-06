@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button as AooButton } from '@/components/aoo'
+import { Button as AooButton, Input } from '@/components/aoo'
 import { PageHeader } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
@@ -29,7 +29,6 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -207,13 +206,12 @@ export default function HolidaysPage() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
+                            <Input
+                prefix={<Search size={16} />}
                 type="text"
                 placeholder="ค้นหาชื่อวันหยุด..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
               />
             </div>
             

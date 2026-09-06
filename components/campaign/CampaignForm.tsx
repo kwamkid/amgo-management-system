@@ -32,15 +32,13 @@ import { useInfluencers } from '@/hooks/useInfluencers'
 import { useBrands } from '@/hooks/useBrands'
 import { useProducts } from '@/hooks/useProducts'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import BrandModal from '@/components/brand/BrandModal'
 import ProductModal from '@/components/product/ProductModal'
+import { Textarea, Label, Input } from '@/components/aoo'
 
 interface CampaignFormProps {
   campaign?: Campaign | null
@@ -476,8 +474,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           <CardContent>
             {/* Search */}
             <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
+                            <Input
+                prefix={<Search size={16} />}
                 type="text"
                 placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, อีเมล..."
                 value={influencerSearch}
@@ -486,7 +484,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                   setIsSearching(true)
                   setTimeout(() => setIsSearching(false), 300)
                 }}
-                className="pl-9"
               />
             </div>
 

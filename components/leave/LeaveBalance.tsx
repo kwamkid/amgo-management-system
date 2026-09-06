@@ -4,7 +4,6 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, 
@@ -15,9 +14,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { LeaveQuotaYear } from '@/types/leave';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+import { Progress } from '@/components/aoo'
 interface LeaveBalanceProps {
   quota: LeaveQuotaYear | null;
   loading?: boolean;
@@ -28,12 +27,12 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
     return (
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <Skeleton className="h-6 w-32" />
+          <div className="animate-pulse rounded-lg bg-gray-100 h-6 w-32" />
         </CardHeader>
         <CardContent className="space-y-4">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
+          <div className="animate-pulse rounded-lg bg-gray-100 h-20 w-full" />
+          <div className="animate-pulse rounded-lg bg-gray-100 h-20 w-full" />
+          <div className="animate-pulse rounded-lg bg-gray-100 h-20 w-full" />
         </CardContent>
       </Card>
     );
@@ -134,7 +133,7 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
                 <Progress 
                   value={percentage} 
                   className="h-2"
-                  indicatorClassName={`bg-gradient-to-r ${color}`}
+                  tone={color.includes('red') || color.includes('rose') ? 'danger' : color.includes('orange') || color.includes('amber') ? 'warning' : color.includes('blue') || color.includes('indigo') ? 'info' : 'success'}
                 />
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{percentage.toFixed(0)}% ใช้ไปแล้ว</span>

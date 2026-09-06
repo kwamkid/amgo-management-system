@@ -15,10 +15,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Trash2, AlertTriangle, Info } from 'lucide-react'
+import { Checkbox, Label } from '@/components/aoo'
 
 interface DeleteUserDialogProps {
   user: User | null
@@ -168,7 +167,7 @@ export default function DeleteUserDialog({
                 <Checkbox
                   id="confirm-delete"
                   checked={confirmChecked}
-                  onCheckedChange={(checked) => setConfirmChecked(checked as boolean)}
+                  onChange={(checked) => setConfirmChecked(checked as boolean)}
                 />
                 <Label 
                   htmlFor="confirm-delete" 

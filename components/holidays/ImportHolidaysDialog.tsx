@@ -19,9 +19,9 @@ import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
+import { Checkbox } from '@/components/aoo'
 
 interface ImportHolidaysDialogProps {
   year: number
@@ -175,7 +175,7 @@ export default function ImportHolidaysDialog({
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <Checkbox
                     checked={selectAll}
-                    onCheckedChange={handleSelectAll}
+                    onChange={handleSelectAll}
                   />
                   <span className="text-sm font-medium">เลือกทั้งหมด</span>
                 </label>
@@ -203,7 +203,7 @@ export default function ImportHolidaysDialog({
                       <label className="flex items-center space-x-3 cursor-pointer flex-grow">
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => toggleHoliday(holiday.date)}
+                          onChange={() => toggleHoliday(holiday.date)}
                           disabled={isExisting}
                         />
                         <div className="flex-grow">

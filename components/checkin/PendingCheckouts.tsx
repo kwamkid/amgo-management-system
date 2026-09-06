@@ -20,12 +20,9 @@ import { formatWorkingHours } from '@/lib/services/workingHoursService'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
+import { Textarea, Checkbox, Label, Input } from '@/components/aoo'
 
 interface PendingCheckoutsProps {
   records: CheckInRecord[]
@@ -244,7 +241,7 @@ export default function PendingCheckouts({
                       <Checkbox
                         id="approveOT"
                         checked={approveOT}
-                        onCheckedChange={(checked) => setApproveOT(checked as boolean)}
+                        onChange={(checked) => setApproveOT(checked as boolean)}
                       />
                       <div className="space-y-1">
                         <Label htmlFor="approveOT" className="font-medium cursor-pointer">

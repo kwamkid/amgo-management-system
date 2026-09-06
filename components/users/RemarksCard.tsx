@@ -13,8 +13,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { StickyNote, Plus, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/aoo'
 
 interface Remark {
   id: string

@@ -11,9 +11,6 @@ import {
 } from 'lucide-react'
 import { Product, Brand } from '@/types/influencer'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+import { Textarea, Label, Input } from '@/components/aoo'
 interface ProductModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void

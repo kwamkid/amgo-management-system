@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimePicker } from '@/components/aoo'
+import { TimePicker, Checkbox, Label, Input } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { 
@@ -33,9 +33,6 @@ import {
 } from '@/lib/discord/settings'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
@@ -554,7 +551,7 @@ export default function DiscordSettingsPage() {
               <label key={key} className="flex items-center gap-3">
                 <Checkbox
                   checked={settings.notifications[key as keyof typeof settings.notifications]}
-                  onCheckedChange={(checked) => setSettings({
+                  onChange={(checked) => setSettings({
                     ...settings,
                     notifications: {
                       ...settings.notifications,

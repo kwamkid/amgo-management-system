@@ -31,7 +31,6 @@ import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -42,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
+import { Input } from '@/components/aoo'
 
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, any> = {
@@ -213,13 +213,12 @@ export default function InfluencersPage() {
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <Input
+                    <Input
+            prefix={<Search size={16} />}
             type="text"
             placeholder="ค้นหาชื่อ, ชื่อเล่น, อีเมล, เบอร์โทร..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
           />
         </div>
         

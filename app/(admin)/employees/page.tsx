@@ -20,8 +20,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { sortRows, type SortState } from '@/components/shared/DataTable'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Button, ActionMenu, useConfirm } from '@/components/aoo'
+import { Button, ActionMenu, useConfirm, Checkbox } from '@/components/aoo'
 import { useToast } from '@/hooks/useToast'
 import { reactivateUser } from '@/lib/services/userService'
 import {
@@ -553,7 +552,7 @@ export default function EmployeesPage() {
                 <label key={c.key} className="flex cursor-pointer items-center gap-2 text-sm">
                   <Checkbox
                     checked={visibleCols.includes(c.key)}
-                    onCheckedChange={() => toggleColumn(c.key)}
+                    onChange={() => toggleColumn(c.key)}
                   />
                   {c.label}
                 </label>

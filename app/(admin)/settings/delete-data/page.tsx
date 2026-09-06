@@ -21,11 +21,11 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
+import { Input } from '@/components/aoo'
 
 const CONFIRMATION_TEXT = 'DELETE ALL DATA'
 

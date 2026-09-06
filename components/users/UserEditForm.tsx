@@ -23,16 +23,13 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem, SelectMenu, Input } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { Label } from '@/components/ui/label'
 import { THAI_BANKS } from '@/lib/constants/banks'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -493,10 +490,10 @@ export default function UserEditForm({
                 ว่าปิดสวิตช์ = ลาออก (เจ้าของสั่ง 13 ส.ค. 69) */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
               <div className="flex items-center space-x-3">
-                <Switch
+                <Toggle
                   id="isActive"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) =>
+                  checked={!!(formData.isActive)}
+                  onChange={(checked) =>
                     setFormData({ ...formData, isActive: checked as boolean })
                   }
                   disabled={isLoading}
@@ -660,8 +657,8 @@ export default function UserEditForm({
             <div className="flex items-center space-x-3">
               <Checkbox
                 id="requiresCheckin"
-                checked={formData.requiresCheckin ?? true}
-                onCheckedChange={(checked) =>
+                checked={!!(formData.requiresCheckin ?? true)}
+                onChange={(checked) =>
                   setFormData({ ...formData, requiresCheckin: checked as boolean })
                 }
                 disabled={isLoading}
@@ -683,8 +680,8 @@ export default function UserEditForm({
                 <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
                   <Checkbox
                     id="allowCheckInOutsideLocation"
-                    checked={formData.allowCheckInOutsideLocation}
-                    onCheckedChange={(checked) =>
+                    checked={!!(formData.allowCheckInOutsideLocation)}
+                    onChange={(checked) =>
                       setFormData({
                         ...formData,
                         allowCheckInOutsideLocation: checked as boolean,
@@ -710,8 +707,8 @@ export default function UserEditForm({
                   <div className="ml-8 flex items-center space-x-3">
                     <Checkbox
                       id="allowWorkFromHome"
-                      checked={formData.allowWorkFromHome ?? false}
-                      onCheckedChange={(checked) =>
+                      checked={!!(formData.allowWorkFromHome ?? false)}
+                      onChange={(checked) =>
                         setFormData({ ...formData, allowWorkFromHome: checked as boolean })
                       }
                       disabled={isLoading}
@@ -735,8 +732,8 @@ export default function UserEditForm({
                 <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
                   <Checkbox
                     id="requiresStockPhotos"
-                    checked={formData.requiresStockPhotos ?? false}
-                    onCheckedChange={(checked) =>
+                    checked={!!(formData.requiresStockPhotos ?? false)}
+                    onChange={(checked) =>
                       setFormData({ ...formData, requiresStockPhotos: checked as boolean })
                     }
                     disabled={isLoading}

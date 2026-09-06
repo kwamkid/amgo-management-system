@@ -22,7 +22,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
@@ -37,13 +36,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
 import { PageHeader } from '@/components/shared'
+import { Textarea, Input } from '@/components/aoo'
 
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
@@ -326,12 +325,11 @@ export default function LeaveManagementPage() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
+                                <Input
+                  prefix={<User size={16} />}
                   placeholder="ค้นหาด้วยชื่อพนักงาน..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
                 />
               </div>
             </div>

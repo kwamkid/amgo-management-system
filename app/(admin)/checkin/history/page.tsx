@@ -18,11 +18,11 @@ import { th } from 'date-fns/locale'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
+import { Input } from '@/components/aoo'
 
 export default function CheckInHistoryPage() {
   const { userData } = useAuth()

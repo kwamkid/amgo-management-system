@@ -210,3 +210,29 @@ export function StorageBar({
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Card parts — ชิ้นส่วนแบบ Header/Title/Content ให้หน้าเก่าย้ายมาได้    */
+/*  โดยไม่ต้องรื้อโครง (7 ก.ย. 69) · ใช้คู่กับ <Card padding={0}>        */
+/*  padding เป็น Tailwind class เพื่อให้ className จากหน้าเรียก (p-6 ฯลฯ)  */
+/*  ทับได้ · ของใหม่ควรใช้ SectionCard ใน components/shared แทน          */
+/* ------------------------------------------------------------------ */
+
+type PartProps = { children?: React.ReactNode; className?: string; style?: CSSProperties };
+const join = (...c: (string | undefined)[]) => c.filter(Boolean).join(" ");
+
+export function CardHeader({ children, className, style }: PartProps) {
+  return <div className={join("flex flex-col gap-1 p-5 pb-0", className)} style={style}>{children}</div>;
+}
+export function CardTitle({ children, className, style }: PartProps) {
+  return <h3 className={join("text-base font-semibold leading-tight text-gray-900", className)} style={style}>{children}</h3>;
+}
+export function CardDescription({ children, className, style }: PartProps) {
+  return <p className={join("text-sm text-gray-500", className)} style={style}>{children}</p>;
+}
+export function CardContent({ children, className, style }: PartProps) {
+  return <div className={join("p-5", className)} style={style}>{children}</div>;
+}
+export function CardFooter({ children, className, style }: PartProps) {
+  return <div className={join("flex items-center p-5 pt-0", className)} style={style}>{children}</div>;
+}

@@ -4,6 +4,7 @@ import React, { type CSSProperties } from "react";
 
 export interface CheckboxProps {
   /** Current state. */
+  id?: string;
   checked: boolean;
   /** Fires with the next checked value. Omit for a read-only/display box. */
   onChange?: (next: boolean) => void;
@@ -34,6 +35,7 @@ export interface CheckboxProps {
  * include" lists where a checkbox is the right affordance.
  */
 export function Checkbox({
+  id,
   checked,
   onChange,
   onClick,
@@ -46,6 +48,7 @@ export function Checkbox({
 }: CheckboxProps) {
   return (
     <input
+      id={id}
       type="checkbox"
       name={name}
       checked={checked}

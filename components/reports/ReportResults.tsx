@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,9 +35,6 @@ import UserScheduleDialog from '@/components/users/UserScheduleDialog'
 import PersonalReport from './PersonalReport'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-
 interface ReportResultsProps {
   reportData: AttendanceReportData[]
   /** แถวเต็มช่วงหลังกรองคน/สาขา (รวมวันขาด ทุกหน้า) — แท็บตารางวันใช้ ไม่ต้อง query เอง */

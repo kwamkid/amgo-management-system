@@ -26,9 +26,6 @@ import {
 import SocialChannelManager from './SocialChannelManager'
 import ChildrenManager from './ChildrenManager'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -39,6 +36,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Textarea, Label, Input } from '@/components/aoo'
 
 interface InfluencerFormProps {
   influencer?: Influencer | null // For edit mode
@@ -260,13 +258,12 @@ export default function InfluencerForm({
             <div>
               <Label htmlFor="birthDate">วันเกิด</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
+                                <Input
+                  prefix={<Calendar size={16} />}
                   id="birthDate"
                   type="date"
                   value={formData.birthDate}
                   onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                  className="pl-10"
                 />
               </div>
             </div>
@@ -318,8 +315,8 @@ export default function InfluencerForm({
                 เบอร์โทรศัพท์ <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
+                                <Input
+                  prefix={<Phone size={16} />}
                   id="phone"
                   type="tel"
                   value={formData.phone}
@@ -342,8 +339,8 @@ export default function InfluencerForm({
                 อีเมล <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
+                                <Input
+                  prefix={<Mail size={16} />}
                   id="email"
                   type="email"
                   value={formData.email}
@@ -364,14 +361,13 @@ export default function InfluencerForm({
             <div className="md:col-span-2">
               <Label htmlFor="lineId">LINE ID</Label>
               <div className="relative">
-                <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
+                                <Input
+                  prefix={<MessageSquare size={16} />}
                   id="lineId"
                   type="text"
                   value={formData.lineId}
                   onChange={(e) => setFormData({ ...formData, lineId: e.target.value })}
                   placeholder="LINE ID"
-                  className="pl-10"
                 />
               </div>
             </div>

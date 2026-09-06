@@ -8,7 +8,6 @@ import { Loader2, Users, Search, MapPin, Check } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
   Popover,
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DateRangePicker } from '@/components/aoo'
+import { DateRangePicker, Label } from '@/components/aoo'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'

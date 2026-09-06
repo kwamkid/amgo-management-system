@@ -19,10 +19,6 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
@@ -32,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+import { Textarea, Checkbox, Label, Input } from '@/components/aoo'
 interface InviteLinkFormProps {
   initialData?: InviteLink
   onSubmit: (data: CreateInviteLinkData) => Promise<boolean>
@@ -204,8 +201,8 @@ export default function InviteLinkForm({
             <div className="flex items-center space-x-3 pt-2">
               <Checkbox
                 id="allowCheckInOutsideLocation"
-                checked={formData.allowCheckInOutsideLocation}
-                onCheckedChange={(checked) => 
+                checked={!!(formData.allowCheckInOutsideLocation)}
+                onChange={(checked) => 
                   setFormData({ ...formData, allowCheckInOutsideLocation: checked as boolean })
                 }
                 disabled={isSubmitting}
@@ -227,8 +224,8 @@ export default function InviteLinkForm({
               <div className="flex items-center space-x-3">
                 <Checkbox
                   id="requireApproval"
-                  checked={formData.requireApproval}
-                  onCheckedChange={(checked) => 
+                  checked={!!(formData.requireApproval)}
+                  onChange={(checked) => 
                     setFormData({ ...formData, requireApproval: checked as boolean })
                   }
                   disabled={isSubmitting}

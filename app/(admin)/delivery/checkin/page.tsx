@@ -19,12 +19,11 @@ import {
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api'
 import { PageHeader } from '@/components/shared'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
+import { Textarea, Label } from '@/components/aoo'
 
 const mapContainerStyle = {
   width: '100%',

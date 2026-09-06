@@ -16,13 +16,11 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton } from '@/components/aoo'
-
+import { Button as AooButton, Input } from '@/components/aoo'
 export default function UsersSettingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -110,13 +108,12 @@ export default function UsersSettingsPage() {
       <Card className="border-0 shadow-md">
         <CardContent className="p-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
+                        <Input
+              prefix={<Search size={16} />}
               type="text"
               placeholder="ค้นหาด้วยชื่อ, อีเมล หรือเบอร์โทร..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
             />
           </div>
         </CardContent>

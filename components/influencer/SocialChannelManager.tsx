@@ -29,8 +29,6 @@ import {
   extractUsernameFromUrl
 } from '@/lib/influencer/socialFetchers'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import {
   Select,
@@ -41,6 +39,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Label, Input } from '@/components/aoo'
 
 interface SocialChannelManagerProps {
   channels: SocialChannel[]

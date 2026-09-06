@@ -17,8 +17,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { CalendarClock, Plus, Trash2 } from 'lucide-react'
+import { Input } from '@/components/aoo'
 
 const DAYS = [
   { dow: 0, label: 'อา.' },

@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { useSubmission } from '@/hooks/useSubmission'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -28,6 +27,7 @@ import {
   normalizeUrl 
 } from '@/lib/utils/submission'
 
+import { Input } from '@/components/aoo'
 export default function SubmissionPage({ 
   params 
 }: { 

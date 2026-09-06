@@ -10,12 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   ArrowRight,
   Loader2,
@@ -36,6 +32,7 @@ import {
 import { carryOverQuotaForAllUsers, checkCarryOverExists, checkQuotaExistsForYear } from '@/lib/services/leaveService'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { Toggle, Checkbox, Label, Input } from '@/components/aoo'
 
 interface CarryOverDialogProps {
   open: boolean
@@ -272,9 +269,9 @@ export default function CarryOverDialog({
                       {icon}
                       <span className="font-medium">{label}</span>
                     </div>
-                    <Switch
+                    <Toggle
                       checked={rules[type].enabled}
-                      onCheckedChange={(checked) => handleRuleChange(type, 'enabled', checked)}
+                      onChange={(checked) => handleRuleChange(type, 'enabled', checked)}
                     />
                   </div>
 
@@ -413,7 +410,7 @@ export default function CarryOverDialog({
                 <Checkbox
                   id="confirm-duplicate"
                   checked={confirmDuplicate}
-                  onCheckedChange={(checked) => setConfirmDuplicate(checked as boolean)}
+                  onChange={(checked) => setConfirmDuplicate(checked as boolean)}
                 />
                 <Label
                   htmlFor="confirm-duplicate"

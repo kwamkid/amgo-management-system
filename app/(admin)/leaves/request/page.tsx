@@ -8,10 +8,10 @@ import { ArrowLeft, Calendar, CheckCircle, Heart, Briefcase, Activity } from 'lu
 import LeaveRequestForm from '@/components/leave/LeaveRequestForm';
 import { useLeave } from '@/hooks/useLeave';
 import { useAuth } from '@/hooks/useAuth';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared'
 
+import { Progress } from '@/components/aoo'
 export default function LeaveRequestPage() {
   const router = useRouter();
   const { userData } = useAuth();
@@ -95,7 +95,7 @@ export default function LeaveRequestPage() {
                   <Progress 
                     value={percentage} 
                     className="h-2"
-                    indicatorClassName={`bg-gradient-to-r ${iconColor.replace('text-', 'from-').replace('600', '500')} to-${iconColor.includes('pink') ? 'rose' : iconColor.includes('blue') ? 'indigo' : 'teal'}-600`}
+                    tone={iconColor.includes('pink') ? 'danger' : iconColor.includes('blue') ? 'info' : 'success'}
                   />
                   <p className="text-xs text-gray-500 mt-1 text-right">
                     {percentage.toFixed(0)}% ใช้ไปแล้ว

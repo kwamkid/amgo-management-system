@@ -36,7 +36,6 @@ import { useRouter } from 'next/navigation'
 import TechLoader from '@/components/shared/TechLoader'
 import DropdownMenu from '@/components/ui/DropdownMenu'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -60,6 +59,7 @@ import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
 import { cn } from '@/lib/utils'
 import { Pagination } from '@/components/ui/pagination'
+import { Input } from '@/components/aoo'
 
 export default function CampaignsPage() {
   const router = useRouter()
@@ -380,13 +380,12 @@ export default function CampaignsPage() {
         {/* Main Search & Filter Toggle */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
+                        <Input
+              prefix={<Search size={16} />}
               type="text"
               placeholder="ค้นหา Campaign, Influencer, Brand..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-base"
+              onChange={(e) => setSearchTerm(e.target.value)} className="text-base"
             />
           </div>
           

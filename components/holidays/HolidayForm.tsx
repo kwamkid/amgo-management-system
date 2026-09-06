@@ -24,11 +24,6 @@ import { format, eachDayOfInterval, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
 import { 
   Select,
   SelectContent,
@@ -38,6 +33,7 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { gradients } from '@/lib/theme/colors'
+import { Textarea, Toggle, Checkbox, Label, Input } from '@/components/aoo'
 
 interface HolidayFormProps {
   initialData?: Holiday
@@ -209,10 +205,10 @@ export default function HolidayForm({
           
           {/* Date Range Toggle */}
           <div className="flex items-center space-x-2">
-            <Switch
+            <Toggle
               id="useRangeDate"
               checked={useRangeDate}
-              onCheckedChange={setUseRangeDate}
+              onChange={setUseRangeDate}
             />
             <Label htmlFor="useRangeDate" className="cursor-pointer flex items-center gap-2">
               <CalendarRange className="w-4 h-4" />
@@ -278,10 +274,10 @@ export default function HolidayForm({
             
             <div className="flex items-center gap-4 mt-6">
               <div className="flex items-center space-x-2">
-                <Switch
+                <Toggle
                   id="isWorkingDay"
                   checked={formData.isWorkingDay}
-                  onCheckedChange={(checked) => setFormData({...formData, isWorkingDay: checked})}
+                  onChange={(checked) => setFormData({...formData, isWorkingDay: checked})}
                 />
                 <Label htmlFor="isWorkingDay" className="cursor-pointer">
                   วันหยุดทำการ
@@ -428,7 +424,7 @@ export default function HolidayForm({
                 >
                   <Checkbox
                     checked={formData.applicableLocationIds.includes(location.id)}
-                    onCheckedChange={(checked: boolean) => toggleLocation(location.id)}
+                    onChange={(checked: boolean) => toggleLocation(location.id)}
                   />
                   <span className="text-sm">{location.name}</span>
                 </label>
@@ -455,7 +451,7 @@ export default function HolidayForm({
               >
                 <Checkbox
                   checked={formData.applicableRoles.includes(role.value)}
-                  onCheckedChange={(checked: boolean) => toggleRole(role.value)}
+                  onChange={(checked: boolean) => toggleRole(role.value)}
                 />
                 <span className="text-sm">{role.label}</span>
               </label>

@@ -8,9 +8,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-
+import { Label, Input } from '@/components/aoo'
 async function validateInviteCode(code: string): Promise<{ valid: boolean; link?: InviteLink; error?: string }> {
   const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`)
   return res.json()

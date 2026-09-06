@@ -6,9 +6,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { GoogleMap, Marker, Circle, useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api'
 import { MapPin, Search } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
+import { Input } from '@/components/aoo'
 
 interface LocationMapPickerProps {
   lat: number
@@ -175,12 +175,11 @@ export default function LocationMapPicker({
         onPlacesChanged={onPlacesChanged}
       >
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
-          <Input
+                    <Input
+            prefix={<Search size={16} />}
             ref={inputRef}
             type="text"
             placeholder="ค้นหาสถานที่..."
-            className="pl-10"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()

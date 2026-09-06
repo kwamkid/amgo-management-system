@@ -4,6 +4,7 @@ import React, { type CSSProperties } from "react";
 
 export interface ToggleProps {
   /** Current state. */
+  id?: string;
   checked: boolean;
   /** Called when the user clicks the toggle. */
   onChange?: (next: boolean) => void;
@@ -27,6 +28,7 @@ export interface ToggleProps {
  * of truth — never use this as uncontrolled state for a remote object.
  */
 export function Toggle({
+  id,
   checked,
   onChange,
   disabled = false,
@@ -54,6 +56,7 @@ export function Toggle({
 
   return (
     <button
+      id={id}
       type="button"
       role="switch"
       aria-checked={checked}

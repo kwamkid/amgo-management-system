@@ -12,8 +12,6 @@ import {
 } from 'lucide-react'
 import { Child } from '@/types/influencer'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import {
   Select,
@@ -25,6 +23,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { Label, Input } from '@/components/aoo'
 
 interface ChildrenManagerProps {
   childrenData: Child[]

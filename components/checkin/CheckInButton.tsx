@@ -24,13 +24,13 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Textarea } from '@/components/ui/textarea'
 import TechLoader from '@/components/shared/TechLoader'
 import ShiftSelector from './ShiftSelector'
 import CameraCapture from './CameraCapture'
 import { Shift } from '@/types/location'
 import { uploadImage } from '@/lib/supabase/storage'
 import StorageImage from '@/components/shared/StorageImage'
+import { Textarea } from '@/components/aoo'
 
 // Dynamic import CheckInMap
 const CheckInMap = dynamic(

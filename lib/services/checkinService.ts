@@ -278,13 +278,16 @@ export async function checkOut(
     }
   }
 
-  const shiftInfo = active.selectedShift
-    ? {
-        startTime: active.shiftStartTime!,
-        endTime: active.shiftEndTime!,
-        graceMinutes: 15,
-      }
-    : undefined
+  // ดูจากเวลากะ ไม่ใช่ shift_id — "เวลาปกติ" ของคนไม่มีกะเป็นกะเสมือน ไม่มี id
+  // (fixedScheduleRules) แต่ต้องคิดสาย/ออกก่อนเวลา/เลิกงานเหมือนกะจริง
+  const shiftInfo =
+    active.shiftStartTime && active.shiftEndTime
+      ? {
+          startTime: active.shiftStartTime,
+          endTime: active.shiftEndTime,
+          graceMinutes: 15,
+        }
+      : undefined
 
   // ไม่มีสาขา (นอกสถานที่/WFH) ก็ต้องได้ชั่วโมง/OT — ใช้กติกากลางแทนของสาขา
   // (เดิมคืน 0 หมด ทำให้คนทำงานที่บ้านไม่มีชั่วโมงและ OT หาย)

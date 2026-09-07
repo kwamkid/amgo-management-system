@@ -26,6 +26,7 @@ import ShiftSelector from './ShiftSelector'
 import CameraCapture from './CameraCapture'
 import { Shift } from '@/types/location'
 import { uploadImage } from '@/lib/supabase/storage'
+import { usesLocationShifts } from '@/lib/services/fixedScheduleRules'
 import StorageImage from '@/components/shared/StorageImage'
 import { Textarea, Alert, Card, CardContent, Button } from '@/components/aoo'
 // Dynamic import CheckInMap
@@ -113,7 +114,11 @@ export default function CheckInButton() {
 
     let shift: Shift | undefined = undefined
 
-    if (!isWFH && locationCheckResult.canCheckIn && locationCheckResult.locationsInRange.length > 0) {
+    // เลือกกะสาขาเฉพาะ PC หน้าร้าน — คนไม่มีกะ (ออฟฟิศ/คลัง/ผู้จัดการ) ข้ามไปถ่ายรูปเลย
+    // ระบบใส่ "เวลาปกติ" ให้เองตอนบันทึก (useCheckIn → fixedScheduleRules)
+    const pickLocationShift = usesLocationShifts(userData?.scheduleType)
+
+    if (pickLocationShift && !isWFH && locationCheckResult.canCheckIn && locationCheckResult.locationsInRange.length > 0) {
       const primaryLocation = locationCheckResult.locationsInRange[0]
       const location = locations.find(l => l.id === primaryLocation.id)
 

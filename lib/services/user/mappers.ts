@@ -43,6 +43,8 @@ export interface UserData {
   seesDelivery?: boolean
   /** code ของตำแหน่ง (job_functions.code — useAuth เติมให้ตอนล็อกอิน) ใช้ gate เมนูเฉพาะตำแหน่ง เช่น production */
   jobFunctionCode?: string
+  /** แบบตารางงานของตำแหน่ง (job_functions.schedule_type — useAuth เติมให้) 'rotating' = PC เลือกกะสาขา · อื่น ๆ/ไม่มีตำแหน่ง = เวลาปกติ (fixedScheduleRules) */
+  scheduleType?: string
   /** มีสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์ (useAuth เติมให้ · แอดมิน = true เสมอ) */
   hasSrpAccess?: boolean
   /** อยู่ในรายชื่อ web_owners — เมนูดูแลเว็บไซต์ลูกค้า (งานส่วนตัว แอดมินคนอื่นไม่เห็น) */

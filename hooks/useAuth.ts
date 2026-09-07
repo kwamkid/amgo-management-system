@@ -82,14 +82,17 @@ export function useAuth() {
     // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
     let seesDelivery = false
     let jobFunctionCode: string | undefined
+    // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
+    let scheduleType: string | undefined
     if (row.job_function_id) {
       const { data: jf } = await sb
         .from('job_functions')
-        .select('sees_delivery, code')
+        .select('sees_delivery, code, schedule_type')
         .eq('id', row.job_function_id)
         .maybeSingle()
       seesDelivery = jf?.sees_delivery ?? false
       jobFunctionCode = jf?.code ?? undefined
+      scheduleType = jf?.schedule_type ?? undefined
     }
 
     // เมนู SRP Calculator — เห็นเมื่อได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ)
@@ -115,6 +118,7 @@ export function useAuth() {
       ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
       seesDelivery,
       jobFunctionCode,
+      scheduleType,
       hasSrpAccess,
       hasWebAccess,
     }

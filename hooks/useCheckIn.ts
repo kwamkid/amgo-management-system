@@ -10,6 +10,7 @@ import * as checkinService from '@/lib/services/checkinService'
 import * as locationDetectionService from '@/lib/services/locationDetectionService'
 import { format } from 'date-fns'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
+import { fixedScheduleShift, usesLocationShifts } from '@/lib/services/fixedScheduleRules'
 
 interface UseCheckInReturn {
   // State
@@ -234,6 +235,13 @@ export function useCheckIn(): UseCheckInReturn {
       }
       // else: offsite remains null and empty array
 
+      // คนไม่มีกะ (ทุกตำแหน่งยกเว้น PC) ไม่ใช้กะสาขา — ใช้เวลาปกติ 08:30/09:00–17:30/18:00
+      // เสมอ ไม่ว่าจะเช็คอินที่สาขา / นอกสถานที่ / WFH (เจ้าของตัดสิน 7 ก.ย. 69 — ดู fixedScheduleRules.ts)
+      // หน้าจอไม่ส่งกะมาให้คนกลุ่มนี้อยู่แล้ว แต่ตัดสินซ้ำตรงนี้กันหลุด
+      const shift = usesLocationShifts(userData.scheduleType)
+        ? selectedShift
+        : fixedScheduleShift(new Date())
+
       // Create check-in
       const newCheckinId = await checkinService.createCheckIn({
         userId: userData.id!,
@@ -245,7 +253,7 @@ export function useCheckIn(): UseCheckInReturn {
         primaryLocationId: primaryLocation?.id || null,
         primaryLocationName: primaryLocation?.name,
         checkinType,
-        selectedShift,
+        selectedShift: shift,
         note: locationCheckResult.reason,
         checkinPhotoUrl: photoUrl,
       })

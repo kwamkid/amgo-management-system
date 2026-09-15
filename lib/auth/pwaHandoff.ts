@@ -11,7 +11,7 @@
 //      จนได้ token → แลกเป็น session ในแอปเอง
 'use client'
 
-import { newNonce, NONCE_RE } from './pwaState'
+import { newNonce, NONCE_RE } from './pwaState.ts'
 
 const KEY = 'amgo-pwa-login'
 const MAX_AGE_MS = 10 * 60 * 1000
@@ -63,12 +63,15 @@ export async function offerHandoff(nonce: string, tokenHash: string, next: strin
 
 /** แอป: ถามว่า token มาหรือยัง — ได้แล้วแถวถูกลบทันที (ใช้ได้ครั้งเดียว) */
 export async function claimHandoff(nonce: string): Promise<{ tokenHash: string; next: string | null } | null> {
-  try {
-    const res = await fetch(`/api/auth/handoff?nonce=${nonce}`, { cache: 'no-store' })
-    if (res.status !== 200) return null
-    const j = await res.json()
-    return typeof j?.tokenHash === 'string' ? { tokenHash: j.tokenHash, next: j.next ?? null } : null
-  } catch {
-    return null
+  const res = await fetch(`/api/auth/handoff?nonce=${encodeURIComponent(nonce)}`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error('รับผลยืนยันจาก LINE ไม่สำเร็จ กรุณาลองใหม่')
+  const j = await res.json()
+  if (typeof j?.tokenHash !== 'string' || !j.tokenHash) {
+    throw new Error('ผลยืนยันจาก LINE ไม่ถูกต้อง กรุณาลองใหม่')
   }
+  return { tokenHash: j.tokenHash, next: j.next ?? null }
 }

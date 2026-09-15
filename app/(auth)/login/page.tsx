@@ -15,7 +15,7 @@
 // ด้วย nonce ของตัวเองแล้วแลกเป็น session **ในแอป** เอง (ดู lib/auth/pwaHandoff.ts)
 //
 // หน้านี้อยู่นอก layout หลังบ้าน จึงตั้งพื้นหลังเองได้ (ทั้งแอปล็อกโหมดสว่างอยู่)
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
@@ -45,6 +45,7 @@ function LoginForm() {
   const [devLoading, setDevLoading] = useState(false)
   const [error, setError] = useState('')
   /** nonce ที่กำลังรอ session จากเบราว์เซอร์ (เฉพาะเมื่อกดจากแอปที่ติดตั้ง) */
+  const claiming = useRef(false)
   const [pending, setPending] = useState<string | null>(null)
   const [standalone, setStandalone] = useState(false)
   const searchParams = useSearchParams()
@@ -75,21 +76,49 @@ function LoginForm() {
   useEffect(() => {
     if (!pending) return
     let stopped = false
-    const tick = async () => {
-      if (stopped) return
-      const got = await claimHandoff(pending)
-      if (!got || stopped) return
+    let failures = 0
+    const fail = (message: string) => {
       stopped = true
+      clearPwaLogin()
+      setPending(null)
+      setIsLoading(false)
+      setError(message)
+    }
+    const tick = async () => {
+      if (stopped || claiming.current || document.visibilityState === 'hidden') return
+      claiming.current = true
       try {
-        await signInBoth({ tokenHash: got.tokenHash })
-        clearPwaLogin()
-        window.location.replace(got.next && got.next.startsWith('/') ? got.next : '/dashboard')
-      } catch (e) {
-        console.error(e)
-        clearPwaLogin()
-        setPending(null)
-        setIsLoading(false)
-        setError('เข้าสู่ระบบไม่สำเร็จ กรุณากดปุ่ม LINE อีกครั้ง')
+        // Android อาจล็อกอินสำเร็จใน Chrome ระหว่างหน้านี้อยู่เบื้องหลัง
+        const { data } = await createClient().auth.getSession()
+        if (stopped) return
+        if (data.session) {
+          stopped = true
+          clearPwaLogin()
+          window.location.replace('/dashboard')
+          return
+        }
+        if (pendingPwaLogin() !== pending) {
+          fail('หมดเวลารอการยืนยัน กรุณาเข้าสู่ระบบด้วย LINE อีกครั้ง')
+          return
+        }
+        const got = await claimHandoff(pending)
+        if (stopped) return
+        failures = 0
+        if (!got) return
+        stopped = true
+        try {
+          await signInBoth({ tokenHash: got.tokenHash })
+          clearPwaLogin()
+          window.location.replace(got.next && got.next.startsWith('/') && !got.next.startsWith('//') ? got.next : '/dashboard')
+        } catch {
+          fail('เข้าสู่ระบบไม่สำเร็จ กรุณากดปุ่ม LINE อีกครั้ง')
+        }
+      } catch {
+        if (!stopped && ++failures >= 3) {
+          fail('รับผลยืนยันจาก LINE ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่')
+        }
+      } finally {
+        claiming.current = false
       }
     }
     tick()
@@ -101,11 +130,9 @@ function LoginForm() {
     }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', onVisible)
+    window.addEventListener('pageshow', onVisible)
     const giveUp = setTimeout(() => {
-      stopped = true
-      clearPwaLogin()
-      setPending(null)
-      setIsLoading(false)
+      if (!stopped) fail('หมดเวลารอการยืนยัน กรุณาเข้าสู่ระบบด้วย LINE อีกครั้ง')
     }, 10 * 60 * 1000)
     return () => {
       stopped = true
@@ -113,6 +140,7 @@ function LoginForm() {
       clearTimeout(giveUp)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
+      window.removeEventListener('pageshow', onVisible)
     }
   }, [pending])
 
@@ -187,7 +215,7 @@ function LoginForm() {
         {isLoading ? 'กำลังเปิด LINE…' : pending ? 'เปิด LINE อีกครั้ง' : 'เข้าสู่ระบบด้วย LINE'}
       </button>
 
-      {standalone && !pending && (
+      {standalone && (
         <button
           onClick={() => handleLineLogin(true)}
           disabled={isLoading}

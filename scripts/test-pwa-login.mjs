@@ -48,3 +48,27 @@ check('โค้ดเชิญของหน้า /register/invite ยัง�
 })
 
 console.log(`\n${pass} ผ่าน${process.exitCode ? ' · มีที่ไม่ผ่าน' : ''}`)
+
+// API errors must not be mistaken for a pending LINE confirmation.
+const { claimHandoff } = await import('../lib/auth/pwaHandoff.ts')
+const originalFetch = globalThis.fetch
+try {
+  globalThis.fetch = async () => new Response('{}', { status: 404 })
+  assert.equal(await claimHandoff(newNonce()), null)
+  globalThis.fetch = async () => new Response('{}', { status: 500 })
+  await assert.rejects(() => claimHandoff(newNonce()), /รับผลยืนยัน/)
+  globalThis.fetch = async () => { throw new Error('offline') }
+  await assert.rejects(() => claimHandoff(newNonce()), /offline/)
+  globalThis.fetch = async () => new Response('{}')
+  await assert.rejects(() => claimHandoff(newNonce()), /ไม่ถูกต้อง/)
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.cache, 'no-store')
+    assert.ok(options.signal instanceof AbortSignal)
+    return Response.json({ tokenHash: 'one-time-token', next: '/setup' })
+  }
+  assert.deepEqual(await claimHandoff(newNonce()), { tokenHash: 'one-time-token', next: '/setup' })
+  pass += 5
+} finally {
+  globalThis.fetch = originalFetch
+}
+console.log(`ผ่าน ${pass} · ไม่ผ่าน ${process.exitCode ? 1 : 0}`)

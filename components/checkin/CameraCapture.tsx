@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Camera, RotateCcw, Check, X, Loader2, AlertCircle } from 'lucide-react'
 
 import { Button } from '@/components/aoo'
+import { cameraFailureMessage, chromeCheckinIntent } from '@/lib/camera/recovery'
 interface CameraCaptureProps {
   onCapture: (blob: Blob) => void
   onCancel: () => void
@@ -17,6 +18,9 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
   const streamRef = useRef<MediaStream | null>(null)
   const requestRef = useRef(0)
   const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [platform, setPlatform] = useState<'android' | 'ios' | 'other'>('other')
+  const [chromeUrl, setChromeUrl] = useState('')
 
   const [photo, setPhoto] = useState<string | null>(null)
   const [cameraLoading, setCameraLoading] = useState(true)
@@ -36,7 +40,7 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
     const request = requestRef.current
     setCameraLoading(true)
     setError(null)
-    const cameraError = 'เช็คอินต้องถ่ายสด กรุณาอนุญาตสิทธิ์กล้องของเว็บไซต์และเบราว์เซอร์ แล้วกด “ลองอีกครั้ง” หากยังไม่ได้ ให้เปิดเว็บไซต์นี้ใน Chrome หรือ Safari โดยตรง'
+    const cameraError = 'ยังไม่ได้รับภาพจากกล้อง หากมีหน้าต่างขอสิทธิ์ให้กดอนุญาต แล้วลองอีกครั้ง หรือตรวจสอบสิทธิ์ตามขั้นตอนด้านล่าง'
     // บาง WebView ไม่ส่งภาพหรือไม่ตอบคำขอสิทธิ์ — อย่าปลดปุ่มถ่ายด้วยเวลาอย่างเดียว
     readyTimerRef.current = setTimeout(() => {
       if (request !== requestRef.current) return
@@ -45,6 +49,12 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
       setCameraLoading(false)
     }, 20000)
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        stopCamera()
+        setError('เบราว์เซอร์นี้เปิดกล้องไม่ได้ กรุณาเปิดหน้าเช็คอินใน Chrome หรือ Safari โดยตรง')
+        setCameraLoading(false)
+        return
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
@@ -62,15 +72,18 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
       }
       video.srcObject = stream
       await video.play()
-    } catch {
+    } catch (cause) {
       if (request !== requestRef.current) return
       stopCamera()
-      setError(cameraError)
+      setError(cameraFailureMessage(cause))
       setCameraLoading(false)
     }
   }, [stopCamera])
 
   useEffect(() => {
+    const ua = navigator.userAgent ?? ''
+    setPlatform(/Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? 'ios' : 'other')
+    if (/Android/i.test(ua)) setChromeUrl(chromeCheckinIntent(window.location.origin))
     void startCamera()
     return stopCamera
   }, [startCamera, stopCamera])
@@ -122,7 +135,7 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
-      <div className="bg-white rounded-2xl overflow-hidden w-full max-w-sm shadow-2xl">
+      <div className="bg-white rounded-2xl overflow-y-auto max-h-[90dvh] w-full max-w-sm shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -139,7 +152,7 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
         </div>
 
         {/* Camera / Photo area */}
-        <div className="relative bg-black" style={{ aspectRatio: '3/4' }}>
+        <div className="relative bg-black" style={{ aspectRatio: error ? undefined : '3/4' }}>
           {/* Loading indicator */}
           {cameraLoading && !error && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -149,7 +162,7 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
 
           {/* Error state */}
           {error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+            <div role="alert" className="relative flex flex-col items-center justify-center p-6 text-center">
               <AlertCircle className="w-12 h-12 text-red-400 mb-3" />
               <p className="text-white text-sm">{error}</p>
             </div>
@@ -161,7 +174,7 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover${photo ? ' hidden' : ''}`}
+              className={`w-full h-full object-cover${photo || error ? ' hidden' : ''}`}
               style={{ transform: 'scaleX(-1)' }}
               onCanPlay={cameraReady}
               onPlaying={cameraReady}
@@ -211,6 +224,35 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
                   </Button>
                 )}
               </div>
+              {error && (
+                <div className="space-y-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+                  {platform === 'android' && chromeUrl && (
+                    <>
+                      <a href={chromeUrl} className="flex min-h-11 items-center justify-center rounded-lg bg-teal-700 px-4 py-2 font-semibold text-white">
+                        เปิดหน้าเช็คอินใน Chrome
+                      </a>
+                      <p>ถ้าปุ่มไม่เปิด Chrome ให้กดเมนู ⋮ ของเบราว์เซอร์ แล้วเลือกเปิดใน Chrome หรือเปิดลิงก์นี้ใน Chrome เอง: <span className="break-all select-all">https://app.amgovenger.com/checkin</span></p>
+                    </>
+                  )}
+                  <details>
+                    <summary className="min-h-11 cursor-pointer py-2 font-semibold text-teal-800">ดูวิธีอนุญาตกล้อง</summary>
+                    {platform === 'ios' ? (
+                      <ol className="list-decimal space-y-2 pl-5">
+                        <li>เปิดหน้าเช็คอินใน Safari แล้วเปิดเมนูหน้าเว็บ → การตั้งค่าเว็บไซต์ → กล้อง → อนุญาต</li>
+                        <li>กลับมาหน้าเช็คอิน แล้วกด “ลองอีกครั้ง”</li>
+                      </ol>
+                    ) : (
+                      <ol className="list-decimal space-y-2 pl-5">
+                        <li>เปิด Chrome → ⋮ → การตั้งค่า → การตั้งค่าเว็บไซต์ → กล้อง</li>
+                        <li>เปิดให้เว็บไซต์ขอใช้กล้องได้ หากพบ app.amgovenger.com ในรายการที่บล็อก ให้เลือกเว็บไซต์แล้วกดอนุญาต</li>
+                        {platform === 'android' && <li>ถ้ายังไม่ได้: เปิดการตั้งค่ามือถือ → แอป → Chrome → สิทธิ์ → กล้อง → อนุญาตขณะใช้แอป และตรวจว่าสวิตช์ “การเข้าถึงกล้อง” ของเครื่องเปิดอยู่</li>}
+                        <li>กลับมาหน้าเช็คอิน แล้วกด “ลองอีกครั้ง”</li>
+                      </ol>
+                    )}
+                    <p className="mt-3">หากเปิดเว็บผ่านแอปอื่น ให้ตรวจสิทธิ์กล้องของแอปนั้นด้วย ชื่อเมนูอาจต่างกันตามเครื่อง</p>
+                  </details>
+                </div>
+              )}
               <p className="text-center text-sm text-gray-500">
                 ต้องถ่ายจากกล้องสด ไม่สามารถเลือกรูปจากคลังได้
               </p>

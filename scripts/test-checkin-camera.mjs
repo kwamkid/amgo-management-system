@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as recovery from '../lib/camera/recovery.ts'
 
 const source = fs.readFileSync('components/checkin/CameraCapture.tsx', 'utf8')
 const code = ts.transpileModule(source, {
@@ -41,10 +42,12 @@ function mount(getUserMedia) {
     useEffect(fn) { if (!initialized) effects.push(fn) },
   }
   const context = {
-    exports: {}, navigator: { mediaDevices: { getUserMedia } },
+    exports: {}, navigator: { userAgent: 'Android', mediaDevices: { getUserMedia } },
+    window: { location: { origin: 'https://app.amgovenger.com' } },
     setTimeout(fn) { timers.set(++timerId, fn); return timerId },
     clearTimeout(id) { timers.delete(id) },
     require(name) {
+      if (name === '@/lib/camera/recovery') return recovery
       if (name === 'react') return react
       if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (name === '@/components/aoo') return { Button: 'Button' }
@@ -149,5 +152,25 @@ await check('Interrupted stream cannot submit a stale frame', async () => {
   assert.equal(app.button('ยืนยัน'), undefined)
   assert.equal(app.captures.length, 0)
   app.unmount()
+})
+await check('Camera errors offer Chrome and settings guidance without a file picker', async () => {
+  const app = mount(async () => { throw Object.assign(new Error('blocked'), { name: 'NotAllowedError' }) })
+  await flush()
+  const link = app.nodes().find(n => n.type === 'a')
+  assert.equal(link.props.href, recovery.chromeCheckinIntent('https://app.amgovenger.com'))
+  assert.ok(app.nodes().find(n => n.type === 'details'))
+  assert.ok(app.nodes().find(n => n.props.role === 'alert'))
+  assert.equal(app.nodes().some(n => n.type === 'input'), false)
+  app.unmount()
+})
+await check('Recovery distinguishes permission, busy, missing camera and generic failures', async () => {
+  assert.match(recovery.cameraFailureMessage({ name: 'NotAllowedError' }), /ไม่อนุญาต/)
+  assert.match(recovery.cameraFailureMessage({ name: 'NotReadableError' }), /แอปอื่น/)
+  assert.match(recovery.cameraFailureMessage({ name: 'NotFoundError' }), /ไม่พบกล้อง/)
+  assert.match(recovery.cameraFailureMessage(null), /เปิดกล้องไม่สำเร็จ/)
+  const intent = recovery.chromeCheckinIntent('https://app.amgovenger.com/auth/verify?token_hash=secret')
+  assert.ok(intent.startsWith('intent://app.amgovenger.com/checkin#Intent;'))
+  assert.ok(!intent.includes('secret'))
+  assert.ok(intent.includes('package=com.android.chrome;'))
 })
 console.log(`ผ่าน ${passed} · ไม่ผ่าน 0`)

@@ -151,6 +151,12 @@ export default function CameraCapture({ onCapture, onCancel, uploading = false }
           </button>
         </div>
 
+        {!uploading && (
+          <a href="/camera-help" className="block border-b bg-teal-50 px-4 py-3 text-center text-sm font-semibold text-teal-800 underline">
+            กล้องไม่ขึ้น? เปิด Chrome / ดูวิธีตั้งค่ากล้อง
+          </a>
+        )}
+
         {/* Camera / Photo area */}
         <div className="relative bg-black" style={{ aspectRatio: error ? undefined : '3/4' }}>
           {/* Loading indicator */}

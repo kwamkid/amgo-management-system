@@ -156,7 +156,7 @@ await check('Interrupted stream cannot submit a stale frame', async () => {
 await check('Camera errors offer Chrome and settings guidance without a file picker', async () => {
   const app = mount(async () => { throw Object.assign(new Error('blocked'), { name: 'NotAllowedError' }) })
   await flush()
-  const link = app.nodes().find(n => n.type === 'a')
+  const link = app.nodes().find(n => n.type === 'a' && n.props.href.startsWith('intent:'))
   assert.equal(link.props.href, recovery.chromeCheckinIntent('https://app.amgovenger.com'))
   assert.ok(app.nodes().find(n => n.type === 'details'))
   assert.ok(app.nodes().find(n => n.props.role === 'alert'))
@@ -172,5 +172,10 @@ await check('Recovery distinguishes permission, busy, missing camera and generic
   assert.ok(intent.startsWith('intent://app.amgovenger.com/checkin#Intent;'))
   assert.ok(!intent.includes('secret'))
   assert.ok(intent.includes('package=com.android.chrome;'))
+})
+await check('Help link is visible while camera permission is still pending', async () => {
+  const app = mount(() => new Promise(() => {}))
+  assert.ok(app.nodes().find(n => n.type === 'a' && n.props.href === '/camera-help'))
+  app.unmount()
 })
 console.log(`ผ่าน ${passed} · ไม่ผ่าน 0`)

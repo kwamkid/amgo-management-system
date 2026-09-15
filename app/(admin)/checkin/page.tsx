@@ -55,6 +55,9 @@ export default function CheckInPage() {
       </div>
 
       <CheckInButton />
+      <a href="/camera-help" className="block py-3 text-center text-sm font-semibold text-teal-700 underline">
+        กล้องไม่ขึ้น? เปิด Chrome / ดูวิธีตั้งค่ากล้อง
+      </a>
     </div>
   )
 }

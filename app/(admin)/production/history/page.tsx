@@ -185,13 +185,13 @@ export default function ProductionHistoryPage() {
       ) : (
         <>
           <StatGrid>
-            <StatCard label="จำนวน batch" value={totals.count.toLocaleString()} />
-            <StatCard label="ได้น้ำรวม (ลิตร)" value={totals.liters.toLocaleString()} />
-            <StatCard label="ขวดรวม" value={totals.bottles.toLocaleString()} />
+            <StatCard label="จำนวน batch" value={totals.count.toLocaleString()} tone="plum" />
+            <StatCard label="ได้น้ำรวม (ลิตร)" value={totals.liters.toLocaleString()} tone="sky" />
+            <StatCard label="ขวดรวม" value={totals.bottles.toLocaleString()} tone="grape" />
             <StatCard
               label="% น้ำที่ได้เฉลี่ย (yield)"
               value={totals.avgYield === null ? '—' : `${totals.avgYield}%`}
-              tone={totals.avgYield === null ? undefined : 'danger'}
+              tone={totals.avgYield === null ? 'muted' : 'danger'}
             />
           </StatGrid>
 

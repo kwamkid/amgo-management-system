@@ -95,7 +95,7 @@ export default function InviteLinkForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
       <Card padding={0}>
-        <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+        <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Info className="w-5 h-5 text-red-600" />
             ข้อมูลพื้นฐาน
@@ -145,7 +145,7 @@ export default function InviteLinkForm({
 
       {/* Default Settings */}
       <Card padding={0}>
-        <CardHeader className="bg-gradient-to-r from-red-50 to-rose-100">
+        <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Shield className="w-5 h-5 text-red-600" />
             ค่าเริ่มต้นสำหรับพนักงานใหม่
@@ -232,7 +232,7 @@ export default function InviteLinkForm({
 
       {/* Usage Limits */}
       <Card padding={0}>
-        <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-100">
+        <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
             <Users className="w-5 h-5 text-orange-600" />
             จำกัดการใช้งาน

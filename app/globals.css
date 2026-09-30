@@ -196,6 +196,18 @@
   --grape-500: #7A4ACF;
   --grape-700: #4A2891;
 
+  --sky-50:  #EAF5FD;
+  --sky-100: #C7E4F8;
+  --sky-300: #6DB9EE;
+  --sky-500: #1D8FE0;
+  --sky-700: #0B5A94;
+
+  --pink-50:  #FDEEF3;
+  --pink-100: #F9CFDD;
+  --pink-300: #EF8BAE;
+  --pink-500: #E0457B;
+  --pink-700: #8C1D45;
+
   /* Neutrals — warm-tinted greys */
   --warm-0:   #FFFFFF;
   --warm-50:  #FBF8F5;
@@ -698,6 +710,73 @@ input, textarea { font-family: var(--font-sans); }
   border: 1px solid var(--border-1);
   border-radius: var(--r-lg);
   padding: 20px;
+}
+
+/* ==========================================================================
+ *  Tones — one colour per subject so pages aren't all blue/grey.
+ *  Any element with `data-tone` gets --tone (solid), --tone-soft (100),
+ *  --tone-ink (700) and --tone-on (text on solid). Consumed by .aoo-stat
+ *  and .aoo-title-icon; pick a tone via the component's `tone` prop.
+ * ========================================================================== */
+
+[data-tone] { --tone: var(--sky-500); --tone-soft: var(--sky-100); --tone-ink: var(--sky-700); --tone-on: #fff; }
+[data-tone="accent"]  { --tone: var(--brand-coral-500); --tone-soft: var(--brand-coral-100); --tone-ink: var(--brand-coral-700); }
+[data-tone="success"] { --tone: var(--leaf-500);  --tone-soft: var(--leaf-100);  --tone-ink: var(--leaf-700); }
+[data-tone="warning"] { --tone: var(--sun-500);   --tone-soft: var(--sun-100);   --tone-ink: var(--sun-700); --tone-on: #3A2A00; }
+[data-tone="danger"]  { --tone: var(--ruby-500);  --tone-soft: var(--ruby-100);  --tone-ink: var(--ruby-700); }
+[data-tone="info"],
+[data-tone="grape"]   { --tone: var(--grape-500); --tone-soft: var(--grape-100); --tone-ink: var(--grape-700); }
+[data-tone="pink"]    { --tone: var(--pink-500);  --tone-soft: var(--pink-100);  --tone-ink: var(--pink-700); }
+[data-tone="plum"]    { --tone: var(--brand-plum-500); --tone-soft: var(--brand-plum-100); --tone-ink: var(--brand-plum-700); }
+[data-tone="muted"]   { --tone: var(--warm-100);  --tone-soft: var(--warm-150);  --tone-ink: var(--fg-3); --tone-on: var(--fg-1); }
+
+/* ---------- Stat tile — solid colour block (shared <StatCard>) ---------- */
+.aoo-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--tone);
+  color: var(--tone-on);
+  text-align: left;
+}
+.aoo-stat__label { font-size: 14px; font-weight: 500; opacity: 0.9; }
+.aoo-stat__value { font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.aoo-stat__unit,
+.aoo-stat__hint { font-size: 13px; opacity: 0.8; }
+.aoo-stat__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.22);
+}
+.aoo-stat[data-tone="warning"] .aoo-stat__icon { background: rgb(58 42 0 / 0.1); }
+.aoo-stat[data-tone="muted"] .aoo-stat__icon { background: var(--bg-surface); color: var(--fg-3); }
+button.aoo-stat { cursor: pointer; transition: filter var(--dur-fast) var(--ease-out); }
+button.aoo-stat:hover { filter: brightness(0.94); }
+button.aoo-stat:active { filter: brightness(0.88); }
+.aoo-stat:focus-visible,
+.aoo-stat[data-selected="true"] { outline: 3px solid var(--fg-1); outline-offset: 2px; }
+
+/* ---------- Card title icon chip (<CardTitle icon tone>) ---------- */
+.aoo-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--tone-soft);
+  color: var(--tone-ink);
 }
 
 /* ==========================================================================

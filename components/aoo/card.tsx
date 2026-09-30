@@ -224,8 +224,29 @@ const join = (...c: (string | undefined)[]) => c.filter(Boolean).join(" ");
 export function CardHeader({ children, className, style }: PartProps) {
   return <div className={join("flex flex-col gap-1 p-5 pb-0", className)} style={style}>{children}</div>;
 }
-export function CardTitle({ children, className, style }: PartProps) {
-  return <h3 className={join("text-base font-semibold leading-tight text-gray-900", className)} style={style}>{children}</h3>;
+/** สีของชิปไอคอนหน้าหัวข้อ · สีจริงอยู่ที่ [data-tone] ใน globals.css */
+export type CardTone =
+  | "accent" | "success" | "warning" | "danger" | "info" | "muted"
+  | "sky" | "pink" | "grape" | "plum";
+
+type CardTitleProps = PartProps & {
+  /** ไอคอน (lucide) ในชิปสีหน้าหัวข้อ */
+  icon?: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  tone?: CardTone;
+};
+
+export function CardTitle({ children, className, style, icon: Icon, tone = "accent" }: CardTitleProps) {
+  if (!Icon) {
+    return <h3 className={join("text-base font-semibold leading-tight text-gray-900", className)} style={style}>{children}</h3>;
+  }
+  return (
+    <h3 className={join("flex items-center gap-3 text-lg font-semibold leading-snug text-gray-900", className)} style={style}>
+      <span className="aoo-title-icon" data-tone={tone}>
+        <Icon size={19} strokeWidth={2} />
+      </span>
+      {children}
+    </h3>
+  );
 }
 export function CardDescription({ children, className, style }: PartProps) {
   return <p className={join("text-sm text-gray-500", className)} style={style}>{children}</p>;

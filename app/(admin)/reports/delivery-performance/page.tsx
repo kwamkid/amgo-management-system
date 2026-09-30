@@ -409,7 +409,7 @@ export default function DeliveryPerformancePage() {
                   icon={Clock}
                   tone={sel.minutesPerGap != null && sel.minutesPerGap > 60 ? 'warning' : 'default'}
                 />
-                <StatCard label="เริ่มจุดแรกเฉลี่ย" value={`${sel.avgFirstAt} น.`} icon={Truck} />
+                <StatCard label="เริ่มจุดแรกเฉลี่ย" value={`${sel.avgFirstAt} น.`} icon={Truck} tone="pink" />
               </StatGrid>
 
               <DayChart days={sel.days} />

@@ -2,11 +2,11 @@ import { type CSSProperties, type ReactNode } from "react";
 import { Spinner } from "./spinner";
 
 /**
- * Shared underline-style tab bar.
+ * Shared pill-style tab bar (active tab = solid accent pill; was an
+ * underline strip until 30 Sep 2026).
  *
  * Why a dedicated component instead of inline `<button>`s with
- * `aria-selected`: the underline pattern (border-bottom 2px accent,
- * fg-3 → fg-1 on active, full-row bottom border) shows up in every
+ * `aria-selected`: the same tab pattern shows up in every
  * "page-level section navigator" — Ads page tabs, the prototype's
  * "which question?" jump, and (soon) more. Defining it once means a
  * future style tweak hits all of them at the same time.
@@ -19,10 +19,6 @@ import { Spinner } from "./spinner";
  *       <DatePicker />
  *     </TabBar.Right>
  *   </TabBar>
- *
- * The container draws the bottom border so the active tab's underline
- * sits flush with it (the -1px margin-bottom on TabItem is what makes
- * the two borders overlap).
  */
 export interface TabBarProps {
   children: ReactNode;
@@ -40,24 +36,19 @@ export function TabBar({ children, ariaLabel, className, style }: TabBarProps) {
       className={className}
       style={{
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: "center",
         justifyContent: "space-between",
         gap: 12,
-        borderBottom: "1px solid var(--border-1)",
         ...style,
       }}
     >
       {/* Left-aligned tab buttons. overflowX: auto lets long tab lists
-          scroll horizontally on narrow viewports; overflowY: hidden is
-          critical — without it, the TabItem's `marginBottom: -1` (which
-          pulls the underline onto the parent border) makes the browser
-          think the row needs vertical scroll and a phantom scrollbar
-          appears in the gutter between the tabs and TabBar.Right
-          content. Locking the vertical axis hides that scrollbar. */}
+          scroll horizontally on narrow viewports; overflowY: hidden stops
+          a phantom vertical scrollbar. */}
       <div
         style={{
           display: "flex",
-          gap: 2,
+          gap: 6,
           minWidth: 0,
           flex: "1 1 auto",
           overflowX: "auto",
@@ -119,21 +110,18 @@ export function TabItem({
         flexDirection: sub ? "column" : "row",
         alignItems: sub ? "flex-start" : "center",
         gap: sub ? 2 : 6,
-        padding: sub ? "10px 16px 12px" : "10px 16px",
-        background: "transparent",
-        border: "none",
-        borderBottom: active
-          ? "2px solid var(--accent)"
-          : "2px solid transparent",
+        padding: sub ? "8px 16px 10px" : "8px 16px",
+        background: active ? "var(--accent)" : "var(--bg-surface)",
+        border: `1px solid ${active ? "var(--accent)" : "var(--border-1)"}`,
+        borderRadius: sub ? 12 : 999,
         color: active
-          ? "var(--fg-1)"
+          ? "var(--fg-on-brand)"
           : disabled
             ? "var(--fg-4)"
             : "var(--fg-3)",
         fontSize: 14,
         fontWeight: active ? 600 : 500,
         cursor: disabled ? "not-allowed" : "pointer",
-        marginBottom: -1,
         whiteSpace: "nowrap",
         opacity: disabled ? 0.6 : 1,
         textAlign: "left",
@@ -141,14 +129,15 @@ export function TabItem({
     >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
         {label}
-        {loading && <Spinner size="xs" tone="brand" />}
+        {loading && <Spinner size="xs" tone={active ? "on-brand" : "brand"} />}
       </span>
       {sub && (
         <span
           style={{
             fontSize: 12,
             fontWeight: 500,
-            color: "var(--fg-3)",
+            color: active ? "var(--fg-on-brand)" : "var(--fg-3)",
+            opacity: active ? 0.85 : 1,
           }}
         >
           {sub}
@@ -168,7 +157,7 @@ interface TabBarRightProps {
 
 function TabBarRight({ children }: TabBarRightProps) {
   return (
-    <div style={{ flexShrink: 0, paddingBottom: 6, display: "flex", gap: 8 }}>
+    <div style={{ flexShrink: 0, display: "flex", gap: 8 }}>
       {children}
     </div>
   );

@@ -26,6 +26,7 @@ import { th } from 'date-fns/locale';
 import { safeFormatDate } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/shared/UserAvatar'
+import { StatCard } from '@/components/shared'
 
 import { Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 interface AttendanceSectionProps {
@@ -169,66 +170,18 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
 
       {/* Summary Stats - แสดงแค่ 4 cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">กำลังทำงาน</p>
-                <p className="text-2xl font-bold text-blue-600">{workingCount}</p>
-                <p className="text-xs text-gray-500">เช็คอินอยู่</p>
-              </div>
-              <Clock className="w-8 h-8 text-blue-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">เสร็จงานแล้ว</p>
-                <p className="text-2xl font-bold text-teal-600">{attendanceData.checkedIn.length - workingCount}</p>
-                <p className="text-xs text-gray-500">เช็คอิน + เอาท์</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-teal-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ยังไม่เช็คอิน</p>
-                <p className="text-2xl font-bold text-red-600">{attendanceData.notCheckedIn.length}</p>
-                <p className="text-xs text-gray-500">คน</p>
-              </div>
-              <XCircle className="w-8 h-8 text-red-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">มาสาย</p>
-                <p className="text-2xl font-bold text-orange-600">{lateCount}</p>
-                <p className="text-xs text-gray-500">คน</p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-orange-400" />
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="กำลังทำงาน" value={workingCount} unit="คน" hint="เช็คอินอยู่" icon={Clock} tone="sky" />
+        <StatCard label="เสร็จงานแล้ว" value={attendanceData.checkedIn.length - workingCount} unit="คน" hint="เช็คอิน + เอาท์" icon={CheckCircle} tone="success" />
+        <StatCard label="ยังไม่เช็คอิน" value={attendanceData.notCheckedIn.length} unit="คน" icon={XCircle} tone="danger" />
+        <StatCard label="มาสาย" value={lateCount} unit="คน" icon={AlertTriangle} tone="warning" />
       </div>
 
       {/* Main Content - 2 Columns */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Checked In */}
         <Card padding={0}>
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" />
+          <CardHeader>
+            <CardTitle icon={Clock} tone="sky">
               กำลังทำงาน ({workingCount} คน)
             </CardTitle>
           </CardHeader>
@@ -292,9 +245,8 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
 
         {/* Not Checked In */}
         <Card padding={0}>
-          <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-600" />
+          <CardHeader>
+            <CardTitle icon={XCircle} tone="danger">
               ยังไม่เช็คอิน ({attendanceData.notCheckedIn.length} คน)
             </CardTitle>
           </CardHeader>

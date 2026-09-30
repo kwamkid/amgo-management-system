@@ -118,9 +118,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column - Calendar */}
         <Card padding={0}>
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
-            <CardTitle className="text-xl font-medium flex items-center gap-2">
-              <Cake className="w-6 h-6 text-pink-600" />
+          <CardHeader>
+            <CardTitle icon={Cake} tone="pink">
               ปฏิทินวันเกิดพนักงาน
             </CardTitle>
           </CardHeader>
@@ -247,8 +246,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           {/* Upcoming Birthdays */}
           <Card padding={0} className="-">
             <CardHeader>
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <PartyPopper className="w-5 h-5 text-purple-600" />
+              <CardTitle icon={PartyPopper} tone="grape">
                 วันเกิดใกล้ถึง (±5 วัน)
               </CardTitle>
             </CardHeader>
@@ -308,8 +306,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           {monthBirthdays.length > 0 && (
             <Card padding={0}>
               <CardHeader>
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <Cake className="w-5 h-5 text-pink-600" />
+                <CardTitle icon={Cake} tone="pink">
                   วันเกิดทั้งหมดในเดือนนี้
                 </CardTitle>
               </CardHeader>

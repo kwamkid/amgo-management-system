@@ -84,15 +84,20 @@ export function useAuth() {
     let jobFunctionCode: string | undefined
     // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
     let scheduleType: string | undefined
+    // เวลาทำงานของตำแหน่ง (ฝ่ายผลิต 04:00–15:00) — ไม่ตั้ง = เวลาปกติ 08:30/09:00
+    let jobWorkHours: { start: string; end: string } | null = null
     if (row.job_function_id) {
       const { data: jf } = await sb
         .from('job_functions')
-        .select('sees_delivery, code, schedule_type')
+        .select('sees_delivery, code, schedule_type, work_start_time, work_end_time')
         .eq('id', row.job_function_id)
         .maybeSingle()
       seesDelivery = jf?.sees_delivery ?? false
       jobFunctionCode = jf?.code ?? undefined
       scheduleType = jf?.schedule_type ?? undefined
+      if (jf?.work_start_time && jf?.work_end_time) {
+        jobWorkHours = { start: jf.work_start_time, end: jf.work_end_time }
+      }
     }
 
     // เมนู SRP Calculator — เห็นเมื่อได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ)
@@ -119,6 +124,7 @@ export function useAuth() {
       seesDelivery,
       jobFunctionCode,
       scheduleType,
+      jobWorkHours,
       hasSrpAccess,
       hasWebAccess,
     }

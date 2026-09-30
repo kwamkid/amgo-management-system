@@ -42,8 +42,28 @@ export interface FixedShift {
   graceMinutes: number
 }
 
-/** กะเสมือนของคนไม่มีกะ ตามเวลาที่กดเช็คอิน (นาฬิกาเครื่องผู้ใช้ = เวลาไทย) */
-export function fixedScheduleShift(checkinTime: Date): FixedShift {
+/** เวลาทำงานที่ตำแหน่งตั้งไว้เอง (job_functions.work_start_time/work_end_time) */
+export interface JobWorkHours {
+  start: string
+  end: string
+}
+
+/**
+ * กะเสมือนของคนไม่มีกะ ตามเวลาที่กดเช็คอิน (นาฬิกาเครื่องผู้ใช้ = เวลาไทย)
+ *
+ * ตำแหน่งที่ตั้งเวลาทำงานไว้เองใช้เวลานั้นตรง ๆ — ฝ่ายผลิตเข้าตี 4 เลิก 15:00
+ * (เจ้าของ 30 ก.ย. 69) ถ้าใช้ 08:30–17:30 ลืมเช็คเอาท์แล้วระบบจะปิดให้ที่ 17:30
+ * และเลิก 15:00 ตามปกติกลายเป็น "ออกก่อนเวลา" · ไม่ตั้ง = 08:30/09:00 เหมือนเดิม
+ */
+export function fixedScheduleShift(checkinTime: Date, jobHours?: JobWorkHours | null): FixedShift {
+  if (jobHours?.start && jobHours?.end) {
+    return {
+      name: 'เวลางานของตำแหน่ง',
+      startTime: jobHours.start.slice(0, 5),
+      endTime: jobHours.end.slice(0, 5),
+      graceMinutes: FIXED_SCHEDULE.graceMinutes,
+    }
+  }
   const minutes = checkinTime.getHours() * 60 + checkinTime.getMinutes()
   const early = minutes <= FIXED_SCHEDULE.earlyCutoffMinutes
   return {

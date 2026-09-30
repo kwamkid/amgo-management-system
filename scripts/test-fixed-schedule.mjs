@@ -90,5 +90,19 @@ console.log('\n5) ลืมเช็คเอาท์ปิดที่เว�
   check(normalEndTime(cin, s.endTime, 1, s.startTime).getTime() === at('17:30').getTime(), 'รอบ 08:30 เลิก 17:30')
 }
 
+console.log('\n5) ตำแหน่งที่ตั้งเวลาทำงานเอง (ฝ่ายผลิต 04:00–15:00 — 30 ก.ย. 69)')
+{
+  const prod = { start: '04:00:00', end: '15:00:00' }
+  const cin = at('03:56'), s = fixedScheduleShift(cin, prod)
+  check(s.startTime === '04:00' && s.endTime === '15:00', 'เข้า 03:56 ได้กะ 04:00–15:00', `${s.startTime}–${s.endTime}`)
+  check(!lateAtCheckin(cin, s), 'เข้า 03:56 ไม่สาย')
+  check(lateAtCheckin(at('04:30'), fixedScheduleShift(at('04:30'), prod)), 'เข้า 04:30 สาย (เลยผ่อนผัน 15 นาที)')
+  check(normalEndTime(cin, s.endTime, 1, s.startTime).getTime() === at('15:00').getTime(), 'ลืมเช็คเอาท์ ปิดให้ที่ 15:00 ไม่ใช่ 17:30')
+  const c = calculateWorkingHours(cin, at('15:02'), office, s)
+  check(!c.isEarlyCheckout, 'เลิก 15:02 ไม่นับออกก่อนเวลา')
+  const none = fixedScheduleShift(at('08:30'), null)
+  check(none.startTime === '08:30' && none.name === FIXED_SCHEDULE.name, 'ตำแหน่งไม่ได้ตั้ง = เวลาปกติเหมือนเดิม')
+}
+
 console.log(`\n${fail === 0 ? '🎉' : '💥'} ผ่าน ${pass} · ไม่ผ่าน ${fail}\n`)
 process.exit(fail ? 1 : 0)

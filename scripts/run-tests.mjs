@@ -21,6 +21,7 @@ const SUITES = [
   { file: 'test-checkin-rls.mjs', title: 'เช็คอิน' },
   { file: 'test-checkout-hours.mjs', title: 'ชั่วโมงตอนเช็คเอาท์ · ลืมเช็คเอาท์', noEnv: true },
   { file: 'test-checkout-timezone.mjs', title: 'ปิดกะ · เวลาไทยทุกเขตเวลา', noEnv: true },
+  { file: 'test-fixed-schedule.mjs', title: 'เวลาปกติ · เวลางานของตำแหน่ง', noEnv: true },
   { file: 'test-payroll-cycle.mjs', title: 'รอบจ่าย · ช่วงงวดเงินเดือน', noEnv: true },
   { file: 'test-schedule-swap.mjs', title: 'ใบสลับวันหยุด', noEnv: true },
   { file: 'test-stock-photos.mjs', title: 'รูปสต็อก/หน้าร้านประจำวัน', noEnv: true },

@@ -45,6 +45,8 @@ export interface UserData {
   jobFunctionCode?: string
   /** แบบตารางงานของตำแหน่ง (job_functions.schedule_type — useAuth เติมให้) 'rotating' = PC เลือกกะสาขา · อื่น ๆ/ไม่มีตำแหน่ง = เวลาปกติ (fixedScheduleRules) */
   scheduleType?: string
+  /** เวลาทำงานที่ตำแหน่งตั้งไว้เอง (เช่น ฝ่ายผลิต 04:00–15:00) — ไม่มี = เวลาปกติ 08:30/09:00 */
+  jobWorkHours?: { start: string; end: string } | null
   /** มีสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์ (useAuth เติมให้ · แอดมิน = true เสมอ) */
   hasSrpAccess?: boolean
   /** อยู่ในรายชื่อ web_owners — เมนูดูแลเว็บไซต์ลูกค้า (งานส่วนตัว แอดมินคนอื่นไม่เห็น) */

@@ -240,7 +240,7 @@ export function useCheckIn(): UseCheckInReturn {
       // หน้าจอไม่ส่งกะมาให้คนกลุ่มนี้อยู่แล้ว แต่ตัดสินซ้ำตรงนี้กันหลุด
       const shift = usesLocationShifts(userData.scheduleType)
         ? selectedShift
-        : fixedScheduleShift(new Date())
+        : fixedScheduleShift(new Date(), userData.jobWorkHours)
 
       // Create check-in
       const newCheckinId = await checkinService.createCheckIn({

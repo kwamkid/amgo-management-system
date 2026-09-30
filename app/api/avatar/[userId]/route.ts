@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 
 const BUCKET = 'avatars'
 
@@ -38,7 +38,9 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   // รูปพนักงานไม่ใช่ของสาธารณะ — ต้องล็อกอินก่อน
-  const me = await getCurrentUser()
+  // เช็คแค่ token (ตรวจลายเซ็นในเครื่อง) — เดิม getCurrentUser() ดึงแถว users ของ
+  // คนดูทั้งแถวทุกรูป หน้ารายชื่อ 40 คน = ดึงข้อมูลตัวเองซ้ำ 40 ครั้ง
+  const me = await verifiedUser(await createServerSupabase())
   if (!me) return new NextResponse(null, { status: 401 })
 
   const { userId } = await params

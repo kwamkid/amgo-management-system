@@ -3,8 +3,8 @@
 // หน้าที่หลักคือ "ต่ออายุ session ของ Supabase ทุก request"
 // ถ้าไม่ทำ token จะหมดอายุแล้วผู้ใช้หลุดออกจากระบบเองระหว่างใช้งาน
 //
-// ⚠️ ห้ามใส่ logic อื่นแทรกระหว่าง createServerClient กับ getUser()
-//    เพราะ getUser() คือจุดที่สั่งให้ต่ออายุ ถ้ามีอย่างอื่นมาคั่นแล้ว return
+// ⚠️ ห้ามใส่ logic อื่นแทรกระหว่าง createServerClient กับ getClaims()
+//    เพราะ getClaims() คือจุดที่สั่งให้ต่ออายุ ถ้ามีอย่างอื่นมาคั่นแล้ว return
 //    ก่อน จะเกิดอาการ "ล็อกอินอยู่ดี ๆ แล้วเด้งออก" ซึ่งตามหาต้นเหตุยากมาก
 
 import { createServerClient } from '@supabase/ssr'
@@ -32,9 +32,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getClaims() ต่ออายุ session ให้เหมือน getUser() (อ่าน session → refresh ถ้าหมดอายุ)
+  // แต่ตรวจลายเซ็น JWT ในเครื่องด้วยกุญแจ ES256 ไม่ต้องวิ่งไปถาม Auth server
+  // ทุกคำขอ — เดิมตรงนี้คือต้นทางส่วนใหญ่ของ ~188,000 ครั้ง (30 ก.ย. 69)
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims?.sub ?? null
 
   const path = request.nextUrl.pathname
 

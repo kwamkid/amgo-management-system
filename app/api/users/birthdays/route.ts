@@ -7,7 +7,7 @@
 //
 // ── ที่แก้เรื่องความเร็ว ───────────────────────────────────────────────
 // ของเดิมคุยกับ Supabase 3 รอบต่อการโหลด 1 ครั้ง:
-//   1. auth.getUser()      ตรวจ token
+//   1. verifiedUser()      ตรวจ token (getClaims — ตรวจลายเซ็นในเครื่อง)
 //   2. select จาก users    ดึงโปรไฟล์คนที่เรียก (ไม่ได้ใช้เลย)
 //   3. select วันเกิด
 // รอบที่ 2 ตัดทิ้งได้ เพราะแค่ต้องรู้ว่า "ล็อกอินอยู่" ไม่ต้องรู้ว่าเป็นใคร
@@ -17,13 +17,11 @@
 
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 
 export async function GET() {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
 
   if (!user) return NextResponse.json({ error: 'ยังไม่ได้เข้าสู่ระบบ' }, { status: 401 })
 

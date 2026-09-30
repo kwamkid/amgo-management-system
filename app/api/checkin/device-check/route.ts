@@ -6,7 +6,7 @@
 // RLS ไม่ให้พนักงานอ่านเช็คอินของคนอื่น · เจอเครื่องซ้ำ → แจ้งห้อง alerts ทันที
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDiscordSettings } from '@/lib/discord/settings'
 
@@ -14,9 +14,7 @@ export const maxDuration = 15
 
 export async function POST(request: NextRequest) {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let checkinId: string | undefined

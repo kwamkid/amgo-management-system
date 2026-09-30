@@ -10,7 +10,7 @@
 // ต้องล็อกอินเท่านั้น (กันคนนอกยิงสแปม) · สวิตช์เปิด/ปิดรายประเภทเช็คที่นี่
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDiscordSettings, type DiscordSettings } from '@/lib/discord/settings'
 
@@ -20,9 +20,7 @@ const MAX_PAYLOAD_CHARS = 20_000
 
 export async function POST(request: NextRequest) {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

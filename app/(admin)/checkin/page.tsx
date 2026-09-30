@@ -2,8 +2,6 @@
 
 'use client'
 
-import { useAuth } from '@/hooks/useAuth'
-import { useCheckIn } from '@/hooks/useCheckIn'
 import CheckInButton from '@/components/checkin/CheckInButton'
 import { Clock } from 'lucide-react'
 import { format } from 'date-fns'
@@ -16,8 +14,8 @@ import { Button as AooButton } from '@/components/aoo'
 // กินไป ~150px (ไอคอน+ชื่อ+วันที่+ปุ่มซ้อนกันเป็น 3 บรรทัด) จึงใช้หัวแถวเดียวบนจอเล็ก
 // และคง PageHeader ไว้บนจอใหญ่ให้เหมือนหน้าอื่น
 export default function CheckInPage() {
-  useAuth()
-  useCheckIn()
+  // ไม่เรียก useCheckIn() ที่นี่ — CheckInButton ข้างล่างเรียกเองอยู่แล้ว
+  // เดิมเรียกซ้อน 2 ชุด = ดึงสาขา/กะ + เปิด GPS 2 รอบทุกครั้งที่เข้าหน้า (30 ก.ย. 69)
   const today = format(new Date(), 'EEEE d MMMM yyyy', { locale: th })
 
   return (

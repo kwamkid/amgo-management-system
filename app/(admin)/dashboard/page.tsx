@@ -2,7 +2,8 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { useCheckIn } from '@/hooks/useCheckIn';
+import { getActiveCheckIn } from '@/lib/services/checkinService';
+import type { CheckInRecord } from '@/types/checkin';
 import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import TodoZone from '@/components/dashboard/TodoZone';
@@ -15,11 +16,17 @@ import TechLoader from '@/components/shared/TechLoader';
 import { AlertCircle, LogIn, CheckCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared'
 import { Button as AooButton, Alert, Button, TabBar, TabItem } from '@/components/aoo'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 export default function DashboardPage() {
   const [tab, setTab] = useState('birthday')
   const { userData, loading, error } = useAuth();
-  const { currentCheckIn } = useCheckIn();
+  // ปุ่มบนหัวหน้าต้องรู้แค่ว่าเช็คอินอยู่ไหม — เดิมเรียก useCheckIn() ทั้งก้อน ซึ่งดึง
+  // สาขา+กะทั้งหมด และเปิด GPS หาตำแหน่งทุกครั้งที่เปิด Dashboard (30 ก.ย. 69)
+  const [currentCheckIn, setCurrentCheckIn] = useState<CheckInRecord | null>(null);
+  useEffect(() => {
+    if (!userData?.id) return;
+    getActiveCheckIn(userData.id).then(setCurrentCheckIn).catch(() => {});
+  }, [userData?.id]);
   const router = useRouter();
 
   if (loading) {

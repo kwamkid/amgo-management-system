@@ -129,18 +129,17 @@ export async function listClaims(statuses: ExpenseStatus[], limit = 200): Promis
 
 /** จำนวนใบที่รอแต่ละขั้น — กล่องหน้าแรก HR */
 export async function countPending(): Promise<{ manager: number; finance: number; toPay: number }> {
-  const count = async (status: ExpenseStatus, payout?: ExpensePayout) => {
-    let q = sb().from('expense_claims').select('id', { count: 'exact', head: true }).eq('status', status)
-    if (payout) q = q.eq('payout', payout)
-    const { count: n } = await q
-    return n ?? 0
+  // คำขอเดียว นับเอง — ใบที่ยังเปิดอยู่มีไม่กี่ใบ (เดิมยิง count แยก 3 ครั้ง)
+  const { data } = await sb()
+    .from('expense_claims')
+    .select('status, payout')
+    .in('status', ['pending_manager', 'pending_finance', 'approved'])
+  const rows = data ?? []
+  return {
+    manager: rows.filter((r) => r.status === 'pending_manager').length,
+    finance: rows.filter((r) => r.status === 'pending_finance').length,
+    toPay: rows.filter((r) => r.status === 'approved' && r.payout === 'transfer').length,
   }
-  const [manager, finance, toPay] = await Promise.all([
-    count('pending_manager'),
-    count('pending_finance'),
-    count('approved', 'transfer'),
-  ])
-  return { manager, finance, toPay }
 }
 
 export async function createClaim(params: {

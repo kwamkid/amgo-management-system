@@ -38,17 +38,33 @@ export async function createServerSupabase() {
 }
 
 /**
+ * ใครล็อกอินอยู่ — ตรวจลายเซ็น JWT จริงด้วย getClaims() (30 ก.ย. 69)
+ *
+ * ห้ามใช้ getSession() — อ่าน cookie ดิบ ๆ ซึ่งปลอมได้ · เดิมใช้ getUser() ซึ่ง
+ * ปลอดภัยแต่ต้องวิ่งไปถาม Auth server ทุกครั้ง: middleware + ทุก API + รูปโปรไฟล์
+ * ทีละรูป สะสมเป็น ~188,000 ครั้ง (pg_stat_statements) · โปรเจกต์นี้เซ็น JWT
+ * ด้วยกุญแจ ES256 (asymmetric) getClaims จึงตรวจลายเซ็นในเครื่องด้วย JWKS
+ * ที่แคชไว้ ความปลอดภัยเท่าเดิม ไม่เสียรอบเน็ต
+ */
+export async function verifiedUser(
+  sb: Awaited<ReturnType<typeof createServerSupabase>>
+): Promise<{ id: string; role: string | null } | null> {
+  const { data, error } = await sb.auth.getClaims()
+  const sub = data?.claims?.sub
+  if (error || !sub) return null
+  // role เดียวกับที่ RLS ใช้ (auth_role() อ่าน app_metadata.role จาก JWT)
+  const meta = data.claims.app_metadata as { role?: string } | undefined
+  return { id: sub, role: meta?.role ?? null }
+}
+
+/**
  * ดึงผู้ใช้ที่ล็อกอินอยู่พร้อมข้อมูลในตาราง users
  * คืน null ถ้ายังไม่ได้ล็อกอิน หรือถูกปิดการใช้งาน
  */
 export async function getCurrentUser() {
   const sb = await createServerSupabase()
 
-  // ต้องใช้ getUser() ไม่ใช่ getSession() — getUser คุยกับ Supabase เพื่อ
-  // ตรวจลายเซ็น JWT จริง ส่วน getSession อ่านจาก cookie ดิบ ๆ ซึ่งปลอมได้
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return null
 
   const { data: profile } = await sb

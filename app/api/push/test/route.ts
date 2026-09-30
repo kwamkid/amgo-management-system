@@ -2,15 +2,13 @@
 //
 // ยิง push ทดสอบไปทุกอุปกรณ์ของ "คนที่กด" — ใช้ตรวจว่าตั้งค่าสำเร็จจริง
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push/send'
 
 export async function POST() {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // เช็คก่อนว่ามีอุปกรณ์จริงไหม — จะได้บอกได้ว่า "ยังไม่ได้เปิด" ไม่ใช่เงียบไปเฉย ๆ

@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
 import { targetForHost } from '@/lib/services/web/sshTarget'
@@ -365,9 +365,7 @@ export async function POST(request: NextRequest) {
 
   // กดจากหน้าเว็บ — ต้องล็อกอินและอยู่ใน web_owners
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: owner } = await sb.from('web_owners').select('user_id').eq('user_id', user.id).maybeSingle()

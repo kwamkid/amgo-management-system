@@ -11,15 +11,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { encryptSecret } from '@/lib/services/web/secretBox'
 import type { Database } from '@/types/database'
 
 async function requireOwner() {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return null
   const { data } = await sb.from('web_owners').select('user_id').eq('user_id', user.id).maybeSingle()
   return data ? user : null

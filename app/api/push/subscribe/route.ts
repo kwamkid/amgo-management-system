@@ -4,14 +4,12 @@
 // user_id = auth.uid() (users.id ตรงกับ auth.users.id) · ใช้ admin client เพราะ
 // ตาราง push_subscriptions ไม่เปิด RLS ให้เขียนจากเบราว์เซอร์ตรง ๆ
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 async function currentUserId(): Promise<string | null> {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   return user?.id ?? null
 }
 

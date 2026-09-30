@@ -5,7 +5,7 @@
 // กันปลอม: ชื่อคนทำเรื่องอ่านจากบัญชีที่ล็อกอิน · เหตุการณ์ "อนุมัติ/ปฏิเสธ" ยิงได้
 // เฉพาะตำแหน่งที่อนุมัติได้จริง · เหตุการณ์ "ขอ" ไปหาคนอนุมัติเสมอ (ผู้ส่งเลือกผู้รับไม่ได้)
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   PUSH_EVENTS,
@@ -24,9 +24,7 @@ const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.slice(0, max) 
 
 export async function POST(request: NextRequest) {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: Record<string, unknown>

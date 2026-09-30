@@ -3,15 +3,13 @@
 // GET  — พื้นที่ storage ใช้ไปเท่าไหร่ (hr/admin/manager) สำหรับการ์ดสถานะบนหน้ารายงานรูป
 // POST — ตั้งโควตา (admin) เมื่ออัปเกรดแพลน Supabase · {quotaMb}
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readStorageUsage, setQuotaMb } from '@/lib/services/storageUsageService'
 
 async function callerRole(): Promise<string | null> {
   const sb = await createServerSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
+  const user = await verifiedUser(sb)
   if (!user) return null
   const { data } = await createAdminClient().from('users').select('role').eq('id', user.id).maybeSingle()
   return data?.role ?? null

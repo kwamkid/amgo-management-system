@@ -235,10 +235,10 @@ export default function WebsitesPage() {
           label="ใกล้หมดอายุ (30 วัน)"
           value={stats.expiring}
           icon={CalendarClock}
-          tone={stats.expiring ? 'warning' : 'success'}
+          tone="warning"
         />
-        <StatCard label="เว็บล่มตอนนี้" value={stats.down} icon={ServerCrash} tone={stats.down ? 'danger' : 'success'} />
-        <StatCard label="มีบิลค้าง" value={stats.unpaid} icon={Receipt} tone={stats.unpaid ? 'pink' : 'success'} />
+        <StatCard label="เว็บล่มตอนนี้" value={stats.down} icon={ServerCrash} tone="danger" />
+        <StatCard label="มีบิลค้าง" value={stats.unpaid} icon={Receipt} tone="pink" />
       </StatGrid>
 
       <FilterBar search={q} onSearch={setQ} placeholder="ค้นหาโดเมน / เจ้าของ / โฮสต์">

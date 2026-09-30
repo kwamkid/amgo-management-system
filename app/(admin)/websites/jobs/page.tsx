@@ -1256,7 +1256,7 @@ export default function WebJobsPage() {
           label="ค้างอัปเดตปลั๊กอิน"
           value={stats.pending}
           unit="เว็บ"
-          tone={stats.pending ? 'warning' : 'success'}
+          tone="warning"
           hint={stats.pluginCount ? `รวม ${stats.pluginCount} ตัว` : 'ไม่มีค้าง'}
           onClick={stats.pending ? () => toggleQuick('pending') : undefined}
           selected={quick === 'pending'}
@@ -1266,7 +1266,7 @@ export default function WebJobsPage() {
           label="ต้องดูด่วน"
           value={stats.suspect}
           unit="เว็บ"
-          tone={stats.suspect ? 'danger' : 'success'}
+          tone="danger"
           hint={
             stats.suspect
               ? [
@@ -1287,7 +1287,7 @@ export default function WebJobsPage() {
           label="ไม่มีไฟล์สำรอง"
           value={stats.noBackup}
           unit="เว็บ"
-          tone={stats.noBackup ? 'danger' : 'success'}
+          tone="plum"
           hint={stats.staleBackup ? `เก่าเกิน 30 วันอีก ${stats.staleBackup} เว็บ` : 'สำรองครบทุกเว็บ'}
           onClick={stats.noBackup ? () => toggleQuick('nobackup') : undefined}
           selected={quick === 'nobackup'}
@@ -1527,7 +1527,10 @@ export default function WebJobsPage() {
                       }`}
                     >
                       <span className="w-7 shrink-0 text-right tabular-nums text-gray-400">
-                        {r.job.status === 'running' ? '▶' : i}
+                        {/* งานที่กำลังทำเรียงอยู่บนสุด — ลำดับคิวนับจาก 1 หลังจากนั้น */}
+                        {r.job.status === 'running'
+                          ? '▶'
+                          : i + 1 - h.rows.filter((x) => x.job.status === 'running').length}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{jobLabel(r.job)}</span>
                       <span className="shrink-0 tabular-nums text-gray-500">

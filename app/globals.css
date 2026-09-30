@@ -176,6 +176,7 @@
   --sun-100: #FFEDB2;
   --sun-300: #FFD64D;
   --sun-500: #F5B400;
+  --sun-600: #E08A00; /* พื้นเต็มที่วางตัวหนังสือขาว (การ์ดตัวเลข) */
   --sun-700: #8E6500;
 
   --leaf-50:  #ECF8EF;
@@ -723,7 +724,7 @@ input, textarea { font-family: var(--font-sans); }
 [data-tone] { --tone: var(--sky-500); --tone-soft: var(--sky-100); --tone-ink: var(--sky-700); --tone-on: #fff; }
 [data-tone="accent"]  { --tone: var(--brand-coral-500); --tone-soft: var(--brand-coral-100); --tone-ink: var(--brand-coral-700); }
 [data-tone="success"] { --tone: var(--leaf-500);  --tone-soft: var(--leaf-100);  --tone-ink: var(--leaf-700); }
-[data-tone="warning"] { --tone: var(--sun-500);   --tone-soft: var(--sun-100);   --tone-ink: var(--sun-700); --tone-on: #3A2A00; }
+[data-tone="warning"] { --tone: var(--sun-600);   --tone-soft: var(--sun-100);   --tone-ink: var(--sun-700); }
 [data-tone="danger"]  { --tone: var(--ruby-500);  --tone-soft: var(--ruby-100);  --tone-ink: var(--ruby-700); }
 [data-tone="info"],
 [data-tone="grape"]   { --tone: var(--grape-500); --tone-soft: var(--grape-100); --tone-ink: var(--grape-700); }
@@ -788,6 +789,7 @@ input, textarea { font-family: var(--font-sans); }
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  height: 100%; /* การ์ดในแถวเดียวกันสูงเท่ากัน */
   padding: 16px;
   border: 0;
   border-radius: var(--r-lg);
@@ -809,7 +811,6 @@ input, textarea { font-family: var(--font-sans); }
   border-radius: 12px;
   background: rgb(255 255 255 / 0.22);
 }
-.aoo-stat[data-tone="warning"] .aoo-stat__icon { background: rgb(58 42 0 / 0.1); }
 .aoo-stat[data-tone="muted"] .aoo-stat__icon { background: var(--bg-surface); color: var(--fg-3); }
 button.aoo-stat { cursor: pointer; transition: filter var(--dur-fast) var(--ease-out); }
 button.aoo-stat:hover { filter: brightness(0.94); }

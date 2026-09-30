@@ -25,7 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { Skeleton, SectionCard, StatCard } from '@/components/shared'
+import { Skeleton, SectionCard, StatCard, type StatTone } from '@/components/shared'
 import { Alert, Button, Card, CardHeader, CardTitle, Pill } from '@/components/aoo'
 import ForgotReviewList from '@/components/checkin/ForgotReviewList'
 import { fetchHrInbox, type HrInbox as Inbox, type PersonRef } from '@/lib/services/hrInboxService'
@@ -82,18 +82,21 @@ export default function HrInbox() {
             icon={FileText}
             label="ใบลา"
             count={data.leave_pending}
+            tone="pink"
           />
           <Tile
             href="/leaves/swap/management"
             icon={CalendarSync}
             label="ใบสลับวันหยุด"
             count={data.swap_pending}
+            tone="grape"
           />
           <Tile
             href="/checkin/pending"
             icon={Clock3}
             label="ลืมเช็คเอาท์ รอตรวจ"
             count={data.forgot.length}
+            tone="warning"
             sub={claimed ? `พนักงานแจ้งเวลาแล้ว ${claimed}` : undefined}
           />
         </div>
@@ -179,17 +182,20 @@ function Tile({
   label,
   count,
   sub,
+  tone,
 }: {
   href: string
   icon: LucideIcon
   label: string
   count: number
   sub?: string
+  /** สีของเรื่องนี้ตอนมีค้าง — ใบในแถวเดียวกันต้องคนละสี */
+  tone: StatTone
 }) {
-  // ค้าง = เหลือง (รอ) · ว่าง = เทา
+  // ค้าง = สีของเรื่องนั้น · ว่าง = เทา
   return (
-    <Link href={href} className="block">
-      <StatCard label={label} value={count} icon={icon} tone={count > 0 ? 'warning' : 'muted'} hint={sub} />
+    <Link href={href} className="block h-full">
+      <StatCard label={label} value={count} icon={icon} tone={count > 0 ? tone : 'muted'} hint={sub} />
     </Link>
   )
 }

@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from 'next'
 import PwaRegister from '@/components/push/PwaRegister'
 import { LoadingProvider } from '@/lib/contexts/LoadingContext'
+import AuthProvider from '@/components/auth/AuthProvider'
 import './globals.css'
 
 // ฟอนต์โหลดจาก /public/fonts เอง (ดูที่ globals.css) ไม่ผ่าน Google Fonts แล้ว
@@ -46,9 +47,12 @@ export default function RootLayout({
     <html lang="th" data-theme="light" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <PwaRegister />
-        <LoadingProvider>
-          {children}
-        </LoadingProvider>
+        {/* ข้อมูลผู้ใช้โหลดครั้งเดียวทั้งแอป — ดู hooks/useAuth.ts */}
+        <AuthProvider>
+          <LoadingProvider>
+            {children}
+          </LoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   )

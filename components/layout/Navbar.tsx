@@ -39,7 +39,7 @@ export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps)
   useEffect(() => setStandalone(isStandalone()), [])
 
   // ── แอดมิน: ดูระบบในมุมมองสิทธิ์อื่น (เครื่องมือทดสอบ) ──────────────
-  // useAuth เป็น hook แยกต่อ component ไม่มี context กลาง — สลับแล้วโหลดหน้าใหม่
+  // useAuth อ่านจาก AuthProvider ที่โหลดครั้งเดียว — สลับแล้วต้องโหลดหน้าใหม่
   // ทุกจุดจะได้ค่าตรงกัน · จำลองแค่หน้าจอ ข้อมูลจริงยังคุมด้วย RLS ตามสิทธิ์จริง
   const [viewAs, setView] = useState('off')
   useEffect(() => setView(getViewAs()), [])

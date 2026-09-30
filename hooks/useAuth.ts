@@ -6,10 +6,21 @@
 //    เรียกใช้อยู่หลายสิบจุด — ตัวนี้ทำหน้าที่แปลงชื่อคอลัมน์จาก snake_case
 //    ของ Postgres กลับเป็น camelCase ที่โค้ดเดิมคาดหวัง
 //    พอย้ายหน้าจอครบแล้วค่อยเลิกแปลงแล้วใช้ชื่อคอลัมน์ตรง ๆ
+//
+// ── โหลดครั้งเดียว แชร์ทั้งแอป (30 ก.ย. 69) ────────────────────────────
+// เดิม useAuth เป็น hook เดี่ยว ๆ — ทุก component ที่เรียก (layout · Sidebar ·
+// Navbar · หน้า · การ์ดบน Dashboard อีกนับสิบ) ต่างคนต่างยิง getUser + users +
+// job_functions + srp + web_owners เอง หน้าเดียวหลายสิบคำขอ และระหว่างที่ตัวไหน
+// ยังโหลดไม่เสร็จ หน้าที่เช็คสิทธิ์จาก userData?.role จะเห็นว่า "ไม่ใช่แอดมิน"
+// แล้วขึ้นแถบแดง "ไม่มีสิทธิ์" แวบหนึ่ง — เจ้าของเจอเกือบทุกหน้า แม้แต่ Dashboard
+//
+// ตอนนี้ AuthProvider (components/auth/AuthProvider.tsx ใน app/layout.tsx) โหลด
+// ครั้งเดียว useAuth แค่อ่านจาก context · เปลี่ยนหน้าไม่ต้องโหลดใหม่
+// หน้าที่แก้ข้อมูลตัวเอง (setup/โปรไฟล์) ใช้ window.location.reload() อยู่แล้ว
 
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useContext } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { mapUser, type UserData } from '@/lib/services/user/mappers'
@@ -19,7 +30,7 @@ import { applyViewAs } from '@/lib/utils/viewAs'
 // เพราะ userService ต้องใช้ตัวเดียวกัน — เดิมแปลงคนละที่แล้วไม่ตรงกัน
 export type { UserData }
 
-interface AuthState {
+export interface AuthState {
   user: User | null
   userData: UserData | null
   loading: boolean
@@ -28,134 +39,114 @@ interface AuthState {
   realRole: UserData['role'] | null
 }
 
-export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    userData: null,
-    loading: true,
-    error: null,
-    realRole: null,
-  })
+export const INITIAL_AUTH: AuthState = {
+  user: null,
+  userData: null,
+  loading: true,
+  error: null,
+  realRole: null,
+}
 
-  const load = useCallback(async (authUser: User | null) => {
-    if (!authUser) {
-      setState({ user: null, userData: null, loading: false, error: null, realRole: null })
-      return
-    }
+/** ข้อความ error ตอนดึงข้อมูลพลาดชั่วคราว (เน็ตหลุด/เปิดแอปกลับมา) — ต่างจากบัญชีใช้ไม่ได้จริง */
+export const FETCH_ERROR = 'เกิดข้อผิดพลาดในการดึงข้อมูล'
 
-    const sb = createClient()
-    const [{ data: row, error }, { data: locs }] = await Promise.all([
-      sb.from('users').select('*').eq('id', authUser.id).maybeSingle(),
-      sb.from('user_allowed_locations').select('location_id').eq('user_id', authUser.id),
-    ])
+export const AuthContext = createContext<AuthState | null>(null)
 
-    if (error) {
-      console.error('ดึงข้อมูลผู้ใช้ไม่สำเร็จ:', error.message)
-      setState({
-        user: null,
-        userData: null,
-        loading: false,
-        error: 'เกิดข้อผิดพลาดในการดึงข้อมูล',
-        realRole: null,
-      })
-      return
-    }
+/** ข้อมูลผู้ใช้ที่ล็อกอินอยู่ — อ่านจาก AuthProvider (โหลดครั้งเดียวทั้งแอป) */
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext)
+  if (!ctx) {
+    // ไม่ควรเกิด — AuthProvider ครอบทั้งแอปใน app/layout.tsx
+    if (typeof window !== 'undefined') console.error('useAuth() ถูกเรียกนอก <AuthProvider>')
+    return INITIAL_AUTH
+  }
+  return ctx
+}
 
-    if (!row || row.deleted_at) {
-      setState({ user: null, userData: null, loading: false, error: 'ไม่พบข้อมูลผู้ใช้', realRole: null })
-      return
-    }
+const signedOut = (error: string | null = null): AuthState => ({
+  user: null,
+  userData: null,
+  loading: false,
+  error,
+  realRole: null,
+})
 
-    if (!row.is_active) {
-      const ended = ['resigned', 'terminated', 'retired'].includes(row.employment_status)
-      setState({
-        user: null,
-        userData: null,
-        loading: false,
-        error: ended ? 'บัญชีนี้สิ้นสุดการเป็นพนักงานแล้ว' : 'บัญชีของคุณยังไม่ได้รับการอนุมัติ',
-        realRole: null,
-      })
-      await sb.auth.signOut()
-      return
-    }
+/** โหลดข้อมูลผู้ใช้หนึ่งรอบ — AuthProvider เรียก */
+export async function loadAuthState(authUser: User | null): Promise<AuthState> {
+  if (!authUser) return signedOut()
 
-    // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
-    let seesDelivery = false
-    let jobFunctionCode: string | undefined
-    // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
-    let scheduleType: string | undefined
-    // เวลาทำงานของตำแหน่ง (ฝ่ายผลิต 04:00–15:00) — ไม่ตั้ง = เวลาปกติ 08:30/09:00
-    let jobWorkHours: { start: string; end: string } | null = null
-    if (row.job_function_id) {
-      const { data: jf } = await sb
-        .from('job_functions')
-        .select('sees_delivery, code, schedule_type, work_start_time, work_end_time')
-        .eq('id', row.job_function_id)
-        .maybeSingle()
-      seesDelivery = jf?.sees_delivery ?? false
-      jobFunctionCode = jf?.code ?? undefined
-      scheduleType = jf?.schedule_type ?? undefined
-      if (jf?.work_start_time && jf?.work_end_time) {
-        jobWorkHours = { start: jf.work_start_time, end: jf.work_end_time }
-      }
-    }
+  const sb = createClient()
+  const [{ data: row, error }, { data: locs }] = await Promise.all([
+    sb.from('users').select('*').eq('id', authUser.id).maybeSingle(),
+    sb.from('user_allowed_locations').select('location_id').eq('user_id', authUser.id),
+  ])
 
+  if (error) {
+    console.error('ดึงข้อมูลผู้ใช้ไม่สำเร็จ:', error.message)
+    return signedOut(FETCH_ERROR)
+  }
+
+  if (!row || row.deleted_at) return signedOut('ไม่พบข้อมูลผู้ใช้')
+
+  if (!row.is_active) {
+    const ended = ['resigned', 'terminated', 'retired'].includes(row.employment_status)
+    await sb.auth.signOut()
+    return signedOut(ended ? 'บัญชีนี้สิ้นสุดการเป็นพนักงานแล้ว' : 'บัญชีของคุณยังไม่ได้รับการอนุมัติ')
+  }
+
+  // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
+  let seesDelivery = false
+  let jobFunctionCode: string | undefined
+  // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
+  let scheduleType: string | undefined
+  // เวลาทำงานของตำแหน่ง (ฝ่ายผลิต 04:00–15:00) — ไม่ตั้ง = เวลาปกติ 08:30/09:00
+  let jobWorkHours: { start: string; end: string } | null = null
+
+  // 3 เรื่องนี้ไม่ขึ้นต่อกัน — ยิงพร้อมกัน
+  const [jfRes, srpRes, webRes] = await Promise.all([
+    row.job_function_id
+      ? sb
+          .from('job_functions')
+          .select('sees_delivery, code, schedule_type, work_start_time, work_end_time')
+          .eq('id', row.job_function_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
     // เมนู SRP Calculator — เห็นเมื่อได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ)
-    let hasSrpAccess = row.role === 'admin'
-    if (!hasSrpAccess) {
-      const { count } = await sb
-        .from('srp_brand_access')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', row.id)
-      hasSrpAccess = (count ?? 0) > 0
-    }
-
+    row.role === 'admin'
+      ? Promise.resolve({ count: 1 })
+      : sb.from('srp_brand_access').select('id', { count: 'exact', head: true }).eq('user_id', row.id),
     // เมนูดูแลเว็บไซต์ลูกค้า — งานส่วนตัวของเจ้าของ ไม่ผูกกับ role
     // (แอดมินคนอื่นก็ไม่เห็น ต้องมีชื่อใน web_owners เท่านั้น)
-    const { count: webCount } = await sb
-      .from('web_owners')
-      .select('user_id', { count: 'exact', head: true })
-      .eq('user_id', row.id)
-    const hasWebAccess = (webCount ?? 0) > 0
+    sb.from('web_owners').select('user_id', { count: 'exact', head: true }).eq('user_id', row.id),
+  ])
 
-    // แอดมินสลับดูมุมมองสิทธิ์อื่นได้ (เครื่องมือทดสอบ) — จำลองแค่หน้าจอ ไม่ใช่สิทธิ์จริง
-    const real = {
-      ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
-      seesDelivery,
-      jobFunctionCode,
-      scheduleType,
-      jobWorkHours,
-      hasSrpAccess,
-      hasWebAccess,
+  const jf = jfRes.data
+  if (jf) {
+    seesDelivery = jf.sees_delivery ?? false
+    jobFunctionCode = jf.code ?? undefined
+    scheduleType = jf.schedule_type ?? undefined
+    if (jf.work_start_time && jf.work_end_time) {
+      jobWorkHours = { start: jf.work_start_time, end: jf.work_end_time }
     }
-    setState({
-      user: authUser,
-      userData: applyViewAs(real),
-      loading: false,
-      error: null,
-      realRole: real.role,
-    })
-  }, [])
+  }
+  const hasSrpAccess = (srpRes.count ?? 0) > 0
+  const hasWebAccess = (webRes.count ?? 0) > 0
 
-  useEffect(() => {
-    const sb = createClient()
-    let alive = true
-
-    sb.auth.getUser().then(({ data }) => {
-      if (alive) load(data.user)
-    })
-
-    const {
-      data: { subscription },
-    } = sb.auth.onAuthStateChange((_event, session) => {
-      if (alive) load(session?.user ?? null)
-    })
-
-    return () => {
-      alive = false
-      subscription.unsubscribe()
-    }
-  }, [load])
-
-  return state
+  // แอดมินสลับดูมุมมองสิทธิ์อื่นได้ (เครื่องมือทดสอบ) — จำลองแค่หน้าจอ ไม่ใช่สิทธิ์จริง
+  const real = {
+    ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
+    seesDelivery,
+    jobFunctionCode,
+    scheduleType,
+    jobWorkHours,
+    hasSrpAccess,
+    hasWebAccess,
+  }
+  return {
+    user: authUser,
+    userData: applyViewAs(real),
+    loading: false,
+    error: null,
+    realRole: real.role,
+  }
 }

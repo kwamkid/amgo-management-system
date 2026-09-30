@@ -8,6 +8,7 @@ import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import TodoZone from '@/components/dashboard/TodoZone';
 import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import HrInbox from '@/components/dashboard/HrInbox';
+import NotifySetupCard from '@/components/push/NotifySetupCard';
 import ProbationZone from '@/components/dashboard/ProbationZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
@@ -43,6 +44,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* ยังไม่มีเครื่องไหนเปิดแจ้งเตือน — ขึ้นบนสุดจนกว่าจะกดเปิด */}
+      <NotifySetupCard />
+
       {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ — ไม่มีอะไรค้างก็ไม่ขึ้น */}
       <TodoZone />
 

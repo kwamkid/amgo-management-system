@@ -8,10 +8,10 @@ import { isAuthorizedCron } from '@/lib/cron-auth'
  * ปิดกะให้คนที่ลืมเช็คเอาท์
  *
  * ตั้งเวลาเรียกที่ cron-job.org — ดู docs/cron.md
- *   ทุกวัน 23:59 น. (เวลาไทย) · ส่ง Authorization: Bearer <CRON_SECRET>
+ *   ทุกวัน 00:05 น. (เวลาไทย) · ส่ง Authorization: Bearer <CRON_SECRET>
  *
- * ชั่วโมงทำงานจะถูกตั้งเป็น 0 + hours_status = 'needs_review' ไม่ได้เดาให้
- * เพราะชั่วโมงคือเงิน — ดูเหตุผลเต็มใน lib/services/autoCheckoutService.ts
+ * ปิดทุกใบของเมื่อวานที่เวลาเลิกงานปกติ ไม่มี OT + hours_status = 'needs_review'
+ * — ดูเหตุผลเต็มใน lib/services/autoCheckoutService.ts
  */
 export async function GET(request: NextRequest) {
   try {
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       processed: result.processed,
+      skipped: result.skipped,
       errors: result.errors,
       timestamp: new Date().toISOString()
     })

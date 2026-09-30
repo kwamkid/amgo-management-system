@@ -14,19 +14,26 @@
 // ปกติไม่มีทางเกิน 1 วันงาน จึงบันทึกชั่วโมงได้โดยไม่เปิดช่องปั๊มชั่วโมง
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calculateWorkingHours, normalEndTime } from './workingHoursService'
+import { autoCheckoutTime, bangkokStartOfDay, calculateWorkingHours } from './workingHoursService'
 
-/** ลืมเช็คเอาท์เกินกี่ชั่วโมงถึงถือว่าลืมจริง (ไม่ใช่กะยาว) */
-const FORGOT_AFTER_HOURS = 12
+// ── ปิดทุกใบของเมื่อวาน (เจ้าของสั่ง 30 ก.ย. 69) ───────────────────────
+// เดิมกวาดเฉพาะใบที่เปิดค้างเกิน 12 ชม. ตอน 23:59 — คนเข้างานเย็นรอดตาข่าย
+// ค้างเป็น "อยู่ในกะ" ข้ามไปถึงวันรุ่งขึ้น (ดา 29 ก.ย. 69 เข้า 20:00 ยังค้างอยู่
+// ตอนสาย ๆ ของวันถัดไป) · ตอนนี้ cron รัน 00:05 แล้วปิดทุกใบที่เช็คอินก่อน
+// เที่ยงคืนวันนี้ตามเวลาไทย — เข้ากับเส้นแบ่ง "ลืม = ข้ามวัน" ของ isForgotCheckout
+//
+// ยกเว้นใบที่เวลาเลิกงานปกติยังมาไม่ถึง (กะข้ามคืนแท้ เช่น 22:00–06:00)
+// ปล่อยไว้ให้รอบคืนถัดไป ไม่งั้นจะไปตัดกะของคนที่ยังทำงานอยู่จริง
 
-export async function autoCheckoutPendingRecords(): Promise<{
+export async function autoCheckoutPendingRecords(now: Date = new Date()): Promise<{
   processed: number
+  skipped: number
   errors: string[]
 }> {
   const sb = createAdminClient()
   const errors: string[] = []
 
-  const cutoff = new Date(Date.now() - FORGOT_AFTER_HOURS * 3_600_000)
+  const todayStart = bangkokStartOfDay(now)
 
   // ของเดิมวน query วันนี้+เมื่อวานทีละวันเพราะเอกสารซ้อนตามวันที่
   // ตารางแบนหาได้ทีเดียวจากเวลาเช็คอิน
@@ -35,14 +42,15 @@ export async function autoCheckoutPendingRecords(): Promise<{
     .select('id, user_id, user_name, checkin_time, shift_end_time, shift_start_time, primary_location_id')
     .eq('status', 'checked-in')
     .is('checkout_time', null)
-    .lt('checkin_time', cutoff.toISOString())
+    .lt('checkin_time', todayStart.toISOString())
 
   if (error) throw new Error(`หากะที่ค้างไม่สำเร็จ: ${error.message}`)
-  if (!stale?.length) return { processed: 0, errors }
+  if (!stale?.length) return { processed: 0, skipped: 0, errors }
 
   console.log(`[ปิดกะอัตโนมัติ] เจอ ${stale.length} รายการ`)
 
   let processed = 0
+  let skipped = 0
 
   for (const rec of stale) {
     try {
@@ -59,9 +67,18 @@ export async function autoCheckoutPendingRecords(): Promise<{
         if (loc) breakHours = Number(loc.break_hours ?? 1)
       }
 
-      let checkoutTime = normalEndTime(checkinTime, rec.shift_end_time, breakHours, rec.shift_start_time)
-      // เช็คอินหลังเวลาเลิกงาน → เพดานอยู่ก่อนเวลาเข้า · บันทึกออกหลังเข้า 1 นาที (constraint) ชั่วโมงเป็น 0
-      if (checkoutTime <= checkinTime) checkoutTime = new Date(checkinTime.getTime() + 60_000)
+      const checkoutTime = autoCheckoutTime(
+        checkinTime,
+        rec.shift_start_time,
+        rec.shift_end_time,
+        breakHours,
+        now
+      )
+      // กะข้ามคืนที่ยังไม่ถึงเวลาเลิก — คนยังทำงานอยู่ รอรอบถัดไป
+      if (!checkoutTime) {
+        skipped++
+        continue
+      }
 
       const calc = calculateWorkingHours(
         checkinTime,
@@ -102,7 +119,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
         field: 'checkoutTime',
         old_value: null,
         new_value: checkoutTime.toISOString(),
-        reason: `ลืมเช็คเอาท์เกิน ${FORGOT_AFTER_HOURS} ชั่วโมง`,
+        reason: 'ลืมเช็คเอาท์ — ข้ามวันแล้วยังไม่ปิดกะ',
       })
 
       processed++
@@ -113,7 +130,7 @@ export async function autoCheckoutPendingRecords(): Promise<{
     }
   }
 
-  return { processed, errors }
+  return { processed, skipped, errors }
 }
 
 // เวลาเลิกงานปกติใช้ normalEndTime ตัวเดียวกับตอนพนักงานกดเช็คเอาท์เอง

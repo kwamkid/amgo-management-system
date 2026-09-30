@@ -583,6 +583,7 @@ export type Database = {
           checkout_lat: number | null
           checkout_lng: number | null
           checkout_note: string | null
+          checkout_reminded_at: string | null
           checkout_time: string | null
           created_at: string
           device_id: string | null
@@ -632,6 +633,7 @@ export type Database = {
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
+          checkout_reminded_at?: string | null
           checkout_time?: string | null
           created_at?: string
           device_id?: string | null
@@ -681,6 +683,7 @@ export type Database = {
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
+          checkout_reminded_at?: string | null
           checkout_time?: string | null
           created_at?: string
           device_id?: string | null
@@ -1423,6 +1426,8 @@ export type Database = {
           sort_order: number
           standard_hours_per_day: number
           updated_at: string
+          work_end_time: string | null
+          work_start_time: string | null
         }
         Insert: {
           code: string
@@ -1440,6 +1445,8 @@ export type Database = {
           sort_order?: number
           standard_hours_per_day?: number
           updated_at?: string
+          work_end_time?: string | null
+          work_start_time?: string | null
         }
         Update: {
           code?: string
@@ -1457,6 +1464,8 @@ export type Database = {
           sort_order?: number
           standard_hours_per_day?: number
           updated_at?: string
+          work_end_time?: string | null
+          work_start_time?: string | null
         }
         Relationships: [
           {
@@ -4741,6 +4750,10 @@ export type Database = {
       clamp_day: {
         Args: { p_day: number; p_month_start: string }
         Returns: string
+      }
+      checkout_reminders_due: {
+        Args: { p_now?: string }
+        Returns: { checkin_id: string; remind_at: string; user_id: string }[]
       }
       claim_checkout_time: {
         Args: { p_checkin_id: string; p_note?: string; p_time: string }

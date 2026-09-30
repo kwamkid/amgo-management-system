@@ -22,9 +22,11 @@ import {
   Copy,
   FileText,
   UserX,
+  type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { Skeleton } from '@/components/shared'
+import { Skeleton, SectionCard, StatCard } from '@/components/shared'
+import { Alert, Button, Card, CardHeader, CardTitle, Pill } from '@/components/aoo'
 import ForgotReviewList from '@/components/checkin/ForgotReviewList'
 import { fetchHrInbox, type HrInbox as Inbox, type PersonRef } from '@/lib/services/hrInboxService'
 
@@ -57,7 +59,7 @@ export default function HrInbox() {
   }, [isHr, load])
 
   if (loading || !isHr) return null
-  if (error) return <p className="mb-5 text-sm text-red-600">{error}</p>
+  if (error) return <Alert tone="error" className="mb-5">{error}</Alert>
   if (!data) return <Skeleton rows={4} />
 
   const claimed = data.forgot.filter((f) => f.claimed_checkout_time).length
@@ -67,30 +69,29 @@ export default function HrInbox() {
   return (
     <section className="mb-5 space-y-4">
       {/* ── รออนุมัติ ─────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <header className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-          <ClipboardList size={15} className="shrink-0 text-gray-500" />
-          <h2 className="text-sm font-semibold text-gray-900">
+      <Card padding={0} className="overflow-hidden">
+        <CardHeader>
+          <CardTitle icon={ClipboardList} tone={pendingTotal ? 'warning' : 'success'}>
             {pendingTotal ? `รออนุมัติ ${pendingTotal} รายการ` : 'ไม่มีอะไรรออนุมัติ'}
-          </h2>
-        </header>
+          </CardTitle>
+        </CardHeader>
 
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
           <Tile
             href="/leaves/management"
-            icon={<FileText size={18} />}
+            icon={FileText}
             label="ใบลา"
             count={data.leave_pending}
           />
           <Tile
             href="/leaves/swap/management"
-            icon={<CalendarSync size={18} />}
+            icon={CalendarSync}
             label="ใบสลับวันหยุด"
             count={data.swap_pending}
           />
           <Tile
             href="/checkin/pending"
-            icon={<Clock3 size={18} />}
+            icon={Clock3}
             label="ลืมเช็คเอาท์ รอตรวจ"
             count={data.forgot.length}
             sub={claimed ? `พนักงานแจ้งเวลาแล้ว ${claimed}` : undefined}
@@ -107,19 +108,19 @@ export default function HrInbox() {
             {data.forgot.length > FORGOT_PREVIEW && (
               <Link
                 href="/checkin/pending"
-                className="block py-2 text-center text-sm font-medium text-blue-700 hover:underline"
+                className="block py-2 text-center text-sm font-medium text-[var(--accent)] hover:underline"
               >
                 ดูทั้งหมด {data.forgot.length} ใบ
               </Link>
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── วันนี้ ────────────────────────────────────────────────── */}
       {data.absent_today.length > 0 && (
         <Group
-          icon={<UserX size={15} className="text-red-600" />}
+          icon={<UserX size={15} className="text-[var(--ruby-500)]" />}
           title={beforeStart ? 'ยังไม่เช็คอินวันนี้' : 'ขาดงานวันนี้'}
           hint={
             beforeStart
@@ -132,16 +133,15 @@ export default function HrInbox() {
 
       {/* ── ข้อมูลที่ยังขาด ───────────────────────────────────────── */}
       {(data.schedule_issues.length > 0 || data.no_push.length > 0) && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <header className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-            <CalendarClock size={15} className="shrink-0 text-gray-500" />
-            <h2 className="text-sm font-semibold text-gray-900">ข้อมูลที่ยังไม่ครบ</h2>
-          </header>
+        <Card padding={0} className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle icon={CalendarClock} tone="grape">ข้อมูลที่ยังไม่ครบ</CardTitle>
+          </CardHeader>
 
           {data.schedule_issues.length > 0 && (
             <div className="border-b border-gray-100 px-4 py-3 last:border-0">
               <div className="flex items-center gap-2">
-                <CalendarClock size={14} className="text-amber-600" />
+                <CalendarClock size={14} className="text-[var(--sun-700)]" />
                 <h3 className="text-sm font-medium text-gray-900">วันหยุดประจำไม่ชัด</h3>
                 <Count n={data.schedule_issues.length} />
               </div>
@@ -153,7 +153,7 @@ export default function HrInbox() {
                   <li key={p.user_id} className="text-sm">
                     <Link
                       href={`/employees/${p.user_id}/edit`}
-                      className="font-medium text-blue-700 hover:underline"
+                      className="font-medium text-[var(--accent)] hover:underline"
                     >
                       {p.name}
                     </Link>{' '}
@@ -167,7 +167,7 @@ export default function HrInbox() {
           {data.no_push.length > 0 && (
             <NoPush people={data.no_push} total={data.staff_total} />
           )}
-        </div>
+        </Card>
       )}
     </section>
   )
@@ -181,39 +181,21 @@ function Tile({
   sub,
 }: {
   href: string
-  icon: React.ReactNode
+  icon: LucideIcon
   label: string
   count: number
   sub?: string
 }) {
-  const hot = count > 0
+  // ค้าง = เหลือง (รอ) · ว่าง = เทา
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
-        hot
-          ? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
-          : 'border-gray-200 bg-white hover:bg-gray-50'
-      }`}
-    >
-      <span className={hot ? 'text-amber-700' : 'text-gray-400'}>{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm text-gray-700">{label}</span>
-        {sub && <span className="block text-xs font-medium text-blue-700">{sub}</span>}
-      </span>
-      <span className={`text-2xl font-bold ${hot ? 'text-amber-800' : 'text-gray-300'}`}>
-        {count}
-      </span>
+    <Link href={href} className="block">
+      <StatCard label={label} value={count} icon={icon} tone={count > 0 ? 'warning' : 'muted'} hint={sub} />
     </Link>
   )
 }
 
 function Count({ n }: { n: number }) {
-  return (
-    <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700">
-      {n} คน
-    </span>
-  )
+  return <Pill tone="neutral">{n} คน</Pill>
 }
 
 function Group({
@@ -228,24 +210,22 @@ function Group({
   people: PersonRef[]
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        <Count n={people.length} />
-      </div>
-      <p className="mt-0.5 text-xs text-gray-500">{hint}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
+    <SectionCard
+      title={
+        <span className="flex items-center gap-2">
+          {icon}
+          {title}
+          <Count n={people.length} />
+        </span>
+      }
+      description={hint}
+    >
+      <div className="flex flex-wrap gap-1.5">
         {people.map((p) => (
-          <span
-            key={p.user_id}
-            className="rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-gray-200"
-          >
-            {p.name}
-          </span>
+          <Pill key={p.user_id} tone="neutral">{p.name}</Pill>
         ))}
       </div>
-    </div>
+    </SectionCard>
   )
 }
 
@@ -274,24 +254,16 @@ function NoPush({ people, total }: { people: PersonRef[]; total: number }) {
         <h3 className="text-sm font-medium text-gray-900">ยังไม่ได้ติดตั้งแอป/เปิดแจ้งเตือน</h3>
         <Count n={people.length} />
         <span className="text-xs text-gray-500">จาก {total} คน</span>
-        <button
-          onClick={copy}
-          className="ml-auto flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
-        >
+        <Button variant="link" size="sm" onClick={copy} className="ml-auto">
           <Copy size={12} /> {copied ? 'คัดลอกแล้ว' : 'คัดลอกข้อความเตือน ส่งไลน์กลุ่ม'}
-        </button>
+        </Button>
       </div>
       <p className="mt-0.5 text-xs text-gray-500">
         คนกลุ่มนี้จะไม่ได้รับแจ้งเตือนใด ๆ จากระบบ — ข้อความที่คัดลอกมีลิงก์วิธีติดตั้งและรายชื่อให้แล้ว
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {people.map((p) => (
-          <span
-            key={p.user_id}
-            className="rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-gray-200"
-          >
-            {p.name}
-          </span>
+          <Pill key={p.user_id} tone="neutral">{p.name}</Pill>
         ))}
       </div>
     </div>

@@ -14,9 +14,9 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  AlertCircle,
   RefreshCw,
-  Check
+  Check,
+  Share2
 } from 'lucide-react'
 import { 
   SocialChannel, 
@@ -28,7 +28,8 @@ import {
   validateSocialMediaUrl,
   extractUsernameFromUrl
 } from '@/lib/influencer/socialFetchers'
-import { Label, Input, Alert, Pill, Card, Button, Select } from '@/components/aoo'
+import { Input, Field, SelectMenu, Alert, Pill, Card, CardTitle, Button, IconButton, Spinner } from '@/components/aoo'
+import { ListRows, ListRow } from '@/components/shared'
 interface SocialChannelManagerProps {
   channels: SocialChannel[]
   onChange: (channels: SocialChannel[]) => void
@@ -148,64 +149,64 @@ export default function SocialChannelManager({
     return count.toString()
   }
 
+  const resetForm = () => {
+    setShowAddForm(false)
+    setNewChannel({
+      platform: 'instagram' as SocialPlatform,
+      profileUrl: '',
+      followerCount: undefined
+    })
+    setUrlError('')
+  }
+
   return (
     <div className="space-y-4">
       {/* Channel List */}
       {channels.length > 0 && (
-        <div className="space-y-3">
+        <ListRows variant="boxed">
           {channels.map((channel) => {
             const Icon = PLATFORM_ICONS[channel.platform]
             const platformInfo = PLATFORM_INFO[channel.platform]
-            
+
             return (
-              <Card key={channel.id} className="p-4">
-                <div className="flex items-start gap-4">
-                  {/* Platform Icon */}
-                  <div 
-                    className="p-2 rounded-lg"
-                    style={{ backgroundColor: `${platformInfo.color}20` }}
-                  >
-                    <Icon 
-                      className="w-5 h-5" 
-                      style={{ color: platformInfo.color }}
-                    />
+              <ListRow
+                key={channel.id}
+                leading={
+                  // สีแบรนด์ของแต่ละแพลตฟอร์ม — ค่าจากข้อมูล จึงยังเป็น style
+                  <div className="p-2 rounded-lg" style={{ backgroundColor: `${platformInfo.color}20` }}>
+                    <Icon className="w-5 h-5" style={{ color: platformInfo.color }} />
                   </div>
-
-                  {/* Channel Info */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">
-                        {platformInfo.name}
-                      </span>
-                      {channel.isVerified && (
-                        <Pill tone="info" className="text-xs">
-                          <Check className="w-3 h-3 mr-1" />
-                          Verified
-                        </Pill>
-                      )}
-                      {channel.username && (
-                        <span className="text-sm text-gray-500">
-                          @{channel.username}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={channel.profileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                      >
-                        {channel.profileUrl}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
+                }
+                title={
+                  <span className="flex items-center gap-2">
+                    {platformInfo.name}
+                    {channel.isVerified && (
+                      <Pill tone="info">
+                        <Check className="w-3 h-3" />
+                        Verified
+                      </Pill>
+                    )}
+                    {channel.username && (
+                      <span className="text-sm font-normal text-gray-500">@{channel.username}</span>
+                    )}
+                  </span>
+                }
+                meta={
+                  <div className="space-y-2 pt-1">
+                    <a
+                      href={channel.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline flex items-center gap-1 break-all"
+                    >
+                      {channel.profileUrl}
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                    </a>
 
                     {/* Follower Count */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm">Followers:</Label>
+                        <span className="text-sm text-gray-600">Followers:</span>
                         {!disabled ? (
                           <Input
                             type="number"
@@ -214,7 +215,7 @@ export default function SocialChannelManager({
                               followerCount: parseInt(e.target.value) || undefined
                             })}
                             placeholder="0"
-                            className="w-32 h-8"
+                            className="w-32"
                             disabled={disabled}
                           />
                         ) : (
@@ -223,7 +224,7 @@ export default function SocialChannelManager({
                           </span>
                         )}
                       </div>
-                      
+
                       {channel.lastFetched && (
                         <span className="text-xs text-gray-500">
                           อัพเดท: {new Date(channel.lastFetched).toLocaleDateString('th-TH')}
@@ -231,54 +232,46 @@ export default function SocialChannelManager({
                       )}
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  {!disabled && (
-                    <Button onClick={() => handleRemoveChannel(channel.id!)}
- variant="ghost"
- size="sm">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </Card>
+                }
+                trailing={
+                  !disabled ? (
+                    <IconButton
+                      icon={Trash2}
+                      title="ลบช่องทาง"
+                      tone="danger"
+                      onClick={() => handleRemoveChannel(channel.id!)}
+                    />
+                  ) : undefined
+                }
+              />
             )
           })}
-        </div>
+        </ListRows>
       )}
 
       {/* Add New Channel Form */}
       {showAddForm ? (
-        <Card className="p-4 border-2">
+        <Card>
           <div className="space-y-4">
-            <h4 className="font-medium text-gray-900">เพิ่มช่องทาง Social Media</h4>
-            
+            <CardTitle icon={Share2} tone="info">เพิ่มช่องทาง Social Media</CardTitle>
+
             {/* Platform Select */}
-            <div>
-              <Label>Platform</Label>
-              <Select
-                value={newChannel.platform}
-                onChange={(e) => ((value) => {
+            <Field label="Platform" asDiv>
+              <SelectMenu
+                size="md"
+                value={newChannel.platform ?? null}
+                options={Object.entries(PLATFORM_INFO).map(([key, info]) => ({ value: key, label: info.name }))}
+                onChange={(value) => {
+                  if (!value) return
                   setNewChannel({ ...newChannel, platform: value as SocialPlatform })
                   setUrlError('')
-                })(e.target.value)}
+                }}
                 disabled={disabled}
-              >
-                
-                
-                  {Object.entries(PLATFORM_INFO).map(([key, info]) => {
-                    const Icon = PLATFORM_ICONS[key as SocialPlatform]
-                    return (
-                      <option key={key} value={key}>{info.name}</option>
-                    )
-                  })}
-                
-              </Select>
-            </div>
+              />
+            </Field>
 
             {/* Profile URL */}
-            <div>
-              <Label>Profile URL</Label>
+            <Field label="Profile URL" asDiv error={urlError || undefined}>
               <div className="flex gap-2">
                 <Input
                   type="url"
@@ -289,75 +282,73 @@ export default function SocialChannelManager({
                   }}
                   placeholder={`เช่น: instagram.com/username`}
                   disabled={disabled || fetchingData}
-                  className={urlError ? 'border-red-500' : ''}
+                  error={!!urlError}
+                  className="flex-1"
                 />
                 {SocialMediaFetcherFactory.canFetch(newChannel.platform!) && (
-                  <Button type="button" variant="soft" size="sm" disabled={!newChannel.profileUrl || fetchingData} title="ดึงข้อมูลอัตโนมัติ">
-                    <RefreshCw className={`w-4 h-4 ${fetchingData ? 'animate-spin' : ''}`} />
-                  </Button>
+                  fetchingData ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <IconButton
+                      icon={RefreshCw}
+                      tone="sunken"
+                      size={40}
+                      disabled={!newChannel.profileUrl}
+                      title="ดึงข้อมูลอัตโนมัติ"
+                    />
+                  )
                 )}
               </div>
-              {urlError && (
-                <p className="text-sm text-red-600 mt-1">{urlError}</p>
-              )}
-            </div>
+            </Field>
 
             {/* Follower Count (Manual) */}
-            <div>
-              <Label>จำนวน Followers</Label>
+            <Field label="จำนวน Followers" help="กรอกจำนวน followers ปัจจุบัน">
               <Input
                 type="number"
                 value={newChannel.followerCount || ''}
-                onChange={(e) => setNewChannel({ 
-                  ...newChannel, 
-                  followerCount: parseInt(e.target.value) || undefined 
+                onChange={(e) => setNewChannel({
+                  ...newChannel,
+                  followerCount: parseInt(e.target.value) || undefined
                 })}
                 placeholder="0"
                 disabled={disabled || fetchingData}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                กรอกจำนวน followers ปัจจุบัน
-              </p>
-            </div>
+            </Field>
 
             {/* Auto-fetch info */}
             {!SocialMediaFetcherFactory.canFetch(newChannel.platform!) && (
               <Alert tone="info">
-                <div className="text-sm">
-                  ระบบยังไม่รองรับการดึงข้อมูลอัตโนมัติสำหรับ {PLATFORM_INFO[newChannel.platform!].name}
-                  กรุณากรอกข้อมูลด้วยตนเอง
-                </div>
+                ระบบยังไม่รองรับการดึงข้อมูลอัตโนมัติสำหรับ {PLATFORM_INFO[newChannel.platform!].name}
+                กรุณากรอกข้อมูลด้วยตนเอง
               </Alert>
             )}
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button onClick={handleAddChannel} disabled={disabled || fetchingData || !newChannel.profileUrl} className="-">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button
+                type="button"
+                icon="Plus"
+                loading={fetchingData}
+                onClick={handleAddChannel}
+                disabled={disabled || !newChannel.profileUrl}
+              >
                 เพิ่ม
               </Button>
-              <Button onClick={() => {
- setShowAddForm(false)
- setNewChannel({
- platform: 'instagram' as SocialPlatform,
- profileUrl: '',
- followerCount: undefined
- })
- setUrlError('')
- }}
- variant="secondary"
- disabled={fetchingData}>
+              <Button type="button" variant="secondary" onClick={resetForm} disabled={fetchingData}>
                 ยกเลิก
               </Button>
             </div>
           </div>
         </Card>
       ) : (
-        <Button onClick={() => setShowAddForm(true)}
- variant="secondary"
- disabled={disabled}
- className="w-full border-2">
-          <Plus className="w-4 h-4 mr-2" />
+        <Button
+          type="button"
+          variant="secondary"
+          icon="Plus"
+          onClick={() => setShowAddForm(true)}
+          disabled={disabled}
+          className="w-full"
+        >
           เพิ่มช่องทาง Social Media
         </Button>
       )}

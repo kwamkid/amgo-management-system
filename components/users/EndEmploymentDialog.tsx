@@ -12,7 +12,8 @@
 // (ฐานข้อมูลบังคับไว้ด้วย constraint ended_needs_end_date)
 
 import { useState } from 'react'
-import { Modal, Button, SelectMenu, DatePicker, toIso } from '@/components/aoo'
+import { Modal, Button, SelectMenu, DatePicker, toIso, Field, Input } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
 import { updateUser } from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
 import type { User } from '@/types/user'
@@ -80,50 +81,42 @@ export default function EndEmploymentDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={saving}>
             ยกเลิก
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
+          <Button variant="primary" onClick={handleSave} loading={saving}>
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">เหตุผล</label>
+        <Field label="เหตุผล" help={selected?.hint} asDiv>
           <SelectMenu
             size="md"
             value={status}
             options={REASONS.map((r) => ({ value: r.value, label: r.label }))}
             onChange={setStatus}
           />
-          {selected && <p className="mt-1.5 text-xs text-gray-500">{selected.hint}</p>}
-        </div>
+        </Field>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            วันสุดท้ายที่ทำงาน
-          </label>
+        <Field
+          label="วันสุดท้ายที่ทำงาน"
+          help="รายงานจะนับถึงวันนี้เท่านั้น หลังจากนั้นไม่ถือว่าขาดงาน"
+          asDiv
+        >
           <DatePicker value={endDate} onChange={setEndDate} />
-          <p className="mt-1.5 text-xs text-gray-500">
-            รายงานจะนับถึงวันนี้เท่านั้น หลังจากนั้นไม่ถือว่าขาดงาน
-          </p>
-        </div>
+        </Field>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            หมายเหตุ <span className="font-normal text-gray-400">(ไม่บังคับ)</span>
-          </label>
-          <input
+        <Field label="หมายเหตุ (ไม่บังคับ)">
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="เช่น ย้ายไปทำงานที่อื่น"
-            className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-red-400"
           />
-        </div>
+        </Field>
 
-        <p className="rounded-lg bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">
+        <InfoPanel className="text-xs leading-relaxed text-gray-600">
           พนักงานจะเข้าระบบไม่ได้ตั้งแต่บันทึก แต่ประวัติเช็คอินและใบลาทั้งหมดยังอยู่ครบ
           และยังขึ้นในรายงานย้อนหลังตามปกติ
-        </p>
+        </InfoPanel>
       </div>
     </Modal>
   )

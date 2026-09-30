@@ -7,11 +7,19 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calculator, Pencil, Plus, Users } from 'lucide-react'
+import { Calculator, Pencil, Users } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Input, Modal, SelectMenu } from '@/components/aoo'
-import { PageHeader, SectionCard, Segmented, TechLoader, UserAvatar } from '@/components/shared'
+import { Button, EmptyState, Field, IconButton, Input, Modal, Pill, SelectMenu } from '@/components/aoo'
+import {
+  ListRow,
+  ListRows,
+  PageHeader,
+  SectionCard,
+  Segmented,
+  TechLoader,
+  UserAvatar,
+} from '@/components/shared'
 import {
   getSrpBrands,
   getSrpBrandAccess,
@@ -159,17 +167,20 @@ export default function SrpBrandsPage() {
         description="เครื่องคิดราคาขายปลีกสินค้านำเข้า — เลือกแบรนด์เพื่อดูสินค้าและราคา"
         actions={
           isAdmin ? (
-            <Button type="button" onClick={() => setDraft(draftFrom())}>
-              <Plus size={16} className="mr-1" /> เพิ่มแบรนด์
+            <Button type="button" icon="Plus" onClick={() => setDraft(draftFrom())}>
+              เพิ่มแบรนด์
             </Button>
           ) : undefined
         }
       />
 
       {brands.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-          ยังไม่มีแบรนด์ที่คุณมีสิทธิ์เข้าถึง — ติดต่อผู้ดูแลระบบ
-        </div>
+        <SectionCard>
+          <EmptyState
+            icon={<Calculator size={28} />}
+            body="ยังไม่มีแบรนด์ที่คุณมีสิทธิ์เข้าถึง — ติดต่อผู้ดูแลระบบ"
+          />
+        </SectionCard>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -200,12 +211,8 @@ export default function SrpBrandsPage() {
               </button>
               {isAdmin && (
                 <div className="flex shrink-0 gap-1">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => openAccess(b)} title="สิทธิ์การเข้าถึง">
-                    <Users size={15} />
-                  </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setDraft(draftFrom(b))} title="แก้ไขแบรนด์">
-                    <Pencil size={15} />
-                  </Button>
+                  <IconButton icon={Users} onClick={() => openAccess(b)} title="สิทธิ์การเข้าถึง" />
+                  <IconButton icon={Pencil} onClick={() => setDraft(draftFrom(b))} title="แก้ไขแบรนด์" />
                 </div>
               )}
             </div>
@@ -225,7 +232,7 @@ export default function SrpBrandsPage() {
               <Button type="button" variant="ghost" onClick={() => setDraft(null)} disabled={saving}>
                 ยกเลิก
               </Button>
-              <Button type="button" onClick={submitBrand} disabled={saving}>
+              <Button type="button" onClick={submitBrand} loading={saving}>
                 {saving ? 'กำลังบันทึก…' : 'บันทึก'}
               </Button>
             </>
@@ -277,15 +284,14 @@ export default function SrpBrandsPage() {
                   ['platformMarkupPct', 'Markup ราคา platform %'],
                 ] as const
               ).map(([key, label]) => (
-                <label key={key} className="block">
-                  <span className="mb-1 block text-xs font-semibold text-gray-500">{label}</span>
+                <Field key={key} label={label}>
                   <Input
                     type="number"
                     inputMode="decimal"
                     value={draft[key]}
                     onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
                   />
-                </label>
+                </Field>
               ))}
             </div>
           </div>
@@ -302,38 +308,40 @@ export default function SrpBrandsPage() {
           maxWidth={460}
         >
           <div className="space-y-3">
-            <div className="divide-y divide-gray-100">
-              {accessList.length === 0 && (
-                <p className="py-2 text-sm text-gray-400">ยังไม่มีใครได้รับสิทธิ์แบรนด์นี้</p>
-              )}
-              {accessList.map((a) => (
-                <div key={a.id} className="flex items-center gap-2 py-2 text-sm">
-                  <UserAvatar name={a.userName || '?'} userId={a.userId} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-gray-800">{a.userName}</span>
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
-                      a.role === 'editor' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {a.role === 'editor' ? 'แก้ได้' : 'ดูอย่างเดียว'}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-xs text-gray-400 hover:text-red-600"
-                    onClick={async () => {
-                      await revokeSrpAccess(a.id)
-                      setAccessList(await getSrpBrandAccess(accessBrand.id))
-                    }}
-                  >
-                    ถอน
-                  </button>
-                </div>
-              ))}
-            </div>
+            {accessList.length === 0 ? (
+              <EmptyState size="sm" icon={<Users size={24} />} body="ยังไม่มีใครได้รับสิทธิ์แบรนด์นี้" />
+            ) : (
+              <ListRows>
+                {accessList.map((a) => (
+                  <ListRow
+                    key={a.id}
+                    leading={<UserAvatar name={a.userName || '?'} userId={a.userId} size="sm" />}
+                    title={a.userName}
+                    trailing={
+                      <>
+                        <Pill tone={a.role === 'editor' ? 'warning' : 'neutral'}>
+                          {a.role === 'editor' ? 'แก้ได้' : 'ดูอย่างเดียว'}
+                        </Pill>
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          onClick={async () => {
+                            await revokeSrpAccess(a.id)
+                            setAccessList(await getSrpBrandAccess(accessBrand.id))
+                          }}
+                        >
+                          ถอน
+                        </Button>
+                      </>
+                    }
+                  />
+                ))}
+              </ListRows>
+            )}
 
             <div className="flex items-end gap-2 border-t border-gray-100 pt-3">
-              <div className="min-w-0 flex-1">
-                <span className="mb-1 block text-xs font-semibold text-gray-500">เพิ่มคน</span>
+              <Field asDiv label="เพิ่มคน" className="min-w-0 flex-1">
                 <SelectMenu
                   value={newUserId}
                   options={people
@@ -343,7 +351,7 @@ export default function SrpBrandsPage() {
                   placeholder="เลือกพนักงาน"
                   size="md"
                 />
-              </div>
+              </Field>
               <Segmented
                 value={newRole}
                 onChange={(v) => setNewRole(v as 'viewer' | 'editor')}
@@ -352,7 +360,7 @@ export default function SrpBrandsPage() {
                   { value: 'editor', label: 'แก้ได้' },
                 ]}
               />
-              <Button type="button" onClick={grant} disabled={saving || !newUserId}>
+              <Button type="button" onClick={grant} loading={saving} disabled={!newUserId}>
                 ให้สิทธิ์
               </Button>
             </div>

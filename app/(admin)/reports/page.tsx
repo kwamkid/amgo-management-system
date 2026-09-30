@@ -11,16 +11,16 @@ import {
   FileText
 } from 'lucide-react'
 import Link from 'next/link'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatCard } from '@/components/shared'
 
-import { Pill, badgeTone, Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Pill, Card, CardContent, CardDescription, CardHeader, CardTitle, type CardTone } from '@/components/aoo'
 const reportMenuItems = [
   {
     title: 'รายงานการเข้างาน',
     description: 'ตรวจสอบเวลาเข้า-ออก สรุปชั่วโมงทำงาน และ Export Excel',
     icon: Clock,
     href: '/reports/checkin',
-    color: 'from-blue-500 to-cyan-600',
+    tone: 'sky' as CardTone,
     badge: 'พร้อมใช้งาน',
     badgeVariant: 'success' as const
   },
@@ -29,7 +29,7 @@ const reportMenuItems = [
     description: 'สรุปวันลา โควต้าคงเหลือ และประวัติการลา',
     icon: Calendar,
     href: '/reports/leave',
-    color: 'from-purple-500 to-pink-600',
+    tone: 'grape' as CardTone,
     badge: 'เร็วๆ นี้',
     badgeVariant: 'secondary' as const
   },
@@ -38,7 +38,7 @@ const reportMenuItems = [
     description: 'ข้อมูลพนักงาน สถิติการทำงาน และประสิทธิภาพ',
     icon: Users,
     href: '/reports/employee',
-    color: 'from-green-500 to-emerald-600',
+    tone: 'success' as CardTone,
     badge: 'เร็วๆ นี้',
     badgeVariant: 'secondary' as const
   },
@@ -47,7 +47,7 @@ const reportMenuItems = [
     description: 'ภาพรวมองค์กร กราฟ และสถิติสำคัญ',
     icon: TrendingUp,
     href: '/reports/dashboard',
-    color: 'from-orange-500 to-red-600',
+    tone: 'accent' as CardTone,
     badge: 'เร็วๆ นี้',
     badgeVariant: 'secondary' as const
   },
@@ -56,7 +56,7 @@ const reportMenuItems = [
     description: 'สรุปแคมเปญ ผลงาน และประสิทธิภาพ',
     icon: UserCheck,
     href: '/reports/influencer',
-    color: 'from-indigo-500 to-purple-600',
+    tone: 'pink' as CardTone,
     badge: 'เร็วๆ นี้',
     badgeVariant: 'secondary' as const
   },
@@ -65,7 +65,7 @@ const reportMenuItems = [
     description: 'รายงานเพิ่มเติม Custom Reports',
     icon: FileText,
     href: '/reports/custom',
-    color: 'from-gray-500 to-slate-600',
+    tone: 'muted' as CardTone,
     badge: 'เร็วๆ นี้',
     badgeVariant: 'secondary' as const
   }
@@ -83,7 +83,6 @@ export default function ReportsPage() {
       {/* Report Menu Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reportMenuItems.map((item) => {
-          const Icon = item.icon
           const isActive = item.badgeVariant === 'success'
           
           return (
@@ -92,33 +91,16 @@ export default function ReportsPage() {
               href={isActive ? item.href : '#'}
               className={!isActive ? 'pointer-events-none' : ''}
             >
-              <Card padding={0} className={` relative overflow-hidden transition-all duration-300 group ${isActive ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' : 'opacity-75'} `}>
-                {/* Gradient Background */}
-                <div 
-                  className={`
-                    absolute inset-0 bg-gradient-to-br ${item.color} opacity-5
-                    ${isActive ? 'group-hover:opacity-10' : ''}
-                  `}
-                />
-                
+              <Card padding={0} hoverable={isActive} className={isActive ? undefined : 'opacity-75'}>
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div 
-                      className={`
-                        p-3 rounded-lg bg-gradient-to-br ${item.color} 
-                        text-white shadow-lg
-                      `}
-                    >
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <Pill tone={badgeTone(item.badgeVariant)}>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle icon={item.icon} tone={item.tone}>
+                      {item.title}
+                    </CardTitle>
+                    <Pill tone={isActive ? 'success' : 'neutral'}>
                       {item.badge}
                     </Pill>
                   </div>
-                  
-                  <CardTitle className="mt-4 text-lg">
-                    {item.title}
-                  </CardTitle>
                   <CardDescription>
                     {item.description}
                   </CardDescription>
@@ -139,60 +121,11 @@ export default function ReportsPage() {
       </div>
       
       {/* Quick Stats */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">รายงานทั้งหมด</p>
-                <p className="text-2xl font-bold">6</p>
-              </div>
-              <FileSpreadsheet className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">พร้อมใช้งาน</p>
-                <p className="text-2xl font-bold text-green-600">1</p>
-              </div>
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">กำลังพัฒนา</p>
-                <p className="text-2xl font-bold text-orange-600">5</p>
-              </div>
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-orange-500 rounded-full" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Export วันนี้</p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                <ArrowRight className="w-4 h-4 text-gray-500 rotate-90" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <StatCard label="รายงานทั้งหมด" value={6} icon={FileSpreadsheet} tone="grape" />
+        <StatCard label="พร้อมใช้งาน" value={1} tone="success" />
+        <StatCard label="กำลังพัฒนา" value={5} tone="warning" />
+        <StatCard label="Export วันนี้" value={0} icon={ArrowRight} tone="sky" />
       </div>
     </div>
   )

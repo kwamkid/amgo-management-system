@@ -5,13 +5,13 @@
 // ต่างจากระบบเก่าจุดเดียว (ตั้งใจ): เดิม insert ดื้อ ๆ อัพซ้ำ = สินค้าซ้ำ
 // ตอนนี้จับคู่ด้วย SKU — มีอยู่แล้วอัพเดต ไม่มีค่อยสร้างใหม่
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { FileUp, Upload } from 'lucide-react'
+import { FileUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Button, Textarea } from '@/components/aoo'
-import { PageHeader, SectionCard, TechLoader } from '@/components/shared'
+import { DataTable, PageHeader, SectionCard, TechLoader, type Column } from '@/components/shared'
 import { parseExcel, parseTSV, type ParsedProduct } from '@/lib/services/srp/parseExcel'
 import { getSrpBrand, upsertSrpProductsBySku } from '@/lib/services/srp/srpService'
 import { useEffect } from 'react'
@@ -28,6 +28,7 @@ export default function SrpUploadPage() {
   const [rows, setRows] = useState<ParsedProduct[]>([])
   const [pasted, setPasted] = useState('')
   const [saving, setSaving] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const canSee = !!userData && (userData.role === 'admin' || userData.hasSrpAccess)
 
@@ -91,6 +92,37 @@ export default function SrpUploadPage() {
     }
   }
 
+  const previewColumns: Column<ParsedProduct>[] = [
+    { key: 'no', header: '#', cell: (_, i) => <span className="text-gray-400">{i + 1}</span> },
+    {
+      key: 'name',
+      header: 'สินค้า',
+      mobilePrimary: true,
+      cell: (r) => <span className="block max-w-sm truncate">{r.name}</span>,
+    },
+    { key: 'sku', header: 'SKU', cell: (r) => <span className="text-gray-500">{r.sku}</span> },
+    {
+      key: 'fob',
+      header: 'FOB',
+      align: 'right',
+      cell: (r) => (
+        <span className="tabular-nums">
+          {r.fob_usd ? `$${r.fob_usd}` : r.fob_eur ? `€${r.fob_eur}` : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'srp',
+      header: 'SRP',
+      align: 'right',
+      cell: (r) => (
+        <span className="tabular-nums">
+          {r.srp_usd ? `$${r.srp_usd}` : r.srp_eur ? `€${r.srp_eur}` : '—'}
+        </span>
+      ),
+    },
+  ]
+
   if (!userData) return <TechLoader />
   if (!canSee) return null
 
@@ -110,29 +142,30 @@ export default function SrpUploadPage() {
 
       <SectionCard title="1 · เลือกไฟล์ หรือวางข้อความ">
         <div className="space-y-3">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">
-            <Upload size={15} /> เลือกไฟล์ (.xlsx / .xls / .csv)
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (!f) return
-                const reader = new FileReader()
-                reader.onload = () => {
-                  try {
-                    const parsed = parseExcel(reader.result as ArrayBuffer, brand?.defaultMultiplier ?? 3)
-                    setRows(parsed)
-                    if (!parsed.length) showToast('อ่านไฟล์ได้แต่ไม่เจอสินค้า — เช็คว่าแถวแรกเป็นหัวตาราง', 'error')
-                  } catch {
-                    showToast('อ่านไฟล์ไม่สำเร็จ', 'error')
-                  }
+          <Button type="button" variant="secondary" icon="UploadCloud" onClick={() => fileRef.current?.click()}>
+            เลือกไฟล์ (.xlsx / .xls / .csv)
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              const reader = new FileReader()
+              reader.onload = () => {
+                try {
+                  const parsed = parseExcel(reader.result as ArrayBuffer, brand?.defaultMultiplier ?? 3)
+                  setRows(parsed)
+                  if (!parsed.length) showToast('อ่านไฟล์ได้แต่ไม่เจอสินค้า — เช็คว่าแถวแรกเป็นหัวตาราง', 'error')
+                } catch {
+                  showToast('อ่านไฟล์ไม่สำเร็จ', 'error')
                 }
-                reader.readAsArrayBuffer(f)
-              }}
-            />
-          </label>
+              }
+              reader.readAsArrayBuffer(f)
+            }}
+          />
 
           <Textarea
             value={pasted}
@@ -154,38 +187,11 @@ export default function SrpUploadPage() {
 
       {rows.length > 0 && (
         <SectionCard title={`2 · ตรวจก่อนนำเข้า (${rows.length.toLocaleString()} รายการ)`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-xs text-gray-400">
-                  <th className="py-1 pr-2">#</th>
-                  <th className="py-1 pr-2">สินค้า</th>
-                  <th className="py-1 pr-2">SKU</th>
-                  <th className="py-1 pr-2 text-right">FOB</th>
-                  <th className="py-1 text-right">SRP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.slice(0, 20).map((r, i) => (
-                  <tr key={i} className="border-t border-gray-50">
-                    <td className="py-1 pr-2 text-gray-400">{i + 1}</td>
-                    <td className="max-w-sm truncate py-1 pr-2">{r.name}</td>
-                    <td className="py-1 pr-2 text-gray-500">{r.sku}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">
-                      {r.fob_usd ? `$${r.fob_usd}` : r.fob_eur ? `€${r.fob_eur}` : '—'}
-                    </td>
-                    <td className="py-1 text-right tabular-nums">
-                      {r.srp_usd ? `$${r.srp_usd}` : r.srp_eur ? `€${r.srp_eur}` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {rows.length > 20 && (
-              <p className="mt-1 text-xs text-gray-400">…และอีก {rows.length - 20} รายการ</p>
-            )}
-          </div>
-          <Button type="button" className="mt-3 h-11 w-full" onClick={save} disabled={saving}>
+          <DataTable columns={previewColumns} rows={rows.slice(0, 20)} rowKey={(_, i) => String(i)} />
+          {rows.length > 20 && (
+            <p className="mt-1 text-xs text-gray-400">…และอีก {rows.length - 20} รายการ</p>
+          )}
+          <Button type="button" size="lg" className="mt-3 w-full" onClick={save} loading={saving}>
             {saving ? 'กำลังนำเข้า…' : `นำเข้า ${rows.length.toLocaleString()} รายการ`}
           </Button>
         </SectionCard>

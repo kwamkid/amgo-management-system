@@ -6,17 +6,14 @@ import { useState } from 'react'
 import { 
   Users, 
   UserPlus, 
-  Search, 
   Shield, 
   Building,
   CheckCircle,
   XCircle,
-  Clock,
-  AlertCircle
+  Clock
 } from 'lucide-react'
-import { gradients } from '@/lib/theme/colors'
-import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { PageHeader, StatCard, FilterBar, ListRows, ListRow } from '@/components/shared'
+import { Button as AooButton, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
 export default function UsersSettingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -43,148 +40,79 @@ export default function UsersSettingsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ผู้ใช้ทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl`}>
-                <Users className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ใช้งาน</p>
-                <p className="text-2xl font-bold text-teal-600 mt-1">{stats.active}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl`}>
-                <CheckCircle className="w-6 h-6 text-teal-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">รออนุมัติ</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{stats.pending}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl`}>
-                <Clock className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ระงับใช้งาน</p>
-                <p className="text-2xl font-bold text-gray-500 mt-1">{stats.inactive}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.grayLight} rounded-xl`}>
-                <XCircle className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="ผู้ใช้ทั้งหมด" value={stats.total} icon={Users} tone="grape" />
+        <StatCard label="ใช้งาน" value={stats.active} icon={CheckCircle} tone="success" />
+        <StatCard label="รออนุมัติ" value={stats.pending} icon={Clock} tone="warning" />
+        <StatCard label="ระงับใช้งาน" value={stats.inactive} icon={XCircle} tone="muted" />
       </div>
 
       {/* Search Bar */}
-      <Card padding={0}>
-        <CardContent className="p-6">
-          <div className="relative">
-                        <Input
-              prefix={<Search size={16} />}
-              type="text"
-              placeholder="ค้นหาด้วยชื่อ, อีเมล หรือเบอร์โทร..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar
+        search={searchTerm}
+        onSearch={setSearchTerm}
+        placeholder="ค้นหาด้วยชื่อ, อีเมล หรือเบอร์โทร..."
+        sticky={false}
+      />
 
       {/* Coming Soon Notice */}
-      <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.primaryLight}`}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-900">
-            <AlertCircle className="w-5 h-5" />
-            กำลังพัฒนา
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-red-800">
-            ฟีเจอร์จัดการผู้ใช้กำลังอยู่ในช่วงการพัฒนา คาดว่าจะเปิดใช้งานได้ในเร็วๆ นี้
-          </p>
-          <div className="mt-4 space-y-2">
-            <p className="text-sm text-red-700 font-medium">ฟีเจอร์ที่กำลังพัฒนา:</p>
-            <ul className="space-y-1 text-sm text-red-700">
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>ดูรายละเอียดผู้ใช้ทั้งหมด</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>แก้ไขข้อมูลและสิทธิ์ผู้ใช้</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>อนุมัติ/ปฏิเสธผู้ใช้ใหม่</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>ระงับ/เปิดใช้งานบัญชี</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>กำหนดสถานที่ทำงานและทีม</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>Export รายชื่อพนักงาน</span>
-              </li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      <Alert tone="warning" title="กำลังพัฒนา">
+        <p>ฟีเจอร์จัดการผู้ใช้กำลังอยู่ในช่วงการพัฒนา คาดว่าจะเปิดใช้งานได้ในเร็วๆ นี้</p>
+        <div className="mt-4 space-y-2">
+          <p className="font-medium">ฟีเจอร์ที่กำลังพัฒนา:</p>
+          <ul className="space-y-1">
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>ดูรายละเอียดผู้ใช้ทั้งหมด</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>แก้ไขข้อมูลและสิทธิ์ผู้ใช้</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>อนุมัติ/ปฏิเสธผู้ใช้ใหม่</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>ระงับ/เปิดใช้งานบัญชี</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>กำหนดสถานที่ทำงานและทีม</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span>•</span>
+              <span>Export รายชื่อพนักงาน</span>
+            </li>
+          </ul>
+        </div>
+      </Alert>
 
       {/* Mock User List */}
       <Card padding={0} className="opacity-50">
         <CardHeader>
-          <CardTitle>รายชื่อผู้ใช้</CardTitle>
+          <CardTitle icon={Users} tone="grape">รายชื่อผู้ใช้</CardTitle>
           <CardDescription>แสดงรายชื่อผู้ใช้ทั้งหมดในระบบ</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <ListRows variant="boxed">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-300 rounded-full animate-pulse" />
-                  <div>
-                    <div className="h-4 w-32 bg-gray-300 rounded animate-pulse mb-1" />
-                    <div className="h-3 w-48 bg-gray-200 rounded animate-pulse" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Pill tone="neutral">Loading...</Pill>
-                  <Button size="sm" variant="soft" disabled>
-                    จัดการ
-                  </Button>
-                </div>
-              </div>
+              <ListRow
+                key={i}
+                leading={<div className="w-10 h-10 shrink-0 bg-gray-300 rounded-full animate-pulse" />}
+                title={<div className="h-4 w-32 bg-gray-300 rounded animate-pulse mb-1" />}
+                meta={<div className="h-3 w-48 bg-gray-200 rounded animate-pulse" />}
+                trailing={
+                  <>
+                    <Pill tone="neutral">Loading...</Pill>
+                    <Button size="sm" variant="soft" disabled>
+                      จัดการ
+                    </Button>
+                  </>
+                }
+              />
             ))}
-          </div>
+          </ListRows>
         </CardContent>
       </Card>
     </div>

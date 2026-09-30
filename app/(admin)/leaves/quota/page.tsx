@@ -10,22 +10,15 @@ import { useToast } from '@/hooks/useToast'
 import {
   Calendar,
   Users,
-  Search,
-  Save,
   AlertCircle,
-  User,
+  AlertTriangle,
   Heart,
   Briefcase,
   Activity,
-  Loader2,
   Edit3,
-  Check,
-  X,
-  Filter,
-  RefreshCw
+  Check
 } from 'lucide-react'
-import { SelectMenu, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, Popover } from '@/components/aoo'
-import { gradients } from '@/lib/theme/colors'
+import { SelectMenu, Input, Alert, Pill, Card, Button, IconButton, Popover, type PillTone } from '@/components/aoo'
 import TechLoader from '@/components/shared/TechLoader'
 import { LeaveQuotaYear, LeaveType } from '@/types/leave'
 import {
@@ -36,7 +29,7 @@ import {
 } from '@/lib/services/leaveService'
 import Link from 'next/link'
 import CarryOverDialog from '@/components/leave/CarryOverDialog'
-import { PageHeader, DataTable } from '@/components/shared'
+import { PageHeader, DataTable, StatCard, StatusBadge, InfoPanel, FilterBar, FilterSelect } from '@/components/shared'
 import { Button as AooButton } from '@/components/aoo'
 import UserAvatar from '@/components/shared/UserAvatar'
 
@@ -68,7 +61,7 @@ function QuotaEditAll({
   onUpdate 
 }: QuotaEditAllProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const editBtnRef = useRef<HTMLButtonElement>(null)
+  const editBtnRef = useRef<HTMLSpanElement>(null)
   const [values, setValues] = useState({
     sick: quota?.sick.total || 0,
     personal: quota?.personal.total || 0,
@@ -76,35 +69,11 @@ function QuotaEditAll({
   })
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const leaveInfo = [
-    {
-      type: 'sick' as const,
-      label: 'ลาป่วย',
-      icon: <Heart className="w-4 h-4 text-pink-600" />,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50',
-      used: quota?.sick.used || 0,
-      remaining: quota?.sick.remaining || 0
-    },
-    {
-      type: 'personal' as const,
-      label: 'ลากิจ',
-      icon: <Briefcase className="w-4 h-4 text-blue-600" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      used: quota?.personal.used || 0,
-      remaining: quota?.personal.remaining || 0
-    },
-    {
-      type: 'vacation' as const,
-      label: 'ลาพักร้อน',
-      icon: <Activity className="w-4 h-4 text-emerald-600" />,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      used: quota?.vacation.used || 0,
-      remaining: quota?.vacation.remaining || 0
-    }
-  ]
+  const leaveInfo = (['sick', 'personal', 'vacation'] as const).map((type) => ({
+    type,
+    used: quota?.[type].used || 0,
+    remaining: quota?.[type].remaining || 0
+  }))
 
   const handleUpdate = async () => {
     setIsUpdating(true)
@@ -147,42 +116,29 @@ function QuotaEditAll({
 
   return (
     <>
-      <button
-        ref={editBtnRef}
-        type="button"
-        onClick={() => { if (isOpen) { setIsOpen(false); resetValues() } else setIsOpen(true) }}
-        className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
-        aria-label="แก้โควตา"
-      >
-        <Edit3 className="w-4 h-4" />
-      </button>
+      <span ref={editBtnRef} className="inline-flex">
+        <IconButton
+          icon={Edit3}
+          title="แก้โควตา"
+          onClick={() => { if (isOpen) { setIsOpen(false); resetValues() } else setIsOpen(true) }}
+        />
+      </span>
       <Popover open={isOpen} onClose={() => { setIsOpen(false); resetValues() }} anchor={editBtnRef.current} align="end" minWidth={320} padding={16}>
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2 pb-2">
-            {userAvatar ? (
-              <img
-                src={userAvatar}
-                alt={userName}
-                className="w-8 h-8 rounded-full"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-gray-500" />
-              </div>
-            )}
+            <UserAvatar name={userName} imageUrl={userAvatar} size="sm" />
             <div className="flex-1">
               <h4 className="font-medium text-sm">แก้ไขโควต้า - {userName}</h4>
             </div>
           </div>
           
           {/* Leave Types - Compact Grid */}
-          <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
-            {leaveInfo.map(({ type, label, icon, color, used }) => (
+          <InfoPanel className="space-y-2">
+            {leaveInfo.map(({ type, used }) => (
               <div key={type} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 min-w-[90px] ${color}`}>
-                  {icon}
-                  <span className="text-sm font-medium">{label}</span>
+                <div className="min-w-[90px]">
+                  <StatusBadge status={type} kind="leaveType" />
                 </div>
                 
                 <Input
@@ -194,7 +150,7 @@ function QuotaEditAll({
                   })}
                   min="0"
                   max="365"
-                  className="h-8 w-20 text-center border-gray-200"
+                  className="w-20"
                 />
                 
                 <div className="text-xs text-gray-500 min-w-[60px]">
@@ -202,36 +158,38 @@ function QuotaEditAll({
                 </div>
                 
                 {values[type] < used && (
-                  <span className="text-orange-600" title="โควต้าน้อยกว่าที่ใช้ไป">⚠️</span>
+                  <span className="text-orange-600" title="โควต้าน้อยกว่าที่ใช้ไป">
+                    <AlertTriangle className="w-4 h-4" />
+                  </span>
                 )}
               </div>
             ))}
-          </div>
+          </InfoPanel>
           
           {/* Summary */}
-          <div className="bg-blue-50 px-3 py-2 rounded-lg flex justify-between text-sm">
+          <InfoPanel tone="sky" className="flex justify-between text-sm">
             <span className="text-gray-600">รวม</span>
-            <span className="font-semibold text-blue-700">
+            <span className="font-semibold">
               {values.sick + values.personal + values.vacation} วัน
             </span>
-          </div>
+          </InfoPanel>
           
           {/* Actions */}
           <div className="flex gap-2">
-            <Button variant="soft" size="sm" onClick={() => {
- resetValues()
- setIsOpen(false)
- }}
- disabled={isUpdating}
- className="flex-1 h-8">
+            <Button
+              variant="soft"
+              size="sm"
+              onClick={() => {
+                resetValues()
+                setIsOpen(false)
+              }}
+              disabled={isUpdating}
+              className="flex-1"
+            >
               ยกเลิก
             </Button>
-            <Button size="sm" onClick={handleUpdate} disabled={isUpdating || !hasChanges()} className={`flex-1 h-8 bg-gradient-to-r ${gradients.primary}`}>
-              {isUpdating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'บันทึก'
-              )}
+            <Button size="sm" onClick={handleUpdate} loading={isUpdating} disabled={!hasChanges()} className="flex-1">
+              บันทึก
             </Button>
           </div>
         </div>
@@ -385,11 +343,8 @@ export default function LeaveQuotaManagementPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl">
-        <Alert tone="error">
-          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-          <div>
-            เฉพาะ HR และ Admin เท่านั้น
-          </div>
+        <Alert tone="error" title="ไม่มีสิทธิ์เข้าถึงหน้านี้">
+          เฉพาะ HR และ Admin เท่านั้น
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/leaves">
@@ -406,31 +361,11 @@ export default function LeaveQuotaManagementPage() {
     return <TechLoader />
   }
 
-  const leaveTypes = [
-    {
-      type: 'sick' as const,
-      label: 'ลาป่วย',
-      icon: <Heart className="w-4 h-4" />,
-      iconColor: 'text-pink-600',
-      bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50',
-      headerBg: 'bg-gradient-to-r from-pink-100 to-rose-100'
-    },
-    {
-      type: 'personal' as const,
-      label: 'ลากิจ',
-      icon: <Briefcase className="w-4 h-4" />,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50',
-      headerBg: 'bg-gradient-to-r from-blue-100 to-indigo-100'
-    },
-    {
-      type: 'vacation' as const,
-      label: 'ลาพักร้อน',
-      icon: <Activity className="w-4 h-4" />,
-      iconColor: 'text-emerald-600',
-      bgColor: 'bg-gradient-to-br from-emerald-50 to-teal-50',
-      headerBg: 'bg-gradient-to-r from-emerald-100 to-teal-100'
-    }
+  // สีตามประเภทลา (ตรงกับ StatusBadge kind="leaveType")
+  const leaveTypes: { type: LeaveType; label: string; icon: typeof Heart; tone: PillTone }[] = [
+    { type: 'sick', label: 'ลาป่วย', icon: Heart, tone: 'pink' },
+    { type: 'personal', label: 'ลากิจ', icon: Briefcase, tone: 'sky' },
+    { type: 'vacation', label: 'ลาพักร้อน', icon: Activity, tone: 'success' },
   ]
 
   // Check if user has no quota
@@ -448,23 +383,20 @@ export default function LeaveQuotaManagementPage() {
   return (
     <div className="space-y-6">
       {nextYearReady === false && (
-        <Alert tone="warning">
-          <p className="font-semibold">ยังไม่ได้ตั้งโควต้าตั้งต้นของปี {nextYear + 543}</p>
-          <div>
-            <p>
-              ต้องตั้งไว้ก่อนขึ้นปีใหม่ ไม่งั้นวันที่ 1 มกราคม พนักงานจะยื่นใบลาไม่ได้
-              เพราะไม่มีโควต้า
-            </p>
-            <AooButton
-              variant="secondary"
-              size="sm"
-              className="mt-3"
-              disabled={copyingDefaults}
-              onClick={handleCopyDefaults}
-            >
-              {copyingDefaults ? 'กำลังตั้งค่า...' : `คัดลอกค่าจากปี ${nextYear + 542}`}
-            </AooButton>
-          </div>
+        <Alert tone="warning" title={`ยังไม่ได้ตั้งโควต้าตั้งต้นของปี ${nextYear + 543}`}>
+          <p>
+            ต้องตั้งไว้ก่อนขึ้นปีใหม่ ไม่งั้นวันที่ 1 มกราคม พนักงานจะยื่นใบลาไม่ได้
+            เพราะไม่มีโควต้า
+          </p>
+          <AooButton
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            loading={copyingDefaults}
+            onClick={handleCopyDefaults}
+          >
+            {copyingDefaults ? 'กำลังตั้งค่า...' : `คัดลอกค่าจากปี ${nextYear + 542}`}
+          </AooButton>
         </Alert>
       )}
 
@@ -502,90 +434,29 @@ export default function LeaveQuotaManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">พนักงานทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl`}>
-                <Users className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">มีโควต้าแล้ว</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{stats.hasQuota}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl`}>
-                <Check className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ยังไม่มีโควต้า</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{stats.noQuota}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl`}>
-                <AlertCircle className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ปีที่จัดการ</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{year}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.grayLight} rounded-xl`}>
-                <Calendar className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="พนักงานทั้งหมด" value={stats.total} icon={Users} tone="sky" />
+        <StatCard label="มีโควต้าแล้ว" value={stats.hasQuota} icon={Check} tone="success" />
+        <StatCard label="ยังไม่มีโควต้า" value={stats.noQuota} icon={AlertCircle} tone="warning" />
+        <StatCard label="ปีที่จัดการ" value={year} icon={Calendar} tone="grape" />
       </div>
 
       {/* Filters */}
-      <Card padding={0}>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                                <Input
-                  prefix={<Search size={16} />}
-                  placeholder="ค้นหาด้วยชื่อพนักงาน..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <Select value={filterType} onChange={(e) => ((value: any) => setFilterType(value))(e.target.value)} className="w-full md:w-48">
-<option value="">กรองข้อมูล</option>
-              
-              
-                <option value="all">แสดงทั้งหมด</option>
-                <option value="has-quota">มีโควต้าแล้ว</option>
-                <option value="no-quota">ยังไม่มีโควต้า</option>
-              
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar
+        search={searchTerm}
+        onSearch={setSearchTerm}
+        placeholder="ค้นหาด้วยชื่อพนักงาน..."
+        sticky={false}
+      >
+        <FilterSelect
+          label="กรองข้อมูล"
+          value={filterType === 'all' ? null : filterType}
+          options={[
+            { value: 'has-quota', label: 'มีโควต้าแล้ว' },
+            { value: 'no-quota', label: 'ยังไม่มีโควต้า' },
+          ]}
+          onChange={(v) => setFilterType((v ?? 'all') as typeof filterType)}
+        />
+      </FilterBar>
 
       {/* Table */}
       <Card padding={0} className="overflow-hidden">
@@ -603,25 +474,20 @@ export default function LeaveQuotaManagementPage() {
                 </div>
               ),
             },
-            ...leaveTypes.map(({ type, label, icon, headerBg, bgColor }) => ({
+            ...leaveTypes.map(({ type, label, tone }) => ({
               key: type,
-              header: (
-                <div className={`flex items-center justify-center gap-2 p-2 rounded-lg ${headerBg}`}>
-                  {icon}
-                  <span className="font-semibold">{label}</span>
-                </div>
-              ),
+              header: <StatusBadge status={type} kind="leaveType" />,
               align: 'center' as const,
               mobileLabel: label,
               cell: ({ quota }: { quota: (typeof paginatedQuotas)[number]['quota'] }) => (
-                <div className={`p-3 rounded-lg ${bgColor}`}>
+                <InfoPanel tone={tone}>
                   <div className="flex flex-col items-center gap-1">
                     <span className="font-semibold text-lg">{quota?.[type].total || 0}</span>
                     <div className="text-xs text-gray-600">
                       ใช้ {quota?.[type].used || 0} / เหลือ {quota?.[type].remaining || 0}
                     </div>
                   </div>
-                </div>
+                </InfoPanel>
               ),
             })),
             {
@@ -636,9 +502,9 @@ export default function LeaveQuotaManagementPage() {
                     onUpdate={(type, newValue) => handleQuotaUpdate(user.id, type, newValue)}
                   />
                   {hasNoQuota(quota) ? (
-                    <Pill tone="warning" className="text-xs">ยังไม่กำหนด</Pill>
+                    <Pill tone="warning">ยังไม่กำหนด</Pill>
                   ) : (
-                    <Pill tone="success" className="text-xs">กำหนดแล้ว</Pill>
+                    <Pill tone="success">กำหนดแล้ว</Pill>
                   )}
                 </div>
               ),

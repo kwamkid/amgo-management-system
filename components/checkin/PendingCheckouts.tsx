@@ -11,14 +11,14 @@ import {
   Check,
   X,
   AlertTriangle,
-  MessageSquare,
-  Loader2
+  MessageSquare
 } from 'lucide-react'
 import { format, differenceInHours } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
-import { gradients } from '@/lib/theme/colors'
-import { Textarea, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
+import UserAvatar from '@/components/shared/UserAvatar'
+import { Textarea, Checkbox, Label, Input, Card, CardContent, Button, Modal, EmptyState } from '@/components/aoo'
 interface PendingCheckoutsProps {
   records: CheckInRecord[]
   onApprove: (
@@ -90,9 +90,7 @@ export default function PendingCheckouts({
 
   if (records.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">ไม่มีรายการ</p>
-      </div>
+      <EmptyState title="ไม่มีรายการ" size="sm" />
     )
   }
 
@@ -106,7 +104,7 @@ export default function PendingCheckouts({
           const hoursSince = getHoursSinceCheckin(record)
           
           return (
-            <Card padding={0} key={record.id} className={`border-2 ${ type === 'forgot' ? 'border-orange-200' : 'border-purple-200' }`}>
+            <Card padding={0} key={record.id} className={`border-2 ${ type === 'forgot' ? 'border-[var(--sun-300)]' : 'border-[var(--grape-300)]' }`}>
               <CardContent className="p-4">
                 {/* Employee Info */}
                 <div className="flex items-start justify-between mb-3">
@@ -125,17 +123,9 @@ export default function PendingCheckouts({
                   
                   {/* Quick Actions for Mobile */}
                   <Button onClick={() => handleSelectRecord(record)}
- disabled={processing === record.id}
- variant={type === 'forgot' ? 'secondary' : 'soft'}
- className={type === 'forgot' 
- ? 'border-orange-500 text-orange-600 hover:bg-orange-50' 
- : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
- }>
-                    {processing === record.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      'จัดการ'
-                    )}
+ loading={processing === record.id}
+ variant="secondary">
+                    จัดการ
                   </Button>
                 </div>
 
@@ -169,14 +159,12 @@ export default function PendingCheckouts({
 
                 {/* Note if any */}
                 {record.note && (
-                  <Card padding={0} className="mt-3">
-                    <CardContent className="p-3">
-                      <p className="text-sm text-gray-600">
-                        <MessageSquare className="w-4 h-4 inline mr-1" />
-                        {record.note}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <InfoPanel className="mt-3">
+                    <p className="text-sm text-gray-600">
+                      <MessageSquare className="w-4 h-4 inline mr-1" />
+                      {record.note}
+                    </p>
+                  </InfoPanel>
                 )}
               </CardContent>
             </Card>
@@ -185,104 +173,93 @@ export default function PendingCheckouts({
       </div>
 
       {/* Approval Modal */}
-      {showReasonModal && selectedRecord && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card padding={0} className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>
-                {type === 'forgot' ? 'กำหนดเวลาเช็คเอาท์' : 'อนุมัติการทำงานล่วงเวลา'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Employee Info */}
-              <Card padding={0} className={`bg-gradient-to-r ${gradients.grayLight} border-0`}>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <UserAvatar name={selectedRecord.userName} userId={selectedRecord.userId} imageUrl={selectedRecord.userAvatar} size="md" />
-                    <div>
-                      <p className="font-medium">{selectedRecord.userName}</p>
-                      <p className="text-sm text-gray-600">
-                        เช็คอิน {format(new Date(selectedRecord.checkinTime), 'dd/MM HH:mm')}
-                      </p>
-                    </div>
+      {selectedRecord && (
+        <Modal
+          open={showReasonModal}
+          onClose={() => setShowReasonModal(false)}
+          dismissOnBackdrop={false}
+          title={type === 'forgot' ? 'กำหนดเวลาเช็คเอาท์' : 'อนุมัติการทำงานล่วงเวลา'}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setShowReasonModal(false)}>
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!reason.trim()}
+                loading={processing === selectedRecord.id}
+              >
+                {processing === selectedRecord.id ? 'กำลังบันทึก...' : 'บันทึก'}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            {/* Employee Info */}
+            <InfoPanel>
+              <div className="flex items-center gap-3">
+                <UserAvatar name={selectedRecord.userName} userId={selectedRecord.userId} imageUrl={selectedRecord.userAvatar} size="md" />
+                <div>
+                  <p className="font-medium">{selectedRecord.userName}</p>
+                  <p className="text-sm text-gray-600">
+                    เช็คอิน {format(new Date(selectedRecord.checkinTime), 'dd/MM HH:mm')}
+                  </p>
+                </div>
+              </div>
+            </InfoPanel>
+
+            {/* Checkout Time */}
+            <div className="space-y-2">
+              <Label>เวลาเช็คเอาท์</Label>
+              <Input
+                type="datetime-local"
+                value={checkoutTime}
+                onChange={(e) => setCheckoutTime(e.target.value)}
+              />
+            </div>
+
+            {/* OT Approval (for overtime type) */}
+            {type === 'overtime' && (
+              <InfoPanel>
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="approveOT"
+                    checked={approveOT}
+                    onChange={(checked) => setApproveOT(checked as boolean)}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="approveOT" className="font-medium cursor-pointer">
+                      อนุมัติชั่วโมงทำงานล่วงเวลา
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      {approveOT
+                        ? 'คิดชั่วโมงทำงานจริง'
+                        : 'คิดชั่วโมงถึงเวลาปิดเท่านั้น'
+                      }
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </InfoPanel>
+            )}
 
-              {/* Checkout Time */}
-              <div className="space-y-2">
-                <Label>เวลาเช็คเอาท์</Label>
-                <Input
-                  type="datetime-local"
-                  value={checkoutTime}
-                  onChange={(e) => setCheckoutTime(e.target.value)}
-                />
-              </div>
-
-              {/* OT Approval (for overtime type) */}
-              {type === 'overtime' && (
-                <Card padding={0}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Checkbox
-                        id="approveOT"
-                        checked={approveOT}
-                        onChange={(checked) => setApproveOT(checked as boolean)}
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="approveOT" className="font-medium cursor-pointer">
-                          อนุมัติชั่วโมงทำงานล่วงเวลา
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          {approveOT 
-                            ? 'คิดชั่วโมงทำงานจริง' 
-                            : 'คิดชั่วโมงถึงเวลาปิดเท่านั้น'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Reason */}
-              <div className="space-y-2">
-                <Label>เหตุผล/หมายเหตุ *</Label>
-                <Textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder={
-                    type === 'forgot' 
-                      ? 'เช่น ลืมเช็คเอาท์, ระบบขัดข้อง...'
-                      : 'เช่น Midnight Sale, ปรับปรุงพื้นที่...'
-                  }
-                  rows={3}
-                  required
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                <Button variant="soft" onClick={() => setShowReasonModal(false)}
- className="flex-1">
-                  ยกเลิก
-                </Button>
-                <Button onClick={handleSubmit} disabled={!reason.trim() || processing === selectedRecord.id} className={`flex-1 ${ type === 'forgot' ? `bg-gradient-to-r ${gradients.warning}` : `bg-gradient-to-r ${gradients.purple}` }`}>
-                  {processing === selectedRecord.id ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      กำลังบันทึก...
-                    </span>
-                  ) : (
-                    'บันทึก'
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Reason */}
+            <div className="space-y-2">
+              <Label>เหตุผล/หมายเหตุ *</Label>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={
+                  type === 'forgot'
+                    ? 'เช่น ลืมเช็คเอาท์, ระบบขัดข้อง...'
+                    : 'เช่น Midnight Sale, ปรับปรุงพื้นที่...'
+                }
+                rows={3}
+                required
+              />
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   )
 }
-import UserAvatar from '@/components/shared/UserAvatar'

@@ -3,8 +3,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button as AooButton, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
-import { PageHeader, DataTable } from '@/components/shared'
+import { Button as AooButton, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, EmptyState, IconButton, SelectMenu, useConfirm, type PillTone } from '@/components/aoo'
+import { PageHeader, DataTable, StatCard, FilterBar, FilterSelect } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import { useHolidays, useHolidayStats } from '@/hooks/useHolidays'
 import { useLocations } from '@/hooks/useLocations'
@@ -12,26 +12,22 @@ import { HOLIDAY_TYPE_LABELS } from '@/types/holiday'
 import ImportHolidaysDialog from '@/components/holidays/ImportHolidaysDialog'
 import { 
   Calendar,
-  Plus,
-  Upload,
-  Search,
   Trash2,
   Sun,
   Briefcase,
   Star,
-  AlertCircle,
   CheckCircle,
-  XCircle,
-  Loader2,
-  Download
+  XCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import TechLoader from '@/components/shared/TechLoader'
-import { gradients } from '@/lib/theme/colors'
 import TableFooter from '@/components/shared/TableFooter'
+const TYPE_TONE: Record<string, PillTone> = { public: 'sky', company: 'accent', special: 'pink' }
+
 export default function HolidaysPage() {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const currentYear = new Date().getFullYear()
   
   // States
@@ -82,7 +78,13 @@ export default function HolidaysPage() {
   
   // Handle delete
   const handleDelete = async (holidayId: string, holidayName: string) => {
-    if (confirm(`ต้องการลบวันหยุด "${holidayName}" ใช่หรือไม่?`)) {
+    const ok = await confirm({
+      title: 'ลบวันหยุด',
+      description: `ต้องการลบวันหยุด "${holidayName}" ใช่หรือไม่?`,
+      confirmLabel: 'ลบ',
+      tone: 'danger',
+    })
+    if (ok) {
       await deleteHoliday(holidayId)
     }
   }
@@ -113,139 +115,61 @@ export default function HolidaysPage() {
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl`}>
-                <Calendar className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">วันหยุดราชการ</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">{stats.public}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.infoLight} rounded-xl`}>
-                <Sun className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">วันหยุดบริษัท</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{stats.company}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl`}>
-                <Briefcase className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">วันหยุดพิเศษ</p>
-                <p className="text-2xl font-bold text-purple-600 mt-1">{stats.special}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.purpleLight} rounded-xl`}>
-                <Star className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="ทั้งหมด" value={stats.total} icon={Calendar} tone="plum" />
+        <StatCard label="วันหยุดราชการ" value={stats.public} icon={Sun} tone="sky" />
+        <StatCard label="วันหยุดบริษัท" value={stats.company} icon={Briefcase} tone="accent" />
+        <StatCard label="วันหยุดพิเศษ" value={stats.special} icon={Star} tone="pink" />
       </div>
       
       {/* Next Holiday Alert */}
       {stats.nextHoliday && (
         <Alert tone="info">
-          <div className="text-red-800">
-            <strong>วันหยุดถัดไป:</strong> {stats.nextHoliday.name} - {' '}
-            {format(new Date(stats.nextHoliday.date), 'EEEE dd MMMM yyyy', { locale: th })}
-          </div>
+          <strong>วันหยุดถัดไป:</strong> {stats.nextHoliday.name} - {' '}
+          {format(new Date(stats.nextHoliday.date), 'EEEE dd MMMM yyyy', { locale: th })}
         </Alert>
       )}
       
       {/* Filters */}
-      <Card padding={0}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-                            <Input
-                prefix={<Search size={16} />}
-                type="text"
-                placeholder="ค้นหาชื่อวันหยุด..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <Select
-              value={selectedYear.toString()}
-              onChange={(e) => ((value) => setSelectedYear(Number(value)))(e.target.value)}
-             className="w-40">
-              
-              
-                {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(year => (
-                  <option key={year} value={year.toString()}>{year}</option>
-                ))}
-              
-            </Select>
-            
-            <Select
-              value={selectedType}
-              onChange={(e) => (setSelectedType)(e.target.value)}
-             className="w-48">
-              
-              
-                <option value="all">ทุกประเภท</option>
-                <option value="public">วันหยุดราชการ</option>
-                <option value="company">วันหยุดบริษัท</option>
-                <option value="special">วันหยุดพิเศษ</option>
-              
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar search={searchTerm} onSearch={setSearchTerm} placeholder="ค้นหาชื่อวันหยุด..." sticky={false}>
+        <div className="w-40">
+          <SelectMenu
+            value={selectedYear.toString()}
+            options={[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(year => ({ value: year.toString(), label: year.toString() }))}
+            onChange={(value) => { if (value) setSelectedYear(Number(value)) }}
+          />
+        </div>
+        <FilterSelect
+          label="ทุกประเภท"
+          value={selectedType === 'all' ? null : selectedType}
+          options={[
+            { value: 'public', label: 'วันหยุดราชการ' },
+            { value: 'company', label: 'วันหยุดบริษัท' },
+            { value: 'special', label: 'วันหยุดพิเศษ' },
+          ]}
+          onChange={(v) => setSelectedType(v ?? 'all')}
+          width={192}
+        />
+      </FilterBar>
       
       {/* Holidays Table */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle>รายการวันหยุด</CardTitle>
+          <CardTitle icon={Calendar} tone="plum">รายการวันหยุด</CardTitle>
           <CardDescription>
             วันหยุดทั้งหมดในปี {selectedYear}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {filteredHolidays.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
-                {searchTerm ? 'ไม่พบวันหยุดที่ค้นหา' : 'ยังไม่มีวันหยุด'}
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => setShowImportDialog(true)}
- variant="secondary"
- className="mt-4 cursor-pointer">
-                  <Download className="w-5 h-5 mr-2" />
+            <EmptyState
+              icon={<Calendar size={40} />}
+              title={searchTerm ? 'ไม่พบวันหยุดที่ค้นหา' : 'ยังไม่มีวันหยุด'}
+              action={!searchTerm && (
+                <AooButton onClick={() => setShowImportDialog(true)} variant="secondary" icon="Download">
                   นำเข้าวันหยุดราชการ
-                </Button>
+                </AooButton>
               )}
-            </div>
+            />
           ) : (
             <div className="overflow-x-auto">
               <DataTable
@@ -263,7 +187,7 @@ export default function HolidaysPage() {
                   {
                     key: 'type', header: 'ประเภท',
                     cell: (holiday) => (
-                      <Pill tone={badgeTone(holiday.type === 'public' ? 'info' : holiday.type === 'company' ? 'success' : 'secondary')}>
+                      <Pill tone={TYPE_TONE[holiday.type] ?? 'neutral'}>
                         {HOLIDAY_TYPE_LABELS[holiday.type]}
                       </Pill>
                     ),
@@ -272,9 +196,9 @@ export default function HolidaysPage() {
                     key: 'working', header: 'การทำงาน',
                     cell: (holiday) =>
                       holiday.isWorkingDay ? (
-                        <Pill tone="warning"><CheckCircle className="w-4 h-4 mr-1" />ทำงาน</Pill>
+                        <Pill tone="warning"><CheckCircle size={14} />ทำงาน</Pill>
                       ) : (
-                        <Pill tone="neutral"><XCircle className="w-4 h-4 mr-1" />หยุด</Pill>
+                        <Pill tone="neutral"><XCircle size={14} />หยุด</Pill>
                       ),
                   },
                   {
@@ -299,9 +223,7 @@ export default function HolidaysPage() {
                   {
                     key: 'actions', header: '', align: 'right', mobileFooterAction: true,
                     cell: (holiday) => (
-                      <Button onClick={() => handleDelete(holiday.id!, holiday.name)} variant="ghost" size="sm" aria-label="ลบ">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <IconButton icon={Trash2} tone="danger" title="ลบ" onClick={() => handleDelete(holiday.id!, holiday.name)} />
                     ),
                   },
                 ]}
@@ -330,6 +252,8 @@ export default function HolidaysPage() {
           onClose={() => setShowImportDialog(false)}
         />
       )}
+
+      {confirmDialog}
     </div>
   )
 }

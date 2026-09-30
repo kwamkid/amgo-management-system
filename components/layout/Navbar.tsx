@@ -12,7 +12,7 @@ import { isStandalone } from '@/lib/push/client'
 import { signOutBoth } from '@/lib/auth/dual-session'
 import { UserData } from '@/hooks/useAuth'
 import UserAvatar from '@/components/shared/UserAvatar'
-import { ActionMenu } from '@/components/aoo'
+import { ActionMenu, IconButton } from '@/components/aoo'
 import { getViewAs, setViewAs, VIEW_AS_PRESETS } from '@/lib/utils/viewAs'
 
 interface NavbarProps {
@@ -70,14 +70,10 @@ export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps)
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3 lg:px-6">
       {onMenuClick && (
-        <button
-          onClick={onMenuClick}
-          aria-label="เปิดเมนู"
-          data-button-fx="ghost"
-          className="-ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 lg:hidden"
-        >
-          <Menu size={20} strokeWidth={1.75} />
-        </button>
+        // หุ้ม div เพราะ .aoo-btn ตั้ง display เอง — ใส่ lg:hidden ที่ปุ่มตรง ๆ จะไม่ซ่อน
+        <div className="-ml-1 lg:hidden">
+          <IconButton icon={Menu} title="เปิดเมนู" size={36} onClick={onMenuClick} />
+        </div>
       )}
 
       {/* โลโก้กลางจอเฉพาะมือถือ — บนเดสก์ท็อปโลโก้อยู่หัวเมนูข้างแล้ว */}

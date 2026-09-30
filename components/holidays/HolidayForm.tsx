@@ -13,16 +13,13 @@ import { useLocations } from '@/hooks/useLocations'
 import { useToast } from '@/hooks/useToast'
 import { 
   Calendar,
-  Save,
-  X,
-  Loader2,
-  Info,
   DollarSign,
-  CalendarRange
+  CalendarRange,
+  MapPin,
+  Users
 } from 'lucide-react'
 import { format, eachDayOfInterval, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { gradients } from '@/lib/theme/colors'
 import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
 interface HolidayFormProps {
   initialData?: Holiday
@@ -175,10 +172,7 @@ export default function HolidayForm({
       {/* Basic Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-red-600" />
-            ข้อมูลวันหยุด
-          </CardTitle>
+          <CardTitle icon={Calendar} tone="accent">ข้อมูลวันหยุด</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -200,7 +194,7 @@ export default function HolidayForm({
               onChange={setUseRangeDate}
             />
             <Label htmlFor="useRangeDate" className="cursor-pointer flex items-center gap-2">
-              <CalendarRange className="w-4 h-4" />
+              <CalendarRange size={16} />
               เพิ่มช่วงวันหยุด
             </Label>
           </div>
@@ -234,9 +228,7 @@ export default function HolidayForm({
           
           {useRangeDate && (
             <Alert tone="info">
-              <div>
-                ระบบจะสร้างวันหยุดสำหรับทุกวันในช่วงที่กำหนด โดยจะเพิ่มวันที่ต่อท้ายชื่อวันหยุด
-              </div>
+              ระบบจะสร้างวันหยุดสำหรับทุกวันในช่วงที่กำหนด โดยจะเพิ่มวันที่ต่อท้ายชื่อวันหยุด
             </Alert>
           )}
           
@@ -286,10 +278,7 @@ export default function HolidayForm({
       {/* OT Rates */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-600" />
-            อัตรา OT สำหรับวันหยุด
-          </CardTitle>
+          <CardTitle icon={DollarSign} tone="success">อัตรา OT สำหรับวันหยุด</CardTitle>
           <CardDescription>
             กำหนดอัตราค่าล่วงเวลาสำหรับแต่ละประเภทพนักงาน
           </CardDescription>
@@ -386,18 +375,14 @@ export default function HolidayForm({
       {/* Applicable Locations */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle>สาขาที่ใช้</CardTitle>
+          <CardTitle icon={MapPin} tone="sky">สาขาที่ใช้</CardTitle>
           <CardDescription>
             เลือกสาขาที่ใช้วันหยุดนี้ (ไม่เลือก = ทุกสาขา)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {locations.length === 0 ? (
-            <Alert tone="info">
-              <div>
-                ยังไม่มีข้อมูลสาขา
-              </div>
-            </Alert>
+            <Alert tone="info">ยังไม่มีข้อมูลสาขา</Alert>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {locations.map(location => (
@@ -420,7 +405,7 @@ export default function HolidayForm({
       {/* Applicable Roles */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle>ประเภทพนักงานที่ใช้</CardTitle>
+          <CardTitle icon={Users} tone="grape">ประเภทพนักงานที่ใช้</CardTitle>
           <CardDescription>
             เลือกประเภทพนักงานที่ใช้วันหยุดนี้ (ไม่เลือก = ทุกประเภท)
           </CardDescription>
@@ -445,22 +430,11 @@ export default function HolidayForm({
       
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button type="button" variant="soft" onClick={onCancel} disabled={loading}>
-          <X className="w-4 h-4 mr-2" />
+        <Button type="button" variant="soft" icon="X" onClick={onCancel} disabled={loading}>
           ยกเลิก
         </Button>
-        <Button type="submit" disabled={loading} className={`bg-gradient-to-r ${gradients.primary}`}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              กำลังบันทึก...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              สร้างวันหยุด
-            </>
-          )}
+        <Button type="submit" variant="primary" icon="Save" loading={loading}>
+          {loading ? 'กำลังบันทึก...' : 'สร้างวันหยุด'}
         </Button>
       </div>
     </form>

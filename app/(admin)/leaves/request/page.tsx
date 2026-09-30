@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, CheckCircle, Heart, Briefcase, Activity } from 'lucide-react';
+import { Calendar, CheckCircle, Heart, Briefcase, Activity, Info, Lightbulb } from 'lucide-react';
 import LeaveRequestForm from '@/components/leave/LeaveRequestForm';
 import { useLeave } from '@/hooks/useLeave';
 import { useAuth } from '@/hooks/useAuth';
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatusBadge } from '@/components/shared'
 
-import { Progress, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Progress, Card, CardContent, CardHeader, CardTitle, CardDescription, type PillTone, type ProgressTone } from '@/components/aoo'
 export default function LeaveRequestPage() {
   const router = useRouter();
   const { userData } = useAuth();
@@ -25,31 +25,11 @@ export default function LeaveRequestPage() {
     }, 2000);
   };
 
-  const leaveTypes = [
-    {
-      type: 'sick' as const,
-      label: 'ลาป่วย',
-      icon: Heart,
-      color: 'from-pink-500 to-rose-600',
-      bgColor: 'from-pink-50 to-rose-100',
-      iconColor: 'text-pink-600',
-    },
-    {
-      type: 'personal' as const,
-      label: 'ลากิจ',
-      icon: Briefcase,
-      color: 'from-blue-500 to-indigo-600',
-      bgColor: 'from-blue-50 to-indigo-100',
-      iconColor: 'text-blue-600',
-    },
-    {
-      type: 'vacation' as const,
-      label: 'ลาพักร้อน',
-      icon: Activity,
-      color: 'from-emerald-500 to-teal-600',
-      bgColor: 'from-emerald-50 to-teal-100',
-      iconColor: 'text-emerald-600',
-    }
+  // สีตามประเภทลา (ตรงกับ StatusBadge kind="leaveType")
+  const leaveTypes: { type: 'sick' | 'personal' | 'vacation'; label: string; icon: typeof Heart; tone: PillTone; bar: ProgressTone }[] = [
+    { type: 'sick', label: 'ลาป่วย', icon: Heart, tone: 'pink', bar: 'danger' },
+    { type: 'personal', label: 'ลากิจ', icon: Briefcase, tone: 'sky', bar: 'info' },
+    { type: 'vacation', label: 'ลาพักร้อน', icon: Activity, tone: 'success', bar: 'success' },
   ];
 
   return (
@@ -64,7 +44,7 @@ export default function LeaveRequestPage() {
       {/* Leave Balance - แนวนอน */}
       {quota && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {leaveTypes.map(({ type, label, icon: Icon, bgColor, iconColor }) => {
+          {leaveTypes.map(({ type, label, icon: Icon, tone, bar }) => {
             const data = quota[type];
             const percentage = data.total > 0 ? (data.used / data.total) * 100 : 0;
             
@@ -73,9 +53,9 @@ export default function LeaveRequestPage() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 bg-gradient-to-br ${bgColor} rounded-lg`}>
-                        <Icon className={`w-5 h-5 ${iconColor}`} />
-                      </div>
+                      <span className="aoo-title-icon" data-tone={tone}>
+                        <Icon size={19} strokeWidth={2} />
+                      </span>
                       <div>
                         <h4 className="font-medium text-gray-900">{label}</h4>
                         <p className="text-sm text-gray-600">
@@ -92,7 +72,7 @@ export default function LeaveRequestPage() {
                   <Progress 
                     value={percentage} 
                     className="h-2"
-                    tone={iconColor.includes('pink') ? 'danger' : iconColor.includes('blue') ? 'info' : 'success'}
+                    tone={bar}
                   />
                   <p className="text-xs text-gray-500 mt-1 text-right">
                     {percentage.toFixed(0)}% ใช้ไปแล้ว
@@ -141,17 +121,16 @@ export default function LeaveRequestPage() {
         {/* Sidebar Info - อยู่ขวา */}
         <div className="lg:col-span-4 space-y-4">
           {/* Quick Info */}
-          <Card padding={0} className="-">
+          <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+              <CardTitle icon={Info} tone="warning">
                 ข้อควรทราบ
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="space-y-2">
-                <div className="font-medium text-amber-900">ลาป่วย</div>
-                <ul className="space-y-1 text-amber-800 ml-4">
+                <div><StatusBadge status="sick" kind="leaveType" /></div>
+                <ul className="space-y-1 text-gray-700 ml-4">
                   <li>• สามารถลาย้อนหลังได้</li>
                   <li>
                     • ตั้งแต่ 3 วันทำงานขึ้นไป ต้องแนบใบรับรองแพทย์{' '}
@@ -168,18 +147,18 @@ export default function LeaveRequestPage() {
                 </ul>
               </div>
               
-              <div className="space-y-2 pt-2 border-t border-amber-200">
-                <div className="font-medium text-amber-900">ลากิจ</div>
-                <ul className="space-y-1 text-amber-800 ml-4">
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <div><StatusBadge status="personal" kind="leaveType" /></div>
+                <ul className="space-y-1 text-gray-700 ml-4">
                   <li>• ต้องแจ้งล่วงหน้า 3 วัน</li>
                   <li>• ลาด่วนคิดโควต้า 2 เท่า</li>
                   <li>• ไม่สามารถลาย้อนหลังได้</li>
                 </ul>
               </div>
               
-              <div className="space-y-2 pt-2 border-t border-amber-200">
-                <div className="font-medium text-amber-900">ลาพักร้อน</div>
-                <ul className="space-y-1 text-amber-800 ml-4">
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <div><StatusBadge status="vacation" kind="leaveType" /></div>
+                <ul className="space-y-1 text-gray-700 ml-4">
                   <li>• ต้องแจ้งล่วงหน้า 7 วัน</li>
                   <li>• ลาด่วนคิดโควต้า 2 เท่า</li>
                   <li>• สามารถสะสมได้</li>
@@ -191,7 +170,7 @@ export default function LeaveRequestPage() {
           {/* Additional Tips */}
           <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-base">💡 เคล็ดลับ</CardTitle>
+              <CardTitle icon={Lightbulb} tone="warning">เคล็ดลับ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-gray-600">
               <p>• วางแผนการลาล่วงหน้าเพื่อไม่ต้องเสียโควต้าเพิ่ม</p>

@@ -7,29 +7,34 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import {
-  AlertTriangle,
-  ExternalLink,
-  Globe,
-  Plus,
-  RefreshCw,
-  Save,
-  Terminal,
-  Trash2,
-} from 'lucide-react'
+import { FileText, Globe, Puzzle, Terminal, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
+  Alert,
   Button,
   Checkbox,
   DatePicker,
+  EmptyState,
   Field,
+  IconButton,
   Input,
   Modal,
+  Pill,
   SelectMenu,
   Textarea,
+  useConfirm,
+  type PillTone,
 } from '@/components/aoo'
-import { DataTable, PageHeader, SectionCard, TechLoader, type Column } from '@/components/shared'
+import {
+  DataTable,
+  ListRow,
+  ListRows,
+  PageHeader,
+  SectionCard,
+  TechLoader,
+  type Column,
+} from '@/components/shared'
 import {
   addLog,
   daysLeft,
@@ -69,11 +74,11 @@ const fmtDateTime = (d?: string | null) =>
 
 const money = (n: number) => n.toLocaleString('th-TH', { maximumFractionDigits: 2 })
 
-const BILL_STATUS: Record<WebBill['status'], { label: string; cls: string }> = {
-  unpaid: { label: 'ยังไม่จ่าย', cls: 'bg-gray-100 text-gray-600' },
-  pending_review: { label: 'รอตรวจสลิป', cls: 'bg-amber-50 text-amber-700' },
-  paid: { label: 'จ่ายแล้ว', cls: 'bg-green-50 text-green-700' },
-  rejected: { label: 'ปฏิเสธสลิป', cls: 'bg-red-50 text-red-600' },
+const BILL_STATUS: Record<WebBill['status'], { label: string; tone: PillTone }> = {
+  unpaid: { label: 'ยังไม่จ่าย', tone: 'neutral' },
+  pending_review: { label: 'รอตรวจสลิป', tone: 'warning' },
+  paid: { label: 'จ่ายแล้ว', tone: 'success' },
+  rejected: { label: 'ปฏิเสธสลิป', tone: 'danger' },
 }
 
 const LOG_KIND: Record<WebLog['kind'], string> = {
@@ -104,6 +109,7 @@ export default function WebsiteDetailPage() {
   const [billDraft, setBillDraft] = useState<Partial<WebBill> | null>(null)
   const [note, setNote] = useState('')
   const [viewSlip, setViewSlip] = useState<string | null>(null)
+  const { confirm: ask, dialog: confirmDialog } = useConfirm()
 
   const canSee = !!userData && !!userData.hasWebAccess
 
@@ -250,9 +256,7 @@ export default function WebsiteDetailPage() {
       header: 'สถานะ',
       align: 'center',
       cell: (b) => (
-        <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${BILL_STATUS[b.status].cls}`}>
-          {BILL_STATUS[b.status].label}
-        </span>
+        <Pill tone={BILL_STATUS[b.status].tone}>{BILL_STATUS[b.status].label}</Pill>
       ),
     },
     {
@@ -277,16 +281,16 @@ export default function WebsiteDetailPage() {
           <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setBillDraft(b) }}>
             แก้
           </Button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (confirm(`ลบบิลปี ${b.year}?`)) deleteBill(b.id).then(() => getBills(id).then(setBills))
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600"
+          <IconButton
+            icon={Trash2}
+            tone="danger"
             aria-label="ลบบิล"
-          >
-            <Trash2 size={14} />
-          </button>
+            onClick={async (e) => {
+              e.stopPropagation()
+              const ok = await ask({ title: `ลบบิลปี ${b.year}?`, tone: 'danger', confirmLabel: 'ลบ' })
+              if (ok) deleteBill(b.id).then(() => getBills(id).then(setBills))
+            }}
+          />
         </div>
       ),
     },
@@ -295,19 +299,21 @@ export default function WebsiteDetailPage() {
   const expiryRow = (label: string, date: string | null) => {
     const d = daysLeft(date)
     return (
-      <div className="flex items-center justify-between border-b border-gray-100 py-1.5 last:border-0">
-        <span className="text-sm text-gray-500">{label}</span>
-        <span
-          className={`text-sm ${
-            d === null ? 'text-gray-400' : d < 0 ? 'text-red-600' : d <= 30 ? 'text-amber-600' : 'text-gray-700'
-          }`}
-        >
-          {fmtDate(date)}
-          {d !== null && (
-            <span className="ml-1 text-xs opacity-80">({d < 0 ? `เลย ${-d} วัน` : `อีก ${d} วัน`})</span>
-          )}
-        </span>
-      </div>
+      <ListRow
+        title={<span className="text-sm font-normal text-gray-500">{label}</span>}
+        trailing={
+          <span
+            className={`text-sm ${
+              d === null ? 'text-gray-400' : d < 0 ? 'text-red-600' : d <= 30 ? 'text-amber-600' : 'text-gray-700'
+            }`}
+          >
+            {fmtDate(date)}
+            {d !== null && (
+              <span className="ml-1 text-xs opacity-80">({d < 0 ? `เลย ${-d} วัน` : `อีก ${d} วัน`})</span>
+            )}
+          </span>
+        }
+      />
     )
   }
 
@@ -320,13 +326,11 @@ export default function WebsiteDetailPage() {
         icon={Globe}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={checkNow} disabled={busy === 'uptime'}>
-              <RefreshCw size={15} className={busy === 'uptime' ? 'animate-spin' : ''} />
+            <Button variant="secondary" icon="RefreshCw" onClick={checkNow} loading={busy === 'uptime'}>
               เช็คเว็บ
             </Button>
             <a href={`https://${site.siteName}`} target="_blank" rel="noreferrer">
-              <Button variant="secondary">
-                <ExternalLink size={15} />
+              <Button variant="secondary" icon="ExternalLink">
                 เปิดเว็บ
               </Button>
             </a>
@@ -335,8 +339,7 @@ export default function WebsiteDetailPage() {
                 <Button variant="secondary">wp-admin</Button>
               </a>
             )}
-            <Button onClick={submit} disabled={saving}>
-              <Save size={15} />
+            <Button icon="Save" onClick={submit} loading={saving}>
               บันทึก
             </Button>
           </div>
@@ -344,10 +347,9 @@ export default function WebsiteDetailPage() {
       />
 
       {site.downSince && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertTriangle size={16} />
+        <Alert tone="error">
           เว็บล่มตั้งแต่ {fmtDateTime(site.downSince)} — ตอบกลับล่าสุด {site.httpStatus || 'ต่อไม่ติด'}
-        </div>
+        </Alert>
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -429,25 +431,31 @@ export default function WebsiteDetailPage() {
         {/* ── วันหมดอายุ + SSH ── */}
         <div className="space-y-5">
           <SectionCard title="วันหมดอายุ">
-            {expiryRow('โดเมน', form.domainExpiresAt)}
-            {expiryRow('โฮสต์', form.hostingExpiresAt)}
-            {expiryRow('SSL', form.sslExpiresAt)}
+            <ListRows>
+              {expiryRow('โดเมน', form.domainExpiresAt)}
+              {expiryRow('โฮสต์', form.hostingExpiresAt)}
+              {expiryRow('SSL', form.sslExpiresAt)}
+            </ListRows>
             <p className="mt-2 text-xs text-gray-400">
               เตือนเข้า Discord อัตโนมัติเมื่อเหลือไม่ถึง 30 วัน
             </p>
           </SectionCard>
 
           <SectionCard title="สถานะเว็บ">
-            <div className="flex items-center justify-between border-b border-gray-100 py-1.5">
-              <span className="text-sm text-gray-500">ตอบกลับล่าสุด</span>
-              <span className="text-sm text-gray-700">
-                {site.httpStatus ?? '—'} · {site.responseMs ?? '—'} ms
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-sm text-gray-500">เช็คเมื่อ</span>
-              <span className="text-sm text-gray-700">{fmtDateTime(site.lastCheckedAt)}</span>
-            </div>
+            <ListRows>
+              <ListRow
+                title={<span className="text-sm font-normal text-gray-500">ตอบกลับล่าสุด</span>}
+                trailing={
+                  <span className="text-sm text-gray-700">
+                    {site.httpStatus ?? '—'} · {site.responseMs ?? '—'} ms
+                  </span>
+                }
+              />
+              <ListRow
+                title={<span className="text-sm font-normal text-gray-500">เช็คเมื่อ</span>}
+                trailing={<span className="text-sm text-gray-700">{fmtDateTime(site.lastCheckedAt)}</span>}
+              />
+            </ListRows>
           </SectionCard>
 
           <SectionCard
@@ -482,25 +490,29 @@ export default function WebsiteDetailPage() {
                 />
               </Field>
             </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-sm text-gray-500">สแกนมัลแวร์ล่าสุด</span>
-              <span
-                className={`text-sm ${
-                  site.lastScanStatus === 'suspect'
-                    ? 'text-red-600'
-                    : site.lastScanStatus === 'ok'
-                      ? 'text-green-600'
-                      : 'text-gray-400'
-                }`}
-              >
-                {site.lastScanStatus === 'suspect'
-                  ? 'พบไฟล์ต้องสงสัย'
-                  : site.lastScanStatus === 'ok'
-                    ? 'สะอาด'
-                    : 'ยังไม่เคยสแกน'}
-                {site.lastScanAt && <span className="ml-1 text-xs text-gray-400">{fmtDateTime(site.lastScanAt)}</span>}
-              </span>
-            </div>
+            <ListRow
+              title={<span className="text-sm font-normal text-gray-500">สแกนมัลแวร์ล่าสุด</span>}
+              trailing={
+                <>
+                  <Pill
+                    tone={
+                      site.lastScanStatus === 'suspect'
+                        ? 'danger'
+                        : site.lastScanStatus === 'ok'
+                          ? 'success'
+                          : 'neutral'
+                    }
+                  >
+                    {site.lastScanStatus === 'suspect'
+                      ? 'พบไฟล์ต้องสงสัย'
+                      : site.lastScanStatus === 'ok'
+                        ? 'สะอาด'
+                        : 'ยังไม่เคยสแกน'}
+                  </Pill>
+                  {site.lastScanAt && <span className="text-xs text-gray-400">{fmtDateTime(site.lastScanAt)}</span>}
+                </>
+              }
+            />
             <p className="mt-3 text-xs text-gray-400">
               ปกติกด &quot;สแกนรายชื่อเว็บ&quot; ที่หน้าโฮสต์แล้วระบบผูกให้เอง — ตรงนี้ไว้แก้มือเวลาจัดกลุ่มใหม่
               {!hosts.length && ' · ยังไม่มีโฮสต์ในระบบ ไปเพิ่มที่เมนูโฮสต์ก่อน'}
@@ -526,8 +538,8 @@ export default function WebsiteDetailPage() {
                   status: 'unpaid',
                 })
               }
+              icon="Plus"
             >
-              <Plus size={14} />
               เพิ่มรอบ
             </Button>
           </div>
@@ -540,15 +552,11 @@ export default function WebsiteDetailPage() {
             <p className="mb-2 text-xs font-medium text-gray-500">สลิปที่อัพเข้ามา ({slips.length})</p>
             <div className="flex flex-wrap gap-2">
               {slips.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => openSlip(s.slipImageUrl)}
-                  className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-                >
+                <Button key={s.id} variant="secondary" size="sm" onClick={() => openSlip(s.slipImageUrl)}>
                   {fmtDateTime(s.uploadedAt)}
-                  {s.verifyResult === 'duplicate' && <span className="ml-1 text-red-500">· สลิปซ้ำ</span>}
-                  {s.verifyResult === 'unreadable' && <span className="ml-1 text-amber-600">· อ่าน QR ไม่ออก</span>}
-                </button>
+                  {s.verifyResult === 'duplicate' && <Pill tone="danger">สลิปซ้ำ</Pill>}
+                  {s.verifyResult === 'unreadable' && <Pill tone="warning">อ่าน QR ไม่ออก</Pill>}
+                </Button>
               ))}
             </div>
           </div>
@@ -560,8 +568,14 @@ export default function WebsiteDetailPage() {
         title={
           <div className="flex items-center justify-between">
             <span>ปลั๊กอิน WordPress</span>
-            <Button size="sm" variant="secondary" onClick={() => scanPlugins()} disabled={!site.hostId || busy === 'plugins'}>
-              <Terminal size={14} />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => scanPlugins()}
+              loading={busy === 'plugins'}
+              disabled={!site.hostId}
+            >
+              {busy !== 'plugins' && <Terminal size={14} />}
               {busy === 'plugins' ? 'กำลังอ่าน...' : 'อ่านรายการผ่าน SSH'}
             </Button>
           </div>
@@ -573,37 +587,38 @@ export default function WebsiteDetailPage() {
         }
       >
         {plugins.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-400">ยังไม่มีข้อมูลปลั๊กอิน</p>
+          <EmptyState size="sm" icon={<Puzzle size={24} />} title="ยังไม่มีข้อมูลปลั๊กอิน" />
         ) : (
-          <div className="divide-y divide-gray-100">
-            {plugins.map((p) => (
-              <div key={p.id} className="flex items-center justify-between py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-gray-800">{p.name || p.slug}</p>
-                  <p className="text-xs text-gray-400">
-                    {p.version}
-                    {p.newVersion ? ` → ${p.newVersion}` : ''} · {p.status === 'active' ? 'เปิดใช้' : 'ปิดอยู่'}
-                  </p>
-                </div>
-                {p.newVersion && (
-                  <Button
-                    size="sm"
-                    onClick={() => scanPlugins(p.slug)}
-                    disabled={busy === `update:${p.slug}`}
-                  >
-                    {busy === `update:${p.slug}` ? 'กำลังอัปเดต...' : 'อัปเดต'}
-                  </Button>
-                )}
-              </div>
-            ))}
+          <>
+            <ListRows>
+              {plugins.map((p) => (
+                <ListRow
+                  key={p.id}
+                  title={<span className="text-sm font-normal text-gray-800">{p.name || p.slug}</span>}
+                  meta={
+                    <span className="text-xs text-gray-400">
+                      {p.version}
+                      {p.newVersion ? ` → ${p.newVersion}` : ''} · {p.status === 'active' ? 'เปิดใช้' : 'ปิดอยู่'}
+                    </span>
+                  }
+                  trailing={
+                    p.newVersion ? (
+                      <Button size="sm" onClick={() => scanPlugins(p.slug)} loading={busy === `update:${p.slug}`}>
+                        {busy === `update:${p.slug}` ? 'กำลังอัปเดต...' : 'อัปเดต'}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </ListRows>
             {plugins.some((p) => p.newVersion) && (
               <div className="pt-3">
-                <Button variant="secondary" onClick={() => scanPlugins('all')} disabled={busy === 'update:all'}>
+                <Button variant="secondary" onClick={() => scanPlugins('all')} loading={busy === 'update:all'}>
                   อัปเดตทั้งหมด ({plugins.filter((p) => p.newVersion).length} ตัว)
                 </Button>
               </div>
             )}
-          </div>
+          </>
         )}
       </SectionCard>
 
@@ -621,19 +636,22 @@ export default function WebsiteDetailPage() {
           </Button>
         </div>
         {logs.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-400">ยังไม่มีบันทึก</p>
+          <EmptyState size="sm" icon={<FileText size={24} />} title="ยังไม่มีบันทึก" />
         ) : (
-          <div className="space-y-2">
+          <ListRows>
             {logs.map((l) => (
-              <div key={l.id} className="flex gap-3 border-b border-gray-100 pb-2 last:border-0">
-                <span className="w-32 shrink-0 text-xs text-gray-400">{fmtDateTime(l.createdAt)}</span>
-                <span className="text-sm text-gray-700">
-                  <span className="mr-1 text-xs text-gray-400">{LOG_KIND[l.kind]}</span>
-                  {l.message}
-                </span>
-              </div>
+              <ListRow
+                key={l.id}
+                leading={<span className="w-32 shrink-0 text-xs text-gray-400">{fmtDateTime(l.createdAt)}</span>}
+                title={
+                  <span className="whitespace-normal text-sm font-normal text-gray-700">
+                    <span className="mr-1 text-xs text-gray-400">{LOG_KIND[l.kind]}</span>
+                    {l.message}
+                  </span>
+                }
+              />
             ))}
-          </div>
+          </ListRows>
         )}
       </SectionCard>
 
@@ -708,6 +726,7 @@ export default function WebsiteDetailPage() {
           <img src={viewSlip} alt="สลิป" className="mx-auto max-h-[70vh] rounded-lg" />
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

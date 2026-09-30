@@ -14,13 +14,15 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AlertTriangle, ArrowRight, Check, LogOut } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { blockingTodos, TODO_TASKS } from '@/lib/todo/tasks'
 import UserAvatar from '@/components/shared/UserAvatar'
 import { DiscordIcon } from '@/components/icons/DiscordIcon'
-import { Spinner } from '@/components/aoo'
+import { Alert, Button, Field, Input, Spinner } from '@/components/aoo'
+import InfoPanel from '@/components/shared/InfoPanel'
+import SectionCard from '@/components/shared/SectionCard'
 
 const DISCORD_ERRORS: Record<string, string> = {
   denied: 'คุณกดยกเลิกที่หน้า Discord — ลองใหม่อีกครั้ง',
@@ -62,7 +64,7 @@ function Setup() {
 
   if (loading || !userData) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-app)]">
         <Spinner />
       </div>
     )
@@ -78,7 +80,7 @@ function Setup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-app)] px-4 py-10">
       <div className="w-full max-w-lg">
         <div className="text-center">
           <h1 className="text-xl font-semibold text-gray-900">ก่อนเริ่มใช้งาน</h1>
@@ -99,7 +101,7 @@ function Setup() {
         </div>
 
         {/* กำลังทำในชื่อใคร — ต้องเห็นก่อน ไม่งั้นคนที่ใช้เครื่องร่วมกันกรอกผิดคน */}
-        <div className="mt-6 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+        <InfoPanel className="mt-6 flex items-center gap-3">
           <UserAvatar name={userData.fullName} userId={userData.id} size="md" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-gray-900">
@@ -109,13 +111,10 @@ function Setup() {
               <p className="truncate text-xs text-gray-500">LINE · {userData.lineDisplayName}</p>
             )}
           </div>
-          <button
-            onClick={signOut}
-            className="flex shrink-0 items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-          >
-            <LogOut size={13} /> ไม่ใช่ฉัน
-          </button>
-        </div>
+          <Button variant="ghost" size="sm" icon="LogOut" onClick={signOut} className="shrink-0">
+            ไม่ใช่ฉัน
+          </Button>
+        </InfoPanel>
 
         <div className="mt-4 space-y-3">
           <NameTask userData={userData} done={!pending.includes('name')} />
@@ -127,12 +126,16 @@ function Setup() {
         </div>
 
         {pending.length === 0 && (
-          <a
-            href="/dashboard"
-            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-red-600 font-medium text-white transition-colors hover:bg-red-700"
+          <Button
+            size="lg"
+            iconRight="ChevronRight"
+            className="mt-5 w-full"
+            onClick={() => {
+              window.location.href = '/dashboard'
+            }}
           >
-            เข้าใช้งานระบบ <ArrowRight size={16} />
-          </a>
+            เข้าใช้งานระบบ
+          </Button>
         )}
       </div>
     </div>
@@ -195,57 +198,36 @@ function NameTask({
           </p>
 
           <div className="mt-3 space-y-2.5">
-            <Field
-              label="ชื่อ-นามสกุลจริง"
-              value={fullName}
-              onChange={setFullName}
-              placeholder="เช่น อนงค์ สุขพลอย"
-            />
-            <Field
-              label="ชื่อเล่น"
-              value={nickname}
-              onChange={setNickname}
-              placeholder="เช่น แตน"
-            />
+            <Field label="ชื่อ-นามสกุลจริง">
+              <Input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="เช่น อนงค์ สุขพลอย"
+              />
+            </Field>
+            <Field label="ชื่อเล่น">
+              <Input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="เช่น แตน"
+              />
+            </Field>
           </div>
 
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && (
+            <Alert tone="error" compact className="mt-2">
+              {error}
+            </Alert>
+          )}
 
-          <button
-            onClick={save}
-            disabled={saving}
-            className="mt-3 h-10 w-full rounded-lg bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-          >
+          <Button onClick={save} loading={saving} className="mt-3 w-full">
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-          </button>
+          </Button>
         </>
       )}
     </TaskCard>
-  )
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder: string
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-gray-600">{label}</span>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="mt-1 h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-red-400 focus:shadow-[0_0_0_3px_rgba(239,74,34,0.15)]"
-      />
-    </label>
   )
 }
 
@@ -287,10 +269,9 @@ function DiscordTask({
           </p>
 
           {error && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-900">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{DISCORD_ERRORS[error] ?? DISCORD_ERRORS.unknown}</span>
-            </div>
+            <Alert tone="warning" compact className="mt-3">
+              {DISCORD_ERRORS[error] ?? DISCORD_ERRORS.unknown}
+            </Alert>
           )}
 
           <a
@@ -305,13 +286,15 @@ function DiscordTask({
           </p>
 
           {isDev && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={devLink}
-              disabled={devLinking}
-              className="mt-2 w-full rounded-lg border border-dashed border-gray-300 py-2 text-xs text-gray-500 hover:bg-gray-50"
+              loading={devLinking}
+              className="mt-2 w-full"
             >
               {devLinking ? 'กำลังผูก...' : 'ผูกแบบทดสอบ (เฉพาะตอนพัฒนา)'}
-            </button>
+            </Button>
           )}
         </>
       )}
@@ -332,23 +315,20 @@ function TaskCard({
   done: boolean
   children: React.ReactNode
 }) {
-  return (
-    <div
-      className={`rounded-xl border p-4 ${
-        done ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'
-      }`}
-    >
+  const body = (
+    <>
       <div className="flex items-center gap-2.5">
         <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-            done ? 'bg-green-500 text-white' : 'bg-gray-900 text-white'
-          }`}
+          data-tone={done ? 'success' : 'accent'}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--tone)] text-xs font-semibold text-[var(--tone-on)]"
         >
           {done ? <Check size={14} /> : n}
         </span>
         <h2 className={`font-medium ${done ? 'text-gray-500' : 'text-gray-900'}`}>{title}</h2>
       </div>
       <div className="mt-2.5 pl-[34px]">{children}</div>
-    </div>
+    </>
   )
+  // ทำแล้ว = กล่องเทาจาง · ยังไม่ทำ = การ์ดขาวเด่น
+  return done ? <InfoPanel>{body}</InfoPanel> : <SectionCard>{body}</SectionCard>
 }

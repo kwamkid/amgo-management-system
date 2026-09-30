@@ -1,24 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatusBadge, ListRow, ListRows, UserAvatar } from '@/components/shared'
 import { createClient } from '@/lib/supabase/client'
 import { restoreUser } from '@/lib/services/userService'
 import { useToast } from '@/hooks/useToast'
-import { 
-  Trash2, 
-  RefreshCw,
-  Calendar,
-  User as UserIcon,
-  ArrowLeft
-} from 'lucide-react'
-import Link from 'next/link'
+import { Trash2, RefreshCw } from 'lucide-react'
 import TechLoader from '@/components/shared/TechLoader'
-import { Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, EmptyState } from '@/components/aoo'
+
 interface DeletedUser {
   id: string
   fullName: string
   lineDisplayName: string
+  linePictureUrl?: string | null
   phone: string
   role: string
   deletedAt: Date
@@ -87,18 +82,6 @@ export default function DeletedUsersPage() {
     }
   }
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
-      hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
-      manager: { label: 'ผู้จัดการ', variant: 'success' as const },
-      employee: { label: 'พนักงาน', variant: 'secondary' as const }
-    }
-    
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
-  }
-
   if (loading) return <TechLoader />
 
   return (
@@ -114,54 +97,41 @@ export default function DeletedUsersPage() {
       {softDeletedUsers.length > 0 && (
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-orange-600" />
+            <CardTitle icon={RefreshCw} tone="warning">
               พนักงานที่ปิดการใช้งาน (สามารถกู้คืนได้)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <ListRows variant="boxed">
               {softDeletedUsers.map((user) => (
-                <div 
+                <ListRow
                   key={user.id}
-                  className="flex items-center justify-between p-4 bg-orange-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-orange-200 rounded-full flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {user.fullName || user.lineDisplayName}
-                      </p>
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                  leading={<UserAvatar name={user.fullName || user.lineDisplayName} imageUrl={user.linePictureUrl} />}
+                  title={user.fullName || user.lineDisplayName}
+                  meta={
+                    <>
+                      <span className="flex items-center gap-3">
                         <span>{user.phone}</span>
-                        {getRoleBadge(user.role)}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                        <StatusBadge status={user.role} />
+                      </span>
+                      <span className="mt-1 block text-xs">
                         ปิดการใช้งานเมื่อ: {user.deletedAt?.toLocaleDateString('th-TH') || '-'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Button onClick={() => handleRestore(user.id)}
- disabled={restoringId === user.id}
- variant="secondary">
-                    {restoringId === user.id ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        กำลังกู้คืน...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        กู้คืน
-                      </>
-                    )}
-                  </Button>
-                </div>
+                      </span>
+                    </>
+                  }
+                  trailing={
+                    <Button
+                      onClick={() => handleRestore(user.id)}
+                      loading={restoringId === user.id}
+                      icon={restoringId === user.id ? undefined : 'RefreshCw'}
+                      variant="secondary"
+                    >
+                      {restoringId === user.id ? 'กำลังกู้คืน...' : 'กู้คืน'}
+                    </Button>
+                  }
+                />
               ))}
-            </div>
+            </ListRows>
           </CardContent>
         </Card>
       )}
@@ -170,51 +140,37 @@ export default function DeletedUsersPage() {
       {deletedUsers.length > 0 && (
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-red-600" />
+            <CardTitle icon={Trash2} tone="danger">
               พนักงานที่ถูกลบถาวร (ไม่สามารถกู้คืนได้)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Alert tone="error" className="mb-4">
-              <div>
-                พนักงานเหล่านี้ถูกลบออกจากระบบแล้ว ข้อมูลที่แสดงเป็นเพียงประวัติเท่านั้น
-              </div>
+              พนักงานเหล่านี้ถูกลบออกจากระบบแล้ว ข้อมูลที่แสดงเป็นเพียงประวัติเท่านั้น
             </Alert>
-            
-            <div className="space-y-3">
+
+            <ListRows variant="boxed" className="opacity-75">
               {deletedUsers.map((user) => (
-                <div 
+                <ListRow
                   key={user.id}
-                  className="flex items-center justify-between p-4 bg-red-50 rounded-lg opacity-75"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
-                      <Trash2 className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 line-through">
-                        {user.fullName || user.lineDisplayName}
-                      </p>
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                  leading={<UserAvatar name={user.fullName || user.lineDisplayName} imageUrl={user.linePictureUrl} />}
+                  title={<span className="line-through">{user.fullName || user.lineDisplayName}</span>}
+                  meta={
+                    <>
+                      <span className="flex items-center gap-3">
                         <span>{user.phone}</span>
-                        {getRoleBadge(user.role)}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 space-y-1">
-                        <p>ลบเมื่อ: {user.deletedAt?.toLocaleDateString('th-TH') || '-'}</p>
-                        {user.deletedByName && (
-                          <p>ลบโดย: {user.deletedByName}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Pill tone="neutral" className="bg-red-100 text-red-700">
-                    ลบถาวร
-                  </Pill>
-                </div>
+                        <StatusBadge status={user.role} />
+                      </span>
+                      <span className="mt-1 block text-xs">ลบเมื่อ: {user.deletedAt?.toLocaleDateString('th-TH') || '-'}</span>
+                      {user.deletedByName && (
+                        <span className="block text-xs">ลบโดย: {user.deletedByName}</span>
+                      )}
+                    </>
+                  }
+                  trailing={<Pill tone="danger">ลบถาวร</Pill>}
+                />
               ))}
-            </div>
+            </ListRows>
           </CardContent>
         </Card>
       )}
@@ -222,10 +178,7 @@ export default function DeletedUsersPage() {
       {/* Empty State */}
       {softDeletedUsers.length === 0 && deletedUsers.length === 0 && (
         <Card padding={0}>
-          <CardContent className="text-center py-12">
-            <Trash2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">ไม่มีพนักงานที่ถูกลบ</p>
-          </CardContent>
+          <EmptyState icon={<Trash2 size={40} />} title="ไม่มีพนักงานที่ถูกลบ" />
         </Card>
       )}
     </div>

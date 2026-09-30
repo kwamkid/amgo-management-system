@@ -4,9 +4,9 @@
 
 import { Skeleton, DataTable } from '@/components/shared'
 import { useState } from 'react'
-import { Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Clock, ChevronLeft, ChevronRight, ClipboardList, Inbox } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip, Textarea, Input, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select, TabBar, TabItem } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, TabBar, TabItem, EmptyState, Alert, Modal, Field } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
@@ -79,13 +79,8 @@ export default function ReportResults({
   // Empty State
   if (!loading && reportData.length === 0) {
     return (
-      <Card padding={0}>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Clock className="w-12 h-12 text-gray-400 mb-4" />
-          <p className="text-gray-500 text-center">
-            เลือกช่วงเวลาด้านบน — ระบบดึงข้อมูลให้อัตโนมัติ
-          </p>
-        </CardContent>
+      <Card>
+        <EmptyState icon={<Clock size={40} />} title="เลือกช่วงเวลาด้านบน — ระบบดึงข้อมูลให้อัตโนมัติ" />
       </Card>
     )
   }
@@ -98,8 +93,8 @@ export default function ReportResults({
   return (
     <Card padding={0}>
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-base">
+        <div className="flex justify-between items-center gap-2">
+          <CardTitle icon={ClipboardList} tone="grape">
             ผลลัพธ์รายงาน
             {pagination && (
               <span className="text-sm font-normal text-gray-500 ml-2">
@@ -108,7 +103,7 @@ export default function ReportResults({
             )}
           </CardTitle>
           {filters && (
-            <Pill tone="neutral" className="text-xs">
+            <Pill tone="neutral">
               {format(filters.startDate, 'dd MMM', { locale: th })} –{' '}
               {format(filters.endDate, 'dd MMM yyyy', { locale: th })}
             </Pill>
@@ -250,51 +245,43 @@ function BackfillDayDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      maxWidth={384}
+      title="เติมวันทำงานย้อนหลัง"
+      description={`${record.userName} · ${format(new Date(record.date), 'dd MMM yyyy', { locale: th })}`}
+      footer={
+        <>
+          <Button variant="soft" size="sm" onClick={onClose} disabled={saving}>
+            ยกเลิก
+          </Button>
+          <Button size="sm" onClick={save} loading={saving} disabled={!reason.trim()}>
+            {saving ? 'กำลังบันทึก...' : 'เติมวันนี้ให้'}
+          </Button>
+        </>
+      }
     >
-      <Card padding={0} className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <CardContent className="space-y-4 p-5">
-          <div>
-            <h3 className="font-semibold text-gray-900">เติมวันทำงานย้อนหลัง</h3>
-            <p className="mt-0.5 text-sm text-gray-600">
-              {record.userName} · {format(new Date(record.date), 'dd MMM yyyy', { locale: th })}
-            </p>
-          </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="เวลาเข้า">
+            <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
+          </Field>
+          <Field label="เวลาออก">
+            <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
+          </Field>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-500">เวลาเข้า</label>
-              <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500">เวลาออก</label>
-              <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-500">เหตุผล / หลักฐาน (บังคับ)</label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="เช่น มีรูปถ่ายหน้างาน · หัวหน้ายืนยันว่ามาทำงาน แต่ลืมเช็คอิน"
-              rows={2}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="soft" size="sm" onClick={onClose} disabled={saving}>
-              ยกเลิก
-            </Button>
-            <Button size="sm" onClick={save} disabled={saving || !reason.trim()}>
-              {saving ? 'กำลังบันทึก...' : 'เติมวันนี้ให้'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <Field label="เหตุผล / หลักฐาน (บังคับ)">
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="เช่น มีรูปถ่ายหน้างาน · หัวหน้ายืนยันว่ามาทำงาน แต่ลืมเช็คอิน"
+            rows={2}
+          />
+        </Field>
+      </div>
+    </Modal>
   )
 }
 
@@ -398,9 +385,7 @@ function DailyReportTable({
 }) {
   if (data.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</p>
-      </div>
+      <EmptyState size="sm" icon={<Inbox size={28} />} title="ไม่มีข้อมูลตามเงื่อนไขที่เลือก" />
     )
   }
   
@@ -410,8 +395,8 @@ function DailyReportTable({
         columns={[
           { key: 'date', header: 'วันที่', mobilePrimary: true, cell: (record) => format(new Date(record.date), 'dd/MM/yyyy'), sortValue: (record) => record.date },
           { key: 'name', header: 'ชื่อพนักงาน', cell: (record) => record.userName, sortValue: (record) => record.userName },
-          { key: 'in', header: 'เวลาเข้า', cell: (record) => <Pill tone={badgeTone(record.firstCheckIn === '-' ? 'secondary' : 'default')}>{record.firstCheckIn}</Pill> },
-          { key: 'out', header: 'เวลาออก', cell: (record) => <Pill tone={badgeTone(record.lastCheckOut === '-' ? 'secondary' : 'default')}>{record.lastCheckOut}</Pill> },
+          { key: 'in', header: 'เวลาเข้า', cell: (record) => <Pill tone={record.firstCheckIn === '-' ? 'neutral' : 'success'}>{record.firstCheckIn}</Pill> },
+          { key: 'out', header: 'เวลาออก', cell: (record) => <Pill tone={record.lastCheckOut === '-' ? 'neutral' : 'sky'}>{record.lastCheckOut}</Pill> },
           { key: 'hours', header: 'รวม (ชม.)', cell: (record) => (record.totalHours > 0 ? <span className="font-medium">{record.totalHours}</span> : '-'), sortValue: (record) => record.totalHours },
           { key: 'location', header: 'สถานที่', hideOnMobile: true, cell: (record) => record.locationName || 'เช็คอินนอกสถานที่' },
           { key: 'status', header: 'สถานะ', cell: (record) => <AttendanceStatusBadge status={record.status} isLate={record.isLate} lateMinutes={record.lateMinutes} /> },
@@ -444,9 +429,7 @@ function SummaryReportTable({
 }) {
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">ไม่มีข้อมูลสรุป</p>
-      </div>
+      <EmptyState size="sm" icon={<Inbox size={28} />} title="ไม่มีข้อมูลสรุป" />
     )
   }
   
@@ -459,10 +442,10 @@ function SummaryReportTable({
   return (
     <div className="overflow-x-auto">
       {problemCount > 0 && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <Alert tone="error" className="mb-3">
           มีพนักงานขาดงาน (ไม่เช็คอินในวันทำงาน) {problemCount} คนในช่วงนี้ — แสดงไว้บนสุดแล้ว
           ถ้าพิสูจน์ได้ว่ามาทำงานจริง กดเติมวันได้ในแท็บรายวัน
-        </div>
+        </Alert>
       )}
       <DataTable
         columns={[
@@ -470,17 +453,17 @@ function SummaryReportTable({
             key: 'name', header: 'ชื่อพนักงาน', mobilePrimary: true, sortValue: (summary) => summary.userName,
             cell: (summary) =>
               onNameClick && summary.userId ? (
-                <button type="button" onClick={() => onNameClick(summary.userId, summary.userName)} className="text-left font-medium hover:text-red-600 hover:underline" title="กดเพื่อดูรายงานรายคน">
+                <Button variant="link" size="sm" onClick={() => onNameClick(summary.userId, summary.userName)} title="กดเพื่อดูรายงานรายคน">
                   {summary.userName}
-                </button>
+                </Button>
               ) : (
                 <span className="font-medium">{summary.userName}</span>
               ),
           },
           { key: 'expected', header: 'ควรมา', align: 'center', cell: (summary) => <span className="text-gray-600">{summary.expectedDays ?? summary.presentDays + summary.absentDays}</span> },
           { key: 'present', header: 'มาจริง', align: 'center', sortValue: (summary) => summary.presentDays, cell: (summary) => <Pill tone="success">{summary.presentDays}</Pill> },
-          { key: 'absent', header: 'วันขาด', align: 'center', sortValue: (summary) => summary.absentDays, cell: (summary) => <Pill tone={badgeTone(summary.absentDays > 0 ? 'error' : 'secondary')}>{summary.absentDays}</Pill> },
-          { key: 'late', header: 'วันสาย', align: 'center', sortValue: (summary) => summary.lateDays, cell: (summary) => <Pill tone={badgeTone(summary.lateDays > 0 ? 'warning' : 'secondary')}>{summary.lateDays}</Pill> },
+          { key: 'absent', header: 'วันขาด', align: 'center', sortValue: (summary) => summary.absentDays, cell: (summary) => <Pill tone={summary.absentDays > 0 ? 'danger' : 'neutral'}>{summary.absentDays}</Pill> },
+          { key: 'late', header: 'วันสาย', align: 'center', sortValue: (summary) => summary.lateDays, cell: (summary) => <Pill tone={summary.lateDays > 0 ? 'danger' : 'neutral'}>{summary.lateDays}</Pill> },
           { key: 'hours', header: 'รวมชั่วโมง', align: 'center', sortValue: (summary) => summary.totalHours, cell: (summary) => <span className="font-medium">{summary.totalHours.toFixed(2)}</span> },
           { key: 'avg', header: 'เฉลี่ย/วัน', align: 'center', hideOnMobile: true, cell: (summary) => (summary.averageHoursPerDay || 0).toFixed(2) },
         ]}
@@ -513,7 +496,7 @@ function AttendanceStatusBadge({
   
   if (status === 'late' || isLate) {
     return (
-      <Pill tone="warning">
+      <Pill tone="danger">
         สาย {lateMinutes > 0 ? `${lateMinutes} นาที` : ''}
       </Pill>
     )
@@ -524,7 +507,7 @@ function AttendanceStatusBadge({
 
 /* ------------------------------------------------------------------ *
  *  Day slot — แต่ละคนหนึ่งแถว ช่องวันที่เรียงตรงกันทุกคน
- *  เขียว=มา · ส้ม=มาสาย · แดง=ขาด · ฟ้า=ลา · เทา=วันหยุด/ไม่ต้องเช็คอิน
+ *  เขียว=มา · ชมพู=WFH · ม่วง=นอกสถานที่ · แดงอ่อน=มาสาย · แดง=ขาด · เหลือง=ลา · เทา=วันหยุด
  * ------------------------------------------------------------------ */
 type DaySlotSummary = { present: number; absent: number; leave: number; total: number }
 
@@ -617,21 +600,25 @@ function DaySlotGrid({
   }
 
   // สีของ "มา" แยกตามที่เช็คอิน — เจ้าของขอให้เห็นจากสีเลยว่าเข้าสาขาหรือนอกสถานที่
-  // WFH เป็นชมพูสด #ec4899 (สีเดียวกับการ์ด Discord) — ต้องเขียนตรง ๆ เพราะ
-  // theme กลางแปลง bg-pink-* เป็น plum ม่วงเข้ม เลยเคยดูเป็นม่วงทั้งที่ตั้งใจให้ชมพู
+  // สีตามสถานะมาตรฐาน (โทเคนใน globals.css): สาขา = leaf · WFH = pink · นอกสถานที่ = grape
   const presenceClass = (c: Cell): string =>
-    c.ctype === 'offsite' ? 'bg-purple-500' : c.ctype === 'wfh' ? 'bg-[#ec4899]' : 'bg-green-500'
+    c.ctype === 'offsite'
+      ? 'bg-[var(--grape-500)]'
+      : c.ctype === 'wfh'
+        ? 'bg-[var(--pink-500)]'
+        : 'bg-[var(--leaf-500)]'
 
   const cellClass = (c?: Cell): string => {
     if (!c) return 'bg-gray-50'
-    if (c.status === 'absent') return 'bg-red-500'
-    if (c.status === 'late') return 'bg-amber-400'
+    // สาย/ขาด = แดงทั้งคู่ตามสถานะมาตรฐาน — สายใช้แดงอ่อนให้ยังแยกออกจากขาด
+    if (c.status === 'absent') return 'bg-[var(--ruby-500)]'
+    if (c.status === 'late') return 'bg-[var(--ruby-300)]'
     if (c.status === 'normal') return presenceClass(c)
     // holiday รวม ลา/วันหยุดตามตาราง/ไม่ต้องเช็คอิน — แยกด้วยหมายเหตุ
-    if (c.hours > 0) return `${presenceClass(c)} ring-1 ring-green-800` // มาทำงานวันหยุด
-    if (c.note.includes('ลา')) return 'bg-sky-500'
+    if (c.hours > 0) return `${presenceClass(c)} ring-1 ring-[var(--leaf-700)]` // มาทำงานวันหยุด
+    if (c.note.includes('ลา')) return 'bg-[var(--sun-500)]'
     // หยุดชดเชยจากใบสลับวันหยุด — ต่างจากวันหยุดประจำเฉย ๆ ต้องดูออกจากตาราง
-    if (c.note.includes('หยุดชดเชย')) return 'bg-gray-200 ring-1 ring-indigo-500'
+    if (c.note.includes('หยุดชดเชย')) return 'bg-gray-200 ring-1 ring-[var(--grape-500)]'
     return 'bg-gray-200'
   }
 
@@ -664,14 +651,14 @@ function DaySlotGrid({
   )
 
   const legend = [
-    ['bg-green-500', 'มาทำงาน (สาขา)'],
-    ['bg-purple-500', 'นอกสถานที่'],
-    ['bg-[#ec4899]', 'WFH'],
-    ['bg-amber-400', 'มาสาย'],
-    ['bg-red-500', 'ขาด'],
-    ['bg-sky-500', 'ลา'],
+    ['bg-[var(--leaf-500)]', 'มาทำงาน (สาขา)'],
+    ['bg-[var(--grape-500)]', 'นอกสถานที่'],
+    ['bg-[var(--pink-500)]', 'WFH'],
+    ['bg-[var(--ruby-300)]', 'มาสาย'],
+    ['bg-[var(--ruby-500)]', 'ขาด'],
+    ['bg-[var(--sun-500)]', 'ลา'],
     ['bg-gray-200', 'วันหยุด/ไม่ต้องเช็คอิน'],
-    ['bg-gray-200 ring-1 ring-indigo-500', 'หยุดชดเชย (สลับวันหยุด)'],
+    ['bg-gray-200 ring-1 ring-[var(--grape-500)]', 'หยุดชดเชย (สลับวันหยุด)'],
   ] as const
 
   return (
@@ -725,7 +712,7 @@ function DaySlotGrid({
                     <button
                       type="button"
                       onClick={() => onNameClick(p.userId, p.name)}
-                      className="max-w-full truncate text-left hover:text-indigo-600 hover:underline"
+                      className="max-w-full truncate text-left hover:text-[var(--grape-700)] hover:underline"
                       title="กดเพื่อดูรายงานรายคน"
                     >
                       {p.name}
@@ -800,7 +787,7 @@ function DaySlotGrid({
                           title={c?.ctype === 'offsite' ? 'เปิดแผนที่จุดเช็คอิน' : undefined}
                           className={`inline-block h-4 w-4 rounded-sm ${cellClass(c)} ${
                             c?.ctype === 'offsite'
-                              ? 'cursor-pointer hover:ring-2 hover:ring-purple-300'
+                              ? 'cursor-pointer hover:ring-2 hover:ring-[var(--grape-300)]'
                               : ''
                           }`}
                         />
@@ -826,11 +813,11 @@ function DaySlotGrid({
                         scrollMode ? 'sticky right-0 z-10 border-l border-l-gray-100 bg-white' : ''
                       }`}
                     >
-                      <span className="font-semibold text-green-600">{p.sum.present}</span>
+                      <span className="font-semibold text-[var(--leaf-700)]">{p.sum.present}</span>
                       <span className="text-gray-300">/</span>
                       <span
                         className={
-                          p.sum.absent > 0 ? 'font-semibold text-red-600' : 'text-gray-400'
+                          p.sum.absent > 0 ? 'font-semibold text-[var(--ruby-700)]' : 'text-gray-400'
                         }
                       >
                         {missed}

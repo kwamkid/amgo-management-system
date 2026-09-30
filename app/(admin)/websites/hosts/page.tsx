@@ -8,11 +8,24 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardPaste, Copy, KeyRound, Plus, RadioTower, Search, Server, Trash2 } from 'lucide-react'
+import { ClipboardPaste, KeyRound, RadioTower, Server, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Checkbox, Field, Input, Modal, SelectMenu, Textarea } from '@/components/aoo'
-import { DataTable, PageHeader, SectionCard, TechLoader, type Column } from '@/components/shared'
+import {
+  Alert,
+  Button,
+  Checkbox,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  Pill,
+  SelectMenu,
+  Textarea,
+  useConfirm,
+} from '@/components/aoo'
+import { DataTable, InfoPanel, PageHeader, SectionCard, TechLoader, type Column } from '@/components/shared'
 import {
   clearHostSecret,
   createSshKey,
@@ -44,6 +57,7 @@ export default function WebHostsPage() {
   const [pasteText, setPasteText] = useState<string | null>(null)
   const [pasteKeyId, setPasteKeyId] = useState<string | null>(null)
   const [busy, setBusy] = useState('')
+  const { confirm: ask, dialog: confirmDialog } = useConfirm()
 
   const canSee = !!userData && !!userData.hasWebAccess
 
@@ -166,13 +180,9 @@ export default function WebHostsPage() {
           <p className="font-medium text-gray-900">{h.name}</p>
           <p className="text-xs text-gray-400">
             {h.provider} · {h.sshUser}@{h.sshHost}:{h.sshPort}
-            <span
-              className={`ml-1.5 rounded px-1.5 py-0.5 text-xs ${
-                h.isOwnBusiness ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
+            <Pill tone={h.isOwnBusiness ? 'grape' : 'neutral'} className="ml-1.5">
               {h.isOwnBusiness ? 'ของเราเอง' : 'ของลูกค้า'}
-            </span>
+            </Pill>
           </p>
           <p className="mt-0.5 text-xs">
             {h.keyId ? (
@@ -218,8 +228,7 @@ export default function WebHostsPage() {
       mobileFooterAction: true,
       cell: (h) => (
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="secondary" onClick={() => discover(h.id)} disabled={busy === h.id}>
-            <Search size={13} />
+          <Button size="sm" variant="secondary" icon="Search" onClick={() => discover(h.id)} loading={busy === h.id}>
             {busy === h.id ? 'กำลังสำรวจ...' : 'สแกนรายชื่อเว็บ'}
           </Button>
           <Button
@@ -232,16 +241,20 @@ export default function WebHostsPage() {
           >
             แก้
           </Button>
-          <button
-            onClick={() => {
-              if (confirm(`ลบโฮสต์ ${h.name}? (เว็บที่ผูกอยู่จะไม่ถูกลบ แค่หลุดการผูก)`))
-                deleteHost(h.id).then(load)
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600"
+          <IconButton
+            icon={Trash2}
+            tone="danger"
             aria-label="ลบโฮสต์"
-          >
-            <Trash2 size={14} />
-          </button>
+            onClick={async () => {
+              const ok = await ask({
+                title: `ลบโฮสต์ ${h.name}?`,
+                description: 'เว็บที่ผูกอยู่จะไม่ถูกลบ แค่หลุดการผูก',
+                tone: 'danger',
+                confirmLabel: 'ลบ',
+              })
+              if (ok) deleteHost(h.id).then(load)
+            }}
+          />
         </div>
       ),
     },
@@ -259,25 +272,32 @@ export default function WebHostsPage() {
         actions={
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setPasteText('')}>
-              <ClipboardPaste size={15} />
+              <ClipboardPaste size={16} />
               วางข้อมูล SSH
             </Button>
-            <Button variant="secondary" onClick={() => discover()} disabled={!!busy || !hosts.length}>
-              <RadioTower size={15} />
+            <Button
+              variant="secondary"
+              onClick={() => discover()}
+              loading={busy === 'all'}
+              disabled={!!busy || !hosts.length}
+            >
+              {busy !== 'all' && <RadioTower size={16} />}
               สำรวจทุกโฮสต์
             </Button>
-            <Button onClick={() => {
+            <Button
+              icon="Plus"
+              onClick={() => {
                 setPassword('')
                 setDraft({ provider: 'Hostinger', sshPort: 65002, domainsPath: 'domains', backupKeep: 3, isActive: true })
-              }}>
-              <Plus size={15} />
+              }}
+            >
               เพิ่มโฮสต์
             </Button>
           </div>
         }
       />
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <Alert tone="warning" className="mb-4">
         <strong>ระบบไม่ถามรหัสผ่านตอนทำงาน</strong> — งานพวกนี้รันเองบนเซิร์ฟเวอร์ (cron ตี 2 ก็ต้องทำได้)
         เลือกได้ 2 ทางต่อโฮสต์:
         <br />
@@ -286,7 +306,7 @@ export default function WebHostsPage() {
         2) <strong>ใช้กุญแจ</strong> เอา public key ไปแปะที่โฮสต์ แล้วตั้ง{' '}
         <code className="rounded bg-white px-1">WP_SSH_PRIVATE_KEY</code> ใน environment — ปลอดภัยกว่า
         เพราะเพิกถอนได้ทีละเครื่อง
-      </div>
+      </Alert>
 
       <SectionCard
         className="mb-5"
@@ -296,9 +316,9 @@ export default function WebHostsPage() {
             <Button
               size="sm"
               variant="secondary"
+              icon="Plus"
               onClick={() => setKeyDraft({ name: '', provider: '', privateKey: '' })}
             >
-              <Plus size={14} />
               สร้าง/นำเข้ากุญแจ
             </Button>
           </div>
@@ -306,11 +326,11 @@ export default function WebHostsPage() {
         description="สร้างที่นี่ แล้วก๊อป public key ไปแปะที่แผงควบคุมของโฮสต์ — ดอกเดียวใช้ได้หลายโฮสต์"
       >
         {keys.length === 0 ? (
-          <p className="py-3 text-center text-sm text-gray-400">ยังไม่มีกุญแจ</p>
+          <EmptyState size="sm" icon={<KeyRound size={24} />} title="ยังไม่มีกุญแจ" />
         ) : (
           <div className="space-y-3">
             {keys.map((k) => (
-              <div key={k.id} className="rounded-lg border border-gray-200 p-3">
+              <InfoPanel key={k.id}>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-800">
                     <KeyRound size={13} className="mr-1 inline text-gray-400" />
@@ -322,30 +342,34 @@ export default function WebHostsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      icon="Copy"
                       onClick={() => {
                         navigator.clipboard.writeText(k.publicKey)
                         showToast('คัดลอก public key แล้ว', 'success')
                       }}
                     >
-                      <Copy size={13} />
                       ก๊อป public key
                     </Button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`ลบกุญแจ ${k.name}? โฮสต์ที่ใช้อยู่จะต่อไม่ได้จนกว่าจะเลือกใหม่`))
-                          deleteSshKey(k.id).then(load)
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    <IconButton
+                      icon={Trash2}
+                      tone="danger"
                       aria-label="ลบกุญแจ"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                      onClick={async () => {
+                        const ok = await ask({
+                          title: `ลบกุญแจ ${k.name}?`,
+                          description: 'โฮสต์ที่ใช้อยู่จะต่อไม่ได้จนกว่าจะเลือกใหม่',
+                          tone: 'danger',
+                          confirmLabel: 'ลบ',
+                        })
+                        if (ok) deleteSshKey(k.id).then(load)
+                      }}
+                    />
                   </div>
                 </div>
-                <code className="block overflow-x-auto whitespace-nowrap rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                <code className="block overflow-x-auto whitespace-nowrap rounded bg-white px-2 py-1 text-xs text-gray-600">
                   {k.publicKey || '(นำเข้ามาโดยไม่มี public key)'}
                 </code>
-              </div>
+              </InfoPanel>
             ))}
           </div>
         )}
@@ -381,12 +405,12 @@ export default function WebHostsPage() {
               />
             </Field>
             {pasteText.trim() && (
-              <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+              <InfoPanel className="text-xs text-gray-600">
                 อ่านได้ {parseHosts(pasteText).length} โฮสต์:{' '}
                 {parseHosts(pasteText)
                   .map((h) => `${h.name} (${h.provider || '?'})`)
                   .join(' · ')}
-              </div>
+              </InfoPanel>
             )}
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="secondary" onClick={() => setPasteText(null)}>
@@ -542,17 +566,19 @@ export default function WebHostsPage() {
               {draft.hasPassword && (
                 <>
                   {' · '}
-                  <button
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs"
                     onClick={async () => {
                       await clearHostSecret(draft.id!, 'password')
                       setDraft({ ...draft, hasPassword: false })
                       load()
                       showToast('ลบรหัสผ่านแล้ว', 'success')
                     }}
-                    className="text-red-500 underline"
                   >
                     ลบรหัสผ่านของโฮสต์นี้
-                  </button>
+                  </Button>
                 </>
               )}
             </p>
@@ -595,6 +621,7 @@ export default function WebHostsPage() {
           </div>
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { GoogleMap, Marker, Circle, useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api'
 import { MapPin, Search } from 'lucide-react'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { Input, Alert, Card, CardContent } from '@/components/aoo'
+import { Input, Alert, Card, Spinner } from '@/components/aoo'
 interface LocationMapPickerProps {
   lat: number
   lng: number
@@ -145,21 +145,15 @@ export default function LocationMapPicker({
 
   if (loadError) {
     return (
-      <Card padding={0}>
-        <CardContent className="p-8 text-center">
-          <p className="text-red-600">Error loading maps</p>
-        </CardContent>
-      </Card>
+      <Alert tone="error">Error loading maps</Alert>
     )
   }
 
   if (!isLoaded) {
     return (
-      <Card padding={0}>
-        <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="text-gray-600 mt-2">Loading map...</p>
-        </CardContent>
+      <Card padding={32} className="flex flex-col items-center text-center">
+        <Spinner size="lg" />
+        <p className="text-gray-600 mt-2">Loading map...</p>
       </Card>
     )
   }
@@ -226,14 +220,12 @@ export default function LocationMapPicker({
 
       {/* Instructions */}
       <Alert tone="info">
-        <div>
-          <ul className="space-y-1 text-sm">
-            <li>• คลิกบนแผนที่เพื่อเลือกตำแหน่งใหม่</li>
-            <li>• ลากหมุดเพื่อย้ายตำแหน่ง</li>
-            <li>• ค้นหาด้วยชื่อสถานที่ในช่องค้นหา</li>
-            <li className="text-red-600 font-medium">• วงกลมสีแดงแสดงรัศมี {radius} เมตร สำหรับการเช็คอิน</li>
-          </ul>
-        </div>
+        <ul className="space-y-1">
+          <li>• คลิกบนแผนที่เพื่อเลือกตำแหน่งใหม่</li>
+          <li>• ลากหมุดเพื่อย้ายตำแหน่ง</li>
+          <li>• ค้นหาด้วยชื่อสถานที่ในช่องค้นหา</li>
+          <li className="text-red-600 font-medium">• วงกลมสีแดงแสดงรัศมี {radius} เมตร สำหรับการเช็คอิน</li>
+        </ul>
       </Alert>
     </div>
   )

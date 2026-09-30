@@ -7,10 +7,11 @@
 // ปล่อยไว้เฉย ๆ เงินเดือนหลังโปรที่ลงล่วงหน้าจะเริ่มจ่ายเองตามวันที่
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { Hourglass } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
+import { ListRow, ListRows } from '@/components/shared'
+import { Card, CardContent, CardHeader, CardTitle, Pill } from '@/components/aoo'
 
 type Row = {
   id: string
@@ -54,56 +55,47 @@ export default function ProbationZone() {
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <section className="mb-5 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <header className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-        <Hourglass size={15} className="shrink-0 text-amber-600" />
-        <h2 className="text-sm font-semibold text-gray-900">ทดลองงานอยู่ {rows.length} คน</h2>
-      </header>
+    <Card padding={0} className="mb-5 overflow-hidden">
+      <CardHeader>
+        <CardTitle icon={Hourglass} tone="warning">ทดลองงานอยู่ {rows.length} คน</CardTitle>
+      </CardHeader>
 
-      <ul className="divide-y divide-gray-100">
-        {rows.map((r) => {
-          const overdue = !!r.probation_end_date && r.probation_end_date < today
-          const daysLeft = r.probation_end_date
-            ? Math.ceil(
-                (new Date(r.probation_end_date).getTime() - new Date(today).getTime()) / 86400_000
-              )
-            : null
+      <CardContent className="pt-2">
+        <ListRows>
+          {rows.map((r) => {
+            const overdue = !!r.probation_end_date && r.probation_end_date < today
+            const daysLeft = r.probation_end_date
+              ? Math.ceil(
+                  (new Date(r.probation_end_date).getTime() - new Date(today).getTime()) / 86400_000
+                )
+              : null
 
-          return (
-            <li key={r.id}>
-              <Link
+            return (
+              <ListRow
+                key={r.id}
                 href={`/employees/${r.id}/edit?tab=timeline`}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-gray-900">
-                    {r.display_name}
-                  </span>
-                  <span className="block truncate text-xs text-gray-500">
-                    {r.job_functions?.name_th ?? 'ยังไม่ระบุตำแหน่ง'}
-                  </span>
-                </span>
-
-                {r.probation_end_date ? (
-                  <span
-                    className={`shrink-0 text-xs ${
-                      overdue ? 'font-medium text-red-700' : 'text-gray-500'
-                    }`}
-                  >
-                    {overdue
-                      ? `เกินกำหนดพ้นโปร ${thaiDate(r.probation_end_date)} — รอตัดสิน`
-                      : `พ้นโปร ${thaiDate(r.probation_end_date)} (อีก ${daysLeft} วัน)`}
-                  </span>
-                ) : (
-                  <span className="shrink-0 text-xs font-medium text-orange-700">
-                    ยังไม่ตั้งวันพ้นโปร
-                  </span>
-                )}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
+                title={r.display_name}
+                meta={r.job_functions?.name_th ?? 'ยังไม่ระบุตำแหน่ง'}
+                trailing={
+                  r.probation_end_date ? (
+                    overdue ? (
+                      <Pill tone="danger">
+                        เกินกำหนดพ้นโปร {thaiDate(r.probation_end_date)} — รอตัดสิน
+                      </Pill>
+                    ) : (
+                      <span className="text-xs text-gray-500">
+                        พ้นโปร {thaiDate(r.probation_end_date)} (อีก {daysLeft} วัน)
+                      </span>
+                    )
+                  ) : (
+                    <Pill tone="warning">ยังไม่ตั้งวันพ้นโปร</Pill>
+                  )
+                }
+              />
+            )
+          })}
+        </ListRows>
+      </CardContent>
+    </Card>
   )
 }

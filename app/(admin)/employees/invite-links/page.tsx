@@ -1,32 +1,37 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Button as AooButton, Alert, Pill, badgeTone, Card, CardContent, Button, ActionMenu } from '@/components/aoo'
-import { PageHeader } from '@/components/shared'
+import { Card, CardContent, Button, ActionMenu, IconButton, Modal, EmptyState, useConfirm, type ActionMenuItem } from '@/components/aoo'
+import { PageHeader, StatCard, StatusBadge, DataTable, InfoPanel, type Column } from '@/components/shared'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import { InviteLink } from '@/types/invite'
-import { 
+import {
   Link as LinkIcon,
-  Plus,
   Copy,
-  Edit,
   Trash2,
   Users,
   Clock,
-  AlertCircle,
   CheckCircle,
-  XCircle,
   QrCode,
-  MoreVertical
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import TableFooter from '@/components/shared/TableFooter'
 import { useRouter } from 'next/navigation'
+
+/** สถานะลิงก์ — ลำดับเดิม: หมดอายุ → ใช้ครบ → ปิดใช้งาน → ใช้งานได้ */
+function inviteStatus(link: InviteLink): 'expired' | 'used_up' | 'disabled' | 'active' {
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) return 'expired'
+  if (link.maxUses && link.usedCount >= link.maxUses) return 'used_up'
+  if (!link.isActive) return 'disabled'
+  return 'active'
+}
+
 export default function InviteLinksPage() {
   const router = useRouter()
   const { inviteLinks, loading, copyInviteLink, deleteInviteLink } = useInviteLinks()
   const [showQR, setShowQR] = useState<string | null>(null)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -40,36 +45,6 @@ export default function InviteLinksPage() {
     return inviteLinks.slice(start, end)
   }, [inviteLinks, currentPage, itemsPerPage])
 
-  const getStatusBadge = (link: InviteLink) => {
-    const now = new Date()
-    
-    if (link.expiresAt && new Date(link.expiresAt) < now) {
-      return <Pill tone="neutral">หมดอายุ</Pill>
-    }
-    
-    if (link.maxUses && link.usedCount >= link.maxUses) {
-      return <Pill tone="warning">ใช้ครบแล้ว</Pill>
-    }
-    
-    if (!link.isActive) {
-      return <Pill tone="danger">ปิดใช้งาน</Pill>
-    }
-    
-    return <Pill tone="success">ใช้งานได้</Pill>
-  }
-
-  const getRoleBadge = (role: string) => {
-  const roleConfig = {
-    employee: { label: 'พนักงาน', variant: 'secondary' as const },
-    manager: { label: 'ผู้จัดการ', variant: 'info' as const },
-    hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const },
-    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
-  }
-    
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
-  }
-
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return '-'
     return new Date(date).toLocaleDateString('th-TH', {
@@ -80,10 +55,116 @@ export default function InviteLinksPage() {
   }
 
   const handleDelete = async (link: InviteLink) => {
-    if (confirm(`ต้องการปิดใช้งานลิงก์ ${link.code} ใช่หรือไม่?`)) {
+    const ok = await confirm({
+      title: `ต้องการปิดใช้งานลิงก์ ${link.code} ใช่หรือไม่?`,
+      confirmLabel: 'ปิดใช้งาน',
+      tone: 'danger',
+    })
+    if (ok) {
       await deleteInviteLink(link.id!)
     }
   }
+
+  const menuItems = (link: InviteLink): ActionMenuItem[] => [
+    {
+      label: 'ดูผู้ใช้งาน', icon: 'Users', onSelect: () => router.push(`/employees/invite-links/${link.id}`)
+    },
+    {
+      label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/employees/invite-links/${link.id}/edit`)
+    },
+    { kind: 'divider' },
+    {
+      label: 'QR Code', icon: 'QrCode',
+      onSelect: () => setShowQR(link.code)
+    },
+    { kind: 'divider' },
+    {
+      label: (
+        <span className="flex items-center gap-2">
+          <Trash2 className="w-4 h-4" />
+          ปิดใช้งาน
+        </span>
+      ),
+      onSelect: () => handleDelete(link), tone: 'danger',
+      disabled: !link.isActive
+    }
+  ]
+
+  const columns: Column<InviteLink>[] = [
+    {
+      key: 'code',
+      header: 'รหัสลิงก์',
+      mobilePrimary: true,
+      cell: (link) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+              {link.code}
+            </code>
+            <IconButton icon={Copy} title="คัดลอกลิงก์" size={28} onClick={() => copyInviteLink(link.code)} />
+          </div>
+          {link.note && (
+            <p className="text-xs text-gray-500">{link.note}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'settings',
+      header: 'ตั้งค่า',
+      cell: (link) => (
+        <div className="space-y-1">
+          <StatusBadge status={link.defaultRole} />
+          <div className="text-xs text-gray-500">
+            {link.requireApproval ? 'ต้องอนุมัติ' : 'ใช้งานได้ทันที'}
+          </div>
+          {link.defaultLocationIds && link.defaultLocationIds.length > 0 && (
+            <div className="text-xs text-gray-500">
+              {link.defaultLocationIds.length} สาขา
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'usage',
+      header: 'การใช้งาน',
+      cell: (link) => (
+        <div className="space-y-1">
+          <div className="text-sm">
+            ใช้แล้ว {link.usedCount} / {link.maxUses || '∞'}
+          </div>
+          {link.expiresAt && (
+            <div className="text-xs text-gray-500">
+              หมดอายุ {formatDate(link.expiresAt)}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'สถานะ',
+      cell: (link) => <StatusBadge status={inviteStatus(link)} kind="invite" />,
+    },
+    {
+      key: 'createdBy',
+      header: 'สร้างโดย',
+      cell: (link) => (
+        <div className="text-sm">
+          <p className="text-gray-900">{link.createdByName || '-'}</p>
+          <p className="text-xs text-gray-500">{formatDate(link.createdAt)}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      align: 'right',
+      mobileFooterAction: true,
+      cell: (link) => <ActionMenu items={menuItems(link)} />,
+    },
+  ]
 
   if (loading) {
     return <TechLoader />
@@ -98,81 +179,48 @@ export default function InviteLinksPage() {
         backHref="/employees"
         actions={
           <Link href="/employees/invite-links/create">
-            <AooButton size="sm" icon="Plus">
+            <Button size="sm" icon="Plus">
               สร้างลิงก์ใหม่
-            </AooButton>
+            </Button>
           </Link>
         }
       />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ลิงก์ทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900">{inviteLinks.length}</p>
-              </div>
-              <LinkIcon className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-teal-700">ใช้งานได้</p>
-                <p className="text-2xl font-bold text-teal-900">
-                  {inviteLinks.filter(l => l.isActive && (!l.expiresAt || new Date(l.expiresAt) > new Date())).length}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-teal-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-700">ใช้ไปแล้ว</p>
-                <p className="text-2xl font-bold text-blue-900">
-                  {inviteLinks.reduce((sum, link) => sum + link.usedCount, 0)}
-                </p>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-700">หมดอายุ</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {inviteLinks.filter(l => l.expiresAt && new Date(l.expiresAt) < new Date()).length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-gray-600" />
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="ลิงก์ทั้งหมด" value={inviteLinks.length} icon={LinkIcon} tone="sky" />
+        <StatCard
+          label="ใช้งานได้"
+          value={inviteLinks.filter(l => l.isActive && (!l.expiresAt || new Date(l.expiresAt) > new Date())).length}
+          icon={CheckCircle}
+          tone="success"
+        />
+        <StatCard
+          label="ใช้ไปแล้ว"
+          value={inviteLinks.reduce((sum, link) => sum + link.usedCount, 0)}
+          icon={Users}
+          tone="grape"
+        />
+        <StatCard
+          label="หมดอายุ"
+          value={inviteLinks.filter(l => l.expiresAt && new Date(l.expiresAt) < new Date()).length}
+          icon={Clock}
+          tone="danger"
+        />
       </div>
 
       {/* Links List */}
       {inviteLinks.length === 0 ? (
         <Card padding={0}>
-          <CardContent className="text-center py-12">
-            <LinkIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">ยังไม่มีลิงก์</p>
-            <Link href="/employees/invite-links/create"><Button variant="ghost" className="mt-4">
-                <Plus className="w-5 h-5 mr-2" />
-                สร้างลิงก์แรก
-              </Button></Link>
-          </CardContent>
+          <EmptyState
+            icon={<LinkIcon size={40} />}
+            title="ยังไม่มีลิงก์"
+            action={
+              <Link href="/employees/invite-links/create">
+                <Button variant="ghost" icon="Plus">สร้างลิงก์แรก</Button>
+              </Link>
+            }
+          />
         </Card>
       ) : (
         <>
@@ -188,17 +236,11 @@ export default function InviteLinksPage() {
                         <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded truncate">
                           {link.code}
                         </code>
-                        <button
-                          onClick={() => copyInviteLink(link.code)}
-                          className="p-1.5 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
-                          title="คัดลอกลิงก์"
-                        >
-                          <Copy className="w-4 h-4 text-gray-500" />
-                        </button>
+                        <IconButton icon={Copy} title="คัดลอกลิงก์" size={28} onClick={() => copyInviteLink(link.code)} />
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        {getStatusBadge(link)}
-                        {getRoleBadge(link.defaultRole)}
+                        <StatusBadge status={inviteStatus(link)} kind="invite" />
+                        <StatusBadge status={link.defaultRole} />
                       </div>
                       {link.note && (
                         <p className="text-xs text-gray-500 mt-1 truncate">{link.note}</p>
@@ -206,32 +248,7 @@ export default function InviteLinksPage() {
                     </div>
 
                     {/* Actions */}
-                    <ActionMenu
-                      items={[
-                        {
-                          label: 'ดูผู้ใช้งาน', icon: 'Users', onSelect: () => router.push(`/employees/invite-links/${link.id}`)
-                        },
-                        {
-                          label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/employees/invite-links/${link.id}/edit`)
-                        },
-                        { kind: 'divider' },
-                        {
-                          label: 'QR Code', icon: 'QrCode',
-                          onSelect: () => setShowQR(link.code)
-                        },
-                        { kind: 'divider' },
-                        {
-                          label: (
-                            <span className="flex items-center gap-2">
-                              <Trash2 className="w-4 h-4" />
-                              ปิดใช้งาน
-                            </span>
-                          ),
-                          onSelect: () => handleDelete(link), tone: 'danger',
-                          disabled: !link.isActive
-                        }
-                      ]}
-                    />
+                    <ActionMenu items={menuItems(link)} />
                   </div>
 
                   {/* Details */}
@@ -259,116 +276,9 @@ export default function InviteLinksPage() {
           </div>
 
           {/* Desktop: Table View */}
-          <Card padding={0} className="hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">รหัสลิงก์</th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ตั้งค่า</th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">การใช้งาน</th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
-                    <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สร้างโดย</th>
-                    <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {paginatedLinks.map((link) => (
-                    <tr key={link.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                              {link.code}
-                            </code>
-                            <button
-                              onClick={() => copyInviteLink(link.code)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
-                              title="คัดลอกลิงก์"
-                            >
-                              <Copy className="w-4 h-4 text-gray-500" />
-                            </button>
-                          </div>
-                          {link.note && (
-                            <p className="text-xs text-gray-500">{link.note}</p>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          {getRoleBadge(link.defaultRole)}
-                          <div className="text-xs text-gray-500">
-                            {link.requireApproval ? 'ต้องอนุมัติ' : 'ใช้งานได้ทันที'}
-                          </div>
-                          {link.defaultLocationIds && link.defaultLocationIds.length > 0 && (
-                            <div className="text-xs text-gray-500">
-                              {link.defaultLocationIds.length} สาขา
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <div className="text-sm">
-                            ใช้แล้ว {link.usedCount} / {link.maxUses || '∞'}
-                          </div>
-                          {link.expiresAt && (
-                            <div className="text-xs text-gray-500">
-                              หมดอายุ {formatDate(link.expiresAt)}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {getStatusBadge(link)}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="text-gray-900">{link.createdByName || '-'}</p>
-                          <p className="text-xs text-gray-500">{formatDate(link.createdAt)}</p>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <ActionMenu
-                          items={[
-                            {
-                              label: 'ดูผู้ใช้งาน', icon: 'Users', onSelect: () => router.push(`/employees/invite-links/${link.id}`)
-                            },
-                            {
-                              label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/employees/invite-links/${link.id}/edit`)
-                            },
-                            { kind: 'divider' },
-                            {
-                              label: 'QR Code', icon: 'QrCode',
-                              onSelect: () => setShowQR(link.code)
-                            },
-                            { kind: 'divider' },
-                            {
-                              label: (
-                                <span className="flex items-center gap-2">
-                                  <Trash2 className="w-4 h-4" />
-                                  ปิดใช้งาน
-                                </span>
-                              ),
-                              onSelect: () => handleDelete(link), tone: 'danger',
-                              disabled: !link.isActive
-                            }
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <div className="hidden md:block">
+            <DataTable columns={columns} rows={paginatedLinks} rowKey={(l) => l.id!} />
+          </div>
 
           {/* Pagination */}
           {inviteLinks.length > 0 && (
@@ -380,30 +290,22 @@ export default function InviteLinksPage() {
       )}
 
       {/* QR Code Modal */}
-      {showQR && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowQR(null)}
-        >
-          <Card padding={0} className="max-w-sm w-full" onClick={(e) => e.stopPropagation()}
-          >
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">QR Code</h3>
-              <div className="bg-gray-100 aspect-square rounded-lg flex items-center justify-center">
-                <QrCode className="w-32 h-32 text-gray-400" />
-              </div>
-              <p className="text-center mt-4 text-sm text-gray-600">
-                QR Code สำหรับ: {showQR}
-              </p>
-              <Button onClick={() => setShowQR(null)}
- variant="secondary"
- className="w-full mt-4">
-                ปิด
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <Modal open={!!showQR} onClose={() => setShowQR(null)} title="QR Code" maxWidth={384}
+        footer={
+          <Button onClick={() => setShowQR(null)} variant="secondary" className="w-full">
+            ปิด
+          </Button>
+        }
+      >
+        <InfoPanel className="aspect-square flex items-center justify-center">
+          <QrCode className="w-32 h-32 text-gray-400" />
+        </InfoPanel>
+        <p className="text-center mt-4 text-sm text-gray-600">
+          QR Code สำหรับ: {showQR}
+        </p>
+      </Modal>
+
+      {confirmDialog}
     </div>
   )
 }

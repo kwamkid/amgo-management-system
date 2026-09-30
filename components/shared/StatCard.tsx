@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 
 /** สีของการ์ด — ความหมาย (success/warning/…) หรือเลือกสีตรง ๆ · สีจริงอยู่ที่ [data-tone] ใน globals.css */
 export type StatTone =
-  | 'default' | 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'muted'
+  | 'default' | 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'neutral'
   | 'sky' | 'pink' | 'grape' | 'plum'
 
 export function StatCard({

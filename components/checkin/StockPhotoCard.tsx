@@ -13,7 +13,8 @@ import { format } from 'date-fns'
 import { Camera, Check, Trash2, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { SectionCard } from '@/components/shared'
+import { SectionCard, InfoPanel } from '@/components/shared'
+import { Button, Pill } from '@/components/aoo'
 import BurstCamera from './BurstCamera'
 import {
   addStockPhoto,
@@ -120,12 +121,12 @@ export default function StockPhotoCard({
     const mine = photos.filter((p) => p.kind === kind)
     const done = mine.length > 0
     return (
-      <div key={kind} className="rounded-lg border border-gray-100 p-3">
+      <InfoPanel key={kind}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
               className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                done ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                done ? 'bg-[var(--leaf-100)] text-[var(--leaf-700)]' : 'bg-[var(--ruby-100)] text-[var(--ruby-700)]'
               }`}
             >
               {done ? <Check size={14} /> : <X size={14} />}
@@ -135,13 +136,9 @@ export default function StockPhotoCard({
               {done ? `${mine.length} รูป` : 'ยังไม่ได้ถ่าย'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShooting(kind)}
-            className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
-          >
+          <Button size="sm" onClick={() => setShooting(kind)}>
             <Camera size={14} /> ถ่ายรูป
-          </button>
+          </Button>
         </div>
 
         {mine.length > 0 && (
@@ -169,7 +166,7 @@ export default function StockPhotoCard({
             ))}
           </div>
         )}
-      </div>
+      </InfoPanel>
     )
   }
 
@@ -183,13 +180,9 @@ export default function StockPhotoCard({
             <Camera size={16} />
             รูปประจำวัน
             {status.complete ? (
-              <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                ครบแล้ว
-              </span>
+              <Pill tone="success">ครบแล้ว</Pill>
             ) : (
-              <span className="rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                ยังไม่ครบ — เช็คเอาท์ไม่ได้
-              </span>
+              <Pill tone="danger">ยังไม่ครบ — เช็คเอาท์ไม่ได้</Pill>
             )}
           </span>
         }

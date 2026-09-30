@@ -2,15 +2,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  ShoppingBag,
-  FileText,
-  Image as ImageIcon,
-  Package,
-  Loader2
-} from 'lucide-react'
 import { Product, Brand } from '@/types/influencer'
-import { Textarea, Label, Input, Button, Select, Modal } from '@/components/aoo'
+import { Textarea, Input, Field, Button, SelectMenu, Modal } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
 interface ProductModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -127,81 +121,60 @@ export default function ProductModal({
   }
 
   return (
-    <Modal open={open} onClose={() => ((onOpenChange))(false)} title={<>{mode === 'create' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขสินค้า'}</>} description={<>กรอกข้อมูลสินค้าสำหรับใช้ใน Campaign</>} maxWidth={500}>
-        <form onSubmit={handleSubmit}>
-          
+    <Modal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title={mode === 'create' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขสินค้า'}
+      description="กรอกข้อมูลสินค้าสำหรับใช้ใน Campaign"
+      maxWidth={500}
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-4 py-4">
+          {/* Brand Selection */}
+          <Field label="Brand" required asDiv error={errors.brandId || undefined}>
+            <SelectMenu
+              size="md"
+              value={formData.brandId || null}
+              options={brands.map((brand) => ({ value: brand.id!, label: brand.name }))}
+              placeholder="เลือก Brand"
+              onChange={(value) => {
+                setFormData({ ...formData, brandId: value ?? '' })
+                setErrors({ ...errors, brandId: '' })
+              }}
+              disabled={mode === 'edit'}
+              invalid={!!errors.brandId}
+            />
+          </Field>
 
-          <div className="space-y-4 py-4">
-            {/* Brand Selection */}
-            <div>
-              <Label htmlFor="product-brand">
-                <Package className="inline w-4 h-4 mr-1" />
-                Brand <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={formData.brandId}
-                onChange={(e) => ((value) => {
-                  setFormData({ ...formData, brandId: value })
-                  setErrors({ ...errors, brandId: '' })
-                })(e.target.value)}
-                disabled={mode === 'edit'}
-              >
-<option value="">เลือก Brand</option>
-                
-                
-                  {brands.map(brand => (
-                    <option key={brand.id} value={brand.id!}>{brand.name}</option>
-                  ))}
-                
-              </Select>
-              {errors.brandId && (
-                <p className="text-sm text-red-600 mt-1">{errors.brandId}</p>
-              )}
-            </div>
+          {/* Product Name */}
+          <Field label="ชื่อสินค้า" required error={errors.name || undefined}>
+            <Input
+              id="product-name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value })
+                setErrors({ ...errors, name: '' })
+              }}
+              placeholder="เช่น: ลิปสติก, ครีมบำรุงผิว"
+              error={!!errors.name}
+            />
+          </Field>
 
-            {/* Product Name */}
-            <div>
-              <Label htmlFor="product-name">
-                <ShoppingBag className="inline w-4 h-4 mr-1" />
-                ชื่อสินค้า <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="product-name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value })
-                  setErrors({ ...errors, name: '' })
-                }}
-                placeholder="เช่น: ลิปสติก, ครีมบำรุงผิว"
-                className={errors.name ? 'border-red-500' : ''}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-600 mt-1">{errors.name}</p>
-              )}
-            </div>
+          {/* Description */}
+          <Field label="รายละเอียด">
+            <Textarea
+              id="product-description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="รายละเอียดเกี่ยวกับสินค้านี้..."
+              rows={3}
+            />
+          </Field>
 
-            {/* Description */}
-            <div>
-              <Label htmlFor="product-description">
-                <FileText className="inline w-4 h-4 mr-1" />
-                รายละเอียด
-              </Label>
-              <Textarea
-                id="product-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="รายละเอียดเกี่ยวกับสินค้านี้..."
-                rows={3}
-              />
-            </div>
-
-            {/* Product Image URL */}
-            <div>
-              <Label htmlFor="product-image">
-                <ImageIcon className="inline w-4 h-4 mr-1" />
-                รูปสินค้า URL
-              </Label>
+          {/* Product Image URL */}
+          <div>
+            <Field label="รูปสินค้า URL" error={errors.image || undefined}>
               <Input
                 id="product-image"
                 type="url"
@@ -211,47 +184,37 @@ export default function ProductModal({
                   setErrors({ ...errors, image: '' })
                 }}
                 placeholder="https://example.com/product.jpg"
-                className={errors.image ? 'border-red-500' : ''}
+                error={!!errors.image}
               />
-              {errors.image && (
-                <p className="text-sm text-red-600 mt-1">{errors.image}</p>
-              )}
-              
-              {/* Image Preview */}
-              {formData.image && !errors.image && (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">ตัวอย่างรูปสินค้า:</p>
-                  <img 
-                    src={formData.image} 
-                    alt="Product preview"
-                    className="h-24 object-contain rounded"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      setErrors({ ...errors, image: 'ไม่สามารถโหลดรูปภาพได้' })
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+            </Field>
 
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="soft" onClick={() => onOpenChange(false)}
- disabled={isSubmitting}>
-              ยกเลิก
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="-">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  กำลังบันทึก...
-                </>
-              ) : (
-                mode === 'create' ? 'เพิ่มสินค้า' : 'บันทึกการแก้ไข'
-              )}
-            </Button>
+            {/* Image Preview */}
+            {formData.image && !errors.image && (
+              <InfoPanel className="mt-3">
+                <p className="text-sm text-gray-600 mb-2">ตัวอย่างรูปสินค้า:</p>
+                <img
+                  src={formData.image}
+                  alt="Product preview"
+                  className="h-24 object-contain rounded"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    setErrors({ ...errors, image: 'ไม่สามารถโหลดรูปภาพได้' })
+                  }}
+                />
+              </InfoPanel>
+            )}
           </div>
-        </form>
-      </Modal>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="soft" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            ยกเลิก
+          </Button>
+          <Button type="submit" loading={isSubmitting}>
+            {isSubmitting ? 'กำลังบันทึก...' : mode === 'create' ? 'เพิ่มสินค้า' : 'บันทึกการแก้ไข'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

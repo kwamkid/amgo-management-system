@@ -15,11 +15,10 @@ import {
   MapPin,
   Phone,
   Table2,
-  Settings2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { sortRows, type SortState } from '@/components/shared/DataTable'
-import { Button, ActionMenu, useConfirm, Checkbox, Popover } from '@/components/aoo'
+import { Button, ActionMenu, useConfirm, Checkbox, Popover, Pill } from '@/components/aoo'
 import { useToast } from '@/hooks/useToast'
 import { reactivateUser } from '@/lib/services/userService'
 import {
@@ -81,7 +80,7 @@ function tenureLabel(start: Date): string {
 
 export default function EmployeesPage() {
   const [colsOpen, setColsOpen] = useState(false)
-  const colsBtnRef = useRef<HTMLButtonElement>(null)
+  const colsBtnRef = useRef<HTMLSpanElement>(null)
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<string | null>(null)
@@ -231,11 +230,8 @@ export default function EmployeesPage() {
             size="md"
           />
           {u.nameVerified === false && (
-            <span
-              title="ชื่อนี้ยังเป็นชื่อจาก LINE ยังไม่มีใครกรอกชื่อจริง"
-              className="shrink-0 rounded-md bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700"
-            >
-              ยังไม่มีชื่อจริง
+            <span title="ชื่อนี้ยังเป็นชื่อจาก LINE ยังไม่มีใครกรอกชื่อจริง" className="shrink-0">
+              <Pill tone="warning">ยังไม่มีชื่อจริง</Pill>
             </span>
           )}
         </div>
@@ -468,6 +464,7 @@ export default function EmployeesPage() {
           value={statistics.total}
           unit="คน"
           icon={Users}
+          tone="sky"
           selected={!pendingOnly && status === null}
           onClick={() => {
             setPendingOnly(false)
@@ -535,16 +532,16 @@ export default function EmployeesPage() {
           options={companies.map((c) => ({ value: c.id, label: c.name_th }))}
           onChange={setCompany}
         />
-        <button
-          ref={colsBtnRef}
-          type="button"
-          title="เลือกคอลัมน์ที่แสดง"
-          onClick={() => setColsOpen((o) => !o)}
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          <Settings2 size={15} className="text-gray-400" />
-          คอลัมน์
-        </button>
+        <span ref={colsBtnRef} className="inline-flex">
+          <Button
+            variant="secondary"
+            icon="Settings2"
+            title="เลือกคอลัมน์ที่แสดง"
+            onClick={() => setColsOpen((o) => !o)}
+          >
+            คอลัมน์
+          </Button>
+        </span>
         <Popover open={colsOpen} onClose={() => setColsOpen(false)} anchor={colsBtnRef.current} align="end" minWidth={224} padding={12}>
             <p className="mb-2 text-xs font-medium text-gray-500">คอลัมน์ที่แสดง (จำไว้ในเครื่องนี้)</p>
             <div className="space-y-2">

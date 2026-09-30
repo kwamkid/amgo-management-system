@@ -16,7 +16,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   X,
   Eye,
   Search,
@@ -30,7 +29,7 @@ import {
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, Circle } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Input, Pill, Card, CardContent, Button, Select } from '@/components/aoo'
+import { DatePicker, Input, Pill, Card, CardContent, Button, IconButton, Select, Spinner, EmptyState, Alert } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -45,7 +44,7 @@ const defaultCenter = {
 // Marker icons
 const createOnsiteMarkerIcon = () => ({
   path: google.maps.SymbolPath.CIRCLE,
-  fillColor: '#22c55e', // green
+  fillColor: '#2BA85B', // --leaf-500 (success) — Google Maps needs a literal colour
   fillOpacity: 1,
   strokeColor: '#ffffff',
   strokeWeight: 2,
@@ -54,7 +53,7 @@ const createOnsiteMarkerIcon = () => ({
 
 const createOffsiteMarkerIcon = () => ({
   path: google.maps.SymbolPath.CIRCLE,
-  fillColor: '#f59e0b', // orange/warning
+  fillColor: '#7A4ACF', // --grape-500 (offsite) — Google Maps needs a literal colour
   fillOpacity: 1,
   strokeColor: '#ffffff',
   strokeWeight: 2,
@@ -210,9 +209,7 @@ export default function CheckinMapPage() {
   if (loadError) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Card className="p-8">
-          <p className="text-red-600 text-sm">Error loading map</p>
-        </Card>
+        <Alert tone="error">Error loading map</Alert>
       </div>
     )
   }
@@ -230,13 +227,10 @@ export default function CheckinMapPage() {
     <>
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <Spinner size="md" />
         </div>
       ) : filteredRecords.length === 0 ? (
-        <div className="text-center py-8">
-          <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600 text-sm">ไม่พบข้อมูลการเช็คอิน</p>
-        </div>
+        <EmptyState icon={<MapPin size={32} />} title="ไม่พบข้อมูลการเช็คอิน" size="sm" />
       ) : (
         <div className="space-y-2">
           {filteredRecords.map((record) => (
@@ -263,19 +257,19 @@ export default function CheckinMapPage() {
                     {/* Location and Type */}
                     <div className="flex items-center gap-2">
                       {record.checkinType === 'offsite' ? (
-                        <Pill tone="neutral" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                        <Pill tone="grape">
                           <MapPinOff className="w-3 h-3 mr-1" />
                           นอกสถานที่
                         </Pill>
                       ) : (
-                        <Pill tone="neutral" className="text-xs bg-green-50 text-green-600 border-green-200">
+                        <Pill tone="success">
                           <Building className="w-3 h-3 mr-1" />
                           {record.primaryLocationName || 'ในสถานที่'}
                         </Pill>
                       )}
 
                       {record.isLate && (
-                        <Pill tone="neutral" className="text-xs bg-red-50 text-red-600 border-red-200">
+                        <Pill tone="danger">
                           สาย {record.lateMinutes} นาที
                         </Pill>
                       )}
@@ -339,12 +333,12 @@ export default function CheckinMapPage() {
 
           {/* Type Badge */}
           {isOffsite ? (
-            <Pill tone="neutral" className="text-xs bg-orange-50 text-orange-600 border-orange-200 mb-2">
+            <Pill tone="grape" className="mb-2">
               <MapPinOff className="w-3 h-3 mr-1" />
               เช็คอินนอกสถานที่
             </Pill>
           ) : (
-            <Pill tone="neutral" className="text-xs bg-green-50 text-green-600 border-green-200 mb-2">
+            <Pill tone="success" className="mb-2">
               <Building className="w-3 h-3 mr-1" />
               {selectedRecord.primaryLocationName || 'ในสถานที่'}
             </Pill>
@@ -352,7 +346,7 @@ export default function CheckinMapPage() {
 
           {/* Late Badge */}
           {selectedRecord.isLate && (
-            <Pill tone="neutral" className="text-xs bg-red-50 text-red-600 border-red-200 mb-2 ml-1">
+            <Pill tone="danger" className="mb-2 ml-1">
               สาย {selectedRecord.lateMinutes} นาที
             </Pill>
           )}
@@ -380,35 +374,27 @@ export default function CheckinMapPage() {
 
           {/* Date Navigation */}
           <div className="flex items-center gap-2 mt-2">
-            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
- disabled={loading}
- className="h-8 w-8">
-              <ChevronLeft className="w-3 h-3" />
-            </Button>
+            <IconButton icon={ChevronLeft} title="วันก่อนหน้า" tone="sunken" onClick={() => changeDate(-1)} disabled={loading} />
 
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 flex-1 text-sm h-8"
+              className="flex-1 text-sm h-8"
             />
 
-            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
- disabled={loading || selectedDate === getLocalDateString(new Date())}
- className="h-8 w-8">
-              <ChevronRight className="w-3 h-3" />
-            </Button>
+            <IconButton icon={ChevronRight} title="วันถัดไป" tone="sunken" onClick={() => changeDate(1)} disabled={loading || selectedDate === getLocalDateString(new Date())} />
           </div>
 
           {/* Stats */}
           <div className="mt-3 flex items-center gap-2 text-xs">
-            <Pill tone="neutral" className="bg-gray-100">
+            <Pill tone="neutral">
               ทั้งหมด {stats.total}
             </Pill>
-            <Pill tone="neutral" className="bg-green-100 text-green-700">
+            <Pill tone="success">
               ในสถานที่ {stats.onsite}
             </Pill>
-            <Pill tone="neutral" className="bg-orange-100 text-orange-700">
+            <Pill tone="grape">
               นอกสถานที่ {stats.offsite}
             </Pill>
           </div>
@@ -476,24 +462,16 @@ export default function CheckinMapPage() {
 
           {/* Date Navigation */}
           <div className="flex items-center gap-1 mb-2">
-            <Button variant="soft" size="sm" onClick={() => changeDate(-1)}
- disabled={loading}
- className="h-7 w-7">
-              <ChevronLeft className="w-3 h-3" />
-            </Button>
+            <IconButton icon={ChevronLeft} title="วันก่อนหน้า" tone="sunken" size={28} onClick={() => changeDate(-1)} disabled={loading} />
 
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               max={getLocalDateString(new Date())}
-              className="flex-1 flex-1 h-7 text-xs"
+              className="flex-1 h-7 text-xs"
             />
 
-            <Button variant="soft" size="sm" onClick={() => changeDate(1)}
- disabled={loading || selectedDate === getLocalDateString(new Date())}
- className="h-7 w-7">
-              <ChevronRight className="w-3 h-3" />
-            </Button>
+            <IconButton icon={ChevronRight} title="วันถัดไป" tone="sunken" size={28} onClick={() => changeDate(1)} disabled={loading || selectedDate === getLocalDateString(new Date())} />
           </div>
 
           {/* Search and Filter */}
@@ -520,13 +498,13 @@ export default function CheckinMapPage() {
 
           {/* Stats */}
           <div className="mt-2 flex items-center gap-2 text-xs">
-            <Pill tone="neutral" className="bg-gray-100 text-xs">
+            <Pill tone="neutral">
               ทั้งหมด {stats.total}
             </Pill>
-            <Pill tone="neutral" className="bg-green-100 text-green-700 text-xs">
+            <Pill tone="success">
               ในสถานที่ {stats.onsite}
             </Pill>
-            <Pill tone="neutral" className="bg-orange-100 text-orange-700 text-xs">
+            <Pill tone="grape">
               นอกสถานที่ {stats.offsite}
             </Pill>
           </div>

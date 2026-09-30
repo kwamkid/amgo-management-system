@@ -4,7 +4,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Building, Clock, Users, Wallet } from 'lucide-react'
+import { Building, CalendarDays, Clock, Heart, MapPin, Sparkles, Star, Users, Wallet } from 'lucide-react'
 import {
   Button,
   IconButton,
@@ -18,7 +18,13 @@ import {
   Alert,
   Toggle,
   Checkbox,
+  Field,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
   useToast,
+  type PillTone,
   type DateRangeValue,
 } from '@/components/aoo'
 import {
@@ -30,10 +36,31 @@ import {
   UserCell,
   FilterBar,
   FilterSelect,
+  InfoPanel,
+  ListRow,
+  ListRows,
+  DateStepper,
+  UserAvatar,
   type Column,
+  type StatTone,
 } from '@/components/shared'
 
 type Row = { id: string; name: string; unit: string; status: string; hours: number }
+
+const PILL_TONES: PillTone[] = [
+  'neutral', 'accent', 'success', 'warning', 'danger', 'info', 'sky', 'pink', 'grape', 'plum',
+]
+const STAT_TONES: { tone: StatTone; label: string }[] = [
+  { tone: 'accent', label: 'accent' },
+  { tone: 'success', label: 'success' },
+  { tone: 'warning', label: 'warning' },
+  { tone: 'danger', label: 'danger' },
+  { tone: 'sky', label: 'sky' },
+  { tone: 'grape', label: 'grape' },
+  { tone: 'pink', label: 'pink' },
+  { tone: 'plum', label: 'plum' },
+  { tone: 'muted', label: 'muted' },
+]
 
 const ROWS: Row[] = [
   { id: '1', name: 'เฟื่องฉัตร', unit: 'ออฟฟิศ AGD', status: 'active', hours: 168 },
@@ -58,6 +85,8 @@ export default function DesignPage() {
   const [toggle, setToggle] = useState(true)
   const [checked, setChecked] = useState(false)
   const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [month, setMonth] = useState(new Date(2026, 8, 1))
 
   const columns: Column<Row>[] = [
     { key: 'name', header: 'ชื่อ', cell: (r) => <UserCell name={r.name} subtitle={r.unit} /> },
@@ -92,6 +121,40 @@ export default function DesignPage() {
             hint="ชั่วโมงไม่น่าเชื่อถือ"
           />
         </StatGrid>
+        <StatGrid cols={3}>
+          {STAT_TONES.map((t) => (
+            <StatCard key={t.tone} label={`tone="${t.label}"`} value={12} icon={Sparkles} tone={t.tone} />
+          ))}
+        </StatGrid>
+      </Section>
+
+      <Section title="หัวการ์ดมีไอคอนสี (CardTitle icon tone)">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card padding={0}>
+            <CardHeader>
+              <CardTitle icon={CalendarDays} tone="sky">วันลา</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InfoPanel>กล่องย่อยพื้นเทา — InfoPanel ไม่ใส่ tone</InfoPanel>
+            </CardContent>
+          </Card>
+          <Card padding={0}>
+            <CardHeader>
+              <CardTitle icon={Heart} tone="pink">สวัสดิการ</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InfoPanel tone="pink">InfoPanel tone=&quot;pink&quot;</InfoPanel>
+            </CardContent>
+          </Card>
+          <Card padding={0}>
+            <CardHeader>
+              <CardTitle icon={MapPin} tone="grape">สถานที่</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InfoPanel tone="success">InfoPanel tone=&quot;success&quot;</InfoPanel>
+            </CardContent>
+          </Card>
+        </div>
       </Section>
 
       <Section title="ปุ่ม">
@@ -105,7 +168,19 @@ export default function DesignPage() {
             เล็ก
           </Button>
           <Button disabled>ปิดใช้งาน</Button>
-          <IconButton icon="Pencil" />
+          <Button
+            loading={busy}
+            onClick={() => {
+              setBusy(true)
+              setTimeout(() => setBusy(false), 1500)
+            }}
+          >
+            {busy ? 'กำลังบันทึก…' : 'กดแล้วหมุน (loading)'}
+          </Button>
+          <Button variant="link">ลิงก์ข้อความ</Button>
+          <IconButton icon="Pencil" title="แก้ไข" />
+          <IconButton icon="Trash2" title="ลบ" tone="danger" />
+          <IconButton icon={Star} title="ติดดาว" tone="sunken" />
           <ActionMenu
             items={[
               { label: 'แก้ไข', icon: 'Pencil', onSelect: () => pushToast('ok', 'แก้ไข') },
@@ -123,6 +198,48 @@ export default function DesignPage() {
             <StatusBadge key={s} status={s} />
           ))}
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PILL_TONES.map((t) => (
+            <Pill key={t} tone={t}>
+              {t}
+            </Pill>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="แถวรายการ (ListRows + ListRow)">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ListRows>
+            {ROWS.map((r) => (
+              <ListRow
+                key={r.id}
+                leading={<UserAvatar name={r.name} size="sm" />}
+                title={r.name}
+                meta={r.unit}
+                trailing={<StatusBadge status={r.status} />}
+                onClick={() => pushToast('ok', r.name)}
+              />
+            ))}
+          </ListRows>
+          <ListRows variant="boxed">
+            {ROWS.map((r) => (
+              <ListRow
+                key={r.id}
+                title={r.name}
+                meta={`${r.hours} ชม.`}
+                trailing={<Pill tone="sky">{r.unit}</Pill>}
+              />
+            ))}
+          </ListRows>
+        </div>
+      </Section>
+
+      <Section title="เลื่อนวัน/เดือน (DateStepper)">
+        <DateStepper
+          label={month.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+          onPrev={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+          onNext={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+        />
       </Section>
 
       <Section
@@ -130,16 +247,16 @@ export default function DesignPage() {
         note="ไม่ได้ใช้ <input type=time> เพราะหน้าตาต่างกันทุกเบราว์เซอร์ และตั้งช่วง 30 นาทีไม่ได้"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="เวลาเดียว">
+          <Field asDiv label="เวลาเดียว">
             <TimePicker value={time} onChange={setTime} />
           </Field>
-          <Field label="ช่วงเวลา — กะปกติ">
+          <Field asDiv label="ช่วงเวลา — กะปกติ">
             <TimeRangePicker start={range.start} end={range.end} onChange={setRange} />
           </Field>
-          <Field label="ช่วงเวลา — กะข้ามคืน (คำนวณให้ถูก)">
+          <Field asDiv label="ช่วงเวลา — กะข้ามคืน (คำนวณให้ถูก)">
             <TimeRangePicker start={nightRange.start} end={nightRange.end} onChange={setNightRange} />
           </Field>
-          <Field label="ช่วงวันที่">
+          <Field asDiv label="ช่วงวันที่">
             <DateRangeButton value={dates} onChange={setDates} />
           </Field>
         </div>
@@ -147,7 +264,7 @@ export default function DesignPage() {
 
       <Section title="ตัวเลือก (dropdown ของเราเอง ไม่ใช่ของ OS)">
         <div className="grid max-w-md gap-4">
-          <Field label="มีช่องค้นหาให้เองเมื่อตัวเลือกเกิน 8">
+          <Field asDiv label="มีช่องค้นหาให้เองเมื่อตัวเลือกเกิน 8">
             <SelectMenu
               size="md"
               value={unit}
@@ -255,14 +372,5 @@ function Section({
       {!note && <div className="mb-3" />}
       {children}
     </section>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-1.5 text-sm font-medium text-gray-700">{label}</p>
-      {children}
-    </div>
   )
 }

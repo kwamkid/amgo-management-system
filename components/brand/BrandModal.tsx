@@ -2,14 +2,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Package,
-  FileText,
-  Image as ImageIcon,
-  Loader2
-} from 'lucide-react'
 import { Brand } from '@/types/influencer'
-import { Textarea, Label, Input, Button, Modal } from '@/components/aoo'
+import { Textarea, Input, Field, Button, Modal } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
 interface BrandModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -111,54 +106,44 @@ export default function BrandModal({
   }
 
   return (
-    <Modal open={open} onClose={() => ((onOpenChange))(false)} title={<>{mode === 'create' ? 'เพิ่ม Brand ใหม่' : 'แก้ไข Brand'}</>} description={<>กรอกข้อมูล Brand สำหรับใช้ใน Campaign</>} maxWidth={500}>
-        <form onSubmit={handleSubmit}>
-          
+    <Modal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title={mode === 'create' ? 'เพิ่ม Brand ใหม่' : 'แก้ไข Brand'}
+      description="กรอกข้อมูล Brand สำหรับใช้ใน Campaign"
+      maxWidth={500}
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-4 py-4">
+          {/* Brand Name */}
+          <Field label="ชื่อ Brand" required error={errors.name || undefined}>
+            <Input
+              id="brand-name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value })
+                setErrors({ ...errors, name: '' })
+              }}
+              placeholder="เช่น: AMGO, Brand A"
+              error={!!errors.name}
+            />
+          </Field>
 
-          <div className="space-y-4 py-4">
-            {/* Brand Name */}
-            <div>
-              <Label htmlFor="brand-name">
-                <Package className="inline w-4 h-4 mr-1" />
-                ชื่อ Brand <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="brand-name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value })
-                  setErrors({ ...errors, name: '' })
-                }}
-                placeholder="เช่น: AMGO, Brand A"
-                className={errors.name ? 'border-red-500' : ''}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-600 mt-1">{errors.name}</p>
-              )}
-            </div>
+          {/* Description */}
+          <Field label="รายละเอียด">
+            <Textarea
+              id="brand-description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="รายละเอียดเกี่ยวกับ Brand นี้..."
+              rows={3}
+            />
+          </Field>
 
-            {/* Description */}
-            <div>
-              <Label htmlFor="brand-description">
-                <FileText className="inline w-4 h-4 mr-1" />
-                รายละเอียด
-              </Label>
-              <Textarea
-                id="brand-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="รายละเอียดเกี่ยวกับ Brand นี้..."
-                rows={3}
-              />
-            </div>
-
-            {/* Logo URL */}
-            <div>
-              <Label htmlFor="brand-logo">
-                <ImageIcon className="inline w-4 h-4 mr-1" />
-                Logo URL
-              </Label>
+          {/* Logo URL */}
+          <div>
+            <Field label="Logo URL" error={errors.logo || undefined}>
               <Input
                 id="brand-logo"
                 type="url"
@@ -168,47 +153,37 @@ export default function BrandModal({
                   setErrors({ ...errors, logo: '' })
                 }}
                 placeholder="https://example.com/logo.png"
-                className={errors.logo ? 'border-red-500' : ''}
+                error={!!errors.logo}
               />
-              {errors.logo && (
-                <p className="text-sm text-red-600 mt-1">{errors.logo}</p>
-              )}
-              
-              {/* Logo Preview */}
-              {formData.logo && !errors.logo && (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">ตัวอย่าง Logo:</p>
-                  <img 
-                    src={formData.logo} 
-                    alt="Logo preview"
-                    className="h-16 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      setErrors({ ...errors, logo: 'ไม่สามารถโหลดรูปภาพได้' })
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+            </Field>
 
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="soft" onClick={() => onOpenChange(false)}
- disabled={isSubmitting}>
-              ยกเลิก
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="-">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  กำลังบันทึก...
-                </>
-              ) : (
-                mode === 'create' ? 'เพิ่ม Brand' : 'บันทึกการแก้ไข'
-              )}
-            </Button>
+            {/* Logo Preview */}
+            {formData.logo && !errors.logo && (
+              <InfoPanel className="mt-3">
+                <p className="text-sm text-gray-600 mb-2">ตัวอย่าง Logo:</p>
+                <img
+                  src={formData.logo}
+                  alt="Logo preview"
+                  className="h-16 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    setErrors({ ...errors, logo: 'ไม่สามารถโหลดรูปภาพได้' })
+                  }}
+                />
+              </InfoPanel>
+            )}
           </div>
-        </form>
-      </Modal>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="soft" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            ยกเลิก
+          </Button>
+          <Button type="submit" loading={isSubmitting}>
+            {isSubmitting ? 'กำลังบันทึก...' : mode === 'create' ? 'เพิ่ม Brand' : 'บันทึกการแก้ไข'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

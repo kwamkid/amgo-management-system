@@ -10,7 +10,7 @@ export const useToast = () => {
           duration: 3000,
           position: 'top-right',
           style: {
-            background: '#10B981',
+            background: 'var(--leaf-500)',
             color: '#fff',
           },
         })
@@ -20,7 +20,7 @@ export const useToast = () => {
           duration: 4000,
           position: 'top-right',
           style: {
-            background: '#EF4444',
+            background: 'var(--ruby-500)',
             color: '#fff',
           },
         })

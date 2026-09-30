@@ -18,7 +18,8 @@ import { th } from 'date-fns/locale'
 import { CalendarSync } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, DatePicker, Input, Modal } from '@/components/aoo'
+import { Button, DatePicker, Input, Modal, Field } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
 import { createSwap } from '@/lib/services/scheduleSwapService'
 
 export default function SwapDayPrompt({
@@ -68,36 +69,31 @@ export default function SwapDayPrompt({
       title="วันนี้เป็นวันหยุดของคุณ"
     >
       <div className="space-y-4">
-        <div className="flex gap-3 rounded-lg bg-amber-50 p-3">
-          <CalendarSync size={18} className="mt-0.5 shrink-0 text-amber-600" />
-          <p className="text-sm text-amber-900">
+        <InfoPanel tone="warning" className="flex gap-3">
+          <CalendarSync size={18} className="mt-0.5 shrink-0 text-[var(--sun-700)]" />
+          <p className="text-sm text-[var(--sun-700)]">
             {format(workedDate, 'EEEEที่ d MMMM', { locale: th })} เป็นวันหยุดประจำของคุณ
             แต่คุณมาทำงาน — เลือกวันที่จะไปหยุดแทนได้เลย
           </p>
-        </div>
+        </InfoPanel>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            จะไปหยุดวันไหนแทน
-          </label>
+        <Field
+          asDiv
+          label="จะไปหยุดวันไหนแทน"
+          help="ต้องเป็นวันทำงานปกติ และอยู่ในงวดจ่ายเงินเดือนเดียวกันกับวันนี้"
+        >
           <DatePicker value={offDate} onChange={setOffDate} />
-          <p className="mt-1 text-xs text-gray-500">
-            ต้องเป็นวันทำงานปกติ และอยู่ในงวดจ่ายเงินเดือนเดียวกันกับวันนี้
-          </p>
-        </div>
+        </Field>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            เหตุผล <span className="font-normal text-gray-400">(ไม่บังคับ)</span>
-          </label>
+        <Field label="เหตุผล (ไม่บังคับ)">
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="เช่น ไปออกบูธงาน รพ."
           />
-        </div>
+        </Field>
 
-        <Button onClick={submit} disabled={saving} className="w-full">
+        <Button onClick={submit} loading={saving} className="w-full">
           {saving ? 'กำลังยื่น...' : 'ยื่นใบสลับวันหยุด'}
         </Button>
       </div>

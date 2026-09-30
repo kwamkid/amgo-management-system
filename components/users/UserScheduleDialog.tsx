@@ -8,6 +8,7 @@
 // ไม่ auto save: ต้องกดบันทึกในการ์ดเท่านั้น กดยกเลิก/พื้นหลัง = ทิ้งที่แก้ไว้
 // ส่วนสลับวันหยุดรายวันไม่โชว์ใน popup (นาน ๆ ใช้ที ไปแก้ที่หน้าแก้ไขพนักงาน)
 
+import { Modal } from '@/components/aoo'
 import WorkScheduleCard from './WorkScheduleCard'
 
 export default function UserScheduleDialog({
@@ -21,22 +22,14 @@ export default function UserScheduleDialog({
   onClose: () => void
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <WorkScheduleCard
-          userId={userId}
-          title={name ? `ตารางวันทำงาน — ${name}` : undefined}
-          showExceptions={false}
-          onCancel={onClose}
-          onSaved={onClose}
-        />
-      </div>
-    </div>
+    <Modal open onClose={onClose} hideCloseButton maxWidth={576}>
+      <WorkScheduleCard
+        userId={userId}
+        title={name ? `ตารางวันทำงาน — ${name}` : undefined}
+        showExceptions={false}
+        onCancel={onClose}
+        onSaved={onClose}
+      />
+    </Modal>
   )
 }

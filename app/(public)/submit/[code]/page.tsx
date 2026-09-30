@@ -2,15 +2,13 @@
 'use client'
 
 import { use, useState, useEffect } from 'react'
-import { 
-  Plus,
+import {
   Trash2,
-  Save,
-  Send,
   Clock,
   AlertCircle,
   CheckCircle,
-  Loader2
+  Link as LinkIcon,
+  ListChecks,
 } from 'lucide-react'
 import { useSubmission } from '@/hooks/useSubmission'
 import { safeFormatDate } from '@/lib/utils/date'
@@ -23,7 +21,22 @@ import {
   normalizeUrl 
 } from '@/lib/utils/submission'
 
-import { Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import {
+  Input,
+  Field,
+  Alert,
+  Pill,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  IconButton,
+  EmptyState,
+  useConfirm,
+} from '@/components/aoo'
+import { InfoPanel, ListRows, ListRow } from '@/components/shared'
+
 export default function SubmissionPage({ 
   params 
 }: { 
@@ -49,6 +62,7 @@ export default function SubmissionPage({
     saveSubmission,
     submitFinal
   } = useSubmission(code)
+  const { confirm, dialog } = useConfirm()
 
 // Load existing links if editing
   useEffect(() => {
@@ -121,7 +135,12 @@ export default function SubmissionPage({
       return
     }
     
-    if (confirm('ยืนยันการส่งผลงาน? (ไม่สามารถแก้ไขได้หลังส่ง)')) {
+    const ok = await confirm({
+      title: 'ยืนยันการส่งผลงาน?',
+      description: 'ไม่สามารถแก้ไขได้หลังส่ง',
+      confirmLabel: 'ส่งผลงาน',
+    })
+    if (ok) {
       const success = await submitFinal(links)
       if (!success) {
         setErrors({ submit: 'ไม่สามารถส่งผลงานได้ กรุณาลองใหม่' })
@@ -144,18 +163,12 @@ export default function SubmissionPage({
   if (error || !campaign) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card padding={0} className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                ไม่พบ Link นี้
-              </h2>
-              <p className="text-gray-600">
-                {error || 'Link อาจหมดอายุหรือไม่ถูกต้อง กรุณาติดต่อทีม Marketing'}
-              </p>
-            </div>
-          </CardContent>
+        <Card className="max-w-md w-full">
+          <EmptyState
+            icon={<AlertCircle size={48} className="text-red-500" />}
+            title="ไม่พบ Link นี้"
+            body={error || 'Link อาจหมดอายุหรือไม่ถูกต้อง กรุณาติดต่อทีม Marketing'}
+          />
         </Card>
       </div>
     )
@@ -170,21 +183,13 @@ export default function SubmissionPage({
   if (currentStatus === 'approved') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card padding={0} className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                ส่งผลงานเรียบร้อยแล้ว
-              </h2>
-              <p className="text-gray-600">
-                ขอบคุณสำหรับการส่งผลงาน ทีม Marketing จะตรวจสอบและติดต่อกลับ
-              </p>
-              <Pill tone="accent" className="mt-4 bg-green-100 text-green-700">
-                Status: ผ่านการตรวจสอบแล้ว
-              </Pill>
-            </div>
-          </CardContent>
+        <Card className="max-w-md w-full">
+          <EmptyState
+            icon={<CheckCircle size={48} className="text-green-500" />}
+            title="ส่งผลงานเรียบร้อยแล้ว"
+            body="ขอบคุณสำหรับการส่งผลงาน ทีม Marketing จะตรวจสอบและติดต่อกลับ"
+            action={<Pill tone="success">Status: ผ่านการตรวจสอบแล้ว</Pill>}
+          />
         </Card>
       </div>
     )
@@ -194,43 +199,35 @@ export default function SubmissionPage({
   if (currentStatus === 'submitted' || currentStatus === 'resubmitted') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card padding={0} className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Clock className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                รอการตรวจสอบ
-              </h2>
-              <p className="text-gray-600 mb-4">
-                คุณได้ส่งผลงานเรียบร้อยแล้ว กำลังรอทีม Marketing ตรวจสอบ
+        <Card className="max-w-md w-full">
+          <EmptyState
+            icon={<Clock size={48} className="text-yellow-500" />}
+            title="รอการตรวจสอบ"
+            body="คุณได้ส่งผลงานเรียบร้อยแล้ว กำลังรอทีม Marketing ตรวจสอบ"
+            action={<Pill tone="warning">Status: รอตรวจสอบ</Pill>}
+          />
+
+          {/* Show submitted links */}
+          {submission?.links && submission.links.length > 0 && (
+            <div className="mt-2 text-left">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                ผลงานที่ส่งไปแล้ว:
               </p>
-              <Pill tone="accent" className="bg-yellow-100 text-yellow-700">
-                Status: รอตรวจสอบ
-              </Pill>
-              
-              {/* Show submitted links */}
-              {submission?.links && submission.links.length > 0 && (
-                <div className="mt-6 text-left">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    ผลงานที่ส่งไปแล้ว:
-                  </p>
-                  <div className="space-y-2">
-                    {submission.links.map((link: any, idx: number) => {
-                      const config = PLATFORM_CONFIG[link.platform as keyof typeof PLATFORM_CONFIG] || PLATFORM_CONFIG.website
-                      const Icon = config.icon
-                      
-                      return (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <Icon className={`w-4 h-4 ${config.color}`} />
-                          <span className="text-gray-600 truncate">{link.url}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                {submission.links.map((link: any, idx: number) => {
+                  const config = PLATFORM_CONFIG[link.platform as keyof typeof PLATFORM_CONFIG] || PLATFORM_CONFIG.website
+                  const Icon = config.icon
+
+                  return (
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${config.color}`} />
+                      <span className="text-gray-600 truncate">{link.url}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </CardContent>
+          )}
         </Card>
       </div>
     )
@@ -238,6 +235,7 @@ export default function SubmissionPage({
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {dialog}
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <Card padding={0} className="mb-6">
@@ -272,60 +270,55 @@ export default function SubmissionPage({
                 </p>
               </div>
             </div>
-            
+
             {campaign.description && (
-              <div className="mt-4 pt-4 border-t">
+              <InfoPanel className="mt-4">
                 <p className="text-sm text-gray-600 mb-1">Brief:</p>
                 <p className="text-sm">{campaign.description}</p>
-              </div>
+              </InfoPanel>
             )}
           </CardContent>
         </Card>
 
         {/* Show revision notes if any */}
         {currentStatus === 'revision' && submission?.reviewNotes && (
-          <Alert tone="warning" className="mb-6">
-            <div>
-              <p className="font-medium mb-1">ต้องแก้ไขผลงาน:</p>
-              <p>{submission.reviewNotes}</p>
-            </div>
+          <Alert tone="warning" title="ต้องแก้ไขผลงาน:" className="mb-6">
+            {submission.reviewNotes}
           </Alert>
         )}
 
         {/* Add Link Form */}
         <Card padding={0} className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg">เพิ่ม Link ผลงาน</CardTitle>
+            <CardTitle icon={LinkIcon} tone="accent">เพิ่ม Link ผลงาน</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <Input
-                  type="text"
-                  placeholder="วาง link ของคุณที่นี่..."
-                  value={linkInput}
-                  onChange={(e) => {
-                    setLinkInput(e.target.value)
-                    setErrors({})
-                  }}
-                  onKeyPress={handleKeyPress}
-                  className={errors.input ? 'border-red-500' : ''}
-                />
-                {linkInput && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className={`p-1 rounded ${platformConfig.bgColor}`}>
-                      <platformConfig.icon className={`w-4 h-4 ${platformConfig.color}`} />
+            <Field asDiv error={errors.input}>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    type="text"
+                    placeholder="วาง link ของคุณที่นี่..."
+                    value={linkInput}
+                    onChange={(e) => {
+                      setLinkInput(e.target.value)
+                      setErrors({})
+                    }}
+                    onKeyPress={handleKeyPress}
+                    error={!!errors.input}
+                  />
+                  {linkInput && (
+                    // สีประจำแพลตฟอร์ม (โซเชียล) มาจาก PLATFORM_CONFIG
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className={`p-1 rounded ${platformConfig.bgColor}`}>
+                        <platformConfig.icon className={`w-4 h-4 ${platformConfig.color}`} />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+                <Button icon="Plus" onClick={handleAddLink} aria-label="เพิ่ม Link" />
               </div>
-              <Button onClick={handleAddLink} className="-">
-                <Plus className="w-5 h-5" />
-              </Button>
-            </div>
-            {errors.input && (
-              <p className="text-sm text-red-600 mt-1">{errors.input}</p>
-            )}
+            </Field>
           </CardContent>
         </Card>
 
@@ -333,76 +326,67 @@ export default function SubmissionPage({
         {links.length > 0 && (
           <Card padding={0} className="mb-6">
             <CardHeader>
-              <CardTitle className="text-lg">
+              <CardTitle icon={ListChecks} tone="sky">
                 Links ที่เพิ่มแล้ว ({links.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {links.map((link) => {
-                const config = PLATFORM_CONFIG[link.platform as keyof typeof PLATFORM_CONFIG] || PLATFORM_CONFIG.website
-                const Icon = config.icon
-                
-                return (
-                  <div
-                    key={link.id}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className={`p-2 rounded-lg ${config.bgColor}`}>
-                      <Icon className={`w-5 h-5 ${config.color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {config.name}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">
-                        {link.url}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => handleRemoveLink(link.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )
-              })}
+            <CardContent>
+              <ListRows variant="boxed">
+                {links.map((link) => {
+                  const config = PLATFORM_CONFIG[link.platform as keyof typeof PLATFORM_CONFIG] || PLATFORM_CONFIG.website
+                  const Icon = config.icon
+
+                  return (
+                    <ListRow
+                      key={link.id}
+                      leading={
+                        <div className={`p-2 rounded-lg ${config.bgColor}`}>
+                          <Icon className={`w-5 h-5 ${config.color}`} />
+                        </div>
+                      }
+                      title={config.name}
+                      meta={<span className="block truncate">{link.url}</span>}
+                      trailing={
+                        <IconButton
+                          icon={Trash2}
+                          title="ลบ Link"
+                          tone="danger"
+                          onClick={() => handleRemoveLink(link.id)}
+                        />
+                      }
+                    />
+                  )
+                })}
+              </ListRows>
             </CardContent>
           </Card>
         )}
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button variant="soft" onClick={handleSaveDraft} disabled={links.length === 0} className="flex-1">
-            <Save className="w-4 h-4 mr-2" />
+          <Button variant="soft" icon="Save" onClick={handleSaveDraft} disabled={links.length === 0} className="flex-1">
             บันทึกแบบร่าง
           </Button>
-          <Button onClick={handleSubmitFinal} disabled={links.length === 0} className="flex-1 -">
-            <Send className="w-4 h-4 mr-2" />
+          <Button icon="Send" onClick={handleSubmitFinal} disabled={links.length === 0} className="flex-1">
             {currentStatus === 'revision' ? 'ส่งผลงานแก้ไข' : 'ส่งผลงาน'}
           </Button>
         </div>
 
         {errors.submit && (
-          <Alert tone="error" className="mt-4">
-            <div>{errors.submit}</div>
-          </Alert>
+          <Alert tone="error" className="mt-4">{errors.submit}</Alert>
         )}
 
         {/* Status */}
         {submission && (
           <div className="mt-4 text-center">
             {currentStatus === 'submitted' && (
-              <Pill tone="accent" className="bg-yellow-100 text-yellow-700">
-                รอตรวจสอบ
-              </Pill>
+              <Pill tone="warning">รอตรวจสอบ</Pill>
             )}
             {currentStatus === 'revision' && (
-              <Pill tone="accent" className="bg-orange-100 text-orange-700">
-                ต้องแก้ไขตามคำแนะนำ
-              </Pill>
+              <Pill tone="accent">ต้องแก้ไขตามคำแนะนำ</Pill>
             )}
             {submission?.isDraft && currentStatus === 'pending' && (
-              <Pill tone="accent" className="bg-gray-100 text-gray-700">
-                บันทึกแบบร่างแล้ว
-              </Pill>
+              <Pill tone="neutral">บันทึกแบบร่างแล้ว</Pill>
             )}
           </div>
         )}

@@ -4,16 +4,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
+import {
+  User,
+  Mail,
+  Phone,
   MapPin,
   MessageSquare,
-  Save,
-  ArrowLeft,
-  Loader2
+  Baby,
+  Share2,
+  StickyNote,
 } from 'lucide-react'
 import { 
   Influencer, 
@@ -25,7 +24,20 @@ import {
 } from '@/types/influencer'
 import SocialChannelManager from './SocialChannelManager'
 import ChildrenManager from './ChildrenManager'
-import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import {
+  Textarea,
+  Input,
+  Field,
+  DatePicker,
+  SelectMenu,
+  Alert,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+} from '@/components/aoo'
+import { PageHeader } from '@/components/shared'
 interface InfluencerFormProps {
   influencer?: Influencer | null // For edit mode
   onSubmit: (data: CreateInfluencerData) => Promise<string | null | boolean>
@@ -162,44 +174,23 @@ export default function InfluencerForm({
     }
   }
 
-  // Get tier info
-  const getTierInfo = (tier: InfluencerTier) => {
-    const tierInfo = {
-      nano: { label: 'Nano (<10K)', color: 'secondary' },
-      micro: { label: 'Micro (10K-100K)', color: 'info' },
-      macro: { label: 'Macro (100K-1M)', color: 'warning' },
-      mega: { label: 'Mega (>1M)', color: 'error' }
-    }
-    return tierInfo[tier] || tierInfo.nano
-  }
-
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
-      {/* Header - ย้ายปุ่มกลับมาทางซ้าย */}
-      <div className="flex items-center gap-4">
-        <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/influencers')}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {isEditMode ? 'แก้ไขข้อมูล Influencer' : 'เพิ่ม Influencer ใหม่'}
-        </h1>
-      </div>
+      {/* Header - ปุ่มกลับอยู่ทางซ้าย */}
+      <PageHeader
+        title={isEditMode ? 'แก้ไขข้อมูล Influencer' : 'เพิ่ม Influencer ใหม่'}
+        onBack={() => router.push('/influencers')}
+      />
 
       {/* Personal Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <User className="w-5 h-5 text-red-600" />
-            ข้อมูลส่วนตัว
-          </CardTitle>
+          <CardTitle icon={User} tone="accent">ข้อมูลส่วนตัว</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Full Name */}
-            <div>
-              <Label htmlFor="fullName">
-                ชื่อ-นามสกุล <span className="text-red-500">*</span>
-              </Label>
+            <Field label="ชื่อ-นามสกุล" required error={errors.fullName || undefined}>
               <Input
                 id="fullName"
                 type="text"
@@ -209,18 +200,12 @@ export default function InfluencerForm({
                   setErrors({ ...errors, fullName: '' })
                 }}
                 placeholder="ชื่อ-นามสกุลเต็ม"
-                className={errors.fullName ? 'border-red-500' : ''}
+                error={!!errors.fullName}
               />
-              {errors.fullName && (
-                <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>
-              )}
-            </div>
+            </Field>
 
             {/* Nickname */}
-            <div>
-              <Label htmlFor="nickname">
-                ชื่อเล่น <span className="text-red-500">*</span>
-              </Label>
+            <Field label="ชื่อเล่น" required error={errors.nickname || undefined}>
               <Input
                 id="nickname"
                 type="text"
@@ -230,52 +215,34 @@ export default function InfluencerForm({
                   setErrors({ ...errors, nickname: '' })
                 }}
                 placeholder="ชื่อเล่น"
-                className={errors.nickname ? 'border-red-500' : ''}
+                error={!!errors.nickname}
               />
-              {errors.nickname && (
-                <p className="text-sm text-red-600 mt-1">{errors.nickname}</p>
-              )}
-            </div>
+            </Field>
 
             {/* Birth Date */}
-            <div>
-              <Label htmlFor="birthDate">วันเกิด</Label>
-              <div className="relative">
-                                <Input
-                  prefix={<Calendar size={16} />}
-                  id="birthDate"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                />
-              </div>
-            </div>
+            <Field label="วันเกิด" asDiv>
+              <DatePicker
+                value={formData.birthDate || ''}
+                onChange={(value) => setFormData({ ...formData, birthDate: value })}
+              />
+            </Field>
 
             {/* Tier */}
-            <div>
-              <Label htmlFor="tier">
-                ระดับ Influencer <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                key={`tier-${formData.tier}`}
+            <Field label="ระดับ Influencer" required asDiv help="จะคำนวณอัตโนมัติจาก total followers">
+              <SelectMenu
+                size="md"
                 value={formData.tier || 'nano'}
-                onChange={(e) => ((value: InfluencerTier) => {
-                  console.log('Tier changing from', formData.tier, 'to', value)
-                  setFormData(prev => ({ ...prev, tier: value }))
-                })(e.target.value as InfluencerTier)}
-              >
-                
-                
-                  <option value="nano">Nano (&lt;10K)</option>
-                  <option value="micro">Micro (10K-100K)</option>
-                  <option value="macro">Macro (100K-1M)</option>
-                  <option value="mega">Mega (&gt;1M)</option>
-                
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                จะคำนวณอัตโนมัติจาก total followers
-              </p>
-            </div>
+                options={[
+                  { value: 'nano', label: 'Nano (<10K)' },
+                  { value: 'micro', label: 'Micro (10K-100K)' },
+                  { value: 'macro', label: 'Macro (100K-1M)' },
+                  { value: 'mega', label: 'Mega (>1M)' },
+                ]}
+                onChange={(value) => {
+                  if (value) setFormData(prev => ({ ...prev, tier: value as InfluencerTier }))
+                }}
+              />
+            </Field>
           </div>
         </CardContent>
       </Card>
@@ -283,75 +250,53 @@ export default function InfluencerForm({
       {/* Contact Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Phone className="w-5 h-5 text-red-600" />
-            ข้อมูลติดต่อ
-          </CardTitle>
+          <CardTitle icon={Phone} tone="sky">ข้อมูลติดต่อ</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Phone */}
-            <div>
-              <Label htmlFor="phone">
-                เบอร์โทรศัพท์ <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                                <Input
-                  prefix={<Phone size={16} />}
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => {
-                    setFormData({ ...formData, phone: e.target.value })
-                    setErrors({ ...errors, phone: '' })
-                  }}
-                  placeholder="0812345678"
-                  className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
-                />
-              </div>
-              {errors.phone && (
-                <p className="text-sm text-red-600 mt-1">{errors.phone}</p>
-              )}
-            </div>
+            <Field label="เบอร์โทรศัพท์" required error={errors.phone || undefined}>
+              <Input
+                prefix={<Phone size={16} />}
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value })
+                  setErrors({ ...errors, phone: '' })
+                }}
+                placeholder="0812345678"
+                error={!!errors.phone}
+              />
+            </Field>
 
             {/* Email */}
-            <div>
-              <Label htmlFor="email">
-                อีเมล <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                                <Input
-                  prefix={<Mail size={16} />}
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => {
-                    setFormData({ ...formData, email: e.target.value })
-                    setErrors({ ...errors, email: '' })
-                  }}
-                  placeholder="email@example.com"
-                  className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-600 mt-1">{errors.email}</p>
-              )}
-            </div>
+            <Field label="อีเมล" required error={errors.email || undefined}>
+              <Input
+                prefix={<Mail size={16} />}
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value })
+                  setErrors({ ...errors, email: '' })
+                }}
+                placeholder="email@example.com"
+                error={!!errors.email}
+              />
+            </Field>
 
             {/* LINE ID */}
-            <div className="md:col-span-2">
-              <Label htmlFor="lineId">LINE ID</Label>
-              <div className="relative">
-                                <Input
-                  prefix={<MessageSquare size={16} />}
-                  id="lineId"
-                  type="text"
-                  value={formData.lineId}
-                  onChange={(e) => setFormData({ ...formData, lineId: e.target.value })}
-                  placeholder="LINE ID"
-                />
-              </div>
-            </div>
+            <Field label="LINE ID" className="md:col-span-2">
+              <Input
+                prefix={<MessageSquare size={16} />}
+                id="lineId"
+                type="text"
+                value={formData.lineId}
+                onChange={(e) => setFormData({ ...formData, lineId: e.target.value })}
+                placeholder="LINE ID"
+              />
+            </Field>
           </div>
         </CardContent>
       </Card>
@@ -359,22 +304,18 @@ export default function InfluencerForm({
       {/* Shipping Address (Optional) */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-red-600" />
-              ที่อยู่จัดส่งสินค้า
-            </div>
+          <div className="flex items-center justify-between">
+            <CardTitle icon={MapPin} tone="grape">ที่อยู่จัดส่งสินค้า</CardTitle>
             {!showAddressSection && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddressSection(true)}>
+              <Button type="button" variant="ghost" size="sm" icon="Plus" onClick={() => setShowAddressSection(true)}>
                 เพิ่มที่อยู่
               </Button>
             )}
-          </CardTitle>
+          </div>
         </CardHeader>
         {showAddressSection && (
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="shippingAddress">ที่อยู่</Label>
+            <Field label="ที่อยู่">
               <Textarea
                 id="shippingAddress"
                 value={formData.shippingAddress}
@@ -382,23 +323,18 @@ export default function InfluencerForm({
                 placeholder="บ้านเลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ"
                 rows={3}
               />
-            </div>
-            
-            <div>
-              <Label htmlFor="province">จังหวัด</Label>
-              <Select
-                value={formData.province}
-                onChange={(e) => ((value) => setFormData({ ...formData, province: value }))(e.target.value)}
-              >
-<option value="">เลือกจังหวัด</option>
-                
-                
-                  {THAILAND_PROVINCES.map(province => (
-                    <option key={province} value={province}>{province}</option>
-                  ))}
-                
-              </Select>
-            </div>
+            </Field>
+
+            <Field label="จังหวัด" asDiv>
+              <SelectMenu
+                size="md"
+                value={formData.province || null}
+                options={THAILAND_PROVINCES.map((province) => ({ value: province, label: province }))}
+                placeholder="เลือกจังหวัด"
+                clearable="ไม่ระบุจังหวัด"
+                onChange={(value) => setFormData({ ...formData, province: value ?? '' })}
+              />
+            </Field>
           </CardContent>
         )}
       </Card>
@@ -406,7 +342,7 @@ export default function InfluencerForm({
       {/* Children Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">ข้อมูลลูก</CardTitle>
+          <CardTitle icon={Baby} tone="pink">ข้อมูลลูก</CardTitle>
         </CardHeader>
         <CardContent>
           <ChildrenManager
@@ -419,7 +355,7 @@ export default function InfluencerForm({
       {/* Social Media */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">
+          <CardTitle icon={Share2} tone="info">
             Social Media <span className="text-red-500">*</span>
           </CardTitle>
         </CardHeader>
@@ -432,9 +368,7 @@ export default function InfluencerForm({
             }}
           />
           {errors.socialChannels && (
-            <Alert tone="error" className="mt-4">
-              <div>{errors.socialChannels}</div>
-            </Alert>
+            <Alert tone="error" className="mt-4">{errors.socialChannels}</Alert>
           )}
         </CardContent>
       </Card>
@@ -442,7 +376,7 @@ export default function InfluencerForm({
       {/* Notes */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">หมายเหตุ</CardTitle>
+          <CardTitle icon={StickyNote} tone="warning">หมายเหตุ</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
@@ -456,22 +390,11 @@ export default function InfluencerForm({
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button type="button" variant="soft" onClick={() => router.push('/influencers')}
- disabled={isSubmitting}>
+        <Button type="button" variant="soft" onClick={() => router.push('/influencers')} disabled={isSubmitting}>
           ยกเลิก
         </Button>
-        <Button type="submit" disabled={isSubmitting} className="-">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              กำลังบันทึก...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              {isEditMode ? 'บันทึกการแก้ไข' : 'เพิ่ม Influencer'}
-            </>
-          )}
+        <Button type="submit" icon="Save" loading={isSubmitting}>
+          {isSubmitting ? 'กำลังบันทึก...' : isEditMode ? 'บันทึกการแก้ไข' : 'เพิ่ม Influencer'}
         </Button>
       </div>
     </form>

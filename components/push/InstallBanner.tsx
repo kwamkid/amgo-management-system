@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
+import { Button, IconButton } from '@/components/aoo'
 import { isMobile, isStandalone } from '@/lib/push/client'
 import { useInstallPrompt } from '@/lib/push/installPrompt'
 
@@ -56,23 +57,15 @@ export default function InstallBanner() {
         <p className="truncate text-xs text-gray-600">เปิดจากไอคอนได้เลย · แจ้งเตือนเด้งถึงเครื่อง</p>
       </div>
       {canPrompt ? (
-        <button
-          onClick={install}
-          className="h-8 shrink-0 rounded-lg bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-700"
-        >
+        <Button size="sm" onClick={install} className="shrink-0">
           ติดตั้ง
-        </button>
+        </Button>
       ) : (
-        <Link
-          href="/install"
-          className="h-8 shrink-0 rounded-lg bg-gray-900 px-3 text-sm font-medium leading-8 text-white hover:bg-gray-700"
-        >
-          ดูวิธี
+        <Link href="/install" className="shrink-0">
+          <Button size="sm">ดูวิธี</Button>
         </Link>
       )}
-      <button onClick={snooze} aria-label="ไว้ก่อน" className="shrink-0 rounded p-1 text-gray-500 hover:bg-amber-100">
-        <X size={16} />
-      </button>
+      <IconButton icon={X} onClick={snooze} title="ไว้ก่อน" className="shrink-0" />
     </div>
   )
 }

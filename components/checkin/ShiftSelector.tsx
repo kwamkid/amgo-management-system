@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { Shift } from '@/types/location'
 import { Clock, Check } from 'lucide-react'
-import { Pill, Card, CardContent, Button } from '@/components/aoo'
+import { Pill, Button, Modal } from '@/components/aoo'
 interface ShiftSelectorProps {
   shifts: Shift[]
   onSelect: (shift: Shift) => void
@@ -69,21 +69,22 @@ export default function ShiftSelector({
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-30 z-40"
-        onClick={onCancel}
-      />
-      
-      {/* Popover */}
-      <div className="fixed inset-x-0 bottom-0 z-50 p-4 sm:inset-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-sm sm:w-full">
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-3 text-center">
-              เลือกกะการทำงาน
-            </h3>
-            
+    <Modal
+      open
+      onClose={onCancel}
+      title="เลือกกะการทำงาน"
+      maxWidth={384}
+      footer={
+        <>
+          <Button onClick={onCancel} variant="secondary" size="sm" className="flex-1">
+            ยกเลิก
+          </Button>
+          <Button onClick={handleConfirm} disabled={selectedShiftIndex === null} size="sm" className="flex-1">
+            ยืนยัน
+          </Button>
+        </>
+      }
+    >
             <div className="space-y-2">
               {shifts.map((shift, index) => {
                 const status = calculateShiftStatus(shift)
@@ -113,7 +114,7 @@ export default function ShiftSelector({
                     
                     <div className="flex items-center gap-2">
                       {status.isLate && (
-                        <Pill tone="warning" className="text-xs">
+                        <Pill tone="danger">
                           สาย {status.lateMinutes} นาที
                         </Pill>
                       )}
@@ -127,18 +128,6 @@ export default function ShiftSelector({
                 )
               })}
             </div>
-            
-            <div className="flex gap-2 mt-4">
-              <Button onClick={onCancel} variant="soft" size="sm" className="flex-1">
-                ยกเลิก
-              </Button>
-              <Button onClick={handleConfirm} disabled={selectedShiftIndex === null} size="sm" className="flex-1 -">
-                ยืนยัน
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+    </Modal>
   )
 }

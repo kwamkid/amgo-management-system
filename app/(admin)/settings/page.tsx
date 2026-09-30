@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Bell, Building, Calendar, Clock, FileText, MapPin, Settings, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/shared'
+import { Card, type CardTone } from '@/components/aoo'
 
 const settingsMenu = [
   {
@@ -13,48 +14,42 @@ const settingsMenu = [
     description: 'จัดการสาขา, กำหนดเวลาทำงาน และรัศมีการเช็คอิน',
     icon: MapPin,
     href: '/settings/locations',
-    color: 'text-red-600',
-    bgColor: 'bg-red-50'
+    tone: 'accent' as CardTone
   },
   {
     title: 'ตำแหน่งและแผนก',
     description: 'จัดการตำแหน่งงาน, แผนก และ Permission Groups',
     icon: Building,
     href: '/settings/departments',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50'
+    tone: 'sky' as CardTone
   },
   {
     title: 'วันหยุดและวันลา',
     description: 'ตั้งค่าวันหยุดประจำปี และประเภทการลา',
     icon: Calendar,
     href: '/settings/holidays',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50'
+    tone: 'success' as CardTone
   },
   {
     title: 'กะการทำงาน',
     description: 'จัดการกะการทำงาน และเวลาเข้า-ออกงาน',
     icon: Clock,
     href: '/settings/shifts',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50'
+    tone: 'grape' as CardTone
   },
   {
     title: 'การแจ้งเตือน',
     description: 'ตั้งค่าการแจ้งเตือนผ่าน LINE และ Discord',
     icon: Bell,
     href: '/settings/notifications',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50'
+    tone: 'warning' as CardTone
   },
   {
     title: 'ความปลอดภัย',
     description: 'จัดการสิทธิ์การเข้าถึง และความปลอดภัยของระบบ',
     icon: Shield,
     href: '/settings/security',
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50'
+    tone: 'muted' as CardTone
   }
 ]
 
@@ -74,24 +69,22 @@ export default function SettingsPage() {
         {settingsMenu.map((item) => {
           const Icon = item.icon
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow group"
-            >
-              <div className="flex items-start gap-4">
-                <div className={`p-3 ${item.bgColor} rounded-lg`}>
-                  <Icon className={`w-6 h-6 ${item.color}`} />
+            <Link key={item.href} href={item.href} className="group block">
+              <Card hoverable className="h-full">
+                <div className="flex items-start gap-4">
+                  <span className="aoo-title-icon" data-tone={item.tone}>
+                    <Icon size={20} strokeWidth={2} />
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
+              </Card>
             </Link>
           )
         })}

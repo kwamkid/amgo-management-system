@@ -19,13 +19,13 @@ import {
   getDeliveryPerformance,
   type DriverPerf,
 } from '@/lib/services/delivery/points'
-import { DateRangePicker } from '@/components/aoo'
-import { HelpTooltip } from '@/components/aoo'
+import { DateRangePicker, HelpTooltip } from '@/components/aoo'
 import {
   DataTable,
   FilterCard,
   FilterField,
   PageHeader,
+  SectionCard,
   Skeleton,
   StatCard,
   StatGrid,
@@ -93,7 +93,7 @@ function DayChart({ days }: { days: DriverPerf['days'] }) {
     <div>
       <p className="mb-2 text-sm font-medium text-gray-700">จุดส่งต่อวัน</p>
       <div className="overflow-x-auto">
-        <div className="flex items-end gap-1.5" style={{ height: 120 }}>
+        <div className="flex h-[120px] items-end gap-1.5">
           {days.map((d) => (
             <div key={d.day} className="flex w-9 shrink-0 flex-col items-center justify-end self-stretch">
               <span className="mb-0.5 text-xs text-gray-500">{d.points}</span>
@@ -208,8 +208,8 @@ export default function DeliveryPerformancePage() {
         <span
           className={
             s.pointsPerDay >= fleetAvg.pointsPerDay
-              ? 'font-semibold text-green-600'
-              : 'font-semibold text-red-600'
+              ? 'font-semibold text-[var(--leaf-700)]'
+              : 'font-semibold text-[var(--ruby-700)]'
           }
         >
           {s.pointsPerDay}
@@ -246,8 +246,8 @@ export default function DeliveryPerformancePage() {
           <span
             className={
               s.minutesPerGap <= fleetAvg.minutesPerGap
-                ? 'font-semibold text-green-600'
-                : 'font-semibold text-red-600'
+                ? 'font-semibold text-[var(--leaf-700)]'
+                : 'font-semibold text-[var(--ruby-700)]'
             }
           >
             {s.minutesPerGap} น.
@@ -367,8 +367,8 @@ export default function DeliveryPerformancePage() {
       ) : (
         <>
           <StatGrid>
-            <StatCard label="จุดส่งทั้งหมด" value={`${totals.points.toLocaleString()} จุด`} icon={MapPin} />
-            <StatCard label="ระยะรวม (เส้นตรง)" value={`${totals.km.toLocaleString()} กม.`} icon={Route} tone="info" />
+            <StatCard label="จุดส่งทั้งหมด" value={`${totals.points.toLocaleString()} จุด`} icon={MapPin} tone="accent" />
+            <StatCard label="ระยะรวม (เส้นตรง)" value={`${totals.km.toLocaleString()} กม.`} icon={Route} tone="grape" />
             <StatCard
               label={
                 <Tip
@@ -378,11 +378,13 @@ export default function DeliveryPerformancePage() {
               }
               value={`${totals.manDays} คน-วัน`}
               icon={Truck}
+              tone="sky"
             />
             <StatCard
               label="เฉลี่ยต่อคน-วัน"
               value={totals.manDays ? `${Math.round((totals.points / totals.manDays) * 10) / 10} จุด` : '—'}
               icon={Gauge}
+              tone="success"
             />
           </StatGrid>
 
@@ -397,17 +399,16 @@ export default function DeliveryPerformancePage() {
 
           {/* ── เจาะรายคน ─────────────────────────────────────────── */}
           {sel && (
-            <div className="space-y-5 rounded-xl border border-gray-200 bg-white p-5">
-              <p className="font-semibold text-gray-900">{sel.name}</p>
+            <SectionCard title={sel.name} className="space-y-5">
 
               <StatGrid>
-                <StatCard label="จุดรวม" value={`${sel.totalPoints} จุด (${sel.runDays} วัน)`} icon={MapPin} />
-                <StatCard label="ระยะรวม (เส้นตรง)" value={`${sel.totalKm.toLocaleString()} กม.`} icon={Route} tone="info" />
+                <StatCard label="จุดรวม" value={`${sel.totalPoints} จุด (${sel.runDays} วัน)`} icon={MapPin} tone="accent" />
+                <StatCard label="ระยะรวม (เส้นตรง)" value={`${sel.totalKm.toLocaleString()} กม.`} icon={Route} tone="grape" />
                 <StatCard
                   label="ความเร็วงาน"
                   value={sel.minutesPerGap != null ? `${sel.minutesPerGap} นาที/จุด` : '—'}
                   icon={Clock}
-                  tone={sel.minutesPerGap != null && sel.minutesPerGap > 60 ? 'warning' : 'default'}
+                  tone={sel.minutesPerGap != null && sel.minutesPerGap > 60 ? 'warning' : 'sky'}
                 />
                 <StatCard label="เริ่มจุดแรกเฉลี่ย" value={`${sel.avgFirstAt} น.`} icon={Truck} tone="pink" />
               </StatGrid>
@@ -420,7 +421,7 @@ export default function DeliveryPerformancePage() {
                 rowKey={(d) => d.day}
                 emptyTitle="ไม่มีข้อมูล"
               />
-            </div>
+            </SectionCard>
           )}
         </>
       )}

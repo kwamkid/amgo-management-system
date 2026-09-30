@@ -18,8 +18,8 @@ import {
   EyeOff,
   Building,
 } from 'lucide-react'
-import { Button, ActionMenu, Pill } from '@/components/aoo'
-import { PageHeader, StatCard, StatGrid, FilterBar, TechLoader } from '@/components/shared'
+import { Button, ActionMenu, Pill, Card, EmptyState, useConfirm } from '@/components/aoo'
+import { PageHeader, StatCard, StatGrid, FilterBar, TechLoader, SectionCard } from '@/components/shared'
 
 /** ชนิดสถานที่ → คำไทย + สี (ตรงกับที่ตั้งไว้ใน DB) */
 const TYPE_LABEL: Record<string, { label: string; tone: 'accent' | 'info' | 'success' }> = {
@@ -33,6 +33,7 @@ export default function LocationsPage() {
   const { locations, loading, deleteLocation } = useLocations()
   const [search, setSearch] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -44,7 +45,13 @@ export default function LocationsPage() {
   }, [locations, search, showInactive])
 
   const handleDelete = async (location: Location) => {
-    if (confirm(`ต้องการลบสถานที่ "${location.name}" ใช่หรือไม่?`)) {
+    const ok = await confirm({
+      title: 'ลบสถานที่',
+      description: `ต้องการลบสถานที่ "${location.name}" ใช่หรือไม่?`,
+      confirmLabel: 'ลบ',
+      tone: 'danger',
+    })
+    if (ok) {
       await deleteLocation(location.id)
     }
   }
@@ -67,7 +74,7 @@ export default function LocationsPage() {
       />
 
       <StatGrid>
-        <StatCard label="ทั้งหมด" value={locations.length} unit="แห่ง" icon={Building} />
+        <StatCard label="ทั้งหมด" value={locations.length} unit="แห่ง" icon={Building} tone="accent" />
         <StatCard label="ใช้งาน" value={active} unit="แห่ง" icon={Eye} tone="success" />
         <StatCard
           label="ปิดใช้งาน"
@@ -81,7 +88,7 @@ export default function LocationsPage() {
           value={locations.reduce((n, l) => n + l.shifts.length, 0)}
           unit="กะ"
           icon={Clock}
-          tone="info"
+          tone="sky"
         />
       </StatGrid>
 
@@ -102,29 +109,29 @@ export default function LocationsPage() {
       />
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center">
-          <MapPin size={40} className="mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
-          <p className="font-medium text-gray-900">
-            {search ? 'ไม่พบสถานที่ที่ค้นหา' : 'ยังไม่มีสถานที่'}
-          </p>
-          {!search && (
-            <Link href="/settings/locations/create" className="mt-4 inline-block">
-              <Button variant="secondary" icon="Plus">
-                เพิ่มสถานที่แรก
-              </Button>
-            </Link>
-          )}
-        </div>
+        <SectionCard>
+          <EmptyState
+            size="lg"
+            icon={<MapPin size={40} strokeWidth={1.5} />}
+            title={search ? 'ไม่พบสถานที่ที่ค้นหา' : 'ยังไม่มีสถานที่'}
+            action={!search && (
+              <Link href="/settings/locations/create" className="inline-block">
+                <Button variant="secondary" icon="Plus">
+                  เพิ่มสถานที่แรก
+                </Button>
+              </Link>
+            )}
+          />
+        </SectionCard>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((location) => {
             const type = TYPE_LABEL[(location as Location & { locationType?: string }).locationType ?? '']
             return (
-              <div
+              <Card
                 key={location.id}
-                className={`flex flex-col rounded-xl border border-gray-200 bg-white p-4 ${
-                  !location.isActive ? 'opacity-60' : ''
-                }`}
+                padding={16}
+                className={`flex flex-col ${!location.isActive ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -133,7 +140,7 @@ export default function LocationsPage() {
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1.5">
-                    {!location.isActive && <Pill tone="danger">ปิดใช้งาน</Pill>}
+                    {!location.isActive && <Pill tone="neutral">ปิดใช้งาน</Pill>}
                     <ActionMenu
                       items={[
                         {
@@ -183,11 +190,13 @@ export default function LocationsPage() {
                     จัดการสถานที่
                   </Button>
                 </Link>
-              </div>
+              </Card>
             )
           })}
         </div>
       )}
+
+      {confirmDialog}
     </>
   )
 }

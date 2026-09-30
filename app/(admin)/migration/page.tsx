@@ -4,6 +4,10 @@
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { migrationToolsEnabled } from '@/lib/supabase/migration-tools'
+import { StatCard, StatGrid } from '@/components/shared/StatCard'
+import PageHeader from '@/components/shared/PageHeader'
+import { Pill } from '@/components/aoo/pill'
+import { Alert } from '@/components/aoo/alert'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,12 +101,10 @@ export default async function MigrationStatusPage() {
 
   return (
     <div className="max-w-6xl space-y-10">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">สถานะการย้ายไป Supabase</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          หน้านี้อ่านจาก Supabase โดยตรง (ไม่ผ่าน Firebase) — ถ้าเห็นตัวเลขแปลว่าข้อมูลเข้าแล้วจริง
-        </p>
-      </header>
+      <PageHeader
+        title="สถานะการย้ายไป Supabase"
+        description="หน้านี้อ่านจาก Supabase โดยตรง (ไม่ผ่าน Firebase) — ถ้าเห็นตัวเลขแปลว่าข้อมูลเข้าแล้วจริง"
+      />
 
       {/* ── จำนวนแถว ─────────────────────────────────────────── */}
       <section>
@@ -130,11 +132,11 @@ export default async function MigrationStatusPage() {
                     </td>
                     <td className="px-4 py-2">
                       {src === undefined ? (
-                        <span className="text-gray-400">สร้างใหม่</span>
+                        <Pill tone="sky">สร้างใหม่</Pill>
                       ) : ok ? (
-                        <span className="text-green-600">✅ ครบ</span>
+                        <Pill tone="success">ครบ</Pill>
                       ) : (
-                        <span className="text-amber-600">⚠️ ขาด {src - count}</span>
+                        <Pill tone="warning">ขาด {src - count}</Pill>
                       )}
                     </td>
                   </tr>
@@ -154,30 +156,25 @@ export default async function MigrationStatusPage() {
           <p className="mb-3 text-sm text-gray-500">
             ระบบเดิมบันทึกชั่วโมงเป็น 0 ทั้งที่เช็คเอาท์แล้ว หนักขึ้นตั้งแต่ ม.ค. 2026 (20-27% ต่อเดือน)
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-2xl font-bold tabular-nums text-gray-900">
-                {Number(quality.data.total_hours).toLocaleString()}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">ชั่วโมงรวมทั้งหมด</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-2xl font-bold tabular-nums text-gray-900">
-                {quality.data.recomputed}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                คำนวณย้อนหลังจากเวลาเข้า-ออก — เชื่อถือได้
-              </p>
-            </div>
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <p className="text-2xl font-bold tabular-nums text-red-700">
-                {quality.data.needs_review}
-              </p>
-              <p className="mt-1 text-sm text-red-700">
-                ต้องให้ HR ใส่เวลาเอง — ระบบปิดให้อัตโนมัติ หรือเกิน 16 ชม.
-              </p>
-            </div>
-          </div>
+          <StatGrid cols={3}>
+            <StatCard
+              label="ชั่วโมงรวมทั้งหมด"
+              value={Number(quality.data.total_hours).toLocaleString()}
+              tone="plum"
+            />
+            <StatCard
+              label="คำนวณย้อนหลังจากเวลาเข้า-ออก"
+              value={quality.data.recomputed}
+              hint="เชื่อถือได้"
+              tone="success"
+            />
+            <StatCard
+              label="ต้องให้ HR ใส่เวลาเอง"
+              value={quality.data.needs_review}
+              hint="ระบบปิดให้อัตโนมัติ หรือเกิน 16 ชม."
+              tone="danger"
+            />
+          </StatGrid>
         </section>
       )}
 
@@ -266,16 +263,15 @@ export default async function MigrationStatusPage() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <p className="font-semibold">ยังเหลือ</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
+      <Alert tone="warning" title="ยังเหลือ">
+        <ul className="list-inside list-disc space-y-1">
           <li>จัดพนักงาน 58 คนเข้าหน่วยงาน (ตอนนี้ยังว่างอยู่ทุกคน)</li>
           <li>ใส่เงินเดือน + วันเริ่มงานจริง — ทำหน้า bulk edit</li>
           <li>ระบบเงินเดือน: งานพิเศษรายเดือน · รายชิ้น · คอมมิชชั่นขั้นบันได</li>
           <li>เขียน RLS policy ก่อนเปิดใช้จริง (ตอนนี้ปิดหมด อ่านได้เฉพาะฝั่ง server)</li>
           <li>แก้โค้ดแอปให้อ่าน Supabase แทน Firebase</li>
         </ul>
-      </section>
+      </Alert>
     </div>
   )
 }

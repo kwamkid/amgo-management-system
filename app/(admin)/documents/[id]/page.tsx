@@ -12,20 +12,31 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  ChevronDown,
-  Download,
-  FileText,
-  History,
-  Link2,
-  Printer,
-  Save,
-} from 'lucide-react'
+import { ChevronDown, FileText, History } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { ActionMenu, Button, Modal, SelectMenu } from '@/components/aoo'
-import { PageHeader, TechLoader } from '@/components/shared'
+import {
+  ActionMenu,
+  Button,
+  EmptyState,
+  Field,
+  Input,
+  Modal,
+  RadioCardGroup,
+  SelectMenu,
+  Spinner,
+  Textarea,
+} from '@/components/aoo'
+import {
+  InfoPanel,
+  ListRow,
+  ListRows,
+  PageHeader,
+  SectionCard,
+  Segmented,
+  TechLoader,
+} from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
 import { FitToWidth } from '@/components/documents/FitToWidth'
 import { copyText, downloadFile, shareUrl } from '@/lib/documents/download'
@@ -37,11 +48,6 @@ import {
   type CompanyHead,
   type Signer,
 } from '@/lib/documents/types'
-
-const FIELD =
-  'h-9 w-full rounded-lg border border-gray-200 px-2.5 text-sm outline-none focus:border-red-400'
-const AREA =
-  'w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm leading-6 outline-none focus:border-red-400'
 
 // doc_no กับ issued_at ไม่อยู่ในฟอร์ม — ระบบออกให้เอง (trigger documents_number)
 // ถ้าใส่ไว้ในฟอร์มแล้วส่งกลับไปด้วย จะไปทับเลขที่ trigger เพิ่งออกให้
@@ -341,16 +347,18 @@ export default function DocumentEditorPage({
             <Button
               variant="ghost"
               size="sm"
+              icon="History"
               onClick={openHistory}
               disabled={isNew}
             >
-              <History size={15} /> ประวัติการแก้ไข
+              ประวัติการแก้ไข
             </Button>
             {/* ลิงก์ให้คนอื่นเปิดดูเพื่อ approve (เจ้าของขอ 21 ส.ค.)
                 ใบใหม่ยังไม่มี token จนกว่าจะบันทึก จึงกดไม่ได้ */}
             <Button
               variant="ghost"
               size="sm"
+              icon="Link"
               disabled={!shareToken}
               title={
                 shareToken ? undefined : 'บันทึกเอกสารก่อนถึงจะแชร์ได้'
@@ -365,13 +373,13 @@ export default function DocumentEditorPage({
                 )
               }}
             >
-              <Link2 size={15} /> แชร์
+              แชร์
             </Button>
 
             {/* สั่งพิมพ์ทันที — งานที่ทำบ่อยสุดต้องกดครั้งเดียวถึง
                 ไม่ต้องเปิดเมนูก่อน (เจ้าของขอ 21 ส.ค.) */}
-            <Button variant="secondary" size="sm" onClick={() => window.print()}>
-              <Printer size={15} /> พิมพ์
+            <Button variant="secondary" size="sm" icon="Printer" onClick={() => window.print()}>
+              พิมพ์
             </Button>
 
             {/* เอาไฟล์เก็บไว้ รวมไว้ในเมนูเดียว */}
@@ -394,8 +402,8 @@ export default function DocumentEditorPage({
                 },
               ]}
               trigger={({ onClick, open }) => (
-                <Button variant="secondary" size="sm" onClick={onClick}>
-                  <Download size={15} /> ดาวน์โหลด
+                <Button variant="secondary" size="sm" icon="Download" onClick={onClick}>
+                  ดาวน์โหลด
                   <ChevronDown
                     size={14}
                     className={open ? 'rotate-180 transition' : 'transition'}
@@ -405,15 +413,16 @@ export default function DocumentEditorPage({
             />
             <Button
               size="sm"
+              icon="Save"
               onClick={save}
-              disabled={saving || missing.length > 0 || (!dirty && !isNew)}
+              loading={saving}
+              disabled={missing.length > 0 || (!dirty && !isNew)}
               title={
                 missing.length
                   ? `ต้องกรอก${missing.join('และ')}ก่อน`
                   : undefined
               }
             >
-              <Save size={15} />
               {saving
                 ? 'กำลังบันทึก...'
                 : isNew
@@ -427,7 +436,7 @@ export default function DocumentEditorPage({
       <div className="grid gap-5 xl:grid-cols-[minmax(360px,440px)_1fr]">
         {/* ── ฟอร์ม ─────────────────────────────────────────────── */}
         <div className="space-y-4 print:hidden">
-          <Card title="ข้อมูลหัวเอกสาร">
+          <SectionCard title="ข้อมูลหัวเอกสาร">
             <div className="grid gap-3 sm:grid-cols-2">
               <Labeled
                 label="บริษัท"
@@ -456,34 +465,31 @@ export default function DocumentEditorPage({
               />
               <Readonly label="วันที่บนเอกสาร" value={thaiDate(issued.at)} />
               <Labeled label="เรื่อง" full>
-                <input
+                <Input
                   value={form.title}
                   onChange={(e) => patch({ title: e.target.value })}
                   placeholder="เช่น กลยุทธ์อัดฉีดยอดขายสินค้า Brand GB และ Stokke"
-                  className={FIELD}
                 />
               </Labeled>
               <Labeled label="ระยะเวลา" full hint="เว้นว่าง = ไม่ขึ้นบรรทัดนี้">
-                <input
+                <Input
                   value={form.period}
                   onChange={(e) => patch({ period: e.target.value })}
                   placeholder="เช่น 1 กันยายน 2569 – 31 ตุลาคม 2569"
-                  className={FIELD}
                 />
               </Labeled>
               <Labeled label="เรียน" full>
-                <input
+                <Input
                   value={form.recipient}
                   onChange={(e) => patch({ recipient: e.target.value })}
                   placeholder="เช่น พีซีประจำห้าง และพนักงานร้าน ABC THE BABY"
-                  className={FIELD}
                 />
               </Labeled>
             </div>
-          </Card>
+          </SectionCard>
 
-          <Card title="เนื้อหา">
-            <textarea
+          <SectionCard title="เนื้อหา">
+            <Textarea
               value={form.body_text}
               onChange={(e) => patch({ body_text: e.target.value })}
               rows={16}
@@ -495,7 +501,6 @@ export default function DocumentEditorPage({
                 '- รถเข็น Swan Pro ชิ้นละ 200 บาท\n' +
                 '- STOKKE : Sleepi ชิ้นละ 500 บาท'
               }
-              className={`${AREA} font-mono text-xs leading-7`}
             />
             <div className="mt-2 space-y-0.5 text-[11.5px] leading-5 text-gray-400">
               <p>
@@ -507,40 +512,27 @@ export default function DocumentEditorPage({
               </p>
               <p>บรรทัดอื่น = ย่อหน้า · ขึ้นบรรทัดใหม่ = ย่อหน้าใหม่</p>
             </div>
-          </Card>
+          </SectionCard>
 
-          <Card title="ผู้ลงนาม">
+          <SectionCard title="ผู้ลงนาม">
             <SignerEditor
               signers={form.signers}
               onChange={(signers) => patch({ signers })}
             />
-          </Card>
+          </SectionCard>
 
-          <Card title="สถานะ">
-            <div className="flex gap-2">
-              {(
-                [
-                  ['draft', 'ร่าง', 'ยังแก้ได้เรื่อย ๆ'],
-                  ['issued', 'ออกแล้ว', 'ส่งออกไปแล้ว'],
-                ] as const
-              ).map(([v, label, hint]) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => patch({ status: v })}
-                  className={[
-                    'flex-1 rounded-lg border px-3 py-2 text-left text-sm',
-                    form.status === v
-                      ? 'border-red-400 bg-red-50 text-red-700'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300',
-                  ].join(' ')}
-                >
-                  <span className="block font-medium">{label}</span>
-                  <span className="block text-xs opacity-70">{hint}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
+          <SectionCard title="สถานะ">
+            <RadioCardGroup
+              name="document-status"
+              columns={2}
+              value={form.status}
+              onChange={(v) => patch({ status: v as 'draft' | 'issued' })}
+              options={[
+                { value: 'draft', label: 'ร่าง', description: 'ยังแก้ได้เรื่อย ๆ' },
+                { value: 'issued', label: 'ออกแล้ว', description: 'ส่งออกไปแล้ว' },
+              ]}
+            />
+          </SectionCard>
         </div>
 
         {/* ── ตัวอย่างหน้ากระดาษจริง ─────────────────────────────── */}
@@ -572,36 +564,38 @@ export default function DocumentEditorPage({
         maxWidth={560}
       >
         {!versions ? (
-          <p className="py-6 text-center text-sm text-gray-400">กำลังโหลด...</p>
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
         ) : versions.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-400">
-            ยังไม่เคยแก้หลังสร้าง — ยังไม่มีเวอร์ชันเก่าให้ย้อนดู
-          </p>
+          <EmptyState
+            size="sm"
+            icon={<History size={24} />}
+            body="ยังไม่เคยแก้หลังสร้าง — ยังไม่มีเวอร์ชันเก่าให้ย้อนดู"
+          />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ListRows>
             {versions.map((v) => (
-              <li
+              <ListRow
                 key={v.version}
-                className="flex items-center justify-between gap-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">
-                    {String(v.snapshot.title ?? '').trim() || '(ไม่มีเรื่อง)'}
-                  </p>
-                  <p className="text-xs text-gray-400">
+                title={String(v.snapshot.title ?? '').trim() || '(ไม่มีเรื่อง)'}
+                meta={
+                  <>
                     เวอร์ชัน {v.version} · {thaiDate(v.created_at)}{' '}
                     {new Date(v.created_at).toLocaleTimeString('th-TH', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => restore(v)}>
-                  ใช้เวอร์ชันนี้
-                </Button>
-              </li>
+                  </>
+                }
+                trailing={
+                  <Button variant="ghost" size="sm" onClick={() => restore(v)}>
+                    ใช้เวอร์ชันนี้
+                  </Button>
+                }
+              />
             ))}
-          </ul>
+          </ListRows>
         )}
       </Modal>
 
@@ -611,26 +605,6 @@ export default function DocumentEditorPage({
 }
 
 /* ── ชิ้นส่วนย่อย ─────────────────────────────────────────────── */
-
-function Card({
-  title,
-  action,
-  children,
-}: {
-  title: string
-  action?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </div>
-  )
-}
 
 /** คำอธิบายอยู่ "ใต้ช่องกรอก" ไม่ใช่ต่อท้ายป้ายชื่อ
  *  ของเดิมต่อท้ายป้าย พอข้อความยาวมันตกบรรทัด แล้วคำที่ตกไปลอยเบียด
@@ -647,11 +621,9 @@ function Labeled({
   children: React.ReactNode
 }) {
   return (
-    <label className={full ? 'block sm:col-span-2' : 'block'}>
-      <span className="text-xs font-medium text-gray-600">{label}</span>
-      <div className="mt-1">{children}</div>
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
-    </label>
+    <Field label={label} help={hint} className={full ? 'sm:col-span-2' : undefined}>
+      {children}
+    </Field>
   )
 }
 
@@ -677,27 +649,19 @@ function SignerEditor({
     <div className="space-y-3">
       <div>
         <span className="text-xs text-gray-500">จำนวนช่องลงชื่อ</span>
-        <div className="mt-1 flex gap-2">
-          {([1, 2] as const).map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setCount(n)}
-              className={[
-                'flex-1 rounded-lg border px-3 py-1.5 text-sm',
-                count === n
-                  ? 'border-red-400 bg-red-50 text-red-700'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300',
-              ].join(' ')}
-            >
-              {n} ช่อง
-            </button>
-          ))}
-        </div>
+        <Segmented
+          className="mt-1 w-full [&>button]:flex-1"
+          value={String(count)}
+          onChange={(v) => setCount(v === '2' ? 2 : 1)}
+          options={[
+            { value: '1', label: '1 ช่อง' },
+            { value: '2', label: '2 ช่อง' },
+          ]}
+        />
       </div>
 
       {list.map((s, i) => (
-        <div key={i} className="rounded-lg border border-gray-200 p-3">
+        <InfoPanel key={i}>
           <p className="mb-2 text-xs font-semibold text-gray-500">
             {count === 2 ? `ช่องที่ ${i + 1} — ${i === 0 ? 'ซ้าย' : 'ขวา'}` : 'ช่องลงชื่อ'}
           </p>
@@ -708,23 +672,21 @@ function SignerEditor({
               label="ชื่อผู้ลงนาม"
               hint="เว้นว่างไว้ = พิมพ์เส้นประให้เซ็นแล้วเขียนชื่อเอง"
             >
-              <input
+              <Input
                 value={s.name}
                 onChange={(e) => set(i, { name: e.target.value })}
                 placeholder="เว้นว่างได้"
-                className={FIELD}
               />
             </Labeled>
             <Labeled label="ตำแหน่ง">
-              <input
+              <Input
                 value={s.title}
                 onChange={(e) => set(i, { title: e.target.value })}
                 placeholder="เช่น ประธานกรรมการบริษัท"
-                className={FIELD}
               />
             </Labeled>
           </div>
-        </div>
+        </InfoPanel>
       ))}
     </div>
   )

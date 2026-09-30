@@ -6,23 +6,12 @@
 // ทำไมอยู่หน้าโปรไฟล์: เป็นหน้าเดียวที่ทุกตำแหน่งเข้าได้และเป็น "ของฉัน" อยู่แล้ว
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Smartphone, Download, Check, BellRing, ChevronRight } from 'lucide-react'
-import { Toggle } from '@/components/aoo'
+import { Smartphone, Check, BellRing } from 'lucide-react'
+import { Button, Pill, Toggle } from '@/components/aoo'
+import { ListRow, ListRows, SectionCard } from '@/components/shared'
 import { useToast } from '@/hooks/useToast'
 import { getPushState, enablePush, disablePush, isStandalone, type PushState } from '@/lib/push/client'
 import { useInstallPrompt } from '@/lib/push/installPrompt'
-
-function Row({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-100 py-2.5 last:border-b-0">
-      <span className="flex items-center gap-2 text-sm text-gray-500">
-        <span className="text-gray-400">{icon}</span>
-        {label}
-      </span>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  )
-}
 
 export default function DeviceCard() {
   const { showToast } = useToast()
@@ -74,57 +63,62 @@ export default function DeviceCard() {
   if (standalone === null || push === null) return null
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <h3 className="mb-2 font-semibold text-gray-900">แอปบนอุปกรณ์นี้</h3>
+    <SectionCard title="แอปบนอุปกรณ์นี้">
+      <ListRows>
+        <ListRow
+          leading={<Smartphone size={16} className="text-gray-400" />}
+          title="ติดตั้งเป็นแอป"
+          trailing={
+            standalone ? (
+              <Pill tone="success">
+                <Check size={14} /> เปิดจากแอปอยู่
+              </Pill>
+            ) : canPrompt ? (
+              <Button size="sm" icon="Download" onClick={install}>
+                ติดตั้งแอป
+              </Button>
+            ) : (
+              <Link href="/install">
+                <Button variant="link" size="sm" iconRight="ChevronRight">
+                  ดูวิธีติดตั้ง
+                </Button>
+              </Link>
+            )
+          }
+        />
 
-      <Row icon={<Smartphone size={14} />} label="ติดตั้งเป็นแอป">
-        {standalone ? (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
-            <Check size={14} /> เปิดจากแอปอยู่
-          </span>
-        ) : canPrompt ? (
-          <button
-            onClick={install}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            <Download size={14} /> ติดตั้งแอป
-          </button>
-        ) : (
-          <Link href="/install" className="flex items-center gap-0.5 text-sm font-medium text-gray-700 hover:text-gray-900">
-            ดูวิธีติดตั้ง <ChevronRight size={14} />
-          </Link>
-        )}
-      </Row>
-
-      <Row icon={<BellRing size={14} />} label="แจ้งเตือนบนอุปกรณ์นี้">
-        {push === 'ios-needs-install' ? (
-          <Link href="/install" className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-900">
-            ติดตั้งเป็นแอปก่อน <ChevronRight size={12} />
-          </Link>
-        ) : push === 'unsupported' ? (
-          <span className="text-xs text-gray-500">เบราว์เซอร์นี้ไม่รองรับ</span>
-        ) : (
-          <>
-            {push === 'subscribed' && (
-              <button
-                onClick={sendTest}
-                disabled={testing}
-                className="text-xs text-gray-500 underline-offset-2 hover:underline disabled:opacity-50"
-              >
-                {testing ? 'กำลังส่ง…' : 'ส่งทดสอบ'}
-              </button>
-            )}
-            <Toggle
-              checked={push === 'subscribed'}
-              onChange={togglePush}
-              disabled={push === 'denied'}
-              loading={busy}
-              size="sm"
-              aria-label="แจ้งเตือนบนอุปกรณ์นี้"
-            />
-          </>
-        )}
-      </Row>
+        <ListRow
+          leading={<BellRing size={16} className="text-gray-400" />}
+          title="แจ้งเตือนบนอุปกรณ์นี้"
+          trailing={
+            push === 'ios-needs-install' ? (
+              <Link href="/install">
+                <Button variant="link" size="sm" iconRight="ChevronRight">
+                  ติดตั้งเป็นแอปก่อน
+                </Button>
+              </Link>
+            ) : push === 'unsupported' ? (
+              <span className="text-xs text-gray-500">เบราว์เซอร์นี้ไม่รองรับ</span>
+            ) : (
+              <>
+                {push === 'subscribed' && (
+                  <Button variant="link" size="sm" onClick={sendTest} loading={testing}>
+                    {testing ? 'กำลังส่ง…' : 'ส่งทดสอบ'}
+                  </Button>
+                )}
+                <Toggle
+                  checked={push === 'subscribed'}
+                  onChange={togglePush}
+                  disabled={push === 'denied'}
+                  loading={busy}
+                  size="sm"
+                  aria-label="แจ้งเตือนบนอุปกรณ์นี้"
+                />
+              </>
+            )
+          }
+        />
+      </ListRows>
 
       {push === 'denied' && (
         <p className="mt-2 text-xs text-gray-500">
@@ -134,6 +128,6 @@ export default function DeviceCard() {
       <p className="mt-2 text-xs text-gray-500">
         แจ้งเตือนเรื่องใบลาและใบสลับวันหยุด — คนอนุมัติได้รับตอนมีใบใหม่ เจ้าของใบได้รับตอนมีผล
       </p>
-    </div>
+    </SectionCard>
   )
 }

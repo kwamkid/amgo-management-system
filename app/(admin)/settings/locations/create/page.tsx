@@ -8,7 +8,6 @@ import LocationForm from '@/components/locations/LocationForm'
 import { LocationFormData } from '@/types/location'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import Link from 'next/link'
-import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'

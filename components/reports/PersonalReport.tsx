@@ -13,8 +13,10 @@
 import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { CalendarDays, Clock, MapPin, Settings2 } from 'lucide-react'
-import { Button, Modal } from '@/components/aoo'
+import { CalendarCheck, CalendarDays, CalendarX, Clock, MapPin, Palmtree, Timer } from 'lucide-react'
+import { Button, Modal, Pill, type PillTone } from '@/components/aoo'
+import { StatCard } from '@/components/shared/StatCard'
+import InfoPanel from '@/components/shared/InfoPanel'
 import type { AttendanceReportData } from '@/lib/services/reportService'
 
 const hhmmToMinutes = (t: string) => {
@@ -24,11 +26,12 @@ const hhmmToMinutes = (t: string) => {
 const minutesToHhmm = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`
 
-const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  normal: { label: 'มาทำงาน', cls: 'bg-green-100 text-green-700' },
-  late: { label: 'มาสาย', cls: 'bg-amber-100 text-amber-700' },
-  absent: { label: 'ขาด', cls: 'bg-red-100 text-red-700' },
-  holiday: { label: 'วันหยุด', cls: 'bg-gray-100 text-gray-600' },
+// สีตามสถานะมาตรฐาน: มาทำงาน = เขียว · สาย/ขาด = แดง · วันหยุด = เทา
+const STATUS_STYLE: Record<string, { label: string; tone: PillTone }> = {
+  normal: { label: 'มาทำงาน', tone: 'success' },
+  late: { label: 'มาสาย', tone: 'danger' },
+  absent: { label: 'ขาด', tone: 'danger' },
+  holiday: { label: 'วันหยุด', tone: 'neutral' },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -96,13 +99,6 @@ export default function PersonalReport({
   const expected = summary?.expectedDays ?? present + (summary?.absentDays ?? 0)
   const pct = expected > 0 ? Math.round((present / expected) * 100) : null
 
-  const card = (label: string, value: string, tone = 'text-gray-900') => (
-    <div className="rounded-lg border border-gray-100 bg-white p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`mt-0.5 text-lg font-semibold ${tone}`}>{value}</p>
-    </div>
-  )
-
   return (
     <Modal open onClose={onClose} title={userName} maxWidth={900}>
       <div className="space-y-4">
@@ -118,22 +114,32 @@ export default function PersonalReport({
               : 'ไม่มีข้อมูลในช่วงนี้'}
           </p>
           {onEditSchedule && (
-            <Button variant="secondary" size="sm" onClick={onEditSchedule}>
-              <Settings2 size={14} /> แก้ตารางวันทำงาน
+            <Button variant="secondary" size="sm" icon="Settings2" onClick={onEditSchedule}>
+              แก้ตารางวันทำงาน
             </Button>
           )}
         </div>
 
         {/* ตัวเลขรวม — ใช้ของแท็บสรุปเพื่อให้ตรงกันเป๊ะ */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {card('มาทำงาน', pct != null ? `${present}/${expected} วัน` : `${present} วัน`)}
-          {card('ขาด', `${summary?.absentDays ?? 0} วัน`, (summary?.absentDays ?? 0) > 0 ? 'text-red-600' : 'text-gray-900')}
-          {card('ลา', `${summary?.leaveDays ?? 0} วัน`)}
-          {card('ชั่วโมงรวม', `${Math.round(stats.hours * 10) / 10} ชม.`)}
+          <StatCard
+            label="มาทำงาน"
+            value={pct != null ? `${present}/${expected} วัน` : `${present} วัน`}
+            icon={CalendarCheck}
+            tone="success"
+          />
+          <StatCard
+            label="ขาด"
+            value={`${summary?.absentDays ?? 0} วัน`}
+            icon={CalendarX}
+            tone={(summary?.absentDays ?? 0) > 0 ? 'danger' : 'muted'}
+          />
+          <StatCard label="ลา" value={`${summary?.leaveDays ?? 0} วัน`} icon={Palmtree} tone="warning" />
+          <StatCard label="ชั่วโมงรวม" value={`${Math.round(stats.hours * 10) / 10} ชม.`} icon={Timer} tone="sky" />
         </div>
 
         {/* วิเคราะห์ — สิ่งที่ตารางรวมบอกไม่ได้ */}
-        <div className="rounded-lg bg-gray-50 p-3 text-sm">
+        <InfoPanel className="text-sm">
           <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
             <p className="flex items-center gap-1.5">
               <Clock size={13} className="text-gray-400" />
@@ -163,10 +169,10 @@ export default function PersonalReport({
               )}
             </p>
             {stats.swaps > 0 && (
-              <p className="sm:col-span-2 text-indigo-700">สลับวันหยุด {stats.swaps} วันในช่วงนี้</p>
+              <p className="sm:col-span-2 text-[var(--grape-700)]">สลับวันหยุด {stats.swaps} วันในช่วงนี้</p>
             )}
           </div>
-        </div>
+        </InfoPanel>
 
         {/* รายวัน */}
         <div className="max-h-[45vh] overflow-auto rounded-lg border border-gray-100">
@@ -190,10 +196,10 @@ export default function PersonalReport({
                       {format(new Date(d.date), 'EEE d MMM', { locale: th })}
                     </td>
                     <td className="px-3 py-1.5">
-                      <span className={`rounded px-1.5 py-0.5 text-xs ${st.cls}`}>
+                      <Pill tone={st.tone}>
                         {st.label}
                         {d.isLate && d.lateMinutes > 0 && ` ${d.lateMinutes} น.`}
-                      </span>
+                      </Pill>
                     </td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-center text-gray-600">
                       {d.firstCheckIn !== '-' ? `${d.firstCheckIn}–${d.lastCheckOut}` : '-'}

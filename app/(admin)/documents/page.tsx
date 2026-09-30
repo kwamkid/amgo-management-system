@@ -16,12 +16,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FileText, Plus, Search } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { ActionMenu, Button, ConfirmDialog, SelectMenu } from '@/components/aoo'
-import { PageHeader, TechLoader } from '@/components/shared'
+import { ActionMenu, Button, ConfirmDialog, Pill } from '@/components/aoo'
+import {
+  DataTable,
+  FilterBar,
+  FilterSelect,
+  PageHeader,
+  TechLoader,
+  type Column,
+} from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
 import {
   parseBody,
@@ -214,6 +221,111 @@ export default function DocumentsPage() {
     })
   }
 
+  const columns: Column<Row>[] = [
+    {
+      key: 'title',
+      header: 'เรื่อง',
+      mobilePrimary: true,
+      cell: (r) => (
+        <div className="min-w-0">
+          <Link
+            href={`/documents/${r.id}`}
+            className="font-medium text-gray-900 hover:text-red-600"
+          >
+            {r.title.trim() || '(ยังไม่ได้ตั้งเรื่อง)'}
+          </Link>
+          <p className="mt-0.5 truncate text-xs text-gray-400">
+            {r.doc_no.trim() !== '' && `เลขที่ ${r.doc_no} · `}
+            เรียน {r.recipient.trim() || '—'}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'company',
+      header: 'บริษัท',
+      hideOnMobile: true,
+      cell: (r) => <span className="text-gray-600">{r.company?.name_th ?? '—'}</span>,
+    },
+    {
+      key: 'creator',
+      header: 'ผู้สร้าง',
+      hideOnMobile: true,
+      cell: (r) => (
+        <span className="text-gray-600">
+          {r.created_by ? (names.get(r.created_by) ?? '—') : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'สถานะ',
+      cell: (r) => <StatusButton status={r.status} onClick={() => toggleStatus(r)} />,
+    },
+    {
+      key: 'updated',
+      header: 'แก้ล่าสุด',
+      hideOnMobile: true,
+      cell: (r) => <span className="text-gray-500">{thaiDate(r.updated_at)}</span>,
+    },
+    {
+      key: 'menu',
+      header: '',
+      width: 40,
+      mobileFooterAction: true,
+      cell: (r) => (
+        <ActionMenu
+          label={`จัดการเอกสาร ${r.title}`}
+          items={[
+            {
+              label: 'เปิดแก้ไข',
+              icon: 'Pencil',
+              onSelect: () => router.push(`/documents/${r.id}`),
+            },
+            {
+              label: 'พิมพ์ / บันทึก PDF',
+              icon: 'Printer',
+              onSelect: () => printRow(r),
+            },
+            {
+              // ให้คนอื่นเปิดดูเพื่อ approve — ต้องล็อกอินก่อนเสมอ
+              label: 'คัดลอกลิงก์ให้คนอื่นดู',
+              icon: 'Link',
+              onSelect: async () => {
+                const ok = await copyText(shareUrl(r.id, r.share_token))
+                showToast(
+                  ok
+                    ? 'คัดลอกลิงก์แล้ว — คนที่เปิดต้องล็อกอินก่อน'
+                    : 'คัดลอกไม่สำเร็จ ลองใหม่อีกครั้ง',
+                  ok ? 'success' : 'error'
+                )
+              },
+            },
+            {
+              label: 'ดาวน์โหลด Word',
+              icon: 'FileDown',
+              onSelect: () => downloadFile(`/api/documents/${r.id}/docx`),
+            },
+            { kind: 'divider' },
+            {
+              label: r.status === 'draft' ? 'ทำเครื่องหมายว่าออกแล้ว' : 'ดึงกลับเป็นร่าง',
+              icon: r.status === 'draft' ? 'Check' : 'Undo2',
+              onSelect: () => toggleStatus(r),
+            },
+            {
+              label: 'ลบเอกสาร',
+              icon: 'Trash2',
+              tone: 'danger',
+              // ใบที่ออกไปแล้ว มีแต่แอดมินที่ลบได้
+              disabled: !canDelete(r),
+              onSelect: () => setToDelete(r),
+            },
+          ]}
+        />
+      ),
+    },
+  ]
+
   if (!rows) return <TechLoader />
 
   return (
@@ -223,156 +335,37 @@ export default function DocumentsPage() {
         description="ออกจดหมาย/ประกาศจากแม่แบบกลาง — บันทึกเป็น PDF หรือ Word"
         icon={FileText}
         actions={
-          <Button size="sm" onClick={() => router.push('/documents/new')}>
-            <Plus size={15} /> สร้างเอกสาร
+          <Button size="sm" icon="Plus" onClick={() => router.push('/documents/new')}>
+            สร้างเอกสาร
           </Button>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search
-            size={15}
-            className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ค้นหาเรื่อง / ผู้รับ / เลขที่"
-            className="h-9 w-full rounded-lg border border-gray-200 pr-3 pl-9 text-sm outline-none focus:border-red-400"
-          />
-        </div>
-        {/* SelectMenu ของระบบ ไม่ใช่ <select> ของ OS — ดูเหตุผลใน
-            components/aoo/select-menu.tsx */}
-        <div className="w-56">
-          <SelectMenu
-            value={company}
-            onChange={(v) => setCompany(v ?? 'all')}
-            options={[
-              { value: 'all', label: 'ทุกบริษัท' },
-              ...companies.map(([code, name]) => ({ value: code, label: name })),
-            ]}
-          />
-        </div>
-      </div>
+      <FilterBar
+        search={q}
+        onSearch={setQ}
+        placeholder="ค้นหาเรื่อง / ผู้รับ / เลขที่"
+        sticky={false}
+      >
+        <FilterSelect
+          label="ทุกบริษัท"
+          width={224}
+          value={company === 'all' ? null : company}
+          onChange={(v) => setCompany(v ?? 'all')}
+          options={companies.map(([code, name]) => ({ value: code, label: name }))}
+        />
+      </FilterBar>
 
-      {shown.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">
-          {rows.length === 0
+      <DataTable
+        columns={columns}
+        rows={shown}
+        rowKey={(r) => r.id}
+        emptyTitle={
+          rows.length === 0
             ? 'ยังไม่มีเอกสาร — กด “สร้างเอกสาร” เพื่อออกใบแรก'
-            : 'ไม่พบเอกสารที่ตรงกับที่ค้นหา'}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs text-gray-500">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">เรื่อง</th>
-                <th className="hidden px-4 py-2.5 font-medium sm:table-cell">
-                  บริษัท
-                </th>
-                <th className="hidden px-4 py-2.5 font-medium lg:table-cell">
-                  ผู้สร้าง
-                </th>
-                <th className="px-4 py-2.5 font-medium">สถานะ</th>
-                <th className="hidden px-4 py-2.5 font-medium md:table-cell">
-                  แก้ล่าสุด
-                </th>
-                <th className="w-10 px-2 py-2.5" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {shown.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/documents/${r.id}`}
-                      className="font-medium text-gray-900 hover:text-red-600"
-                    >
-                      {r.title.trim() || '(ยังไม่ได้ตั้งเรื่อง)'}
-                    </Link>
-                    <p className="mt-0.5 truncate text-xs text-gray-400">
-                      {r.doc_no.trim() !== '' && `เลขที่ ${r.doc_no} · `}
-                      เรียน {r.recipient.trim() || '—'}
-                    </p>
-                  </td>
-                  <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">
-                    {r.company?.name_th ?? '—'}
-                  </td>
-                  <td className="hidden px-4 py-3 text-gray-600 lg:table-cell">
-                    {r.created_by ? (names.get(r.created_by) ?? '—') : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusButton
-                      status={r.status}
-                      onClick={() => toggleStatus(r)}
-                    />
-                  </td>
-                  <td className="hidden px-4 py-3 text-gray-500 md:table-cell">
-                    {thaiDate(r.updated_at)}
-                  </td>
-                  <td className="px-2 py-3">
-                    <ActionMenu
-                      label={`จัดการเอกสาร ${r.title}`}
-                      items={[
-                        {
-                          label: 'เปิดแก้ไข',
-                          icon: 'Pencil',
-                          onSelect: () => router.push(`/documents/${r.id}`),
-                        },
-                        {
-                          label: 'พิมพ์ / บันทึก PDF',
-                          icon: 'Printer',
-                          onSelect: () => printRow(r),
-                        },
-                        {
-                          // ให้คนอื่นเปิดดูเพื่อ approve — ต้องล็อกอินก่อนเสมอ
-                          label: 'คัดลอกลิงก์ให้คนอื่นดู',
-                          icon: 'Link',
-                          onSelect: async () => {
-                            const ok = await copyText(
-                              shareUrl(r.id, r.share_token)
-                            )
-                            showToast(
-                              ok
-                                ? 'คัดลอกลิงก์แล้ว — คนที่เปิดต้องล็อกอินก่อน'
-                                : 'คัดลอกไม่สำเร็จ ลองใหม่อีกครั้ง',
-                              ok ? 'success' : 'error'
-                            )
-                          },
-                        },
-                        {
-                          label: 'ดาวน์โหลด Word',
-                          icon: 'FileDown',
-                          onSelect: () =>
-                            downloadFile(`/api/documents/${r.id}/docx`),
-                        },
-                        { kind: 'divider' },
-                        {
-                          label:
-                            r.status === 'draft'
-                              ? 'ทำเครื่องหมายว่าออกแล้ว'
-                              : 'ดึงกลับเป็นร่าง',
-                          icon: r.status === 'draft' ? 'Check' : 'Undo2',
-                          onSelect: () => toggleStatus(r),
-                        },
-                        {
-                          label: 'ลบเอกสาร',
-                          icon: 'Trash2',
-                          tone: 'danger',
-                          // ใบที่ออกไปแล้ว มีแต่แอดมินที่ลบได้
-                          disabled: !canDelete(r),
-                          onSelect: () => setToDelete(r),
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            : 'ไม่พบเอกสารที่ตรงกับที่ค้นหา'
+        }
+      />
       {toPrint && (
         <PrintSheet job={toPrint} onDone={() => setToPrint(null)} />
       )}
@@ -414,13 +407,9 @@ function StatusButton({
       title={
         issued ? 'กดเพื่อดึงกลับเป็นร่าง' : 'กดเพื่อทำเครื่องหมายว่าออกแล้ว'
       }
-      className={[
-        'rounded-full px-2.5 py-0.5 text-xs font-medium transition',
-        'ring-1 ring-transparent hover:ring-current',
-        issued ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-      ].join(' ')}
+      className="rounded-full ring-1 ring-transparent transition hover:ring-gray-400"
     >
-      {issued ? 'ออกแล้ว' : 'ร่าง'}
+      <Pill tone={issued ? 'success' : 'warning'}>{issued ? 'ออกแล้ว' : 'ร่าง'}</Pill>
     </button>
   )
 }

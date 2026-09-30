@@ -3,23 +3,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatCard, StatusBadge, InfoPanel } from '@/components/shared'
 import { useAuth } from '@/hooks/useAuth'
 import { CheckInRecord } from '@/types/checkin'
 import { getCheckInRecords } from '@/lib/services/checkinService'
-import { 
-  Calendar,
-  ArrowLeft,
-  Loader2,
-  Clock
-} from 'lucide-react'
+import { Calendar, Clock, History } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
-import Link from 'next/link'
-import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { formatWorkingHours } from '@/lib/services/workingHoursService'
-import { Input, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Input, Pill, Card, CardContent, CardHeader, CardTitle, EmptyState, Spinner } from '@/components/aoo'
 export default function CheckInHistoryPage() {
   const { userData } = useAuth()
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -95,11 +88,6 @@ export default function CheckInHistoryPage() {
     }
   }
 
-  const handleExport = () => {
-    // TODO: Implement export to Excel/CSV
-    alert('ฟังก์ชัน Export กำลังพัฒนา')
-  }
-
   if (loading && !records.length) {
     return <TechLoader />
   }
@@ -131,68 +119,26 @@ export default function CheckInHistoryPage() {
 
       {/* Monthly Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.primaryLight} rounded-xl mb-3`}>
-              <Calendar className="w-6 h-6 text-red-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">วันทำงาน</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalDays}</p>
-            <p className="text-xs text-gray-500 mt-1">วัน</p>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.infoLight} rounded-xl mb-3`}>
-              <Calendar className="w-6 h-6 text-blue-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">ชั่วโมงรวม</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalHours}</p>
-            <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl mb-3`}>
-              <Calendar className="w-6 h-6 text-orange-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">โอที</p>
-            <p className="text-2xl font-bold text-orange-600">{stats.totalOT}</p>
-            <p className="text-xs text-gray-500 mt-1">ชั่วโมง</p>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl mb-3`}>
-              <Calendar className="w-6 h-6 text-red-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">มาสาย</p>
-            <p className="text-2xl font-bold text-red-600">{stats.lateDays}</p>
-            <p className="text-xs text-gray-500 mt-1">ครั้ง</p>
-          </CardContent>
-        </Card>
+        <StatCard label="วันทำงาน" value={stats.totalDays} unit="วัน" icon={Calendar} tone="sky" />
+        <StatCard label="ชั่วโมงรวม" value={stats.totalHours} unit="ชั่วโมง" icon={Clock} tone="grape" />
+        <StatCard label="โอที" value={stats.totalOT} unit="ชั่วโมง" icon={Clock} tone="accent" />
+        <StatCard label="มาสาย" value={stats.lateDays} unit="ครั้ง" icon={Clock} tone="danger" />
       </div>
 
       {/* History List */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle icon={History} tone="sky">
             รายละเอียด {format(new Date(selectedMonth + '-01'), 'MMMM yyyy', { locale: th })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              <Spinner size="lg" />
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">ไม่มีข้อมูลในเดือนนี้</p>
-            </div>
+            <EmptyState icon={<Calendar size={40} />} title="ไม่มีข้อมูลในเดือนนี้" />
           ) : (
             <div className="space-y-4">
               {/* Group records by date for display */}
@@ -224,8 +170,7 @@ export default function CheckInHistoryPage() {
                   const hasLate = dayRecords.some(r => r.isLate)
                   
                   return (
-                    <Card padding={0} key={dateStr}>
-                      <CardContent className="p-4">
+                    <InfoPanel key={dateStr}>
                         {/* Day Header */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
@@ -239,9 +184,7 @@ export default function CheckInHistoryPage() {
                               {dayRecords.length} รายการ
                             </span>
                             {hasLate && (
-                              <Pill tone="danger" className="text-xs">
-                                มาสาย
-                              </Pill>
+                              <StatusBadge status="late" />
                             )}
                           </div>
                         </div>
@@ -250,7 +193,7 @@ export default function CheckInHistoryPage() {
                         <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
                           <span>รวม {formatWorkingHours(dayHours)}</span>
                           {dayOT > 0 && (
-                            <Pill tone="warning" className="text-xs">
+                            <Pill tone="accent">
                               OT {formatWorkingHours(dayOT)}
                             </Pill>
                           )}
@@ -287,7 +230,7 @@ export default function CheckInHistoryPage() {
                                       @ {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
                                     </span>
                                     {record.selectedShiftName && (
-                                      <Pill tone="info" className="text-xs ml-2">
+                                      <Pill tone="info">
                                         {record.selectedShiftName}
                                       </Pill>
                                     )}
@@ -299,15 +242,8 @@ export default function CheckInHistoryPage() {
                                         {formatWorkingHours(record.totalHours)}
                                       </span>
                                     )}
-                                    {record.status === 'checked-in' && (
-                                      <Pill tone="success" className="text-xs">
-                                        กำลังทำงาน
-                                      </Pill>
-                                    )}
-                                    {record.status === 'pending' && (
-                                      <Pill tone="warning" className="text-xs">
-                                        รออนุมัติ
-                                      </Pill>
+                                    {(record.status === 'checked-in' || record.status === 'pending') && (
+                                      <StatusBadge status={record.status} />
                                     )}
                                   </div>
                                 </div>
@@ -315,7 +251,7 @@ export default function CheckInHistoryPage() {
                                 {(record.note || record.isLate) && (
                                   <div className="mt-1 ml-7 text-xs text-gray-500">
                                     {record.isLate && (
-                                      <span className="text-red-500">
+                                      <span className="text-[var(--ruby-700)]">
                                         สาย {record.lateMinutes} นาที
                                       </span>
                                     )}
@@ -330,8 +266,7 @@ export default function CheckInHistoryPage() {
                             )
                           })}
                         </div>
-                      </CardContent>
-                    </Card>
+                    </InfoPanel>
                   )
                 })
               })()}

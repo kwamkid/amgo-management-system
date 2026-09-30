@@ -6,18 +6,18 @@ import { useState } from 'react'
 import { CreateInviteLinkData, InviteLink } from '@/types/invite'
 import { useInviteLinks } from '@/hooks/useInviteLinks'
 import LocationMultiSelect from '@/components/users/LocationMultiSelect'
-import { 
-  Save, 
-  X, 
-  RefreshCw, 
-  Info,
-  Calendar,
-  Users,
-  Shield,
-  MapPin,
-  AlertCircle
-} from 'lucide-react'
-import { Textarea, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { RefreshCw, Info, Users, Shield } from 'lucide-react'
+import { Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button, IconButton, SelectMenu, Field } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
+import { useToast } from '@/hooks/useToast'
+
+const ROLE_OPTIONS = [
+  { value: 'employee', label: 'พนักงาน' },
+  { value: 'manager', label: 'ผู้จัดการ' },
+  { value: 'hr', label: 'ฝ่ายบุคคล' },
+  { value: 'driver', label: 'พนักงานขับรถ' },
+]
+
 interface InviteLinkFormProps {
   initialData?: InviteLink
   onSubmit: (data: CreateInviteLinkData) => Promise<boolean>
@@ -32,6 +32,7 @@ export default function InviteLinkForm({
   isSubmitting = false 
 }: InviteLinkFormProps) {
   const { generateCode } = useInviteLinks()
+  const { showToast } = useToast()
   
   // Initialize with generated code if creating new
   const [formData, setFormData] = useState<CreateInviteLinkData>(() => {
@@ -72,12 +73,12 @@ export default function InviteLinkForm({
     
     // Validate
     if (!formData.code?.trim()) {
-      alert('กรุณาระบุรหัสลิงก์')
+      showToast('กรุณาระบุรหัสลิงก์', 'error')
       return
     }
     
     if (formData.defaultLocationIds?.length === 0 && !formData.allowCheckInOutsideLocation) {
-      alert('กรุณาเลือกสาขาหรืออนุญาตให้เช็คอินนอกสถานที่')
+      showToast('กรุณาเลือกสาขาหรืออนุญาตให้เช็คอินนอกสถานที่', 'error')
       return
     }
     
@@ -96,40 +97,31 @@ export default function InviteLinkForm({
       {/* Basic Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-            <Info className="w-5 h-5 text-red-600" />
-            ข้อมูลพื้นฐาน
-          </CardTitle>
+          <CardTitle icon={Info} tone="sky">ข้อมูลพื้นฐาน</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="code">รหัสลิงก์ *</Label>
+            <Field label="รหัสลิงก์" required help="ใช้ตัวอักษร A-Z และตัวเลข 0-9 เท่านั้น" asDiv>
               <div className="flex gap-2">
                 <Input
                   id="code"
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  className="font-mono uppercase"
+                  className="flex-1 uppercase"
+                  mono
                   placeholder="เช่น AMGO2024"
                   required
                   disabled={isSubmitting || !!initialData}
                   maxLength={20}
                 />
                 {!initialData && (
-                  <Button type="button" onClick={handleGenerateCode} variant="soft" size="sm" disabled={isSubmitting}>
-                    <RefreshCw className="w-4 h-4" />
-                  </Button>
+                  <IconButton icon={RefreshCw} title="สุ่มรหัสใหม่" tone="sunken" size={40} onClick={handleGenerateCode} disabled={isSubmitting} />
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                ใช้ตัวอักษร A-Z และตัวเลข 0-9 เท่านั้น
-              </p>
-            </div>
-            
-            <div>
-              <Label htmlFor="note">หมายเหตุ</Label>
+            </Field>
+
+            <Field label="หมายเหตุ">
               <Input
                 id="note"
                 type="text"
@@ -138,7 +130,7 @@ export default function InviteLinkForm({
                 placeholder="เช่น สำหรับพนักงาน Part-time"
                 disabled={isSubmitting}
               />
-            </div>
+            </Field>
           </div>
         </CardContent>
       </Card>
@@ -146,38 +138,27 @@ export default function InviteLinkForm({
       {/* Default Settings */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-            <Shield className="w-5 h-5 text-red-600" />
-            ค่าเริ่มต้นสำหรับพนักงานใหม่
-          </CardTitle>
+          <CardTitle icon={Shield} tone="grape">ค่าเริ่มต้นสำหรับพนักงานใหม่</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="defaultRole">สิทธิ์การใช้งาน</Label>
-              <Select
+            <Field label="สิทธิ์การใช้งาน" asDiv>
+              <SelectMenu
+                size="md"
                 value={formData.defaultRole}
-                onChange={(e) => ((value) => setFormData({ ...formData, defaultRole: value as any }))(e.target.value)}
+                options={ROLE_OPTIONS}
+                onChange={(value) => value && setFormData({ ...formData, defaultRole: value as any })}
                 disabled={isSubmitting}
-              >
-                
-                
-                  <option value="employee">พนักงาน</option>
-                  <option value="manager">ผู้จัดการ</option>
-                  <option value="hr">ฝ่ายบุคคล</option>
-                  <option value="driver">พนักงานขับรถ</option>
-                
-              </Select>
-            </div>
-            
-            <div>
-              <Label>สาขาที่อนุญาตให้เช็คอิน</Label>
+              />
+            </Field>
+
+            <Field label="สาขาที่อนุญาตให้เช็คอิน" asDiv>
               <LocationMultiSelect
                 selectedLocationIds={formData.defaultLocationIds || []}
                 onChange={(locationIds) => setFormData({ ...formData, defaultLocationIds: locationIds })}
                 disabled={isSubmitting}
               />
-            </div>
+            </Field>
             
             <div className="flex items-center space-x-3 pt-2">
               <Checkbox
@@ -233,15 +214,11 @@ export default function InviteLinkForm({
       {/* Usage Limits */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-            <Users className="w-5 h-5 text-orange-600" />
-            จำกัดการใช้งาน
-          </CardTitle>
+          <CardTitle icon={Users} tone="warning">จำกัดการใช้งาน</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="maxUses">จำนวนครั้งที่ใช้ได้</Label>
+            <Field label="จำนวนครั้งที่ใช้ได้" help="เว้นว่างหากไม่ต้องการจำกัด">
               <Input
                 id="maxUses"
                 type="number"
@@ -254,13 +231,12 @@ export default function InviteLinkForm({
                 min="1"
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                เว้นว่างหากไม่ต้องการจำกัด
-              </p>
-            </div>
-            
-            <div>
-              <Label htmlFor="expiresAt">วันหมดอายุ</Label>
+            </Field>
+
+            <Field
+              label="วันหมดอายุ"
+              help={formData.expiresAt ? `หมดอายุใน ${getDaysUntilExpiry()} วัน` : undefined}
+            >
               <Input
                 id="expiresAt"
                 type="date"
@@ -269,37 +245,27 @@ export default function InviteLinkForm({
                 min={new Date().toISOString().split('T')[0]}
                 disabled={isSubmitting}
               />
-              {formData.expiresAt && (
-                <p className="text-xs text-gray-500 mt-1">
-                  หมดอายุใน {getDaysUntilExpiry()} วัน
-                </p>
-              )}
-            </div>
+            </Field>
           </div>
         </CardContent>
       </Card>
 
       {/* Preview */}
-      <Alert tone="info">
-        <div>
-          <h3 className="font-semibold mb-2 text-blue-900">ตัวอย่างลิงก์</h3>
-          <div className="bg-white rounded-lg p-4 border border-blue-200">
-            <p className="text-sm text-gray-600 mb-2">พนักงานจะได้รับลิงก์:</p>
-            <code className="block bg-gray-100 p-3 rounded text-sm break-all">
-              {typeof window !== 'undefined' ? window.location.origin : ''}/register/invite?invite={formData.code || 'CODE'}
-            </code>
-          </div>
-        </div>
+      <Alert tone="info" title="ตัวอย่างลิงก์">
+        <p className="mb-2">พนักงานจะได้รับลิงก์:</p>
+        <InfoPanel>
+          <code className="block text-sm break-all">
+            {typeof window !== 'undefined' ? window.location.origin : ''}/register/invite?invite={formData.code || 'CODE'}
+          </code>
+        </InfoPanel>
       </Alert>
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button type="button" onClick={onCancel} variant="soft" disabled={isSubmitting}>
-          <X className="w-4 h-4 mr-2" />
+        <Button type="button" onClick={onCancel} variant="soft" icon="X" disabled={isSubmitting}>
           ยกเลิก
         </Button>
-        <Button type="submit" disabled={isSubmitting} className="-">
-          <Save className="w-4 h-4 mr-2" />
+        <Button type="submit" icon="Save" loading={isSubmitting}>
           {isSubmitting ? 'กำลังบันทึก...' : initialData ? 'บันทึก' : 'สร้างลิงก์'}
         </Button>
       </div>

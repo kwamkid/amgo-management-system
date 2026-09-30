@@ -8,11 +8,22 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BookOpen, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Input, Modal, SelectMenu, Textarea, Toggle } from '@/components/aoo'
-import { PageHeader, SectionCard, Segmented, TechLoader } from '@/components/shared'
+import {
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  Pill,
+  SelectMenu,
+  Textarea,
+  Toggle,
+} from '@/components/aoo'
+import { ListRow, ListRows, PageHeader, SectionCard, Segmented, TechLoader } from '@/components/shared'
 import {
   getBottleSizes,
   getRecipes,
@@ -172,17 +183,20 @@ export default function ProductionRecipesPage() {
         description="ส่วนผสมต่อน้ำ 1 ลิตร — หน้าผสมจะคูณขยายตามจำนวนลิตรให้เอง"
         actions={
           isAdmin ? (
-            <Button type="button" onClick={() => setDraft({ ...NEW_DRAFT, items: [{ ...EMPTY_ITEM }] })}>
-              <Plus size={16} className="mr-1" /> เพิ่มสูตร
+            <Button type="button" icon="Plus" onClick={() => setDraft({ ...NEW_DRAFT, items: [{ ...EMPTY_ITEM }] })}>
+              เพิ่มสูตร
             </Button>
           ) : undefined
         }
       />
 
       {visibleRecipes.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-          ยังไม่มีสูตร{isAdmin ? ' — กด "เพิ่มสูตร" เพื่อเริ่ม' : ''}
-        </div>
+        <SectionCard>
+          <EmptyState
+            icon={<BookOpen size={28} />}
+            body={`ยังไม่มีสูตร${isAdmin ? ' — กด "เพิ่มสูตร" เพื่อเริ่ม' : ''}`}
+          />
+        </SectionCard>
       )}
 
       <div className="space-y-3">
@@ -194,11 +208,11 @@ export default function ProductionRecipesPage() {
                 <div className="min-w-0">
                 <div className="text-base font-semibold text-gray-900">
                   {r.name}
-                  <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-700">
+                  <Pill tone={r.recipeType === 'brix' ? 'sky' : 'grape'} className="ml-2">
                     {r.recipeType === 'brix' ? `วัด Brix · เป้า ${r.targetBrix ?? '?'}` : 'สูตรคงที่ /ลิตร'}
-                  </span>
+                  </Pill>
                   {!r.isActive && (
-                    <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ปิดใช้</span>
+                    <Pill tone="neutral" className="ml-2">ปิดใช้</Pill>
                   )}
                 </div>
                 {r.note && <p className="mt-0.5 text-sm text-gray-500">{r.note}</p>}
@@ -215,9 +229,10 @@ export default function ProductionRecipesPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    icon="Pencil"
                     onClick={() => setDraft(draftFrom(r))}
                   >
-                    <Pencil size={14} className="mr-1" /> แก้ไข
+                    แก้ไข
                   </Button>
                   <Toggle
                     checked={r.isActive}
@@ -239,9 +254,7 @@ export default function ProductionRecipesPage() {
                     {i.qtyPerLiter.toLocaleString()} {UNIT_TH[i.unit]}/ลิตร
                   </span>
                   {i.isYieldBase && (
-                    <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs font-semibold text-orange-700">
-                      คิด yield
-                    </span>
+                    <Pill tone="accent">คิด yield</Pill>
                   )}
                 </div>
               ))}
@@ -252,34 +265,42 @@ export default function ProductionRecipesPage() {
 
       {/* ขนาดขวด — ใช้ในหน้าผสมตอนกรอกจำนวนขวดที่ได้ */}
       {isAdmin && (
-        <SectionCard>
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-700">ขนาดขวด</div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setBottleDraft({ label: '', ml: '' })}>
-              <Plus size={14} className="mr-1" /> เพิ่มขนาด
-            </Button>
-          </div>
-          <div className="divide-y divide-gray-100">
+        <SectionCard
+          title={
+            <div className="flex items-center justify-between">
+              <span>ขนาดขวด</span>
+              <Button type="button" variant="ghost" size="sm" icon="Plus" onClick={() => setBottleDraft({ label: '', ml: '' })}>
+                เพิ่มขนาด
+              </Button>
+            </div>
+          }
+        >
+          <ListRows>
             {bottles.map((b) => (
-              <div key={b.id} className="flex items-center justify-between py-2 text-sm">
-                <button
-                  type="button"
-                  className="text-left font-medium text-gray-800 hover:text-red-600"
-                  onClick={() => setBottleDraft({ id: b.id, label: b.label, ml: String(b.ml) })}
-                >
-                  {b.label} <span className="ml-1 tabular-nums text-gray-400">({b.ml.toLocaleString()} มล.)</span>
-                </button>
-                <Toggle
-                  checked={b.isActive}
-                  onChange={(v) =>
-                    setBottleSizeActive(b.id, v)
-                      .then(load)
-                      .catch((e) => showToast(e.message, 'error'))
-                  }
-                />
-              </div>
+              <ListRow
+                key={b.id}
+                title={
+                  <button
+                    type="button"
+                    className="text-left hover:text-red-600"
+                    onClick={() => setBottleDraft({ id: b.id, label: b.label, ml: String(b.ml) })}
+                  >
+                    {b.label} <span className="ml-1 tabular-nums text-gray-400">({b.ml.toLocaleString()} มล.)</span>
+                  </button>
+                }
+                trailing={
+                  <Toggle
+                    checked={b.isActive}
+                    onChange={(v) =>
+                      setBottleSizeActive(b.id, v)
+                        .then(load)
+                        .catch((e) => showToast(e.message, 'error'))
+                    }
+                  />
+                }
+              />
             ))}
-          </div>
+          </ListRows>
         </SectionCard>
       )}
 
@@ -295,17 +316,14 @@ export default function ProductionRecipesPage() {
               <Button type="button" variant="ghost" onClick={() => setDraft(null)} disabled={saving}>
                 ยกเลิก
               </Button>
-              <Button type="button" onClick={submitRecipe} disabled={saving}>
+              <Button type="button" onClick={submitRecipe} loading={saving}>
                 {saving ? 'กำลังบันทึก…' : 'บันทึกสูตร'}
               </Button>
             </>
           }
         >
           <div className="space-y-3">
-            <div>
-              <div className="mb-1 text-xs font-semibold text-gray-500">
-                รูปประจำสูตร — ฝ่ายผลิตจำจากรูปนี้
-              </div>
+            <Field asDiv label="รูปประจำสูตร — ฝ่ายผลิตจำจากรูปนี้">
               <div className="flex flex-wrap gap-1.5">
                 {RECIPE_IMAGES.map((img) => (
                   <button
@@ -323,7 +341,7 @@ export default function ProductionRecipesPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
             <Input
               value={draft.name}
@@ -331,8 +349,7 @@ export default function ProductionRecipesPage() {
               placeholder="ชื่อสูตร เช่น น้ำส้มคั้น 100%"
             />
 
-            <div>
-              <div className="mb-1 text-xs font-semibold text-gray-500">ประเภทสูตร</div>
+            <Field asDiv label="ประเภทสูตร">
               <Segmented
                 value={draft.recipeType}
                 onChange={(v) => setDraft({ ...draft, recipeType: v as RecipeType })}
@@ -346,12 +363,11 @@ export default function ProductionRecipesPage() {
                   ? 'เช่น น้ำส้ม (สูตร Joolz) — กรอกจำนวนขวด + Brix น้ำคั้น ระบบคำนวณน้ำคั้น/น้ำตาลหรือน้ำเชื่อม/น้ำให้'
                   : 'เช่น น้ำเก๊กฮวย — ส่วนผสมตายตัวต่อน้ำ 1 ลิตร ระบบคูณขยายตามที่ผสม'}
               </p>
-            </div>
+            </Field>
 
             {draft.recipeType === 'brix' && (
               <div className="flex gap-3">
-                <div className="flex-1">
-                  <div className="mb-1 text-xs font-semibold text-gray-500">เป้า Brix น้ำขาย *</div>
+                <Field label="เป้า Brix น้ำขาย" required className="flex-1">
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -360,9 +376,8 @@ export default function ProductionRecipesPage() {
                     onChange={(e) => setDraft({ ...draft, targetBrix: e.target.value })}
                     placeholder="เช่น 12"
                   />
-                </div>
-                <div className="flex-1">
-                  <div className="mb-1 text-xs font-semibold text-gray-500">% น้ำคั้นแท้</div>
+                </Field>
+                <Field label="% น้ำคั้นแท้" className="flex-1">
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -372,12 +387,11 @@ export default function ProductionRecipesPage() {
                     onChange={(e) => setDraft({ ...draft, juiceRatio: e.target.value })}
                     placeholder="70"
                   />
-                </div>
+                </Field>
               </div>
             )}
 
-            <div>
-              <div className="mb-1 text-xs font-semibold text-gray-500">ขั้นตอนการทำ</div>
+            <Field label="ขั้นตอนการทำ" help="พิมพ์บรรทัดละ 1 ขั้น — ระบบใส่หมายเลข 1 2 3 ให้เองตอนแสดง (ไม่ต้องพิมพ์เลข)">
               <Textarea
                 value={draft.steps}
                 onChange={(e) => setDraft({ ...draft, steps: e.target.value })}
@@ -388,10 +402,7 @@ export default function ProductionRecipesPage() {
                 }
                 rows={5}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                พิมพ์บรรทัดละ 1 ขั้น — ระบบใส่หมายเลข 1 2 3 ให้เองตอนแสดง (ไม่ต้องพิมพ์เลข)
-              </p>
-            </div>
+            </Field>
 
             <Textarea
               value={draft.note}
@@ -444,14 +455,13 @@ export default function ProductionRecipesPage() {
                       size="md"
                     />
                   </div>
-                  <button
-                    type="button"
-                    className="shrink-0 text-gray-300 hover:text-red-500"
+                  <IconButton
+                    icon={Trash2}
+                    tone="danger"
+                    className="shrink-0"
                     onClick={() => setDraft({ ...draft, items: draft.items.filter((_, i) => i !== idx) })}
                     aria-label="ลบส่วนผสม"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  />
                 </div>
               ))}
             </div>
@@ -459,9 +469,10 @@ export default function ProductionRecipesPage() {
               type="button"
               variant="ghost"
               size="sm"
+              icon="Plus"
               onClick={() => setDraft({ ...draft, items: [...draft.items, { ...EMPTY_ITEM }] })}
             >
-              <Plus size={14} className="mr-1" /> เพิ่มส่วนผสม
+              เพิ่มส่วนผสม
             </Button>
           </div>
         </Modal>
@@ -479,7 +490,7 @@ export default function ProductionRecipesPage() {
               <Button type="button" variant="ghost" onClick={() => setBottleDraft(null)} disabled={saving}>
                 ยกเลิก
               </Button>
-              <Button type="button" onClick={submitBottle} disabled={saving}>
+              <Button type="button" onClick={submitBottle} loading={saving}>
                 บันทึก
               </Button>
             </>

@@ -3,15 +3,10 @@
 import { useState, useEffect } from 'react'
 import {
   ArrowRight,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
   Heart,
   Briefcase,
   Activity,
-  RefreshCw,
-  History
+  RefreshCw
 } from 'lucide-react'
 import {
   CarryOverRules,
@@ -21,7 +16,9 @@ import {
 import { carryOverQuotaForAllUsers, checkCarryOverExists, checkQuotaExistsForYear } from '@/lib/services/leaveService'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Toggle, Checkbox, Label, Input, Alert, Pill, Button, Modal } from '@/components/aoo'
+import { Toggle, Checkbox, Label, Input, Alert, Pill, Button, Modal, Spinner, type PillTone } from '@/components/aoo'
+import InfoPanel from '@/components/shared/InfoPanel'
+import ListRow, { ListRows } from '@/components/shared/ListRow'
 interface CarryOverDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -133,33 +130,21 @@ export default function CarryOverDialog({
     onOpenChange(false)
   }
 
-  const leaveTypes = [
-    {
-      type: 'sick' as const,
-      label: 'ลาป่วย',
-      icon: <Heart className="w-4 h-4" />,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50'
-    },
-    {
-      type: 'personal' as const,
-      label: 'ลากิจ',
-      icon: <Briefcase className="w-4 h-4" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      type: 'vacation' as const,
-      label: 'ลาพักร้อน',
-      icon: <Activity className="w-4 h-4" />,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50'
-    }
+  // สีตามประเภทลา (ตรงกับ StatusBadge kind="leaveType")
+  const leaveTypes: { type: 'sick' | 'personal' | 'vacation'; label: string; icon: typeof Heart; tone: PillTone }[] = [
+    { type: 'sick', label: 'ลาป่วย', icon: Heart, tone: 'pink' },
+    { type: 'personal', label: 'ลากิจ', icon: Briefcase, tone: 'sky' },
+    { type: 'vacation', label: 'ลาพักร้อน', icon: Activity, tone: 'success' },
   ]
 
   return (
-    <Modal open={open} onClose={() => ((handleClose))()} title={<><span className="flex items-center gap-2"><RefreshCw className="w-5 h-5 text-red-600" />
-            ยกยอดโควต้าวันลา</span></>} description={<>ยกยอดวันลาคงเหลือจากปี {fromYear} ไปปี {toYear}</>} maxWidth={512}>
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title={<span className="flex items-center gap-2"><RefreshCw className="w-5 h-5 text-red-600" />ยกยอดโควต้าวันลา</span>}
+      description={<>ยกยอดวันลาคงเหลือจากปี {fromYear} ไปปี {toYear}</>}
+      maxWidth={512}
+    >
         
 
         {/* Step: Config */}
@@ -167,82 +152,65 @@ export default function CarryOverDialog({
           <div className="space-y-4">
             {/* Loading state */}
             {checkingPrevious ? (
-              <Alert tone="info">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <div>
+              <Alert tone="info" hideIcon>
+                <span className="flex items-center gap-2">
+                  <Spinner size="xs" />
                   กำลังตรวจสอบข้อมูล...
-                </div>
+                </span>
               </Alert>
             ) : quotaStatus && !quotaStatus.hasQuota ? (
               /* Error: ยังไม่มีโควต้าปีใหม่ */
-              <Alert tone="error">
-                <div className="text-red-800">
-                  <strong className="block mb-1">❌ ยังไม่มีโควต้าปี {toYear}</strong>
-                  <span className="text-sm">
-                    กรุณาตั้งโควต้าปี {toYear} ให้กับพนักงานก่อน จึงจะสามารถยกยอดได้
-                  </span>
-                  <p className="text-sm mt-2">
-                    ไปที่ <strong>การลา → จัดการโควต้า</strong> เพื่อตั้งค่าโควต้าปี {toYear}
-                  </p>
-                </div>
+              <Alert tone="error" title={`ยังไม่มีโควต้าปี ${toYear}`}>
+                กรุณาตั้งโควต้าปี {toYear} ให้กับพนักงานก่อน จึงจะสามารถยกยอดได้
+                <p className="mt-2">
+                  ไปที่ <strong>การลา → จัดการโควต้า</strong> เพื่อตั้งค่าโควต้าปี {toYear}
+                </p>
               </Alert>
             ) : quotaStatus && quotaStatus.usersWithoutQuota.length > 0 ? (
               /* Warning: มีบางคนยังไม่มีโควต้าปีใหม่ */
-              <Alert tone="warning">
-                <div className="text-amber-800">
-                  <strong className="block mb-1">⚠️ มีพนักงานบางคนยังไม่มีโควต้าปี {toYear}</strong>
-                  <span className="text-sm">
-                    มีโควต้าแล้ว: {quotaStatus.usersWithQuota} คน
-                    <br />
-                    ยังไม่มีโควต้า: {quotaStatus.usersWithoutQuota.length} คน
-                  </span>
-                  <p className="text-sm mt-2">
-                    พนักงานที่ยังไม่มีโควต้าปี {toYear} จะถูกสร้างโควต้าใหม่พร้อมยอดยกมา (โควต้าพื้นฐาน = 0)
-                  </p>
-                </div>
+              <Alert tone="warning" title={`มีพนักงานบางคนยังไม่มีโควต้าปี ${toYear}`}>
+                มีโควต้าแล้ว: {quotaStatus.usersWithQuota} คน
+                <br />
+                ยังไม่มีโควต้า: {quotaStatus.usersWithoutQuota.length} คน
+                <p className="mt-2">
+                  พนักงานที่ยังไม่มีโควต้าปี {toYear} จะถูกสร้างโควต้าใหม่พร้อมยอดยกมา (โควต้าพื้นฐาน = 0)
+                </p>
               </Alert>
             ) : previousCarryOver ? (
               /* Warning: เคยยกยอดไปแล้ว */
-              <Alert tone="error">
-                <div className="text-red-800">
-                  <strong className="block mb-1">⚠️ เคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว!</strong>
-                  <span className="text-sm">
-                    ยกยอดล่าสุดเมื่อ: {format(new Date(previousCarryOver.executedAt), 'd MMMM yyyy HH:mm น.', { locale: th })}
-                    <br />
-                    โดย: {previousCarryOver.executedBy}
-                    <br />
-                    ผลลัพธ์: สำเร็จ {previousCarryOver.successCount} คน
-                  </span>
-                  <p className="text-sm mt-2 font-medium text-red-700">
-                    หากยกยอดอีกครั้ง โควต้าจะถูกเพิ่มซ้ำ (ไม่ใช่การแทนที่)
-                  </p>
-                </div>
+              <Alert tone="error" title={`เคยยกยอดจากปี ${fromYear} ไปปี ${toYear} แล้ว!`}>
+                ยกยอดล่าสุดเมื่อ: {format(new Date(previousCarryOver.executedAt), 'd MMMM yyyy HH:mm น.', { locale: th })}
+                <br />
+                โดย: {previousCarryOver.executedBy}
+                <br />
+                ผลลัพธ์: สำเร็จ {previousCarryOver.successCount} คน
+                <p className="mt-2 font-medium">
+                  หากยกยอดอีกครั้ง โควต้าจะถูกเพิ่มซ้ำ (ไม่ใช่การแทนที่)
+                </p>
               </Alert>
             ) : (
               /* Normal state */
-              <Alert tone="info">
-                <div className="text-green-800">
-                  <strong className="block mb-1">✓ พร้อมยกยอด</strong>
-                  <span className="text-sm">
-                    พนักงาน {quotaStatus?.usersWithQuota || 0} คน มีโควต้าปี {toYear} เรียบร้อย
-                    <br />
-                    ระบบจะเพิ่มวันลาคงเหลือจากปี {fromYear} ไปยังโควต้าปี {toYear}
-                  </span>
-                </div>
+              <Alert tone="success" title="พร้อมยกยอด">
+                พนักงาน {quotaStatus?.usersWithQuota || 0} คน มีโควต้าปี {toYear} เรียบร้อย
+                <br />
+                ระบบจะเพิ่มวันลาคงเหลือจากปี {fromYear} ไปยังโควต้าปี {toYear}
               </Alert>
             )}
 
             <div className="space-y-4">
               <Label className="text-base font-medium">ตั้งค่าการยกยอดแต่ละประเภท</Label>
 
-              {leaveTypes.map(({ type, label, icon, color, bgColor }) => (
-                <div
+              {leaveTypes.map(({ type, label, icon: Icon, tone }) => (
+                <InfoPanel
                   key={type}
-                  className={`p-4 rounded-lg border ${rules[type].enabled ? bgColor : 'bg-gray-50'}`}
+                  tone={rules[type].enabled ? tone : undefined}
+                  className="p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`flex items-center gap-2 ${color}`}>
-                      {icon}
+                    <div className="flex items-center gap-2">
+                      <span className="aoo-title-icon" data-tone={tone}>
+                        <Icon size={17} strokeWidth={2} />
+                      </span>
                       <span className="font-medium">{label}</span>
                     </div>
                     <Toggle
@@ -264,7 +232,7 @@ export default function CarryOverDialog({
                             e.target.value ? parseInt(e.target.value) : null
                           )}
                           placeholder="ไม่จำกัด"
-                          className="h-8 mt-1"
+                          className="mt-1"
                           min={0}
                         />
                       </div>
@@ -279,7 +247,6 @@ export default function CarryOverDialog({
                               'percentage',
                               parseInt(e.target.value) || 0
                             )}
-                            className="h-8"
                             min={0}
                             max={100}
                           />
@@ -288,7 +255,7 @@ export default function CarryOverDialog({
                       </div>
                     </div>
                   )}
-                </div>
+                </InfoPanel>
               ))}
             </div>
 
@@ -296,18 +263,19 @@ export default function CarryOverDialog({
               <Button variant="soft" onClick={handleClose}>
                 ยกเลิก
               </Button>
-              <Button onClick={() => {
- setConfirmDuplicate(false)
- setStep('confirm')
- }}
- className="-"
- disabled={
- (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
- checkingPrevious ||
- (quotaStatus !== null && !quotaStatus.hasQuota)
- }>
+              <Button
+                onClick={() => {
+                  setConfirmDuplicate(false)
+                  setStep('confirm')
+                }}
+                disabled={
+                  (!rules.sick.enabled && !rules.personal.enabled && !rules.vacation.enabled) ||
+                  checkingPrevious ||
+                  (quotaStatus !== null && !quotaStatus.hasQuota)
+                }
+              >
                 ถัดไป
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -317,27 +285,17 @@ export default function CarryOverDialog({
         {step === 'confirm' && (
           <div className="space-y-4">
             {previousCarryOver ? (
-              <Alert tone="error">
-                <div className="text-red-800">
-                  <strong>⚠️ คำเตือน: กำลังยกยอดซ้ำ!</strong>
-                  <br />
-                  <span className="text-sm">
-                    คุณเคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว
-                    การยกยอดอีกครั้งจะทำให้โควต้าถูกเพิ่มซ้ำ
-                  </span>
-                </div>
+              <Alert tone="error" title="คำเตือน: กำลังยกยอดซ้ำ!">
+                คุณเคยยกยอดจากปี {fromYear} ไปปี {toYear} แล้ว
+                การยกยอดอีกครั้งจะทำให้โควต้าถูกเพิ่มซ้ำ
               </Alert>
             ) : (
-              <Alert tone="warning">
-                <div>
-                  <strong>ยืนยันการยกยอดโควต้า</strong>
-                  <br />
-                  การดำเนินการนี้ไม่สามารถยกเลิกได้
-                </div>
+              <Alert tone="warning" title="ยืนยันการยกยอดโควต้า">
+                การดำเนินการนี้ไม่สามารถยกเลิกได้
               </Alert>
             )}
 
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <InfoPanel className="p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">จากปี</span>
                 <Pill tone="neutral">{fromYear}</Pill>
@@ -349,27 +307,27 @@ export default function CarryOverDialog({
                 <span className="text-gray-600">ไปปี</span>
                 <Pill tone="neutral">{toYear}</Pill>
               </div>
-              <div className="flex items-center justify-between text-sm pt-2 border-t">
+              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
                 <span className="text-gray-600">จำนวนพนักงาน</span>
                 <Pill tone="accent">{users.length} คน</Pill>
               </div>
-            </div>
+            </InfoPanel>
 
             <div className="space-y-2">
               <Label className="text-sm text-gray-600">การยกยอดที่เลือก:</Label>
               <div className="flex flex-wrap gap-2">
                 {rules.sick.enabled && (
-                  <Pill tone="neutral" className="bg-pink-100 text-pink-700">
+                  <Pill tone="pink">
                     ลาป่วย {rules.sick.maxDays ? `(สูงสุด ${rules.sick.maxDays} วัน)` : '(ไม่จำกัด)'}
                   </Pill>
                 )}
                 {rules.personal.enabled && (
-                  <Pill tone="neutral" className="bg-blue-100 text-blue-700">
+                  <Pill tone="sky">
                     ลากิจ {rules.personal.maxDays ? `(สูงสุด ${rules.personal.maxDays} วัน)` : '(ไม่จำกัด)'}
                   </Pill>
                 )}
                 {rules.vacation.enabled && (
-                  <Pill tone="neutral" className="bg-emerald-100 text-emerald-700">
+                  <Pill tone="success">
                     ลาพักร้อน {rules.vacation.maxDays ? `(สูงสุด ${rules.vacation.maxDays} วัน)` : '(ไม่จำกัด)'}
                   </Pill>
                 )}
@@ -378,7 +336,7 @@ export default function CarryOverDialog({
 
             {/* Checkbox ยืนยันเมื่อยกยอดซ้ำ */}
             {previousCarryOver && (
-              <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <InfoPanel tone="danger" className="flex items-start gap-3">
                 <Checkbox
                   id="confirm-duplicate"
                   checked={confirmDuplicate}
@@ -386,18 +344,18 @@ export default function CarryOverDialog({
                 />
                 <Label
                   htmlFor="confirm-duplicate"
-                  className="text-sm text-red-800 cursor-pointer leading-relaxed"
+                  className="text-sm cursor-pointer leading-relaxed"
                 >
                   ฉันเข้าใจว่าการยกยอดซ้ำจะทำให้โควต้าถูกเพิ่มอีกครั้ง และต้องการดำเนินการต่อ
                 </Label>
-              </div>
+              </InfoPanel>
             )}
 
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button variant="soft" onClick={() => setStep('config')}>
                 ย้อนกลับ
               </Button>
-              <Button onClick={handleCarryOver} className="-" disabled={previousCarryOver && !confirmDuplicate}>
+              <Button onClick={handleCarryOver} disabled={previousCarryOver && !confirmDuplicate}>
                 ยืนยันยกยอด
               </Button>
             </div>
@@ -407,7 +365,9 @@ export default function CarryOverDialog({
         {/* Step: Processing */}
         {step === 'processing' && (
           <div className="py-8 text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-red-600 mx-auto mb-4" />
+            <div className="mb-4 flex justify-center">
+              <Spinner size="lg" />
+            </div>
             <p className="text-gray-600">กำลังยกยอดโควต้า...</p>
             <p className="text-sm text-gray-500 mt-2">
               กรุณารอสักครู่ กำลังประมวลผลพนักงาน {users.length} คน
@@ -419,26 +379,20 @@ export default function CarryOverDialog({
         {step === 'result' && result && (
           <div className="space-y-4">
             {result.successCount === result.totalUsers ? (
-              <Alert tone="info">
-                <div className="text-green-800">
-                  ยกยอดโควต้าสำเร็จทั้งหมด {result.successCount} คน
-                </div>
+              <Alert tone="success">
+                ยกยอดโควต้าสำเร็จทั้งหมด {result.successCount} คน
               </Alert>
             ) : result.failedCount === result.totalUsers ? (
               <Alert tone="error">
-                <div>
-                  ยกยอดโควต้าล้มเหลวทั้งหมด
-                </div>
+                ยกยอดโควต้าล้มเหลวทั้งหมด
               </Alert>
             ) : (
               <Alert tone="warning">
-                <div>
-                  ยกยอดสำเร็จ {result.successCount} คน, ล้มเหลว {result.failedCount} คน
-                </div>
+                ยกยอดสำเร็จ {result.successCount} คน, ล้มเหลว {result.failedCount} คน
               </Alert>
             )}
 
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <InfoPanel className="p-4">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{result.totalUsers}</p>
@@ -453,38 +407,37 @@ export default function CarryOverDialog({
                   <p className="text-xs text-gray-500">ล้มเหลว</p>
                 </div>
               </div>
-            </div>
+            </InfoPanel>
 
             {/* Summary of carried over days */}
             {result.results.length > 0 && result.successCount > 0 && (
               <div className="space-y-2">
                 <Label className="text-sm text-gray-600">สรุปวันที่ยกยอด:</Label>
                 <div className="max-h-40 overflow-y-auto space-y-1">
+                  <ListRows variant="divided">
                   {result.results
                     .filter(r => r.success && (r.sick.carriedOver > 0 || r.personal.carriedOver > 0 || r.vacation.carriedOver > 0))
                     .slice(0, 10)
                     .map((r, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm bg-white p-2 rounded">
-                        <span className="text-gray-700">{r.userName}</span>
-                        <div className="flex gap-2">
-                          {r.sick.carriedOver > 0 && (
-                            <Pill tone="neutral" className="bg-pink-50 text-pink-600 text-xs">
-                              ป่วย +{r.sick.carriedOver}
-                            </Pill>
-                          )}
-                          {r.personal.carriedOver > 0 && (
-                            <Pill tone="neutral" className="bg-blue-50 text-blue-600 text-xs">
-                              กิจ +{r.personal.carriedOver}
-                            </Pill>
-                          )}
-                          {r.vacation.carriedOver > 0 && (
-                            <Pill tone="neutral" className="bg-emerald-50 text-emerald-600 text-xs">
-                              พักร้อน +{r.vacation.carriedOver}
-                            </Pill>
-                          )}
-                        </div>
-                      </div>
+                      <ListRow
+                        key={idx}
+                        title={r.userName}
+                        trailing={
+                          <>
+                            {r.sick.carriedOver > 0 && (
+                              <Pill tone="pink">ป่วย +{r.sick.carriedOver}</Pill>
+                            )}
+                            {r.personal.carriedOver > 0 && (
+                              <Pill tone="sky">กิจ +{r.personal.carriedOver}</Pill>
+                            )}
+                            {r.vacation.carriedOver > 0 && (
+                              <Pill tone="success">พักร้อน +{r.vacation.carriedOver}</Pill>
+                            )}
+                          </>
+                        }
+                      />
                     ))}
+                  </ListRows>
                   {result.results.filter(r => r.success).length > 10 && (
                     <p className="text-xs text-gray-500 text-center">
                       และอีก {result.results.filter(r => r.success).length - 10} คน...

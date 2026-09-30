@@ -8,7 +8,6 @@ import HolidayForm from '@/components/holidays/HolidayForm'
 import { HolidayFormData } from '@/types/holiday'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import Link from 'next/link'
-import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
 
 import { Button } from '@/components/aoo'

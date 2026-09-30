@@ -10,8 +10,9 @@
 // ซึ่งเป็นเบราว์เซอร์ฝังที่ไม่มีเมนูติดตั้งเลย นี่คือเหตุผลหลักของ "ไม่มีรายการนี้"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Smartphone, BellRing, CircleCheck, Copy, Check, Download, HelpCircle } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { Smartphone, BellRing, CircleCheck, Download, HelpCircle } from 'lucide-react'
+import { Button } from '@/components/aoo'
+import { InfoPanel, PageHeader, SectionCard } from '@/components/shared'
 import { isIos, isAndroid, isStandalone, inAppBrowser } from '@/lib/push/client'
 import { useInstallPrompt } from '@/lib/push/installPrompt'
 import {
@@ -102,26 +103,26 @@ export default function InstallPage() {
 
       <div className="mx-auto max-w-2xl space-y-4">
         {standalone && (
-          <div className="flex items-start gap-3 rounded-2xl border-2 border-green-300 bg-green-50 p-4">
+          <InfoPanel tone="success" className="flex items-start gap-3">
             <CircleCheck size={28} className="shrink-0 text-green-600" />
             <div>
-              <p className="text-lg font-semibold text-green-900">เครื่องนี้ติดตั้งแล้ว เปิดจากแอปอยู่</p>
-              <p className="mt-0.5 text-base text-green-900">
+              <p className="text-lg font-semibold text-gray-900">เครื่องนี้ติดตั้งแล้ว เปิดจากแอปอยู่</p>
+              <p className="mt-0.5 text-base text-gray-800">
                 เหลือแค่เปิดแจ้งเตือน —{' '}
                 <Link href="/profile" className="font-semibold underline underline-offset-2">
                   ไปที่โปรไฟล์ → แอปบนอุปกรณ์นี้
                 </Link>
               </p>
             </div>
-          </div>
+          </InfoPanel>
         )}
 
         {!standalone && embedded && (
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
-            <p className="text-lg font-semibold text-amber-900">
+          <InfoPanel tone="warning">
+            <p className="text-lg font-semibold text-gray-900">
               ตอนนี้เปิดอยู่ใน {embedded === 'line' ? 'LINE' : 'Facebook'} — ติดตั้งจากตรงนี้ไม่ได้
             </p>
-            <p className="mt-1 text-base text-amber-900">
+            <p className="mt-1 text-base text-gray-800">
               กด {os === 'ios' ? '⋯ มุมขวาล่าง' : '⋮ มุมขวาบน'} แล้วเลือก{' '}
               <B>{os === 'ios' ? '"เปิดใน Safari"' : '"เปิดในเบราว์เซอร์"'}</B> ก่อน แล้วค่อยทำตามข้างล่างในนั้น
             </p>
@@ -131,7 +132,7 @@ export default function InstallPage() {
               <ThenArrow />
               {os === 'ios' ? <SafariIcon size={36} /> : <ChromeIcon size={36} />}
             </div>
-          </div>
+          </InfoPanel>
         )}
 
         {/* เลือกเครื่อง — ปุ่มใหญ่มีไอคอน */}
@@ -173,12 +174,9 @@ export default function InstallPage() {
           <ol className="space-y-3">
             {canPrompt ? (
               <Step n={1} icon={<Download size={32} className="text-gray-500" />} title="กดปุ่มนี้ แล้วกด “ติดตั้ง”">
-                <button
-                  onClick={prompt}
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-gray-900 text-lg font-semibold text-white active:scale-[0.99]"
-                >
-                  <Download size={22} /> ติดตั้งแอป AMGO
-                </button>
+                <Button size="lg" icon="Download" onClick={prompt} className="w-full">
+                  ติดตั้งแอป AMGO
+                </Button>
                 <div className="mt-3">
                   <AndroidInstallDialogMock />
                 </div>
@@ -207,7 +205,7 @@ export default function InstallPage() {
         )}
 
         {/* ไม่เห็นเมนู? — คำตอบของ "ไม่มีรายการนี้" */}
-        <div className="rounded-2xl border-2 border-gray-200 bg-white p-4">
+        <SectionCard>
           <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <HelpCircle size={22} className="text-gray-500" /> ไม่เห็นเมนู “{os === 'ios' ? 'เพิ่มไปยังหน้าจอโฮม' : 'ติดตั้งแอป'}”?
           </p>
@@ -232,25 +230,19 @@ export default function InstallPage() {
               </>
             )}
           </ul>
-        </div>
+        </SectionCard>
 
         {/* สำหรับ HR/ผู้จัดการ ส่งต่อ */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <p className="text-base font-semibold text-gray-900">ส่งให้พนักงานคนอื่น</p>
-          <p className="mt-0.5 text-sm text-gray-500">ส่งลิงก์นี้ใน LINE — เปิดแล้วจะเห็นขั้นตอนของเครื่องตัวเอง</p>
-          <div className="mt-2 flex items-center gap-2">
+        <SectionCard title="ส่งให้พนักงานคนอื่น" description="ส่งลิงก์นี้ใน LINE — เปิดแล้วจะเห็นขั้นตอนของเครื่องตัวเอง">
+          <div className="flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-lg bg-gray-50 px-3 py-2 font-mono text-sm text-gray-800">
               {shareUrl}
             </code>
-            <button
-              onClick={copy}
-              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+            <Button variant="secondary" size="sm" icon={copied ? 'Check' : 'Copy'} onClick={copy} className="shrink-0">
               {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
-            </button>
+            </Button>
           </div>
-        </div>
+        </SectionCard>
       </div>
     </>
   )

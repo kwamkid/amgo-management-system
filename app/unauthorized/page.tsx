@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShieldX, Home, ArrowLeft } from 'lucide-react'
+import { ShieldX } from 'lucide-react'
 import { getViewAs } from '@/lib/utils/viewAs'
 import { Alert, Card, CardContent, Button } from '@/components/aoo'
 export default function UnauthorizedPage() {
@@ -23,20 +23,16 @@ export default function UnauthorizedPage() {
   if (!ready) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center px-4">
       <Card padding={0} className="max-w-md w-full">
         <CardContent className="p-8 text-center">
           {/* Icon */}
-          <div className="mb-8 inline-flex">
-            <div className="relative">
-              <div className="w-32 h-32 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center">
-                <ShieldX className="w-16 h-16 text-red-500" />
-              </div>
-              {/* Decorative circles */}
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full animate-bounce" />
-              <div className="absolute -bottom-1 -left-1 w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full animate-bounce animation-delay-200" />
-            </div>
-          </div>
+          <span
+            data-tone="danger"
+            className="mb-8 inline-flex w-32 h-32 items-center justify-center rounded-full bg-[var(--tone-soft)] text-[var(--tone-ink)]"
+          >
+            <ShieldX size={64} />
+          </span>
 
           {/* Content */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">ไม่มีสิทธิ์เข้าถึง</h1>
@@ -48,27 +44,21 @@ export default function UnauthorizedPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => router.back()}
- variant="secondary">
-              <ArrowLeft className="w-5 h-5 mr-2" />
+            <Button onClick={() => router.back()} variant="secondary" icon="ChevronLeft">
               ย้อนกลับ
             </Button>
-            
-            <Button onClick={() => router.push('/dashboard')}
- className="-">
-              <Home className="w-5 h-5 mr-2" />
+
+            <Button onClick={() => router.push('/dashboard')} icon="LayoutDashboard">
               กลับหน้าหลัก
             </Button>
           </div>
 
           {/* Help text */}
-          <Alert tone="info" className="mt-12">
-            <div className="text-sm text-gray-600">
-              ต้องการความช่วยเหลือ? 
-              <a href="mailto:hr@amgo.com" className="text-red-600 hover:text-red-700 font-medium ml-1">
-                ติดต่อ HR
-              </a>
-            </div>
+          <Alert tone="info" className="mt-12 text-left">
+            ต้องการความช่วยเหลือ?
+            <a href="mailto:hr@amgo.com" className="ml-1 font-medium text-[var(--accent)] hover:underline">
+              ติดต่อ HR
+            </a>
           </Alert>
         </CardContent>
       </Card>

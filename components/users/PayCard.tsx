@@ -1,6 +1,6 @@
 'use client'
 
-import { Skeleton } from '@/components/shared'
+import { InfoPanel, SectionCard, Skeleton } from '@/components/shared'
 
 // กล่องค่าตอบแทนของพนักงาน 1 คน — เงินเดือนพื้นฐาน + รายได้พิเศษ
 //
@@ -23,9 +23,24 @@ import { Skeleton } from '@/components/shared'
 // RLS: เจ้าตัว + HR เท่านั้นที่อ่านได้ — คนอื่นได้ 0 แถว ไม่ใช่ error
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, History, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react'
+import { ArrowUpRight, Wallet, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Button, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
+import { useToast } from '@/hooks/useToast'
+import {
+  Alert,
+  Button,
+  Card,
+  CardTitle,
+  Checkbox,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  MoneyInput,
+  Pill,
+  SelectMenu,
+} from '@/components/aoo'
 
 type Tier = { upTo: number | null; percent: number }
 
@@ -73,8 +88,9 @@ const thaiDate = (iso: string) =>
   new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
 
 // ⚠️ ไม่ใส่ความกว้างใน FIELD — เคยใส่ w-full แล้วชนกับ w-36/w-28 รายช่อง
+// ใช้กับ MoneyInput (เป็น <input> ดิบ) — สูง 40 เท่า Input/SelectMenu ในแถวเดียวกัน
 const FIELD =
-  'h-9 rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-red-400'
+  'h-10 rounded-lg border border-gray-300 bg-white px-3 outline-none focus:border-red-400'
 
 const calcOf = (kind: string) =>
   kind === 'commission' ? 'tiered_percent' : kind === 'piece' ? 'per_piece' : 'fixed'
@@ -115,6 +131,7 @@ export default function PayCard({
   registerFlush?: (flush: () => Promise<string[]>) => void
 }) {
   const staged = !!registerFlush
+  const { showToast } = useToast()
 
   const [history, setHistory] = useState<Salary[]>([])
   const [items, setItems] = useState<PayItem[]>([])
@@ -336,20 +353,16 @@ export default function PayCard({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <SectionCard>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-          <Wallet size={16} className="text-gray-400" /> ค่าตอบแทน
-        </h3>
+        <CardTitle icon={Wallet} tone="success">ค่าตอบแทน</CardTitle>
         {staged && stagedCount > 0 && (
-          <span className="rounded-md bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700">
-            แก้แล้ว ยังไม่บันทึก — กดปุ่มบันทึกท้ายฟอร์ม
-          </span>
+          <Pill tone="warning">แก้แล้ว ยังไม่บันทึก — กดปุ่มบันทึกท้ายฟอร์ม</Pill>
         )}
       </div>
 
       {/* ── เงินเดือนพื้นฐาน ─────────────────────────────── */}
-      <div className="rounded-lg border border-gray-200 p-3">
+      <Card padding={12}>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm text-gray-500">
             {probation.onProbation ? 'เงินเดือนช่วงทดลองงาน' : 'เงินเดือนพื้นฐาน'}
@@ -363,8 +376,8 @@ export default function PayCard({
 
           {editable && mode === 'view' && (
             <div className="ml-auto flex items-center gap-1.5">
-              <Button variant="ghost" size="sm" onClick={() => setMode('fix')}>
-                <Pencil size={13} /> แก้ตัวเลข
+              <Button variant="ghost" size="sm" icon="Pencil" onClick={() => setMode('fix')}>
+                แก้ตัวเลข
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setMode('raise')}>
                 <ArrowUpRight size={14} /> ปรับเงินเดือน
@@ -388,12 +401,18 @@ export default function PayCard({
 
         {/* ช่วงโปรแต่ยังไม่ได้ตั้งเงินเดือนหลังพ้นโปร */}
         {editable && probation.onProbation && probation.endDate && !postProbationSet && mode === 'view' && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
-            <span>ยังไม่ได้ตั้งเงินเดือนหลังพ้นโปร ({thaiDate(probation.endDate)})</span>
-            <Button variant="secondary" size="sm" onClick={() => setMode('post')}>
-              ตั้งเลย
-            </Button>
-          </div>
+          <Alert
+            tone="warning"
+            compact
+            className="mt-2"
+            action={
+              <Button variant="secondary" size="sm" onClick={() => setMode('post')}>
+                ตั้งเลย
+              </Button>
+            }
+          >
+            ยังไม่ได้ตั้งเงินเดือนหลังพ้นโปร ({thaiDate(probation.endDate)})
+          </Alert>
         )}
 
         {mode !== 'view' && (
@@ -407,13 +426,16 @@ export default function PayCard({
         )}
 
         {history.length > 1 && (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
+            icon="History"
             onClick={() => setShowLog((v) => !v)}
-            className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700"
+            className="mt-2"
           >
-            <History size={12} /> ประวัติเงินเดือน {history.length} ครั้ง
-          </button>
+            ประวัติเงินเดือน {history.length} ครั้ง
+          </Button>
         )}
 
         {showLog && (
@@ -443,23 +465,21 @@ export default function PayCard({
             })}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── ค่าคอม/ค่าชิ้นงาน — อยู่เหนือรายได้พิเศษ (เจ้าของจัดลำดับ 13 ส.ค. 69) ── */}
       <div className="mt-3 border-t border-gray-100 pt-3">
         <label className="flex w-fit cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={hasCom}
             disabled={!editable}
-            className="h-4 w-4 accent-red-600"
-            onChange={(e) => {
+            onChange={(checked) => {
               // มีกติกาอยู่แล้วห้ามติ๊กออกเฉย ๆ — ต้องตั้งใจลบกติกาก่อน กันข้อมูลหายเงียบ
-              if (!e.target.checked && comItems.length > 0) {
-                alert('มีกติกาค่าคอมตั้งไว้อยู่ — ลบกติกาด้านล่างออกก่อน แล้วค่อยติ๊กออก')
+              if (!checked && comItems.length > 0) {
+                showToast('มีกติกาค่าคอมตั้งไว้อยู่ — ลบกติกาด้านล่างออกก่อน แล้วค่อยติ๊กออก', 'error')
                 return
               }
-              setHasCom(e.target.checked)
+              setHasCom(checked)
             }}
           />
           <span className="text-sm font-medium text-gray-700">
@@ -475,8 +495,8 @@ export default function PayCard({
                 หน้าสรุปเงินเดือนจะมีปุ่มเครื่องคิดเลขให้กรอกยอดแล้วคิดให้เอง
               </span>
               {editable && !addingCom && comItems.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setAddingCom(true)}>
-                  <Plus size={14} /> เพิ่มกติกา
+                <Button variant="ghost" size="sm" icon="Plus" onClick={() => setAddingCom(true)}>
+                  เพิ่มกติกา
                 </Button>
               )}
             </div>
@@ -537,17 +557,15 @@ export default function PayCard({
       <div className="mt-3 border-t border-gray-100 pt-3">
         <div className="flex items-center justify-between">
           <label className="flex w-fit cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={hasExtra}
               disabled={!editable}
-              className="h-4 w-4 accent-red-600"
-              onChange={(e) => {
-                if (!e.target.checked && extraItems.length > 0) {
-                  alert('มีรายได้พิเศษตั้งไว้อยู่ — ลบรายการออกก่อน แล้วค่อยติ๊กออก')
+              onChange={(checked) => {
+                if (!checked && extraItems.length > 0) {
+                  showToast('มีรายได้พิเศษตั้งไว้อยู่ — ลบรายการออกก่อน แล้วค่อยติ๊กออก', 'error')
                   return
                 }
-                setHasExtra(e.target.checked)
+                setHasExtra(checked)
               }}
             />
             <span className="text-sm font-medium text-gray-700">
@@ -556,11 +574,11 @@ export default function PayCard({
           </label>
           {hasExtra && editable && !adding && (
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setImporting(true)}>
-                <Copy size={13} /> คัดลอกจากคนอื่น
+              <Button variant="ghost" size="sm" icon="Copy" onClick={() => setImporting(true)}>
+                คัดลอกจากคนอื่น
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-                <Plus size={14} /> เพิ่ม
+              <Button variant="ghost" size="sm" icon="Plus" onClick={() => setAdding(true)}>
+                เพิ่ม
               </Button>
             </div>
           )}
@@ -601,7 +619,7 @@ export default function PayCard({
                 const err = await saveItem(it)
                 if (err) errs.push(`${it.label}: ${err}`)
               }
-              if (errs.length) alert(`คัดลอกไม่สำเร็จบางรายการ:\n${errs.join('\n')}`)
+              if (errs.length) showToast(`คัดลอกไม่สำเร็จบางรายการ:\n${errs.join('\n')}`, 'error')
               setImporting(false)
             }}
           />
@@ -648,7 +666,7 @@ export default function PayCard({
           </span>
         </div>
       )}
-    </div>
+    </SectionCard>
   )
 }
 
@@ -713,22 +731,20 @@ function SalaryForm({
   }
 
   return (
-    <div className="mt-3 space-y-2 rounded-lg bg-gray-50 p-3">
+    <InfoPanel className="mt-3 space-y-2">
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="block">
-          <span className="text-xs text-gray-500">
-            {isPost ? 'เงินเดือนหลังพ้นโปร (บาท)' : isRaise ? 'เงินเดือนใหม่ (บาท)' : 'เงินเดือน (บาท)'}
-          </span>
+        <Field
+          label={isPost ? 'เงินเดือนหลังพ้นโปร (บาท)' : isRaise ? 'เงินเดือนใหม่ (บาท)' : 'เงินเดือน (บาท)'}
+        >
           <MoneyInput
             value={amount}
             onValueChange={(_, text) => setAmount(text)}
             autoFocus
-            className={`${FIELD} mt-0.5 w-full text-right font-mono tabular-nums`}
+            className={`${FIELD} w-full text-right font-mono tabular-nums`}
           />
-        </label>
-        <label className="block">
-          <span className="text-xs text-gray-500">มีผลตั้งแต่</span>
-          <input
+        </Field>
+        <Field label="มีผลตั้งแต่">
+          <Input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
@@ -738,18 +754,17 @@ function SalaryForm({
                 ? 'แก้ตัวเลขจะทับของวันเดิม — จะเปลี่ยนวันให้ใช้ปุ่มปรับเงินเดือน'
                 : undefined
             }
-            className={`${FIELD} mt-0.5 w-full disabled:bg-gray-100 disabled:text-gray-400`}
+            // ปิดแก้วันตอน "แก้ตัวเลข" — พื้นเทาให้เห็นว่ากดไม่ได้
+            style={mode === 'fix' ? { background: 'var(--bg-sunken)' } : undefined}
           />
-        </label>
-        <label className="block">
-          <span className="text-xs text-gray-500">หมายเหตุ / เหตุผล</span>
-          <input
+        </Field>
+        <Field label="หมายเหตุ / เหตุผล">
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={isRaise ? 'เช่น ปรับประจำปี · ผลงานไม่ผ่านเกณฑ์' : 'เช่น กรอกผิด'}
-            className={`${FIELD} mt-0.5 w-full`}
           />
-        </label>
+        </Field>
       </div>
 
       <p className="text-xs text-gray-500">
@@ -759,13 +774,13 @@ function SalaryForm({
             ? 'เพิ่มเป็นประวัติใหม่ ขึ้นหรือลดก็ได้ — ของเดิมยังอยู่ ย้อนดูได้ในไทม์ไลน์'
             : 'ทับตัวเลขของวันที่มีผลเดิม ใช้ตอนกรอกผิด ไม่ใช่ตอนปรับเงินเดือน'}
       </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <Alert tone="error" compact>{error}</Alert>}
 
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
           ยกเลิก
         </Button>
-        <Button size="sm" onClick={save} disabled={saving}>
+        <Button size="sm" onClick={save} loading={saving}>
           {saving
             ? 'กำลังบันทึก...'
             : isPost
@@ -775,7 +790,7 @@ function SalaryForm({
                 : 'ตกลง'}
         </Button>
       </div>
-    </div>
+    </InfoPanel>
   )
 }
 
@@ -892,9 +907,9 @@ function ItemRow({
             {KINDS.find((k) => k.value === i.kind)?.label}
           </span>
           {paidByOther && (
-            <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-xs font-medium text-amber-700">
+            <Pill tone="warning" className="ml-1.5">
               จ่ายโดย {paidByOther}
-            </span>
+            </Pill>
           )}
           {i.calc === 'tiered_percent' && (
             <span className="block text-xs text-gray-400">{tierText(i.config?.tiers ?? [])}</span>
@@ -912,7 +927,7 @@ function ItemRow({
   }
 
   return (
-    <div className="rounded-lg border border-gray-100 p-1.5">
+    <Card padding={6}>
       <div className="flex flex-wrap items-center gap-1.5">
         <div className="w-36 shrink-0">
           <SelectMenu
@@ -922,7 +937,7 @@ function ItemRow({
             size="md"
           />
         </div>
-        <input
+        <Input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder={
@@ -930,7 +945,7 @@ function ItemRow({
               ? 'ค่าคอมของแบรนด์อะไร — เช่น ค่าคอมแบรนด์ AooCare'
               : KINDS.find((k) => k.value === kind)?.label
           }
-          className={`${FIELD} w-32 min-w-0 flex-1`}
+          className="w-32 min-w-0 flex-1"
         />
 
         {/* บริษัทผู้จ่าย — ค่าเริ่มต้นตามต้นสังกัด เปลี่ยนได้เมื่ออีกบริษัทเป็นคนจ่าย */}
@@ -950,22 +965,26 @@ function ItemRow({
         {calc === 'tiered_percent' && steps.length === 0 && (
           <span className="flex shrink-0 items-center gap-1.5 text-sm text-gray-600">
             ได้
-            <input
+            <Input
               type="number"
               min={0}
               step="any"
               value={overPercent}
               onChange={(e) => setOverPercent(e.target.value)}
-              className={`${FIELD} w-16 text-right font-mono tabular-nums`}
+              mono
+              className="w-20 text-right tabular-nums"
             />
             % ของยอด
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
+              icon="Plus"
               onClick={() => setSteps([{ upTo: '', percent: '' }])}
-              className="ml-1 flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-700"
+              className="ml-1"
             >
-              <Plus size={12} /> ขั้นบันได
-            </button>
+              ขั้นบันได
+            </Button>
           </span>
         )}
 
@@ -999,7 +1018,7 @@ function ItemRow({
                 className={`${FIELD} w-32 text-right font-mono tabular-nums`}
               />
               <span className="shrink-0">บาท ได้</span>
-              <input
+              <Input
                 type="number"
                 min={0}
                 step="any"
@@ -1007,38 +1026,42 @@ function ItemRow({
                 onChange={(e) =>
                   setSteps(steps.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))
                 }
-                className={`${FIELD} w-16 text-right font-mono tabular-nums`}
+                mono
+                className="w-20 text-right tabular-nums"
               />
               <span className="shrink-0">%</span>
-              <button
-                type="button"
+              <IconButton
+                icon={X}
+                tone="danger"
+                size={28}
                 title="ลบขั้นนี้"
                 onClick={() => setSteps(steps.filter((_, j) => j !== i))}
-                className="text-gray-300 hover:text-red-600"
-              >
-                <X size={13} />
-              </button>
+              />
             </div>
           ))}
 
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <span className="shrink-0">เกินจากนั้น ได้</span>
-            <input
+            <Input
               type="number"
               min={0}
               step="any"
               value={overPercent}
               onChange={(e) => setOverPercent(e.target.value)}
-              className={`${FIELD} w-16 text-right font-mono tabular-nums`}
+              mono
+              className="w-20 text-right tabular-nums"
             />
             <span className="shrink-0">% ของยอดขาย</span>
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
+              icon="Plus"
               onClick={() => setSteps([...steps, { upTo: '', percent: '' }])}
-              className="ml-2 flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-700"
+              className="ml-2"
             >
-              <Plus size={12} /> เพิ่มขั้น
-            </button>
+              เพิ่มขั้น
+            </Button>
           </div>
 
           <p className="text-xs text-gray-400">
@@ -1052,29 +1075,24 @@ function ItemRow({
         <Button
           variant="ghost"
           size="sm"
+          icon={item ? 'Trash2' : 'X'}
           onClick={() => onRemove(item?.id ?? '')}
           disabled={saving}
         >
-          {item ? (
-            <>
-              <Trash2 size={14} /> ลบรายการ
-            </>
-          ) : (
-            <>
-              <X size={14} /> ยกเลิก
-            </>
-          )}
+          {item ? 'ลบรายการ' : 'ยกเลิก'}
         </Button>
         <Button
           size="sm"
+          icon="Check"
           onClick={save}
-          disabled={saving || !valid || !dirty}
+          loading={saving}
+          disabled={!valid || !dirty}
           title={valid ? undefined : 'กรอกให้ครบก่อน'}
         >
-          <Check size={14} /> {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+          {saving ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -1180,7 +1198,7 @@ function ImportItemsModal({
           <Button variant="ghost" onClick={onClose} disabled={copying}>
             ยกเลิก
           </Button>
-          <Button onClick={copy} disabled={copying || !sourceItems || picked.size === 0}>
+          <Button onClick={copy} loading={copying} disabled={!sourceItems || picked.size === 0}>
             {copying ? 'กำลังคัดลอก...' : `คัดลอก ${picked.size} รายการ`}
           </Button>
         </>
@@ -1198,7 +1216,7 @@ function ImportItemsModal({
         {sourceId && sourceItems === null && <Skeleton bare rows={2} />}
 
         {sourceItems?.length === 0 && (
-          <p className="py-2 text-sm text-gray-400">คนนี้ไม่มีรายได้พิเศษ</p>
+          <EmptyState size="sm" title="คนนี้ไม่มีรายได้พิเศษ" />
         )}
 
         {!!sourceItems?.length && (
@@ -1213,18 +1231,17 @@ function ImportItemsModal({
                   key={i.id}
                   className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-100 p-2.5 hover:bg-gray-50"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={picked.has(i.id)}
-                    onChange={(e) =>
+                    onChange={(checked) =>
                       setPicked((prev) => {
                         const next = new Set(prev)
-                        if (e.target.checked) next.add(i.id)
+                        if (checked) next.add(i.id)
                         else next.delete(i.id)
                         return next
                       })
                     }
-                    className="mt-0.5 h-4 w-4 accent-red-600"
+                    style={{ marginTop: 2 }}
                   />
                   <span className="min-w-0 text-sm">
                     <span className="font-medium text-gray-900">{i.label}</span>
@@ -1232,9 +1249,9 @@ function ImportItemsModal({
                       {KINDS.find((k) => k.value === i.kind)?.label}
                     </span>
                     {paidBy && (
-                      <span className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-xs font-medium text-amber-700">
+                      <Pill tone="warning" className="ml-1.5">
                         จ่ายโดย {paidBy}
-                      </span>
+                      </Pill>
                     )}
                     <span className="block text-xs text-gray-500">{summaryOf(i)}</span>
                   </span>

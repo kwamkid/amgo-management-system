@@ -3,11 +3,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimeRangePicker, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { TimeRangePicker, Checkbox, Label, Input, Pill, Card, CardContent, CardHeader, CardTitle, Button, IconButton } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
+import { useToast } from '@/hooks/useToast'
 import { Location, LocationFormData, WorkingHours, Shift } from '@/types/location'
-import { MapPin, Clock, Calendar, Plus, Trash2, Save, X, Building } from 'lucide-react'
+import { MapPin, Clock, Calendar, Trash2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { gradients } from '@/lib/theme/colors'
 
 // Dynamic import for Google Maps (client-side only)
 const LocationMapPicker = dynamic(
@@ -15,9 +16,9 @@ const LocationMapPicker = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+      <InfoPanel className="w-full h-96 flex items-center justify-center">
         <p className="text-gray-600">Loading map...</p>
-      </div>
+      </InfoPanel>
     )
   }
 )
@@ -93,6 +94,7 @@ export default function LocationForm({
   onCancel,
   isLoading = false 
 }: LocationFormProps) {
+  const { showToast } = useToast()
   const [formData, setFormData] = useState<LocationFormData>({
     name: '',
     address: '',
@@ -138,17 +140,17 @@ export default function LocationForm({
     
     // Validate
     if (!formData.name || !formData.address) {
-      alert('กรุณากรอกชื่อและที่อยู่')
+      showToast('กรุณากรอกชื่อและที่อยู่', 'error')
       return
     }
     
     if (formData.lat === 0 || formData.lng === 0) {
-      alert('กรุณาเลือกตำแหน่งบนแผนที่')
+      showToast('กรุณาเลือกตำแหน่งบนแผนที่', 'error')
       return
     }
     
     if (formData.shifts.length === 0) {
-      alert('กรุณาเพิ่มกะการทำงานอย่างน้อย 1 กะ')
+      showToast('กรุณาเพิ่มกะการทำงานอย่างน้อย 1 กะ', 'error')
       return
     }
     
@@ -215,10 +217,7 @@ export default function LocationForm({
       {/* Basic Info */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-red-600" />
-            ข้อมูลพื้นฐาน
-          </CardTitle>
+          <CardTitle icon={MapPin} tone="accent">ข้อมูลพื้นฐาน</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
@@ -279,10 +278,7 @@ export default function LocationForm({
       <Card padding={0}>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-red-600" />
-              เวลาทำการ
-            </CardTitle>
+            <CardTitle icon={Calendar} tone="sky">เวลาทำการ</CardTitle>
             
             {/* Preset Buttons */}
             <div className="flex gap-2">
@@ -362,12 +358,8 @@ export default function LocationForm({
       <Card padding={0}>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-red-600" />
-              กะการทำงาน
-            </CardTitle>
-            <Button type="button" size="sm" onClick={handleAddShift} variant="soft" disabled={isLoading}>
-              <Plus className="w-4 h-4 mr-1" />
+            <CardTitle icon={Clock} tone="grape">กะการทำงาน</CardTitle>
+            <Button type="button" size="sm" onClick={handleAddShift} variant="soft" icon="Plus" disabled={isLoading}>
               เพิ่มกะ
             </Button>
           </div>
@@ -375,8 +367,7 @@ export default function LocationForm({
         <CardContent>
           <div className="space-y-3">
             {formData.shifts.map((shift, index) => (
-              <Card padding={0} key={index}>
-                <CardContent className="p-4">
+              <Card padding={16} key={index}>
                   <div className="flex items-center gap-3">
                     <Input
                       value={shift.name}
@@ -413,12 +404,9 @@ export default function LocationForm({
                       <span className="text-sm text-gray-500">นาที</span>
                     </div>
                     
-                    <Button type="button" size="sm" variant="ghost" onClick={() => handleRemoveShift(index)}
- disabled={isLoading || formData.shifts.length === 1}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <IconButton icon={Trash2} tone="danger" title="ลบกะ" onClick={() => handleRemoveShift(index)}
+                      disabled={isLoading || formData.shifts.length === 1} />
                   </div>
-                </CardContent>
               </Card>
             ))}
           </div>
@@ -441,12 +429,10 @@ export default function LocationForm({
 
       {/* Actions */}
       <div className="flex gap-3 justify-end">
-        <Button type="button" variant="soft" onClick={onCancel} disabled={isLoading}>
-          <X className="w-4 h-4 mr-2" />
+        <Button type="button" variant="soft" icon="X" onClick={onCancel} disabled={isLoading}>
           ยกเลิก
         </Button>
-        <Button type="submit" disabled={isLoading} className={`bg-gradient-to-r ${gradients.primary}`}>
-          <Save className="w-4 h-4 mr-2" />
+        <Button type="submit" variant="primary" icon="Save" loading={isLoading}>
           {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>
       </div>

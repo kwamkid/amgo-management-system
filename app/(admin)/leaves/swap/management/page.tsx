@@ -13,11 +13,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { CalendarSync, Check, X } from 'lucide-react'
+import { CalendarSync, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState } from '@/components/aoo'
-import { PageHeader, SectionCard, Skeleton, StatusBadge, UserCell } from '@/components/shared'
+import { Button, EmptyState, Modal, Textarea } from '@/components/aoo'
+import { PageHeader, SectionCard, Skeleton, StatusBadge, UserAvatar, ListRow, ListRows } from '@/components/shared'
 import {
   approveSwap,
   rejectSwap,
@@ -38,6 +38,9 @@ export default function SwapManagementPage() {
   const [recent, setRecent] = useState<ScheduleSwap[]>([])
   const [unfiled, setUnfiled] = useState<{ userId: string; userName: string; workDate: string }[]>([])
   const [loading, setLoading] = useState(true)
+  // ใบที่กำลังกรอกเหตุผลไม่อนุมัติ (แทน window.prompt — เว้นว่างได้เหมือนเดิม)
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   useEffect(() => {
     if (userData && !['hr', 'admin', 'manager'].includes(userData.role)) {
@@ -77,9 +80,16 @@ export default function SwapManagementPage() {
     }
   }
 
-  const reject = async (id: string) => {
-    const reason = window.prompt('เหตุผลที่ไม่อนุมัติ')
-    if (reason === null) return
+  const reject = (id: string) => {
+    setRejectReason('')
+    setRejectTarget(id)
+  }
+
+  const confirmReject = async () => {
+    const id = rejectTarget
+    const reason = rejectReason
+    if (!id) return
+    setRejectTarget(null)
     try {
       await rejectSwap(id, userData!.id!, reason)
       showToast('บันทึกแล้ว', 'success')
@@ -113,23 +123,31 @@ export default function SwapManagementPage() {
         ) : pending.length === 0 ? (
           <EmptyState icon={<Check size={28} />} title="ไม่มีใบรออนุมัติ" size="sm" />
         ) : (
-          <div className="divide-y divide-gray-100">
+          <ListRows variant="divided">
             {pending.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center gap-3 py-3">
-                <UserCell name={s.userName} />
-                <div className="min-w-0 flex-1 text-sm">
-                  <p>{swapLine(s)}</p>
-                  {s.reason && <p className="mt-0.5 text-xs text-gray-500">{s.reason}</p>}
-                </div>
-                <Button size="sm" onClick={() => approve(s.id)}>
-                  <Check size={14} /> อนุมัติ
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => reject(s.id)}>
-                  <X size={14} /> ไม่อนุมัติ
-                </Button>
-              </div>
+              <ListRow
+                key={s.id}
+                leading={<UserAvatar name={s.userName} userId={s.userId} size="sm" />}
+                title={s.userName}
+                meta={
+                  <>
+                    <p>{swapLine(s)}</p>
+                    {s.reason && <p className="text-xs">{s.reason}</p>}
+                  </>
+                }
+                trailing={
+                  <>
+                    <Button size="sm" icon="Check" onClick={() => approve(s.id)}>
+                      อนุมัติ
+                    </Button>
+                    <Button variant="secondary" size="sm" icon="X" onClick={() => reject(s.id)}>
+                      ไม่อนุมัติ
+                    </Button>
+                  </>
+                }
+              />
             ))}
-          </div>
+          </ListRows>
         )}
       </SectionCard>
 
@@ -142,14 +160,16 @@ export default function SwapManagementPage() {
         ) : unfiled.length === 0 ? (
           <EmptyState icon={<Check size={28} />} title="ไม่มีรายการค้าง" size="sm" />
         ) : (
-          <div className="divide-y divide-gray-100">
+          <ListRows variant="divided">
             {unfiled.map((u) => (
-              <div key={`${u.userId}|${u.workDate}`} className="flex items-center gap-3 py-2.5">
-                <UserCell name={u.userName} userId={u.userId} />
-                <span className="text-sm text-gray-600">{thaiDate(u.workDate)}</span>
-              </div>
+              <ListRow
+                key={`${u.userId}|${u.workDate}`}
+                leading={<UserAvatar name={u.userName} userId={u.userId} size="sm" />}
+                title={u.userName}
+                meta={thaiDate(u.workDate)}
+              />
             ))}
-          </div>
+          </ListRows>
         )}
       </SectionCard>
 
@@ -159,17 +179,42 @@ export default function SwapManagementPage() {
         ) : recent.length === 0 ? (
           <EmptyState icon={<CalendarSync size={28} />} title="ยังไม่มีประวัติ" size="sm" />
         ) : (
-          <div className="divide-y divide-gray-100">
+          <ListRows variant="divided">
             {recent.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center gap-3 py-2.5">
-                <UserCell name={s.userName} />
-                <div className="min-w-0 flex-1 text-sm">{swapLine(s)}</div>
-                <StatusBadge status={s.status} />
-              </div>
+              <ListRow
+                key={s.id}
+                leading={<UserAvatar name={s.userName} userId={s.userId} size="sm" />}
+                title={s.userName}
+                meta={swapLine(s)}
+                trailing={<StatusBadge status={s.status} />}
+              />
             ))}
-          </div>
+          </ListRows>
         )}
       </SectionCard>
+
+      {/* ไม่อนุมัติ — กรอกเหตุผล */}
+      <Modal
+        open={rejectTarget !== null}
+        onClose={() => setRejectTarget(null)}
+        title="ไม่อนุมัติใบสลับวันหยุด"
+        description="เหตุผลที่ไม่อนุมัติ"
+        maxWidth={440}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectTarget(null)}>ยกเลิก</Button>
+            <Button variant="danger" onClick={confirmReject}>ไม่อนุมัติ</Button>
+          </>
+        }
+      >
+        <Textarea
+          autoFocus
+          rows={3}
+          placeholder="ระบุเหตุผล..."
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+        />
+      </Modal>
     </div>
   )
 }

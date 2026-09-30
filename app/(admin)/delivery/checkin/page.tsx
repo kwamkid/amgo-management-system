@@ -12,15 +12,14 @@ import {
   MapPin, 
   ArrowLeft,
   RotateCcw,
-  Save,
-  Loader2,
-  AlertCircle
+  FileText
 } from 'lucide-react'
 import Link from 'next/link'
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, InfoPanel } from '@/components/shared'
+import { useToast } from '@/hooks/useToast'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { Textarea, Label, Alert, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Textarea, Alert, Card, CardContent, CardHeader, CardTitle, Button, Spinner } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '300px'
@@ -31,6 +30,7 @@ export default function DeliveryCheckInPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const { createDeliveryPoint } = useDeliveryPoints()
+  const { showToast } = useToast()
   const {
     isCapturing,
     stream,
@@ -119,7 +119,7 @@ export default function DeliveryCheckInPage() {
     }
 
     if (!capturedPhoto) {
-      alert('กรุณาถ่ายรูปหลักฐานการส่งของ')
+      showToast('กรุณาถ่ายรูปหลักฐานการส่งของ', 'error')
       return
     }
 
@@ -159,8 +159,7 @@ export default function DeliveryCheckInPage() {
         {/* Location Card with Map */}
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-red-600" />
+            <CardTitle icon={MapPin} tone="sky">
               ตำแหน่งปัจจุบัน
             </CardTitle>
           </CardHeader>
@@ -192,28 +191,24 @@ export default function DeliveryCheckInPage() {
               ) : (
                 <div className="h-[300px] bg-gray-100 rounded-lg flex items-center justify-center">
                   {loadError ? (
-                    <p className="text-red-600">Error loading map</p>
+                    <Alert tone="error" compact>Error loading map</Alert>
                   ) : (
-                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    <Spinner size="md" />
                   )}
                 </div>
               )}
 
               {/* Address */}
               {address && (
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <InfoPanel>
                   <p className="text-sm text-gray-600">ที่อยู่:</p>
                   <p className="text-sm font-medium mt-1">{address}</p>
-                </div>
+                </InfoPanel>
               )}
 
               {/* Update Location Button */}
-              <Button type="button" onClick={getLocation} disabled={isGettingLocation} variant="soft" size="sm" className="w-full">
-                {isGettingLocation ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <MapPin className="w-4 h-4 mr-2" />
-                )}
+              <Button type="button" onClick={getLocation} loading={isGettingLocation} variant="soft" size="sm" className="w-full">
+                {!isGettingLocation && <MapPin className="w-4 h-4" />}
                 อัพเดทตำแหน่ง
               </Button>
             </div>
@@ -223,8 +218,7 @@ export default function DeliveryCheckInPage() {
         {/* Photo Card */}
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Camera className="w-5 h-5 text-red-600" />
+            <CardTitle icon={Camera} tone="accent">
               ถ่ายรูปหลักฐาน
             </CardTitle>
           </CardHeader>
@@ -233,7 +227,7 @@ export default function DeliveryCheckInPage() {
               {!capturedPhoto && !isCapturing && (
                 <>
                   <Button type="button" onClick={startCamera} className="w-full" size="lg">
-                    <Camera className="w-5 h-5 mr-2" />
+                    <Camera className="w-5 h-5" />
                     เปิดกล้องถ่ายรูป
                   </Button>
                   {/* ทางสำรองเมื่อเบราว์เซอร์ถูกบล็อกสิทธิ์กล้อง — เรียกแอปกล้องของเครื่องแทน */}
@@ -249,13 +243,15 @@ export default function DeliveryCheckInPage() {
                       e.target.value = ''
                     }}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full text-center text-sm text-gray-500 underline"
+                    className="w-full"
                   >
                     กล้องไม่ขึ้น? ถ่ายด้วยแอปกล้องของเครื่อง
-                  </button>
+                  </Button>
                 </>
               )}
 
@@ -284,7 +280,7 @@ export default function DeliveryCheckInPage() {
                     className="w-full rounded-lg"
                   />
                   <Button type="button" onClick={reset} variant="soft" size="sm" className="absolute top-2 right-2">
-                    <RotateCcw className="w-4 h-4 mr-2" />
+                    <RotateCcw className="w-4 h-4" />
                     ถ่ายใหม่
                   </Button>
                 </div>
@@ -296,7 +292,7 @@ export default function DeliveryCheckInPage() {
         {/* รายละเอียดการส่ง — เก็บลงช่อง note เดิม (เจ้าของขอไม่ใช้คำว่า "หมายเหตุ") */}
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg">รายละเอียดการส่ง</CardTitle>
+            <CardTitle icon={FileText} tone="grape">รายละเอียดการส่ง</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -309,18 +305,15 @@ export default function DeliveryCheckInPage() {
         </Card>
 
         {/* Submit Button */}
-        <Button type="submit" disabled={isSubmitting || !capturedPhoto || !location} className="w-full" size="lg">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              กำลังบันทึก...
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5 mr-2" />
-              บันทึกการส่ง
-            </>
-          )}
+        <Button
+          type="submit"
+          loading={isSubmitting}
+          icon={isSubmitting ? undefined : 'Save'}
+          disabled={!capturedPhoto || !location}
+          className="w-full"
+          size="lg"
+        >
+          {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกการส่ง'}
         </Button>
       </form>
     </div>

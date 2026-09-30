@@ -4,9 +4,10 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
-import { Loader2, Users, Search, MapPin, Check } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { DateRangePicker, Label, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, SelectMenu } from '@/components/aoo'
+import { DateRangePicker, Input, SelectMenu, Spinner } from '@/components/aoo'
+import FilterCard, { FilterField } from '@/components/shared/FilterCard'
 import { useLocations } from '@/hooks/useLocations'
 import { useUsers } from '@/hooks/useUsers'
 import { useToast } from '@/hooks/useToast'
@@ -161,56 +162,38 @@ export default function ReportFilters({
   }, [startDate, endDate, userSearchTerm, selectedLocation, pageSize, users, usersByLocation])
 
   return (
-    <Card padding={0}>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">ตัวกรองข้อมูล</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Date + Location + User — ไม่มีปุ่มดูข้อมูล: เปลี่ยนอะไรระบบอัปเดตให้เอง */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          {/* Date range picker */}
-          <div>
-            <Label className="text-gray-500 mb-1">ช่วงเวลา</Label>
-            <DateRangePicker
-              value={{ since: startDate, until: endDate }}
-              onChange={(v) => { if (v) { setStartDate(v.since); setEndDate(v.until) } }}
-              clearable={false}
-              className="w-full"
-            />
-          </div>
+    // ไม่มีปุ่มดูข้อมูล: เปลี่ยนอะไรระบบอัปเดตให้เอง · วงหมุนด้านขวาบอกว่ากำลังดึง
+    <FilterCard actions={loading ? <Spinner size="xs" /> : undefined}>
+      <FilterField label="ช่วงเวลา" width={280}>
+        <DateRangePicker
+          value={{ since: startDate, until: endDate }}
+          onChange={(v) => { if (v) { setStartDate(v.since); setEndDate(v.until) } }}
+          clearable={false}
+          className="w-full"
+        />
+      </FilterField>
 
-          {/* Location filter — combobox when >7, plain select otherwise */}
-          <div>
-            <Label className="text-gray-500 mb-1">สถานที่</Label>
-            {/* สาขา — SelectMenu ของชุดกลาง ค้นหาได้เองเมื่อมีหลายสาขา (แทน combobox ที่เขียนเองด้วย Popover) */}
-            <SelectMenu
-              value={selectedLocation || null}
-              onChange={(v) => setSelectedLocation(v ?? '')}
-              options={[{ value: '', label: 'ทั้งหมด' }, ...locations.map((l) => ({ value: l.id, label: l.name }))]}
-              placeholder="ทั้งหมด"
-              clearable={false}
-              searchThreshold={8}
-            />
-          </div>
+      {/* สาขา — SelectMenu ของชุดกลาง ค้นหาได้เองเมื่อมีหลายสาขา */}
+      <FilterField label="สถานที่" width={220}>
+        <SelectMenu
+          value={selectedLocation || null}
+          onChange={(v) => setSelectedLocation(v ?? '')}
+          options={[{ value: '', label: 'ทั้งหมด' }, ...locations.map((l) => ({ value: l.id, label: l.name }))]}
+          placeholder="ทั้งหมด"
+          clearable={false}
+          searchThreshold={8}
+        />
+      </FilterField>
 
-          {/* User filter — พิมพ์แล้วกรองสดทันทีจากข้อมูลที่ดึงไว้ ไม่ยิง query */}
-          <div>
-            <Label className="text-gray-500 mb-1">พนักงาน</Label>
-            <div className="relative">
-              <Users className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-              <input
-                value={userSearchTerm}
-                onChange={(e) => setUserSearchTerm(e.target.value)}
-                placeholder="พิมพ์ชื่อ/ชื่อเล่น — กรองทันที · ว่าง = ทั้งหมด"
-                className="h-[42px] w-full rounded-md border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-red-400"
-              />
-              {loading && (
-                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      {/* พนักงาน — พิมพ์แล้วกรองสดทันทีจากข้อมูลที่ดึงไว้ ไม่ยิง query */}
+      <FilterField label="พนักงาน" width={320}>
+        <Input
+          prefix={<Users size={14} />}
+          value={userSearchTerm}
+          onChange={(e) => setUserSearchTerm(e.target.value)}
+          placeholder="พิมพ์ชื่อ/ชื่อเล่น — กรองทันที · ว่าง = ทั้งหมด"
+        />
+      </FilterField>
+    </FilterCard>
   )
 }

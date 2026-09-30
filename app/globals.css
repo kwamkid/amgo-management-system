@@ -188,6 +188,7 @@
   --ruby-100: #F9C9C9;
   --ruby-300: #EC7A7A;
   --ruby-500: #D8362F;
+  --ruby-600: #B3261F;
   --ruby-700: #8A1812;
 
   --grape-50:  #F3EEFA;
@@ -729,6 +730,56 @@ input, textarea { font-family: var(--font-sans); }
 [data-tone="pink"]    { --tone: var(--pink-500);  --tone-soft: var(--pink-100);  --tone-ink: var(--pink-700); }
 [data-tone="plum"]    { --tone: var(--brand-plum-500); --tone-soft: var(--brand-plum-100); --tone-ink: var(--brand-plum-700); }
 [data-tone="muted"]   { --tone: var(--warm-100);  --tone-soft: var(--warm-150);  --tone-ink: var(--fg-3); --tone-on: var(--fg-1); }
+[data-tone="neutral"] { --tone: var(--warm-600);  --tone-soft: var(--warm-150);  --tone-ink: var(--warm-700); }
+[data-tone="sky"]     { --tone: var(--sky-500);   --tone-soft: var(--sky-100);   --tone-ink: var(--sky-700); }
+
+/* ---------- Progress bar (<Progress>) ---------- */
+.aoo-progress { height: 8px; width: 100%; border-radius: 9999px; background: var(--warm-150); overflow: hidden; }
+.aoo-progress__bar { height: 100%; border-radius: 9999px; background: var(--tone); transition: width var(--dur-med) var(--ease-out); }
+
+/* ---------- Icon chip (<IconChip>) — coloured square behind an icon ---------- */
+.aoo-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--chip-size, 40px);
+  height: var(--chip-size, 40px);
+  border-radius: calc(var(--chip-size, 40px) * 0.3);
+  background: var(--tone-soft);
+  color: var(--tone-ink);
+}
+.aoo-icon-chip[data-solid] { background: var(--tone); color: var(--tone-on); }
+
+/* ---------- Segmented (<Segmented>) ---------- */
+.aoo-segmented { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-md); border: 1px solid var(--border-1); background: var(--bg-sunken); }
+.aoo-segmented__opt {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 0; border-radius: 6px; background: transparent;
+  font-size: 14px; color: var(--fg-3); white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.aoo-segmented__opt:hover:not(:disabled) { color: var(--fg-1); }
+.aoo-segmented__opt[aria-pressed="true"] { background: var(--accent); color: var(--fg-on-brand); font-weight: 600; }
+.aoo-segmented__opt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- Field warning message ---------- */
+.aoo-field-warning { font-size: var(--fs-micro); color: var(--sun-700); margin-top: 2px; }
+
+/* ---------- Pill — status / tag chip (<Pill>, <StatusBadge>) ---------- */
+.aoo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--tone-soft);
+  color: var(--tone-ink);
+  font-size: var(--fs-meta);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
 
 /* ---------- Stat tile — solid colour block (shared <StatCard>) ---------- */
 .aoo-stat {
@@ -778,6 +829,69 @@ button.aoo-stat:active { filter: brightness(0.88); }
   background: var(--tone-soft);
   color: var(--tone-ink);
 }
+
+/* ---------- Sidebar nav item — active = solid accent pill ---------- */
+.aoo-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fg-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.aoo-nav-item:hover { background: var(--warm-100); color: var(--fg-1); }
+.aoo-nav-item--sub { padding-block: 6px; color: var(--fg-3); }
+.aoo-nav-item__icon { display: inline-flex; color: var(--fg-4); }
+.aoo-nav-item__chevron { color: var(--fg-4); transition: transform var(--dur-fast) var(--ease-out); }
+.aoo-nav-item[aria-expanded="false"] .aoo-nav-item__chevron { transform: rotate(-90deg); }
+.aoo-nav-item[data-child-active] { color: var(--accent); font-weight: 600; }
+.aoo-nav-item[data-child-active] .aoo-nav-item__icon { color: var(--accent); }
+.aoo-nav-item[aria-current="page"] {
+  background: var(--accent);
+  color: var(--fg-on-brand);
+  font-weight: 600;
+  box-shadow: 0 4px 12px -4px var(--accent);
+}
+.aoo-nav-item[aria-current="page"] .aoo-nav-item__icon { color: inherit; }
+
+/* ---------- Well — neutral inset panel inside a card (<InfoPanel>) ---------- */
+.aoo-well {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.aoo-well[data-tone] { background: color-mix(in srgb, var(--tone) 10%, var(--bg-surface)); border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent); }
+
+/* ---------- List row — leading / body / trailing (<ListRow>) ---------- */
+.aoo-list { display: flex; flex-direction: column; }
+.aoo-list--divided > .aoo-row + .aoo-row { border-top: 1px solid var(--border-1); }
+.aoo-list--boxed { gap: 8px; }
+.aoo-list--boxed > .aoo-row { padding-inline: 12px; border-radius: var(--r-md); background: var(--bg-sunken); }
+.aoo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding-block: 10px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
+}
+button.aoo-row, a.aoo-row { cursor: pointer; text-decoration: none; transition: background var(--dur-fast) var(--ease-out); }
+button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
+.aoo-row__body { flex: 1; min-width: 0; }
+.aoo-row__title { font-weight: 500; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aoo-row__meta { font-size: 13px; color: var(--fg-3); }
+.aoo-row__trail { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* ==========================================================================
  *  Card hover/press — opt-in via `data-card-fx` (Card with `hoverable` or
@@ -1063,6 +1177,20 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-btn--soft:not(:disabled):active {
   background: var(--brand-coral-200);
 }
+
+/* Text-only link button (was ~16 raw `hover:underline` buttons) */
+.aoo-btn--link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  padding-inline: 2px;
+  height: auto;
+}
+.aoo-btn--link:not(:disabled):hover { text-decoration: underline; color: var(--accent-hover); }
+
+/* IconButton tone="danger" — delete/remove glyphs, red on hover */
+.aoo-btn--icon-danger { color: var(--fg-4); }
+.aoo-btn--icon-danger:not(:disabled):hover { color: var(--ruby-500); background: var(--ruby-50) !important; }
 
 /* ---------- Icon-only (used by IconButton component) ----------
    Square button. The component sets a CSS variable `--icon-size` for the
@@ -1584,10 +1712,11 @@ div.aoo-accounts-grid {
  *  กติกาการแมพ (ตามระบบดีไซน์ aoosocial):
  *    gray/slate/zinc/neutral → warm    เทาอมโอเคอร์ ไม่ใช่เทาอมฟ้า
  *    red/rose                → coral   สีแบรนด์ (ของเดิมใช้แดงเป็นสีหลักอยู่แล้ว)
- *    orange/amber/yellow     → sun     เตือน / รอดำเนินการ
- *    green/emerald/teal      → leaf    สำเร็จ
- *    blue/indigo/violet/…    → grape   ข้อมูล — ระบบนี้ห้ามใช้สีฟ้า
- *    pink                    → plum    สีรอง
+ *    amber/yellow            → sun     เตือน / รอดำเนินการ
+ *    green                   → leaf    สำเร็จ
+ *    blue/indigo/violet/…    → grape   ข้อมูล
+ *    orange · emerald · teal · cyan · sky · pink · fuchsia → สีสดของ Tailwind
+ *      เอง (30 ก.ย. 69 เจ้าของอยากให้ระบบสดใส — เดิมยุบรวมจนเหลือ ~5 สี)
  * ========================================================================== */
 
 @theme {
@@ -1664,17 +1793,7 @@ div.aoo-accounts-grid {
   --color-rose-800: #7c1f08;
   --color-rose-900: #4a1305;
 
-  /* ── sun = เตือน (แทน orange/amber/yellow) ──────────────── */
-  --color-orange-50: #fff8e1;
-  --color-orange-100: #ffedb2;
-  --color-orange-200: #ffe28a;
-  --color-orange-300: #ffd64d;
-  --color-orange-400: #fcc51f;
-  --color-orange-500: #f5b400;
-  --color-orange-600: #ce9700;
-  --color-orange-700: #8e6500;
-  --color-orange-800: #6a4c00;
-  --color-orange-900: #4a3500;
+  /* ── sun = เตือน (แทน amber/yellow) ────────────────────── */
 
   --color-amber-50: #fff8e1;
   --color-amber-100: #ffedb2;
@@ -1698,7 +1817,7 @@ div.aoo-accounts-grid {
   --color-yellow-800: #6a4c00;
   --color-yellow-900: #4a3500;
 
-  /* ── leaf = สำเร็จ (แทน green/emerald/teal) ─────────────── */
+  /* ── leaf = สำเร็จ (แทน green) ─────────────────────────── */
   --color-green-50: #ecf8ef;
   --color-green-100: #cfedd7;
   --color-green-200: #a8e0b8;
@@ -1710,29 +1829,9 @@ div.aoo-accounts-grid {
   --color-green-800: #0f5029;
   --color-green-900: #0a361b;
 
-  --color-emerald-50: #ecf8ef;
-  --color-emerald-100: #cfedd7;
-  --color-emerald-200: #a8e0b8;
-  --color-emerald-300: #71ce89;
-  --color-emerald-400: #47bb6d;
-  --color-emerald-500: #2ba85b;
-  --color-emerald-600: #1f8b49;
-  --color-emerald-700: #146b36;
-  --color-emerald-800: #0f5029;
-  --color-emerald-900: #0a361b;
 
-  --color-teal-50: #ecf8ef;
-  --color-teal-100: #cfedd7;
-  --color-teal-200: #a8e0b8;
-  --color-teal-300: #71ce89;
-  --color-teal-400: #47bb6d;
-  --color-teal-500: #2ba85b;
-  --color-teal-600: #1f8b49;
-  --color-teal-700: #146b36;
-  --color-teal-800: #0f5029;
-  --color-teal-900: #0a361b;
 
-  /* ── grape = ข้อมูล (แทนสีฟ้าทั้งหมด — ระบบนี้ห้ามใช้ฟ้า) ── */
+  /* ── grape = ข้อมูล (แทน blue/indigo/violet/purple) ─────── */
   --color-blue-50: #f3eefa;
   --color-blue-100: #ddcef1;
   --color-blue-200: #c6b0e9;
@@ -1773,22 +1872,7 @@ div.aoo-accounts-grid {
   --color-purple-800: #371d6d;
   --color-purple-900: #26144a;
 
-  --color-cyan-50: #f3eefa;
-  --color-cyan-500: #7a4acf;
-  --color-cyan-600: #6036b0;
-  --color-cyan-700: #4a2891;
 
-  /* ── plum = สีรอง (แทน pink) ────────────────────────────── */
-  --color-pink-50: #fbf1f6;
-  --color-pink-100: #f4dcea;
-  --color-pink-200: #e5b5d2;
-  --color-pink-300: #ce82b0;
-  --color-pink-400: #a8528a;
-  --color-pink-500: #7e3168;
-  --color-pink-600: #5f2350;
-  --color-pink-700: #43183a;
-  --color-pink-800: #2b0f25;
-  --color-pink-900: #170914;
 
   /* ── รัศมีเงียบ ๆ ตามระบบ: 8 เป็นค่าเริ่มต้น ───────────── */
   --radius-sm: 6px;

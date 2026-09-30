@@ -8,10 +8,10 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { PageHeader, StatusBadge } from '@/components/shared'
+import { PageHeader, StatusBadge, SectionCard } from '@/components/shared'
 import UserAvatar from '@/components/shared/UserAvatar'
-import { Button } from '@/components/aoo'
-import { User as UserIcon, RefreshCw, Check, Pencil } from 'lucide-react'
+import { Alert, Button, CardTitle, Field, Input, Pill } from '@/components/aoo'
+import { User as UserIcon, Check, IdCard, Link2, Briefcase } from 'lucide-react'
 import { DiscordIcon } from '@/components/icons/DiscordIcon'
 import TechLoader from '@/components/shared/TechLoader'
 import { createClient } from '@/lib/supabase/client'
@@ -81,35 +81,31 @@ function NameEditor({
 
   return (
     <div className="space-y-2.5 border-b border-gray-100 pb-4">
-      <label className="block">
-        <span className="text-xs font-medium text-gray-600">ชื่อ-นามสกุลจริง</span>
-        <input
+      <Field label="ชื่อ-นามสกุลจริง">
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="เช่น อนงค์ สุขพลอย"
-          className="mt-1 h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-red-400"
         />
-      </label>
+      </Field>
 
-      <label className="block">
-        <span className="text-xs font-medium text-gray-600">ชื่อเล่น</span>
-        <input
+      <Field label="ชื่อเล่น">
+        <Input
           type="text"
           value={nick}
           onChange={(e) => setNick(e.target.value)}
           placeholder="เช่น แตน"
-          className="mt-1 h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-red-400"
         />
-      </label>
+      </Field>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <Alert tone="error" compact>{error}</Alert>}
 
       <div className="flex justify-end gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
           ยกเลิก
         </Button>
-        <Button size="sm" onClick={save} disabled={saving}>
+        <Button size="sm" onClick={save} loading={saving}>
           {saving ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>
       </div>
@@ -161,7 +157,7 @@ export default function ProfilePage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* ── รูป ────────────────────────────────────────────── */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+        <SectionCard className="text-center">
           <div className="flex justify-center">
             <UserAvatar
               key={photoVersion}
@@ -185,24 +181,24 @@ export default function ProfilePage() {
           <Button
             variant="secondary"
             size="sm"
+            icon="RefreshCw"
             className="mt-5 w-full"
-            disabled={syncing}
+            loading={syncing}
             onClick={handleResync}
           >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
             {syncing ? 'กำลังดึงรูป...' : 'ดึงรูปจาก LINE ใหม่'}
           </Button>
           <p className="mt-2 text-xs text-gray-500">กดเมื่อเปลี่ยนรูปโปรไฟล์ใน LINE แล้ว</p>
-        </div>
+        </SectionCard>
 
         {/* ── ข้อมูล ─────────────────────────────────────────── */}
         <div className="space-y-4 lg:col-span-2">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <SectionCard>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">ข้อมูลส่วนตัว</h3>
+              <CardTitle icon={IdCard} tone="accent">ข้อมูลส่วนตัว</CardTitle>
               {!editing && (
-                <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-                  <Pencil size={14} /> แก้ไขชื่อ
+                <Button variant="ghost" size="sm" icon="Pencil" onClick={() => setEditing(true)}>
+                  แก้ไขชื่อ
                 </Button>
               )}
             </div>
@@ -219,7 +215,7 @@ export default function ProfilePage() {
               <>
                 <Row label="ชื่อ-นามสกุล">{userData.fullName}</Row>
                 <Row label="ชื่อเล่น">
-                  {userData.nickname || <span className="text-orange-600">ยังไม่ได้กรอก</span>}
+                  {userData.nickname || <Pill tone="warning">ยังไม่ได้กรอก</Pill>}
                 </Row>
               </>
             )}
@@ -231,19 +227,19 @@ export default function ProfilePage() {
             <Row label="วันเกิด">
               {userData.birthDate ? thaiDate(new Date(userData.birthDate)) : '—'}
             </Row>
-          </div>
+          </SectionCard>
 
           {/* ค่าตอบแทนของตัวเอง — คนอื่นเห็นไม่ได้ ฐานข้อมูลกรองให้ */}
           <PayCard userId={userData.id!} />
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="mb-2 font-semibold text-gray-900">การเชื่อมต่อ</h3>
+          <SectionCard>
+            <CardTitle icon={Link2} tone="sky" className="mb-2">การเชื่อมต่อ</CardTitle>
 
             <div className="flex items-center justify-between border-b border-gray-100 py-2.5">
               <span className="text-sm text-gray-500">LINE</span>
-              <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
+              <Pill tone="success">
                 <Check size={14} /> เชื่อมต่อแล้ว
-              </span>
+              </Pill>
             </div>
 
             <div className="flex items-center justify-between py-2.5">
@@ -269,13 +265,13 @@ export default function ProfilePage() {
                 ระบบจะ mention คุณเวลาแจ้งวันเกิด เตือนลืมเช็คเอาท์ และแจ้งผลอนุมัติลา
               </p>
             )}
-          </div>
+          </SectionCard>
 
           {/* ติดตั้งแอป + แจ้งเตือนของเครื่องนี้ */}
           <DeviceCard />
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="mb-2 font-semibold text-gray-900">การทำงาน</h3>
+          <SectionCard>
+            <CardTitle icon={Briefcase} tone="grape" className="mb-2">การทำงาน</CardTitle>
             <Row label="สถานะ">
               <StatusBadge status={userData.employmentStatus} />
             </Row>
@@ -285,7 +281,7 @@ export default function ProfilePage() {
             <Row label="วันเริ่มงาน">
               {thaiDate(userData.startDate)}
               {userData.startDate && !userData.startDateVerified && (
-                <span className="ml-2 text-xs font-normal text-amber-600">รอ HR ยืนยัน</span>
+                <Pill tone="warning" className="ml-2">รอ HR ยืนยัน</Pill>
               )}
             </Row>
             {userData.endDate && <Row label="วันสุดท้าย">{thaiDate(userData.endDate)}</Row>}
@@ -293,7 +289,7 @@ export default function ProfilePage() {
               {userData.daysPerWeek ? `${userData.daysPerWeek} วัน` : '—'}
             </Row>
             <Row label="ทำงานที่บ้านได้">{userData.wfhEligible ? 'ได้' : 'ไม่ได้'}</Row>
-          </div>
+          </SectionCard>
         </div>
       </div>
     </>

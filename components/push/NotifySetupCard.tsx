@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
 import { enablePush, getPushState, inAppBrowser, type PushState } from '@/lib/push/client'
 
 export default function NotifySetupCard() {
@@ -67,14 +68,14 @@ export default function NotifySetupCard() {
   }
 
   return (
-    <section className="mb-5 rounded-xl border-2 border-blue-300 bg-blue-50 p-4">
+    <InfoPanel tone="sky" className="mb-5">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+        <span className="aoo-title-icon mt-0.5" data-tone="sky">
           <BellRing size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-blue-950">กดเปิดแจ้งเตือนหน่อยครับ</h2>
-          <p className="mt-0.5 text-sm text-blue-900">
+          <h2 className="text-base font-semibold text-gray-900">กดเปิดแจ้งเตือนหน่อยครับ</h2>
+          <p className="mt-0.5 text-sm text-gray-700">
             จะได้รู้ทันทีเมื่อใบลา/ใบสลับวันหยุดอนุมัติแล้ว และเตือนเวลาลืมเช็คเอาท์
           </p>
 
@@ -95,20 +96,21 @@ export default function NotifySetupCard() {
             ) : state === 'unsupported' ? (
               <Guide text="เครื่อง/เบราว์เซอร์นี้รับแจ้งเตือนไม่ได้ — เปิดแอป AMGO จากมือถือแล้วกดปุ่มนี้ที่นั่น" />
             ) : (
-              <Button onClick={turnOn} disabled={busy} icon="BellRing">
+              <Button onClick={turnOn} loading={busy}>
+                {!busy && <BellRing size={16} />}
                 {busy ? 'กำลังเปิด…' : 'เปิดแจ้งเตือน'}
               </Button>
             )}
           </div>
         </div>
       </div>
-    </section>
+    </InfoPanel>
   )
 }
 
 function Guide({ text }: { text: string }) {
   return (
-    <p className="flex items-start gap-1 rounded-lg bg-white/70 px-3 py-2 text-sm text-blue-950">
+    <p className="flex items-start gap-1 rounded-lg bg-white/70 px-3 py-2 text-sm text-gray-800">
       <ChevronRight size={16} className="mt-0.5 shrink-0" />
       {text}
     </p>

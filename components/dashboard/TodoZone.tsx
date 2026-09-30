@@ -12,10 +12,11 @@
 //
 // ไม่มีอะไรค้าง = ไม่ขึ้นอะไรเลย ไม่กินที่บนหน้าแรก
 
-import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CircleCheck } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { pendingTodos } from '@/lib/todo/tasks'
+import { ListRow, ListRows } from '@/components/shared'
+import { Card, CardContent, CardHeader, CardTitle, Pill } from '@/components/aoo'
 
 export default function TodoZone() {
   const { userData, loading } = useAuth()
@@ -27,36 +28,32 @@ export default function TodoZone() {
   const mustDo = todos.filter((t) => t.blocking).length
 
   return (
-    <section className="mb-5 overflow-hidden rounded-xl border border-amber-200 bg-amber-50/60">
-      <header className="flex items-center gap-2 border-b border-amber-200 px-4 py-2.5">
-        <AlertTriangle size={15} className="shrink-0 text-amber-600" />
-        <h2 className="text-sm font-semibold text-amber-900">
+    <Card padding={0} className="mb-5 overflow-hidden">
+      <CardHeader>
+        <CardTitle icon={AlertTriangle} tone="warning">
           สิ่งที่ต้องทำ {todos.length} อย่าง
-        </h2>
-        {mustDo > 0 && (
-          <span className="rounded-md bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900">
-            ต้องทำก่อนใช้งาน {mustDo}
-          </span>
-        )}
-      </header>
+          {mustDo > 0 && <Pill tone="warning">ต้องทำก่อนใช้งาน {mustDo}</Pill>}
+        </CardTitle>
+      </CardHeader>
 
-      <ul className="divide-y divide-amber-100">
-        {todos.map((t) => (
-          <li key={t.id} className="flex items-start gap-3 px-4 py-3">
-            <CircleCheck size={17} className="mt-0.5 shrink-0 text-amber-400" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900">{t.title}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-gray-600">{t.why}</p>
-            </div>
-            <Link
+      <CardContent className="pt-2">
+        <ListRows>
+          {todos.map((t) => (
+            <ListRow
+              key={t.id}
               href={t.href}
-              className="flex shrink-0 items-center gap-1 self-center rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-800 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
-            >
-              {t.cta} <ArrowRight size={13} />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
+              leading={<CircleCheck size={17} className="shrink-0 text-[var(--sun-500)]" />}
+              title={t.title}
+              meta={<span className="leading-relaxed">{t.why}</span>}
+              trailing={
+                <span className="flex items-center gap-1 text-xs font-medium text-[var(--accent)]">
+                  {t.cta} <ArrowRight size={13} />
+                </span>
+              }
+            />
+          ))}
+        </ListRows>
+      </CardContent>
+    </Card>
   )
 }

@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatCard, ListRows, ListRow } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -16,13 +16,11 @@ import {
   CheckCircle,
   Camera,
   ArrowRight,
-  Calendar,
-  Users,
   User
 } from 'lucide-react'
 import TechLoader from '@/components/shared/TechLoader'
 import { getDeliveryPoints } from '@/lib/services/deliveryService'
-import { SelectMenu, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { SelectMenu, Pill, Card, CardContent, CardHeader, CardTitle, Button, EmptyState } from '@/components/aoo'
 export default function DeliveryDashboardPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -121,68 +119,29 @@ export default function DeliveryDashboardPage() {
 
       {/* Quick Action */}
       <Link href="/delivery/checkin">
-        <Card padding={0} className="transition- cursor-pointer border-2 - mb-6">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <Camera className="w-8 h-8 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">เช็คอินจุดส่งของ</h3>
-                  <p className="text-base text-gray-600 mt-1">บันทึกการรับ-ส่งสินค้า</p>
-                </div>
-              </div>
-              <ArrowRight className="w-6 h-6 text-gray-400" />
+        <Card hoverable className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle icon={Camera} tone="accent">เช็คอินจุดส่งของ</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">บันทึกการรับ-ส่งสินค้า</p>
             </div>
-          </CardContent>
+            <ArrowRight className="w-5 h-5 text-gray-400" />
+          </div>
         </Card>
       </Link>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-base text-gray-600">จุดทั้งหมด</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{totalPoints}</p>
-              </div>
-              <Package className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-base text-gray-600">สำเร็จ</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{completedPoints}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-base text-gray-600">รอดำเนินการ</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">{pendingPoints}</p>
-              </div>
-              <Clock className="w-8 h-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="จุดทั้งหมด" value={totalPoints} icon={Package} tone="sky" />
+        <StatCard label="สำเร็จ" value={completedPoints} icon={CheckCircle} tone="success" />
+        <StatCard label="รอดำเนินการ" value={pendingPoints} icon={Clock} tone="warning" />
       </div>
 
       {/* Working Time */}
       {totalPoints > 0 && firstDelivery && lastDelivery && viewMode === 'mine' && (
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg">ข้อมูลการทำงาน</CardTitle>
+            <CardTitle icon={Clock} tone="grape">ข้อมูลการทำงาน</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -210,75 +169,77 @@ export default function DeliveryDashboardPage() {
       {totalPoints > 0 && (
         <Card padding={0}>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Truck className="w-5 h-5" />
+            <CardTitle icon={Truck} tone="sky">
               จุดส่งของล่าสุด {viewMode === 'all' && '(ทั้งหมด)'}
             </CardTitle>
             <Link href="/delivery/map">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" iconRight="ChevronRight">
                 ดูทั้งหมด
-                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <ListRows variant="divided">
               {deliveryPoints.slice(0, 5).map((point) => (
-                <div key={point.id} className="flex items-center gap-4 pb-3 border-b last:border-0">
-                  <div className="text-base text-gray-600 min-w-[60px]">
-                    {formatTime(point.checkInTime)}
-                  </div>
-                  
-                  <div className="flex-shrink-0">
-                    {point.deliveryStatus === 'completed' ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <Clock className="w-5 h-5 text-orange-500" />
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    {/* แสดงชื่อ Driver ถ้าดูแบบ All */}
-                    {viewMode === 'all' && point.driverName && (
-                      <p className="text-sm text-gray-500">
-                        <User className="w-3 h-3 inline mr-1" />
-                        {point.driverName}
-                      </p>
-                    )}
-                    {point.customerName && (
-                      <p className="text-base font-medium">{point.customerName}</p>
-                    )}
-                    <p className="text-sm text-gray-500 line-clamp-1">
-                      <MapPin className="w-3 h-3 inline mr-1" />
-                      {point.address || 'กำลังโหลดที่อยู่...'}
-                    </p>
-                  </div>
-
-                  <Pill tone={badgeTone(point.deliveryType === 'pickup' ? 'info' : 'secondary')} className="text-sm">
-                    {point.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
-                  </Pill>
-                </div>
+                <ListRow
+                  key={point.id}
+                  leading={
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 min-w-[48px] tabular-nums">
+                        {formatTime(point.checkInTime)}
+                      </span>
+                      {point.deliveryStatus === 'completed' ? (
+                        <CheckCircle className="w-5 h-5 text-[var(--leaf-500)]" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-[var(--sun-500)]" />
+                      )}
+                    </div>
+                  }
+                  title={point.customerName || point.address || 'กำลังโหลดที่อยู่...'}
+                  meta={
+                    <>
+                      {/* แสดงชื่อ Driver ถ้าดูแบบ All */}
+                      {viewMode === 'all' && point.driverName && (
+                        <span className="block">
+                          <User className="w-3 h-3 inline mr-1" />
+                          {point.driverName}
+                        </span>
+                      )}
+                      {point.customerName && (
+                        <span className="line-clamp-1">
+                          <MapPin className="w-3 h-3 inline mr-1" />
+                          {point.address || 'กำลังโหลดที่อยู่...'}
+                        </span>
+                      )}
+                    </>
+                  }
+                  trailing={
+                    <Pill tone={point.deliveryType === 'pickup' ? 'info' : 'neutral'}>
+                      {point.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
+                    </Pill>
+                  }
+                />
               ))}
-            </div>
+            </ListRows>
           </CardContent>
         </Card>
       )}
 
       {/* Empty State */}
       {totalPoints === 0 && (
-        <Card padding={0}>
-          <CardContent className="py-12 text-center">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-base text-gray-600 mb-4">
-              {viewMode === 'mine' ? 'ยังไม่มีการส่งของของคุณวันนี้' : 'ยังไม่มีการส่งของวันนี้'}
-            </p>
-            <Link href="/delivery/checkin">
-              <Button>
-                <Camera className="w-4 h-4 mr-2" />
-                เริ่มเช็คอิน
-              </Button>
-            </Link>
-          </CardContent>
+        <Card>
+          <EmptyState
+            icon={<Package size={40} />}
+            title={viewMode === 'mine' ? 'ยังไม่มีการส่งของของคุณวันนี้' : 'ยังไม่มีการส่งของวันนี้'}
+            action={
+              <Link href="/delivery/checkin">
+                <Button>
+                  <Camera className="w-4 h-4" />
+                  เริ่มเช็คอิน
+                </Button>
+              </Link>
+            }
+          />
         </Card>
       )}
     </div>

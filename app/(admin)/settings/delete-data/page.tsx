@@ -16,12 +16,10 @@ import {
   MapPin,
   Calendar,
   CheckCircle,
-  X,
-  Loader2
+  X
 } from 'lucide-react'
-import { gradients } from '@/lib/theme/colors'
 import { PageHeader } from '@/components/shared'
-import { Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Progress, type CardTone } from '@/components/aoo'
 const CONFIRMATION_TEXT = 'DELETE ALL DATA'
 
 interface DataCollection {
@@ -29,20 +27,20 @@ interface DataCollection {
   collection: string
   icon: any
   count?: number
-  color: string
+  tone: CardTone
 }
 
 const DATA_COLLECTIONS: DataCollection[] = [
-  { name: 'Check-ins', collection: 'checkins', icon: CheckCircle, color: 'text-green-600' },
-  { name: 'Leaves', collection: 'leaves', icon: Calendar, color: 'text-blue-600' },
-  { name: 'Locations', collection: 'locations', icon: MapPin, color: 'text-red-600' },
-  { name: 'Invite Links', collection: 'inviteLinks', icon: Shield, color: 'text-purple-600' },
-  { name: 'Influencers', collection: 'influencers', icon: Users, color: 'text-pink-600' },
-  { name: 'Campaigns', collection: 'campaigns', icon: FileX, color: 'text-orange-600' },
-  { name: 'Brands', collection: 'brands', icon: Database, color: 'text-indigo-600' },
-  { name: 'Products', collection: 'products', icon: Database, color: 'text-teal-600' },
-  { name: 'Submissions', collection: 'submissions', icon: FileX, color: 'text-yellow-600' },
-  { name: 'Settings', collection: 'settings', icon: Database, color: 'text-gray-600' },
+  { name: 'Check-ins', collection: 'checkins', icon: CheckCircle, tone: 'success' },
+  { name: 'Leaves', collection: 'leaves', icon: Calendar, tone: 'sky' },
+  { name: 'Locations', collection: 'locations', icon: MapPin, tone: 'accent' },
+  { name: 'Invite Links', collection: 'inviteLinks', icon: Shield, tone: 'grape' },
+  { name: 'Influencers', collection: 'influencers', icon: Users, tone: 'pink' },
+  { name: 'Campaigns', collection: 'campaigns', icon: FileX, tone: 'warning' },
+  { name: 'Brands', collection: 'brands', icon: Database, tone: 'info' },
+  { name: 'Products', collection: 'products', icon: Database, tone: 'plum' },
+  { name: 'Submissions', collection: 'submissions', icon: FileX, tone: 'warning' },
+  { name: 'Settings', collection: 'settings', icon: Database, tone: 'muted' },
 ]
 
 export default function DeleteAllDataPage() {
@@ -130,11 +128,8 @@ export default function DeleteAllDataPage() {
   if (!isAdmin) {
     return (
       <div className="max-w-4xl">
-        <Alert tone="error">
-          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึง</p>
-          <div>
-            เฉพาะ Admin เท่านั้นที่สามารถเข้าถึงหน้านี้ได้
-          </div>
+        <Alert tone="error" title="ไม่มีสิทธิ์เข้าถึง">
+          เฉพาะ Admin เท่านั้นที่สามารถเข้าถึงหน้านี้ได้
         </Alert>
       </div>
     )
@@ -149,9 +144,8 @@ export default function DeleteAllDataPage() {
       />
 
       {/* Warning */}
-      <Alert tone="error" className="border-2">
-        <p className="font-semibold text-lg">⚠️ คำเตือน! การกระทำนี้ไม่สามารถย้อนกลับได้</p>
-        <div className="mt-2 space-y-2">
+      <Alert tone="error" title="⚠️ คำเตือน! การกระทำนี้ไม่สามารถย้อนกลับได้">
+        <div className="space-y-2">
           <p>การลบข้อมูลจะทำให้:</p>
           <ul className="list-disc list-inside space-y-1 ml-4">
             <li>ข้อมูลการเช็คอิน/เอาท์ทั้งหมดถูกลบ</li>
@@ -177,7 +171,7 @@ export default function DeleteAllDataPage() {
       {/* Data Collections */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle>ข้อมูลที่จะถูกลบ</CardTitle>
+          <CardTitle icon={Database} tone="danger">ข้อมูลที่จะถูกลบ</CardTitle>
           <CardDescription>
             รายการข้อมูลทั้งหมดที่จะถูกลบออกจากระบบ
           </CardDescription>
@@ -189,23 +183,14 @@ export default function DeleteAllDataPage() {
               const isDeleted = deletedCollections.includes(collection.collection)
               
               return (
-                <div
+                <Card
                   key={collection.collection}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    isDeleted 
-                      ? 'bg-gray-50 border-gray-200 opacity-50' 
-                      : 'bg-white border-gray-200'
-                  }`}
+                  padding={12}
+                  className={`flex items-center gap-3 ${isDeleted ? 'opacity-50' : ''}`}
                 >
-                  <div className={`p-2 rounded-lg ${
-                    isDeleted ? 'bg-gray-100' : 'bg-red-50'
-                  }`}>
-                    {isDeleted ? (
-                      <X className="w-5 h-5 text-gray-400" />
-                    ) : (
-                      <Icon className={`w-5 h-5 ${collection.color}`} />
-                    )}
-                  </div>
+                  <span className="aoo-title-icon" data-tone={isDeleted ? 'muted' : collection.tone}>
+                    {isDeleted ? <X size={20} /> : <Icon size={20} />}
+                  </span>
                   <div className="flex-1">
                     <p className={`font-medium ${
                       isDeleted ? 'text-gray-400 line-through' : 'text-gray-900'
@@ -216,7 +201,7 @@ export default function DeleteAllDataPage() {
                       <p className="text-xs text-gray-400">ลบแล้ว</p>
                     )}
                   </div>
-                </div>
+                </Card>
               )
             })}
           </div>
@@ -224,10 +209,10 @@ export default function DeleteAllDataPage() {
       </Card>
 
       {/* Confirmation */}
-      <Card padding={0} className={`border-2 border-red-600 bg-gradient-to-r ${gradients.errorLight}`}>
+      <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-red-900">ยืนยันการลบข้อมูล</CardTitle>
-          <CardDescription className="text-red-700">
+          <CardTitle icon={AlertTriangle} tone="danger">ยืนยันการลบข้อมูล</CardTitle>
+          <CardDescription>
             พิมพ์ "{CONFIRMATION_TEXT}" เพื่อยืนยันการลบข้อมูลทั้งหมด
           </CardDescription>
         </CardHeader>
@@ -243,18 +228,8 @@ export default function DeleteAllDataPage() {
             />
           </div>
           
-          <Button onClick={handleDeleteAllData} disabled={confirmText !== CONFIRMATION_TEXT || isDeleting} className={`w-full bg-gradient-to-r ${gradients.error} text-white`} size="lg">
-            {isDeleting ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                กำลังลบข้อมูล...
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-5 h-5 mr-2" />
-                ลบข้อมูลทั้งหมด
-              </>
-            )}
+          <Button onClick={handleDeleteAllData} disabled={confirmText !== CONFIRMATION_TEXT} loading={isDeleting} variant="danger" icon="Trash2" className="w-full" size="lg">
+            {isDeleting ? 'กำลังลบข้อมูล...' : 'ลบข้อมูลทั้งหมด'}
           </Button>
         </CardContent>
       </Card>
@@ -263,7 +238,7 @@ export default function DeleteAllDataPage() {
       {isDeleting && deletedCollections.length > 0 && (
         <Card padding={0}>
           <CardHeader>
-            <CardTitle>ความคืบหน้า</CardTitle>
+            <CardTitle icon={Trash2} tone="danger">ความคืบหน้า</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -271,14 +246,7 @@ export default function DeleteAllDataPage() {
                 <span>ลบแล้ว</span>
                 <span>{deletedCollections.length} / {DATA_COLLECTIONS.length}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-red-600 h-2 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${(deletedCollections.length / DATA_COLLECTIONS.length) * 100}%` 
-                  }}
-                />
-              </div>
+              <Progress value={deletedCollections.length} max={DATA_COLLECTIONS.length} tone="danger" />
             </div>
           </CardContent>
         </Card>

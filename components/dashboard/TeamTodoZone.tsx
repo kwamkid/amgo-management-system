@@ -15,10 +15,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ClipboardCheck, Copy, UserCog } from 'lucide-react'
+import { Copy, UserCog } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { DiscordIcon } from '@/components/icons/DiscordIcon'
+import { Alert, Button, Card, CardHeader, CardTitle, Pill } from '@/components/aoo'
 
 type Row = {
   id: string
@@ -67,29 +68,25 @@ export default function TeamTodoZone() {
 
   if (!behind.length) {
     return (
-      <section className="mb-5 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50/60 px-4 py-3">
-        <ClipboardCheck size={16} className="shrink-0 text-green-600" />
-        <p className="text-sm text-green-900">
-          พนักงานทุกคนกรอกชื่อและเชื่อม Discord ครบแล้ว ({rows.length} คน)
-        </p>
-      </section>
+      <Alert tone="success" className="mb-5">
+        พนักงานทุกคนกรอกชื่อและเชื่อม Discord ครบแล้ว ({rows.length} คน)
+      </Alert>
     )
   }
 
   return (
-    <section className="mb-5 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <header className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-        <UserCog size={15} className="shrink-0 text-gray-500" />
-        <h2 className="text-sm font-semibold text-gray-900">
+    <Card padding={0} className="mb-5 overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle icon={UserCog} tone="warning">
           ต้องตามอีก {behind.length} คน
-        </h2>
-        <span className="text-xs text-gray-500">จากทั้งหมด {rows.length} คน</span>
-      </header>
+          <span className="text-xs font-normal text-gray-500">จากทั้งหมด {rows.length} คน</span>
+        </CardTitle>
+      </CardHeader>
 
       <Group
         title="ยังไม่มีชื่อจริง / ชื่อเล่น"
         hint="ชื่อในระบบยังเป็นชื่อ LINE — รายงานอ่านแล้วไม่รู้ว่าใคร"
-        icon={<UserCog size={14} className="text-amber-600" />}
+        icon={<UserCog size={14} className="text-[var(--sun-700)]" />}
         people={noName}
       />
       <Group
@@ -98,7 +95,7 @@ export default function TeamTodoZone() {
         icon={<DiscordIcon size={14} className="text-[#5865F2]" />}
         people={noDiscord}
       />
-    </section>
+    </Card>
   )
 }
 
@@ -131,15 +128,10 @@ function Group({
       <div className="flex flex-wrap items-center gap-2">
         {icon}
         <h3 className="text-sm font-medium text-gray-900">{title}</h3>
-        <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700">
-          {people.length} คน
-        </span>
-        <button
-          onClick={copy}
-          className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800"
-        >
+        <Pill tone="neutral">{people.length} คน</Pill>
+        <Button variant="link" size="sm" onClick={copy} className="ml-auto">
           <Copy size={12} /> {copied ? 'คัดลอกแล้ว' : 'คัดลอกรายชื่อ'}
-        </button>
+        </Button>
       </div>
 
       <p className="mt-0.5 text-xs text-gray-500">{hint}</p>
@@ -150,9 +142,9 @@ function Group({
             key={u.id}
             href={`/employees/${u.id}/edit`}
             title="เปิดหน้าแก้ไขพนักงานคนนี้"
-            className="rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-100"
+            className="transition-opacity hover:opacity-80"
           >
-            {label(u)}
+            <Pill tone="neutral">{label(u)}</Pill>
           </Link>
         ))}
       </div>

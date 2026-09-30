@@ -20,6 +20,9 @@ export interface CheckboxProps {
   /** Accessibility label. */
   "aria-label"?: string;
   title?: string;
+  /** ขีดกลาง (เลือกบางส่วน) — ใช้กับช่อง "เลือกทั้งหมด" */
+  indeterminate?: boolean;
+  className?: string;
   /** Escape hatch for layout (margin etc.) — avoid restyling the box itself. */
   style?: CSSProperties;
 }
@@ -44,10 +47,18 @@ export function Checkbox({
   size = 16,
   "aria-label": ariaLabel,
   title,
+  indeterminate = false,
+  className,
   style,
 }: CheckboxProps) {
+  const ref = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
   return (
     <input
+      ref={ref}
+      className={className}
       id={id}
       type="checkbox"
       name={name}

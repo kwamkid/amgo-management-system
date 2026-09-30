@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { SectionCard, InfoPanel } from '@/components/shared'
+import { EmptyState } from '@/components/aoo'
 
 type Ev = {
   date: string
@@ -21,7 +23,7 @@ type Ev = {
 }
 
 const DOT: Record<Ev['tone'], string> = {
-  start: 'bg-blue-500',
+  start: 'bg-sky-500',
   up: 'bg-green-500',
   down: 'bg-red-500',
   info: 'bg-gray-400',
@@ -136,13 +138,13 @@ export default function EmployeeTimeline({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 font-semibold text-gray-900">ไทม์ไลน์</h2>
-
+      <SectionCard title="ไทม์ไลน์">
         {events.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            ยังไม่มีเหตุการณ์ — เริ่มจากใส่วันเริ่มงาน (แท็บข้อมูล) และเงินเดือน (แท็บเงินเดือน)
-          </p>
+          <EmptyState
+            size="sm"
+            title="ยังไม่มีเหตุการณ์"
+            body="เริ่มจากใส่วันเริ่มงาน (แท็บข้อมูล) และเงินเดือน (แท็บเงินเดือน)"
+          />
         ) : (
           <ol className="relative ml-2 space-y-4 border-l border-gray-200 pl-5">
             {events.map((ev, i) => (
@@ -170,12 +172,12 @@ export default function EmployeeTimeline({ userId }: { userId: string }) {
             ))}
           </ol>
         )}
-      </div>
+      </SectionCard>
 
       {/* ── ที่เกาะของระบบ KPI ─────────────────────────────── */}
-      <div className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-400">
+      <InfoPanel className="text-sm text-gray-400">
         KPI — เตรียมพื้นที่ไว้ ผลประเมินจะขึ้นต่อท้ายไทม์ไลน์ของคนนี้
-      </div>
+      </InfoPanel>
     </div>
   )
 }

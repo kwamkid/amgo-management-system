@@ -16,7 +16,7 @@ import { Camera, ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
-import { DatePicker, DateRangePicker, EmptyState } from '@/components/aoo'
+import { DatePicker, DateRangePicker, EmptyState, IconButton, Pill } from '@/components/aoo'
 import { FilterBar, FilterSelect, PageHeader, SectionCard, Segmented, Skeleton, UserCell } from '@/components/shared'
 import StorageStatusCard from '@/components/reports/StorageStatusCard'
 import {
@@ -254,13 +254,9 @@ export default function StockPhotosReportPage() {
           <>
             <FilterSelect label="สาขา" value={locationId} options={locations} onChange={setLocationId} />
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => shift(-1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
-                <ChevronLeft size={18} />
-              </button>
+              <IconButton icon={ChevronLeft} title="วันก่อนหน้า" tone="sunken" size={40} onClick={() => shift(-1)} />
               <DatePicker value={day} onChange={setDay} />
-              <button type="button" onClick={() => shift(1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
-                <ChevronRight size={18} />
-              </button>
+              <IconButton icon={ChevronRight} title="วันถัดไป" tone="sunken" size={40} onClick={() => shift(1)} />
             </div>
           </>
         ) : (
@@ -364,7 +360,7 @@ export default function StockPhotosReportPage() {
                   <span className="flex items-center gap-2">
                     {format(new Date(`${date}T00:00:00`), 'EEE d MMM yyyy', { locale: th })}
                     {list.length === 0 ? (
-                      <span className="rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">ไม่ได้ถ่าย</span>
+                      <Pill tone="danger">ไม่ได้ถ่าย</Pill>
                     ) : (
                       <span className="text-xs text-gray-500">
                         หน้าร้าน {list.filter((p) => p.kind === 'storefront').length} · สต็อก {list.filter((p) => p.kind === 'stock').length}
@@ -387,9 +383,9 @@ export default function StockPhotosReportPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.thumbUrl ?? p.url ?? undefined} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                         ) : null}
-                        <span className={`absolute left-1 top-1 rounded px-1 text-xs text-white ${p.kind === 'storefront' ? 'bg-sky-600' : 'bg-amber-600'}`}>
+                        <Pill tone={p.kind === 'storefront' ? 'sky' : 'warning'} className="absolute left-1 top-1">
                           {KIND_LABEL[p.kind]}
-                        </span>
+                        </Pill>
                         <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-xs text-white">
                           {format(new Date(p.takenAt), 'HH:mm')}
                         </span>

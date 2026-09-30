@@ -12,7 +12,6 @@ import { useLocations } from '@/hooks/useLocations'
 import { useAuth } from '@/hooks/useAuth'
 import {
   MapPin,
-  Loader2,
   AlertCircle,
   CheckCircle,
   Home,
@@ -227,19 +226,19 @@ export default function CheckInButton() {
                     bucket="checkin-photos"
                     path={currentCheckIn.checkinPhotoUrl}
                     alt="รูปตอนเช็คอิน"
-                    className="h-11 w-11 shrink-0 rounded-full border-2 border-teal-300 object-cover"
+                    className="h-11 w-11 shrink-0 rounded-full border-2 border-[var(--sky-300)] object-cover"
                   />
                 ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-50">
-                    <div className="h-3 w-3 animate-pulse rounded-full bg-teal-500" />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--sky-50)]">
+                    <div className="h-3 w-3 animate-pulse rounded-full bg-[var(--sky-500)]" />
                   </div>
                 )}
                 <div className="min-w-0">
                   <p className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                     {currentCheckIn.checkinType === 'wfh' ? (
-                      <Home className="h-4 w-4 shrink-0 text-blue-500" />
+                      <Home className="h-4 w-4 shrink-0 text-[var(--pink-500)]" />
                     ) : (
-                      <MapPin className="h-4 w-4 shrink-0 text-teal-600" />
+                      <MapPin className={`h-4 w-4 shrink-0 ${currentCheckIn.checkinType === 'offsite' ? 'text-[var(--grape-500)]' : 'text-[var(--leaf-500)]'}`} />
                     )}
                     <span className="truncate">
                       เช็คอิน {format(checkinTime, 'HH:mm')} · {place}
@@ -252,15 +251,8 @@ export default function CheckInButton() {
                 </div>
               </div>
 
-              <Button onClick={handleCheckOut} disabled={isCheckingOut} className="h-10 shrink-0 - px-4 font-medium">
-                {isCheckingOut ? (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    กำลังออก…
-                  </span>
-                ) : (
-                  'เช็คเอาท์'
-                )}
+              <Button onClick={handleCheckOut} loading={isCheckingOut} className="h-10 shrink-0 px-4 font-medium">
+                {isCheckingOut ? 'กำลังออก…' : 'เช็คเอาท์'}
               </Button>
             </div>
 
@@ -271,22 +263,17 @@ export default function CheckInButton() {
                 l => l.id === currentCheckIn.primaryLocationId
               )
               return (
-                <div className={`mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  inRange
-                    ? 'bg-green-50 text-green-700'
-                    : !currentPosition
-                    ? 'bg-yellow-50 text-yellow-700'
-                    : 'bg-red-50 text-red-700'
-                }`}>
-                  <MapPin className="h-4 w-4 shrink-0" />
-                  <span>
+                <Alert
+                  compact
+                  className="mt-3"
+                  tone={inRange ? 'success' : !currentPosition ? 'warning' : 'error'}
+                >
                     {!currentPosition
                       ? `กำลังตรวจสอบตำแหน่ง (ต้องเช็คเอาท์ที่ ${checkInLocationName})`
                       : inRange
                       ? `อยู่ที่ ${checkInLocationName} — เช็คเอาท์ได้`
                       : `ต้องเช็คเอาท์ที่ ${checkInLocationName} เท่านั้น`}
-                  </span>
-                </div>
+                </Alert>
               )
             })()}
 
@@ -301,22 +288,14 @@ export default function CheckInButton() {
                   className="text-sm"
                   autoFocus
                 />
-                <button
-                  type="button"
-                  onClick={() => { setShowNote(false); setNote('') }}
-                  className="text-sm text-gray-500 underline-offset-2 hover:underline"
-                >
+                <Button variant="link" size="sm" onClick={() => { setShowNote(false); setNote('') }}>
                   ยกเลิกหมายเหตุ
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setShowNote(true)}
-                className="mt-2 text-sm text-gray-500 underline-offset-2 hover:underline"
-              >
+              <Button variant="link" size="sm" className="mt-2" onClick={() => setShowNote(true)}>
                 + หมายเหตุตอนเช็คเอาท์
-              </button>
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -383,7 +362,7 @@ export default function CheckInButton() {
           )}
 
           {locationCheckResult?.canCheckIn && (
-            <div className="flex items-center justify-center gap-2 mb-2 text-teal-600">
+            <div className="flex items-center justify-center gap-2 mb-2 text-[var(--leaf-700)]">
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium">
                 {locationCheckResult.locationsInRange.length > 0
@@ -406,24 +385,18 @@ export default function CheckInButton() {
             <div className="space-y-2">
               <Button onClick={() => handleCheckInClick(false)}
  disabled={isCheckingIn || isUploadingPhoto}
- className="w-full h-12 font-medium -"
+ loading={isCheckingIn}
+ className="w-full h-12 font-medium"
  size="lg">
-                {isCheckingIn ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
-                  </span>
-                ) : 'เช็คอินนอกสถานที่'}
+                {isCheckingIn ? 'กำลังเช็คอิน...' : 'เช็คอินนอกสถานที่'}
               </Button>
               <Button onClick={() => handleCheckInClick(true)}
  disabled={isCheckingIn || isUploadingPhoto}
+ loading={isCheckingIn}
  variant="secondary"
  className="w-full h-12 font-medium"
  size="lg">
-                {isCheckingIn ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />กำลังเช็คอิน...
-                  </span>
-                ) : (
+                {isCheckingIn ? 'กำลังเช็คอิน...' : (
                   <span className="flex items-center justify-center gap-2">
                     <Home className="w-4 h-4" />Work From Home (WFH)
                   </span>
@@ -433,13 +406,11 @@ export default function CheckInButton() {
           ) : (
             <Button onClick={() => handleCheckInClick(false)}
  disabled={isCheckingIn || isUploadingPhoto || !locationCheckResult?.canCheckIn}
- className="w-full h-12 font-medium -"
+ loading={isCheckingIn || isUploadingPhoto}
+ className="w-full h-12 font-medium"
  size="lg">
               {isCheckingIn || isUploadingPhoto ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {isUploadingPhoto ? 'กำลังบันทึกรูป...' : 'กำลังเช็คอิน...'}
-                </span>
+                isUploadingPhoto ? 'กำลังบันทึกรูป...' : 'กำลังเช็คอิน...'
               ) : !currentPosition ? (
                 'กำลังขอตำแหน่ง...'
               ) : (

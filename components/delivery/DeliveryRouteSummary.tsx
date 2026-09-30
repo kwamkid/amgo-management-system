@@ -4,19 +4,18 @@ import { useState } from 'react'
 import { DeliveryPoint } from '@/types/delivery'
 import { formatTime, formatDate } from '@/lib/utils/date'
 import { formatDistance } from '@/lib/utils/location'
-import { 
-  Truck, 
-  MapPin, 
+import {
   Clock,
   Package,
   TrendingUp,
-  Calendar,
   Navigation,
-  Download,
   Share2,
-  CheckCircle
+  CheckCircle,
+  ArrowDownToLine,
+  ArrowUpFromLine
 } from 'lucide-react'
-import { Progress, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button, Modal } from '@/components/aoo'
+import { Progress, Pill, Card, CardContent, CardHeader, CardTitle, Button, Modal } from '@/components/aoo'
+import { StatCard, InfoPanel, ListRows, ListRow } from '@/components/shared'
 interface DeliveryRouteSummaryProps {
   deliveries: DeliveryPoint[]
   date: string
@@ -109,61 +108,40 @@ export default function DeliveryRouteSummary({
 
   return (
     <>
-      <Card padding={0} className="-">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              สรุปเส้นทางประจำวัน
-            </div>
-            <div className="flex gap-2">
-              <Button variant="soft" size="sm" onClick={() => setShowShareDialog(true)}>
-                <Share2 className="w-4 h-4 mr-2" />
-                แชร์
-              </Button>
-              <Button variant="soft" size="sm" onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </CardTitle>
+      <Card padding={0}>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle icon={TrendingUp} tone="sky">สรุปเส้นทางประจำวัน</CardTitle>
+          <div className="flex gap-2">
+            <Button variant="soft" size="sm" onClick={() => setShowShareDialog(true)}>
+              <Share2 className="w-4 h-4" />
+              แชร์
+            </Button>
+            <Button variant="soft" size="sm" icon="Download" onClick={exportToCSV}>
+              Export
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Overview Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900">{deliveries.length}</div>
-              <p className="text-sm text-gray-600 mt-1">จุดทั้งหมด</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{pickupCount}</div>
-              <p className="text-sm text-gray-600 mt-1">รับของ</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{deliveryCount}</div>
-              <p className="text-sm text-gray-600 mt-1">ส่งของ</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">100%</div>
-              <p className="text-sm text-gray-600 mt-1">สำเร็จ</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="จุดทั้งหมด" value={deliveries.length} icon={Package} tone="accent" />
+            <StatCard label="รับของ" value={pickupCount} icon={ArrowDownToLine} tone="sky" />
+            <StatCard label="ส่งของ" value={deliveryCount} icon={ArrowUpFromLine} tone="success" />
+            <StatCard label="สำเร็จ" value="100%" icon={CheckCircle} tone="grape" />
           </div>
 
           {/* Timeline */}
           <div className="space-y-3">
-            <h4 className="font-medium text-gray-700 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              เวลาทำงาน
-            </h4>
-            
-            <div className="bg-white rounded-lg p-4 space-y-3">
+            <CardTitle icon={Clock} tone="grape">เวลาทำงาน</CardTitle>
+
+            <InfoPanel className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">เริ่มงาน</span>
                 <span className="font-medium">
                   {firstDelivery ? formatTime(firstDelivery.checkInTime) : '-'}
                 </span>
               </div>
-              
+
               <div className="relative">
                 <Progress value={100} className="h-2" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -172,62 +150,54 @@ export default function DeliveryRouteSummary({
                   </span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">เลิกงาน</span>
                 <span className="font-medium">
                   {lastDelivery ? formatTime(lastDelivery.checkInTime) : '-'}
                 </span>
               </div>
-            </div>
+            </InfoPanel>
           </div>
 
           {/* Route Summary */}
           <div className="space-y-3">
-            <h4 className="font-medium text-gray-700 flex items-center gap-2">
-              <Navigation className="w-4 h-4" />
-              เส้นทาง
-            </h4>
-            
-            <div className="bg-white rounded-lg p-4">
+            <CardTitle icon={Navigation} tone="accent">เส้นทาง</CardTitle>
+
+            <InfoPanel>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-gray-600">ระยะทางโดยประมาณ</span>
                 <span className="font-medium">{estimatedDistance} กม.</span>
               </div>
-              
-              <div className="space-y-2">
+
+              <ListRows variant="divided">
                 {sortedByTime.slice(0, 3).map((delivery, index) => (
-                  <div key={delivery.id} className="flex items-start gap-3 text-sm">
-                    <div className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs">{index + 1}</span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{formatTime(delivery.checkInTime)}</span>
-                        <Pill tone={badgeTone(delivery.deliveryType === 'pickup' ? 'info' : 'secondary')} className="text-xs">
-                          {delivery.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
-                        </Pill>
-                      </div>
-                      {delivery.customerName && (
-                        <p className="text-gray-600">{delivery.customerName}</p>
-                      )}
-                    </div>
-                  </div>
+                  <ListRow
+                    key={delivery.id}
+                    leading={<Pill tone="neutral">{index + 1}</Pill>}
+                    title={formatTime(delivery.checkInTime)}
+                    meta={delivery.customerName || undefined}
+                    trailing={
+                      <Pill tone={delivery.deliveryType === 'pickup' ? 'info' : 'neutral'}>
+                        {delivery.deliveryType === 'pickup' ? 'รับ' : 'ส่ง'}
+                      </Pill>
+                    }
+                  />
                 ))}
-                
-                {sortedByTime.length > 3 && (
-                  <p className="text-center text-sm text-gray-500 pt-2">
-                    และอีก {sortedByTime.length - 3} จุด...
-                  </p>
-                )}
-              </div>
-            </div>
+              </ListRows>
+
+              {sortedByTime.length > 3 && (
+                <p className="text-center text-sm text-gray-500 pt-2">
+                  และอีก {sortedByTime.length - 3} จุด...
+                </p>
+              )}
+            </InfoPanel>
           </div>
 
           {/* Success Badge */}
           <div className="flex items-center justify-center pt-4">
-            <Pill tone="success" className="text-base px-4 py-2 gap-2">
-              <CheckCircle className="w-5 h-5" />
+            <Pill tone="success">
+              <CheckCircle className="w-4 h-4" />
               ส่งครบทุกจุด สำเร็จ 100%
             </Pill>
           </div>
@@ -235,29 +205,31 @@ export default function DeliveryRouteSummary({
       </Card>
 
       {/* Share Dialog */}
-      <Modal open={showShareDialog} onClose={() => ((setShowShareDialog))(false)} title={<>แชร์สรุปประจำวัน</>}>
-          
-          
-          <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <pre className="text-sm whitespace-pre-wrap font-sans">
-                {generateSummaryText()}
-              </pre>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button onClick={shareToLine} className="flex-1">
-                แชร์ผ่าน LINE
-              </Button>
-              <Button variant="soft" onClick={() => {
- navigator.clipboard.writeText(generateSummaryText())
- setShowShareDialog(false)
- }}>
-                คัดลอก
-              </Button>
-            </div>
+      <Modal open={showShareDialog} onClose={() => setShowShareDialog(false)} title={<>แชร์สรุปประจำวัน</>}>
+        <div className="space-y-4">
+          <InfoPanel>
+            <pre className="text-sm whitespace-pre-wrap font-sans">
+              {generateSummaryText()}
+            </pre>
+          </InfoPanel>
+
+          <div className="flex gap-2">
+            <Button onClick={shareToLine} className="flex-1">
+              แชร์ผ่าน LINE
+            </Button>
+            <Button
+              variant="soft"
+              icon="Copy"
+              onClick={() => {
+                navigator.clipboard.writeText(generateSummaryText())
+                setShowShareDialog(false)
+              }}
+            >
+              คัดลอก
+            </Button>
           </div>
-        </Modal>
+        </div>
+      </Modal>
     </>
   )
 }

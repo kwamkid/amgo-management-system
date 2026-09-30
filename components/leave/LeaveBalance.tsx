@@ -8,11 +8,11 @@ import {
   Activity,
   Heart,
   Briefcase,
-  TrendingUp,
-  AlertCircle
+  TrendingUp
 } from 'lucide-react';
 import { LeaveQuotaYear } from '@/types/leave';
-import { Progress, Alert, Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
+import { Progress, Alert, Pill, Card, CardContent, CardHeader, CardTitle, type PillTone, type ProgressTone } from '@/components/aoo'
+import InfoPanel from '@/components/shared/InfoPanel'
 interface LeaveBalanceProps {
   quota: LeaveQuotaYear | null;
   loading?: boolean;
@@ -38,79 +38,49 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
   return (
     <Card padding={0}>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-red-600" />
+        <CardTitle icon={Calendar} tone="accent">
           สิทธิ์การลา
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Alert tone="warning">
-          <div>
-            ยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล
-          </div>
+          ยังไม่ได้รับการกำหนดโควต้าการลา กรุณาติดต่อฝ่ายบุคคล
         </Alert>
       </CardContent>
     </Card>
   );
 }
 
-  const leaveTypes = [
-    {
-      type: 'sick',
-      label: 'ลาป่วย',
-      icon: Heart,
-      color: 'from-pink-500 to-rose-600',
-      bgColor: 'from-pink-50 to-rose-100',
-      iconColor: 'text-pink-600',
-      data: quota.sick
-    },
-    {
-      type: 'personal',
-      label: 'ลากิจ',
-      icon: Briefcase,
-      color: 'from-blue-500 to-indigo-600',
-      bgColor: 'from-blue-50 to-indigo-100',
-      iconColor: 'text-blue-600',
-      data: quota.personal
-    },
-    {
-      type: 'vacation',
-      label: 'ลาพักร้อน',
-      icon: Activity,
-      color: 'from-emerald-500 to-teal-600',
-      bgColor: 'from-emerald-50 to-teal-100',
-      iconColor: 'text-emerald-600',
-      data: quota.vacation
-    }
+  // สีตามประเภทลา (ตรงกับ StatusBadge kind="leaveType")
+  const leaveTypes: { type: string; label: string; icon: typeof Heart; tone: PillTone; bar: ProgressTone; data: typeof quota.sick }[] = [
+    { type: 'sick', label: 'ลาป่วย', icon: Heart, tone: 'pink', bar: 'danger', data: quota.sick },
+    { type: 'personal', label: 'ลากิจ', icon: Briefcase, tone: 'sky', bar: 'info', data: quota.personal },
+    { type: 'vacation', label: 'ลาพักร้อน', icon: Activity, tone: 'success', bar: 'success', data: quota.vacation },
   ];
 
   return (
     <Card padding={0}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-red-600" />
+          <CardTitle icon={Calendar} tone="accent">
             สิทธิ์การลาประจำปี {quota.year}
           </CardTitle>
-          <Pill tone="neutral" className="font-normal">
+          <Pill tone="neutral">
             อัพเดท: {quota.updatedAt ? new Date(quota.updatedAt).toLocaleDateString('th-TH') : '-'}
           </Pill>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {leaveTypes.map(({ type, label, icon: Icon, color, bgColor, iconColor, data }) => {
+        {leaveTypes.map(({ type, label, icon: Icon, tone, bar, data }) => {
           const percentage = data.total > 0 ? (data.used / data.total) * 100 : 0;
           
           return (
-            <div 
-              key={type}
-              className={`p-4 rounded-lg bg-gradient-to-r ${bgColor} border border-gray-100`}
-            >
+            <InfoPanel key={type} tone={tone} className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-white rounded-lg shadow-sm`}>
-                    <Icon className={`w-5 h-5 ${iconColor}`} />
-                  </div>
+                  <span className="aoo-title-icon" data-tone={tone}>
+                    <Icon size={19} strokeWidth={2} />
+                  </span>
                   <div>
                     <h4 className="font-medium text-gray-900">{label}</h4>
                     <p className="text-sm text-gray-600 mt-0.5">
@@ -128,14 +98,14 @@ export default function LeaveBalance({ quota, loading }: LeaveBalanceProps) {
                 <Progress 
                   value={percentage} 
                   className="h-2"
-                  tone={color.includes('red') || color.includes('rose') ? 'danger' : color.includes('orange') || color.includes('amber') ? 'warning' : color.includes('blue') || color.includes('indigo') ? 'info' : 'success'}
+                  tone={bar}
                 />
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{percentage.toFixed(0)}% ใช้ไปแล้ว</span>
                   <span>{data.remaining} วันคงเหลือ</span>
                 </div>
               </div>
-            </div>
+            </InfoPanel>
           );
         })}
         

@@ -11,12 +11,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ImagePlus, Plus, Save } from 'lucide-react'
+import { Building2, ImagePlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, ImageCropper, Modal } from '@/components/aoo'
-import { PageHeader, TechLoader } from '@/components/shared'
+import { Button, Field, ImageCropper, Input, Modal, Pill } from '@/components/aoo'
+import { PageHeader, SectionCard, TechLoader } from '@/components/shared'
 
 type CompanyRow = {
   id: string | null // null = แถวใหม่ ยังไม่บันทึก
@@ -30,9 +30,6 @@ type CompanyRow = {
   logo_url: string | null
   is_active: boolean
 }
-
-const FIELD =
-  'h-9 w-full rounded-lg border border-gray-200 px-2.5 text-sm outline-none focus:border-red-400'
 
 export default function CompanySettingsPage() {
   const router = useRouter()
@@ -169,6 +166,7 @@ export default function CompanySettingsPage() {
           <Button
             variant="secondary"
             size="sm"
+            icon="Plus"
             onClick={() =>
               setRows((prev) => [
                 ...prev!,
@@ -187,7 +185,7 @@ export default function CompanySettingsPage() {
               ])
             }
           >
-            <Plus size={15} /> เพิ่มบริษัท
+            เพิ่มบริษัท
           </Button>
         }
       />
@@ -257,7 +255,7 @@ function CompanyCard({
   const fileRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <SectionCard>
       <div className="flex flex-col gap-4 sm:flex-row">
         {/* โลโก้ — กดที่รูปเพื่อเปลี่ยน */}
         <div className="shrink-0">
@@ -290,78 +288,64 @@ function CompanyCard({
         </div>
 
         <div className="grid flex-1 gap-3 sm:grid-cols-3">
-          <label className="block">
-            <span className="text-xs text-gray-500">รหัสย่อ *</span>
-            <input
+          <Field label="รหัสย่อ" required>
+            <Input
               value={row.code}
               onChange={(e) => onChange({ code: e.target.value })}
-              placeholder="เช่น AGD"
-              className={`${FIELD} mt-0.5 uppercase`}
+              placeholder="เช่น AGD" className="uppercase"
             />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-gray-500">ชื่อบริษัท (ตามหนังสือรับรอง) *</span>
-            <input
+          </Field>
+          <Field label="ชื่อบริษัท (ตามหนังสือรับรอง)" required className="sm:col-span-2">
+            <Input
               value={row.name_th}
               onChange={(e) => onChange({ name_th: e.target.value })}
               placeholder="เช่น เอจี ดราก้อน จำกัด"
-              className={`${FIELD} mt-0.5`}
             />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-gray-500">ชื่อบริษัท (อังกฤษ)</span>
-            <input
+          </Field>
+          <Field label="ชื่อบริษัท (อังกฤษ)" className="sm:col-span-2">
+            <Input
               value={row.name_en}
               onChange={(e) => onChange({ name_en: e.target.value })}
               placeholder="เช่น AG DRAGON CO., LTD."
-              className={`${FIELD} mt-0.5`}
             />
-          </label>
-          <label className="block">
-            <span className="text-xs text-gray-500">คำต่อท้ายชื่อ</span>
-            <input
+          </Field>
+          <Field label="คำต่อท้ายชื่อ">
+            <Input
               value={row.branch_label}
               onChange={(e) => onChange({ branch_label: e.target.value })}
               placeholder="สำนักงานใหญ่"
-              className={`${FIELD} mt-0.5`}
             />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-xs text-gray-500">ที่อยู่สำนักงาน</span>
-            <input
+          </Field>
+          <Field label="ที่อยู่สำนักงาน" className="sm:col-span-2">
+            <Input
               value={row.address}
               onChange={(e) => onChange({ address: e.target.value })}
               placeholder="เลขที่ ถนน แขวง เขต จังหวัด รหัสไปรษณีย์"
-              className={`${FIELD} mt-0.5`}
             />
-          </label>
-          <label className="block">
-            <span className="text-xs text-gray-500">เบอร์โทร</span>
-            <input
+          </Field>
+          <Field label="เบอร์โทร">
+            <Input
               value={row.phone}
               onChange={(e) => onChange({ phone: e.target.value })}
-              placeholder="02-000-0000"
-              className={`${FIELD} mt-0.5 tabular-nums`}
+              placeholder="02-000-0000" className="tabular-nums"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs text-gray-500">เลขทะเบียน/ผู้เสียภาษี</span>
-            <input
+          </Field>
+          <Field label="เลขทะเบียน/ผู้เสียภาษี">
+            <Input
               value={row.registration_no}
               onChange={(e) => onChange({ registration_no: e.target.value })}
-              placeholder="13 หลัก"
-              className={`${FIELD} mt-0.5 font-mono tabular-nums`}
+              placeholder="13 หลัก" className="tabular-nums" mono
             />
-          </label>
+          </Field>
         </div>
       </div>
 
       <div className="mt-3 flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
-        {!row.id && <span className="text-xs text-orange-600">ยังไม่ได้บันทึก</span>}
-        <Button size="sm" onClick={onSave} disabled={saving}>
-          <Save size={14} /> {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+        {!row.id && <Pill tone="warning">ยังไม่ได้บันทึก</Pill>}
+        <Button size="sm" icon="Save" onClick={onSave} loading={saving}>
+          {saving ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>
       </div>
-    </div>
+    </SectionCard>
   )
 }

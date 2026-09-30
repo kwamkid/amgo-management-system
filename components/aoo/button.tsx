@@ -1,6 +1,8 @@
 "use client";
 
 import React, { type CSSProperties, type ButtonHTMLAttributes } from "react";
+import NextLink from "next/link";
+import { Spinner } from "./spinner";
 import {
   Wallet,
   Plus,
@@ -60,6 +62,20 @@ import {
   FileText,
   Undo2,
   Smartphone,
+  ArrowLeft,
+  ArrowRight,
+  Home,
+  Upload,
+  Camera,
+  Share2,
+  BellRing,
+  ClipboardPaste,
+  RadioTower,
+  PlayCircle,
+  RotateCcw,
+  Terminal,
+  ClipboardCopy,
+  ListChecks,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -125,6 +141,20 @@ const ICON_MAP: Record<string, React.FC<LucideProps>> = {
   FileText,
   Undo2,
   Smartphone,
+  ArrowLeft,
+  ArrowRight,
+  Home,
+  Upload,
+  Camera,
+  Share2,
+  BellRing,
+  ClipboardPaste,
+  RadioTower,
+  PlayCircle,
+  RotateCcw,
+  Terminal,
+  ClipboardCopy,
+  ListChecks,
 };
 
 /* ------------------------------------------------------------------ */
@@ -162,15 +192,22 @@ export function LucideIcon({ name, ...rest }: LucideIconProps) {
 /*  in CSS — change them by editing the .aoo-btn--* rules.            */
 /* ------------------------------------------------------------------ */
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "soft";
+type IconComponent = React.ComponentType<{ size?: number; strokeWidth?: number }>;
+
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "soft" | "link";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
   children?: React.ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: string;
-  iconRight?: string;
+  /** ชื่อใน ICON_MAP หรือ component ของ lucide เช่น icon={Camera} */
+  icon?: string | IconComponent;
+  iconRight?: string | IconComponent;
+  /** ใส่แล้วปุ่มเป็นลิงก์ (next/link) หน้าตาเดิม — แทน <Link><Button/></Link> */
+  href?: string;
+  /** Shows a spinner in place of the icon and disables the button. */
+  loading?: boolean;
   /** Escape hatch for one-off geometry (margins, width, etc). Internal
    *  visuals live in globals.css. */
   style?: CSSProperties;
@@ -178,16 +215,29 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 14, md: 16, lg: 18 };
 
-export function Button({
-  children,
-  variant = "primary",
-  size = "md",
-  icon,
-  iconRight,
-  className,
-  style: styleProp,
-  ...rest
-}: ButtonProps) {
+function renderIcon(icon: string | IconComponent | undefined, size: number) {
+  if (!icon) return null;
+  return typeof icon === "string"
+    ? <LucideIcon name={icon} size={size} />
+    : React.createElement(icon, { size, strokeWidth: 2 });
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    children,
+    variant = "primary",
+    size = "md",
+    icon,
+    iconRight,
+    href,
+    loading,
+    disabled,
+    className,
+    style: styleProp,
+    ...rest
+  },
+  ref,
+) {
   const iconSz = ICON_SIZE[size];
   const classes = [
     "aoo-btn",
@@ -198,14 +248,32 @@ export function Button({
     .filter(Boolean)
     .join(" ");
 
-  return (
-    <button {...rest} className={classes} style={styleProp}>
-      {icon && <LucideIcon name={icon} size={iconSz} />}
+  const content = (
+    <>
+      {loading ? (
+        <Spinner size="xs" tone={variant === "primary" || variant === "danger" ? "on-brand" : "brand"} />
+      ) : (
+        renderIcon(icon, iconSz)
+      )}
       {children}
-      {iconRight && <LucideIcon name={iconRight} size={iconSz} />}
+      {renderIcon(iconRight, iconSz)}
+    </>
+  );
+
+  if (href && !disabled && !loading) {
+    return (
+      <NextLink href={href} className={classes} style={styleProp} onClick={rest.onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}>
+        {content}
+      </NextLink>
+    );
+  }
+
+  return (
+    <button ref={ref} {...rest} disabled={disabled || loading} aria-busy={loading || undefined} className={classes} style={styleProp}>
+      {content}
     </button>
   );
-}
+});
 
 /* ------------------------------------------------------------------ */
 /*  IconButton                                                        */
@@ -215,10 +283,14 @@ export function Button({
 /*  needing a class per width.                                        */
 /* ------------------------------------------------------------------ */
 
-export type IconButtonTone = "ghost" | "sunken";
+export type IconButtonTone = "ghost" | "sunken" | "danger";
 
 export interface IconButtonProps {
-  icon: string;
+  /** ชื่อใน ICON_MAP หรือส่ง component ของ lucide มาตรง ๆ เช่น icon={Trash2} */
+  icon: string | IconComponent;
+  /** ป้ายสำหรับ screen reader (ถ้าไม่มี title) */
+  "aria-label"?: string;
+  type?: "button" | "submit";
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   size?: number;
   tone?: IconButtonTone;
@@ -228,7 +300,7 @@ export interface IconButtonProps {
   style?: CSSProperties;
 }
 
-export function IconButton({
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({
   icon,
   onClick,
   size = 32,
@@ -237,9 +309,13 @@ export function IconButton({
   disabled,
   className,
   style: styleProp,
-}: IconButtonProps) {
+  "aria-label": ariaLabel,
+  type = "button",
+}, ref) {
   const toneClass =
-    tone === "sunken" ? "aoo-btn--icon-sunken" : "aoo-btn--ghost";
+    tone === "sunken" ? "aoo-btn--icon-sunken"
+    : tone === "danger" ? "aoo-btn--ghost aoo-btn--icon-danger"
+    : "aoo-btn--ghost";
   const classes = ["aoo-btn", "aoo-btn--icon", toneClass, className]
     .filter(Boolean)
     .join(" ");
@@ -250,7 +326,9 @@ export function IconButton({
 
   return (
     <button
-      type="button"
+      ref={ref}
+      type={type}
+      aria-label={ariaLabel ?? title}
       title={title}
       disabled={disabled}
       className={classes}
@@ -262,7 +340,11 @@ export function IconButton({
       }}
       onClick={onClick}
     >
-      <LucideIcon name={icon} size={glyphSize} />
+      {typeof icon === "string" ? (
+        <LucideIcon name={icon} size={glyphSize} />
+      ) : (
+        React.createElement(icon, { size: glyphSize, strokeWidth: 2 })
+      )}
     </button>
   );
-}
+});

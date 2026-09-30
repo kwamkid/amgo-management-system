@@ -13,9 +13,9 @@
 
 import { use, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { FileText, Printer } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/aoo'
+import { Button, EmptyState } from '@/components/aoo'
 import { PageHeader, TechLoader } from '@/components/shared'
 import { DocumentSheet, printCss } from '@/components/documents/DocumentSheet'
 import { FitToWidth } from '@/components/documents/FitToWidth'
@@ -74,10 +74,7 @@ export default function DocumentViewPage({
 
   if (error) {
     return (
-      <div className="mx-auto max-w-md py-16 text-center">
-        <FileText size={32} className="mx-auto text-gray-300" />
-        <p className="mt-3 text-sm text-gray-600">{error}</p>
-      </div>
+      <EmptyState icon={<FileText size={32} />} body={error} size="lg" />
     )
   }
   if (!doc) return <TechLoader />
@@ -98,10 +95,11 @@ export default function DocumentViewPage({
           <Button
             variant="secondary"
             size="sm"
+            icon="Printer"
             onClick={() => window.print()}
             className="print:hidden"
           >
-            <Printer size={15} /> พิมพ์ / บันทึก PDF
+            พิมพ์ / บันทึก PDF
           </Button>
         }
       />

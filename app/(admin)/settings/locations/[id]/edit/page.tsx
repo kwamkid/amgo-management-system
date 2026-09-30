@@ -10,8 +10,7 @@ import { LocationFormData } from '@/types/location'
 import { ArrowLeft, MapPin, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
-import { gradients } from '@/lib/theme/colors'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, InfoPanel } from '@/components/shared'
 
 import { Alert, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
 export default function EditLocationPage({ 
@@ -51,8 +50,7 @@ export default function EditLocationPage({
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/settings/locations">
-            <Button variant="soft">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+            <Button variant="soft" icon="ChevronLeft">
               กลับไปหน้ารายการ
             </Button>
           </Link>
@@ -71,32 +69,31 @@ export default function EditLocationPage({
       />
 
       {/* Current Info Card */}
-      <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
+      <Card padding={0}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-900">
-            <MapPin className="w-5 h-5" />
-            ข้อมูลปัจจุบัน
-          </CardTitle>
+          <CardTitle icon={MapPin} tone="sky">ข้อมูลปัจจุบัน</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-blue-700 font-medium">ชื่อสถานที่</p>
-              <p className="text-blue-900">{location.name}</p>
+          <InfoPanel tone="sky">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500 font-medium">ชื่อสถานที่</p>
+                <p className="text-gray-900">{location.name}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 font-medium">สถานะ</p>
+                <p className="text-gray-900">{location.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 font-medium">รัศมี</p>
+                <p className="text-gray-900">{location.radius} เมตร</p>
+              </div>
+              <div>
+                <p className="text-gray-500 font-medium">จำนวนกะ</p>
+                <p className="text-gray-900">{location.shifts.length} กะ</p>
+              </div>
             </div>
-            <div>
-              <p className="text-blue-700 font-medium">สถานะ</p>
-              <p className="text-blue-900">{location.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</p>
-            </div>
-            <div>
-              <p className="text-blue-700 font-medium">รัศมี</p>
-              <p className="text-blue-900">{location.radius} เมตร</p>
-            </div>
-            <div>
-              <p className="text-blue-700 font-medium">จำนวนกะ</p>
-              <p className="text-blue-900">{location.shifts.length} กะ</p>
-            </div>
-          </div>
+          </InfoPanel>
         </CardContent>
       </Card>
 

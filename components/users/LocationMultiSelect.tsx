@@ -2,10 +2,11 @@
 
 'use client'
 
-import { Skeleton } from '@/components/shared'
+import { Skeleton, InfoPanel } from '@/components/shared'
+import { Checkbox } from '@/components/aoo'
 
 import { useLocations } from '@/hooks/useLocations'
-import { MapPin, Check } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
 interface LocationMultiSelectProps {
@@ -50,15 +51,15 @@ export default function LocationMultiSelect({
 
   if (locations.length === 0) {
     return (
-      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+      <InfoPanel>
         <span className="text-gray-500">ไม่มีสาขาในระบบ</span>
-      </div>
+      </InfoPanel>
     )
   }
 
   return (
     <div className="border border-gray-300 rounded-lg p-4 space-y-3">
-      {/* Select All */}
+      {/* Select All — ยังเป็น input ดิบเพราะต้องใช้ ref ตั้ง indeterminate (Checkbox กลางไม่รับ ref) */}
       <div className="flex items-center gap-3 pb-3 border-b">
         <input
           ref={selectAllRef}
@@ -67,7 +68,7 @@ export default function LocationMultiSelect({
           checked={selectedLocationIds.length === locations.length && locations.length > 0}
           onChange={toggleAll}
           disabled={disabled}
-          className="w-5 h-5 rounded text-red-600 focus:ring-red-500"
+          className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--accent)]"
         />
         <label 
           htmlFor="select-all-locations" 
@@ -89,13 +90,12 @@ export default function LocationMultiSelect({
                 isSelected ? 'bg-red-50' : 'hover:bg-gray-50'
               }`}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 id={`location-${location.id}`}
                 checked={isSelected}
                 onChange={() => toggleLocation(location.id!)}
                 disabled={disabled}
-                className="w-5 h-5 shrink-0 rounded text-red-600 focus:ring-red-500"
+                size={20}
               />
               <label
                 htmlFor={`location-${location.id}`}

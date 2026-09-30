@@ -13,15 +13,13 @@ import {
   Calendar,
   ChevronRight,
   AlertCircle,
-  CheckCircle,
-  Loader2
+  CheckCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
-import { colorClasses, gradients } from '@/lib/theme/colors'
-
-import { Alert, Pill, badgeTone, Card, CardContent, Button } from '@/components/aoo'
+import { InfoPanel } from '@/components/shared'
+import { Alert, Pill, type PillTone, Card, CardContent, Button, Spinner, EmptyState } from '@/components/aoo'
 interface CheckInHistoryProps {
   limit?: number
   showViewAll?: boolean
@@ -73,15 +71,15 @@ export default function CheckInHistory({
 
   const getStatusIcon = (record: CheckInRecord) => {
     if (record.status === 'checked-in') {
-      return <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+      return <div className="w-2 h-2 bg-[var(--sky-500)] rounded-full animate-pulse" />
     }
     if (record.status === 'pending') {
-      return <AlertCircle className="w-4 h-4 text-orange-500" />
+      return <AlertCircle className="w-4 h-4 text-[var(--sun-500)]" />
     }
     if (record.isLate) {
-      return <AlertCircle className="w-4 h-4 text-red-500" />
+      return <AlertCircle className="w-4 h-4 text-[var(--ruby-500)]" />
     }
-    return <CheckCircle className="w-4 h-4 text-teal-500" />
+    return <CheckCircle className="w-4 h-4 text-[var(--leaf-500)]" />
   }
 
   const getStatusText = (record: CheckInRecord) => {
@@ -100,18 +98,18 @@ export default function CheckInHistory({
     return 'เสร็จสิ้น'
   }
 
-  const getStatusVariant = (record: CheckInRecord): 'success' | 'warning' | 'error' | 'default' | 'info' => {
-    if (record.status === 'checked-in') return 'success'
+  const getStatusTone = (record: CheckInRecord): PillTone => {
+    if (record.status === 'checked-in') return 'sky'
     if (record.status === 'pending') return 'warning'
     if (record.autoCheckout) return 'info'
-    if (record.isLate) return 'error'
-    return 'default'
+    if (record.isLate) return 'danger'
+    return 'success'
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <Spinner size="md" />
       </div>
     )
   }
@@ -126,10 +124,7 @@ export default function CheckInHistory({
 
   if (records.length === 0) {
     return (
-      <div className="text-center py-8">
-        <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-500">ยังไม่มีประวัติการเช็คอิน</p>
-      </div>
+      <EmptyState icon={<Calendar size={40} />} title="ยังไม่มีประวัติการเช็คอิน" />
     )
   }
 
@@ -146,7 +141,7 @@ export default function CheckInHistory({
           : null
 
         return (
-          <Card padding={0} key={record.id} className="transition-">
+          <Card padding={0} key={record.id}>
             <CardContent className="p-4">
               {/* Date Header */}
               <div className="flex items-center justify-between mb-2">
@@ -158,7 +153,7 @@ export default function CheckInHistory({
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(record)}
-                  <Pill tone={badgeTone(getStatusVariant(record))} className="text-xs">
+                  <Pill tone={getStatusTone(record)}>
                     {getStatusText(record)}
                   </Pill>
                 </div>
@@ -186,7 +181,7 @@ export default function CheckInHistory({
                       : '-'
                     }
                     {record.overtimeHours > 0 && (
-                      <span className="text-xs text-orange-600 ml-1">
+                      <span className="text-xs text-[var(--brand-coral-600)] ml-1">
                         (OT {formatWorkingHours(record.overtimeHours)})
                       </span>
                     )}
@@ -200,7 +195,7 @@ export default function CheckInHistory({
                     <MapPin className="w-4 h-4 text-gray-400" />
                     <span>{record.primaryLocationName || 'เช็คอินนอกสถานที่'}</span>
                     {record.isLate && (
-                      <Pill tone="danger" className="ml-auto text-xs">
+                      <Pill tone="danger" className="ml-auto">
                         สาย {record.lateMinutes} นาที
                       </Pill>
                     )}
@@ -218,7 +213,7 @@ export default function CheckInHistory({
               {/* Note or Warning */}
               {record.autoCheckout && (
                 <Alert tone="info" className="mt-2 py-2">
-                  <div className="text-xs text-blue-700">
+                  <div className="text-xs">
                     🤖 ลืมเช็คเอาท์ — ระบบปิดให้ที่เวลาเลิกงาน
                   </div>
                 </Alert>
@@ -231,11 +226,9 @@ export default function CheckInHistory({
                 </Alert>
               )}
               {record.note && (
-                <Card padding={0} className="mt-2">
-                  <CardContent className="p-3">
-                    <p className="text-xs text-gray-600">💬 {record.note}</p>
-                  </CardContent>
-                </Card>
+                <InfoPanel className="mt-2">
+                  <p className="text-xs text-gray-600">💬 {record.note}</p>
+                </InfoPanel>
               )}
             </CardContent>
           </Card>

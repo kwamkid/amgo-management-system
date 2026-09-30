@@ -3,19 +3,14 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  Calendar,
+import {
   DollarSign,
   FileText,
   Link as LinkIcon,
   Package,
   ShoppingBag,
   Users,
-  ArrowLeft,
-  Loader2,
   Plus,
-  X,
-  Check,
   Search,
   Edit,
   Trash2,
@@ -34,7 +29,24 @@ import { useProducts } from '@/hooks/useProducts'
 import { cn } from '@/lib/utils'
 import BrandModal from '@/components/brand/BrandModal'
 import ProductModal from '@/components/product/ProductModal'
-import { Textarea, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import {
+  Textarea,
+  Input,
+  Field,
+  DatePicker,
+  Checkbox,
+  Alert,
+  Pill,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  IconButton,
+  EmptyState,
+  useConfirm,
+} from '@/components/aoo'
+import { PageHeader, StatusBadge } from '@/components/shared'
 interface CampaignFormProps {
   campaign?: Campaign | null
   onSubmit: (data: CreateCampaignData) => Promise<string | null | boolean>
@@ -68,6 +80,7 @@ export default function CampaignForm({
   })
   
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const { confirm, dialog } = useConfirm()
   
   // Search states
   const [influencerSearch, setInfluencerSearch] = useState('')
@@ -174,7 +187,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   
   if (!validateForm()) {
     // Scroll to first error
-    const firstError = document.querySelector('.border-red-500')
+    const firstError = document.querySelector('[role="alert"]')
     firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return
   }
@@ -305,32 +318,44 @@ const handleSubmit = async (e: React.FormEvent) => {
     return success
   }
 
+  const handleDeleteBrand = async (brand: Brand) => {
+    const ok = await confirm({ title: `ลบ Brand "${brand.name}"?`, confirmLabel: 'ลบ', tone: 'danger' })
+    if (ok) {
+      deleteBrand(brand.id!)
+    }
+  }
+
+  const handleDeleteProduct = async (product: Product) => {
+    const ok = await confirm({ title: `ลบสินค้า "${product.name}"?`, confirmLabel: 'ลบ', tone: 'danger' })
+    if (ok) {
+      deleteProduct(product.id!)
+    }
+  }
+
+  // กล่องเลือก (Influencer/Brand/สินค้า) — เลือกแล้วขึ้นพื้นเขียว
+  const pickClass = (selected: boolean) =>
+    cn(
+      'p-3 border rounded-lg cursor-pointer transition-all',
+      selected ? 'bg-green-50 border-green-300' : 'hover:bg-gray-50 border-gray-200'
+    )
+
   return (
     <>
+      {dialog}
       <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/campaigns')}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isEditMode ? 'แก้ไข Campaign' : 'สร้าง Campaign ใหม่'}
-          </h1>
-        </div>
+        <PageHeader
+          title={isEditMode ? 'แก้ไข Campaign' : 'สร้าง Campaign ใหม่'}
+          onBack={() => router.push('/campaigns')}
+        />
 
         {/* Campaign Details */}
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-red-600" />
-              ข้อมูล Campaign
-            </CardTitle>
+            <CardTitle icon={TrendingUp} tone="accent">ข้อมูล Campaign</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="name">
-                ชื่อ Campaign <span className="text-red-500">*</span>
-              </Label>
+            <Field label="ชื่อ Campaign" required error={errors.name || undefined}>
               <Input
                 id="name"
                 value={formData.name}
@@ -339,17 +364,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                   setErrors({ ...errors, name: '' })
                 }}
                 placeholder="เช่น: Summer Beauty Campaign 2024"
-                className={errors.name ? 'border-red-500' : ''}
+                error={!!errors.name}
               />
-              {errors.name && (
-                <p className="text-sm text-red-600 mt-1">{errors.name}</p>
-              )}
-            </div>
+            </Field>
 
-            <div>
-              <Label htmlFor="description">
-                รายละเอียด Campaign <span className="text-red-500">*</span>
-              </Label>
+            <Field label="รายละเอียด Campaign" required error={errors.description || undefined}>
               <Textarea
                 id="description"
                 value={formData.description}
@@ -359,96 +378,68 @@ const handleSubmit = async (e: React.FormEvent) => {
                 }}
                 placeholder="อธิบายรายละเอียดของ Campaign..."
                 rows={4}
-                className={errors.description ? 'border-red-500' : ''}
+                error={!!errors.description}
               />
-              {errors.description && (
-                <p className="text-sm text-red-600 mt-1">{errors.description}</p>
-              )}
-            </div>
+            </Field>
 
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate">
-                  <Calendar className="inline w-4 h-4 mr-1" />
-                  วันที่เริ่ม
-                </Label>
-                <Input
-                  id="startDate"
-                  type="date"
+              <Field label="วันที่เริ่ม" asDiv>
+                <DatePicker
                   value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  onChange={(v) => setFormData({ ...formData, startDate: v })}
                   min={new Date().toISOString().split('T')[0]}
                 />
-              </div>
+              </Field>
 
-              <div>
-                <Label htmlFor="deadline">
-                  <Calendar className="inline w-4 h-4 mr-1" />
-                  Deadline <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="deadline"
-                  type="date"
+              <Field label="Deadline" required asDiv error={errors.deadline || undefined}>
+                <DatePicker
                   value={formData.deadline}
-                  onChange={(e) => {
-                    setFormData({ ...formData, deadline: e.target.value })
+                  onChange={(v) => {
+                    setFormData({ ...formData, deadline: v })
                     setErrors({ ...errors, deadline: '' })
                   }}
                   min={formData.startDate}
-                  className={errors.deadline ? 'border-red-500' : ''}
                 />
-                {errors.deadline && (
-                  <p className="text-sm text-red-600 mt-1">{errors.deadline}</p>
-                )}
-              </div>
+              </Field>
             </div>
 
             {/* Budget, Brief, and Tracking URL in one row */}
             <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="budget">
-                  <DollarSign className="inline w-4 h-4 mr-1" />
-                  งบประมาณ (บาท)
-                </Label>
+              <Field label="งบประมาณ (บาท)">
                 <Input
                   id="budget"
                   type="number"
+                  prefix={<DollarSign size={16} />}
                   value={formData.budget || ''}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    budget: e.target.value ? parseInt(e.target.value) : undefined 
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    budget: e.target.value ? parseInt(e.target.value) : undefined
                   })}
                   placeholder="ไม่ระบุ = ไม่มีงบ"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <Label htmlFor="briefFileUrl">
-                  <FileText className="inline w-4 h-4 mr-1" />
-                  Link Brief File
-                </Label>
+              <Field label="Link Brief File">
                 <Input
                   id="briefFileUrl"
                   type="url"
+                  prefix={<FileText size={16} />}
                   value={formData.briefFileUrl}
                   onChange={(e) => setFormData({ ...formData, briefFileUrl: e.target.value })}
                   placeholder="https://drive.google.com/..."
                 />
-              </div>
+              </Field>
 
-              <div>
-                <Label htmlFor="trackingUrl">
-                  <LinkIcon className="inline w-4 h-4 mr-1" />
-                  Link บิลส่งของ
-                </Label>
+              <Field label="Link บิลส่งของ">
                 <Input
                   id="trackingUrl"
                   type="url"
+                  prefix={<LinkIcon size={16} />}
                   value={formData.trackingUrl}
                   onChange={(e) => setFormData({ ...formData, trackingUrl: e.target.value })}
                   placeholder="https://tracking.example.com/..."
                 />
-              </div>
+              </Field>
             </div>
           </CardContent>
         </Card>
@@ -456,15 +447,14 @@ const handleSubmit = async (e: React.FormEvent) => {
         {/* Select Influencers */}
         <Card padding={0}>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="w-5 h-5 text-red-600" />
+            <CardTitle icon={Users} tone="pink">
               เลือก Influencer <span className="text-red-500">*</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {/* Search */}
-            <div className="relative mb-4">
-                            <Input
+            <div className="mb-4">
+              <Input
                 prefix={<Search size={16} />}
                 type="text"
                 placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, อีเมล..."
@@ -479,54 +469,48 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {/* Selected count */}
             <div className="mb-3">
-              <Pill tone="neutral">
+              <Pill tone={formData.influencerIds.length > 0 ? 'success' : 'neutral'}>
                 เลือกแล้ว {formData.influencerIds.length} คน
               </Pill>
             </div>
 
             {errors.influencers && (
-              <Alert tone="error" className="mb-4">
-                <div>{errors.influencers}</div>
-              </Alert>
+              <Alert tone="error" className="mb-4">{errors.influencers}</Alert>
             )}
 
             {/* Influencer grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto">
               {isSearching ? (
-                <p className="col-span-full text-center py-8 text-gray-500">กำลังค้นหา...</p>
+                <EmptyState size="sm" className="col-span-full" body="กำลังค้นหา..." />
               ) : filteredInfluencers.length === 0 ? (
-                <p className="col-span-full text-center py-8 text-gray-500">
-                  {influencerSearch ? 'ไม่พบ Influencer ที่ค้นหา' : 'ไม่มีข้อมูล Influencer'}
-                </p>
+                <EmptyState
+                  size="sm"
+                  className="col-span-full"
+                  icon={<Users size={28} />}
+                  body={influencerSearch ? 'ไม่พบ Influencer ที่ค้นหา' : 'ไม่มีข้อมูล Influencer'}
+                />
               ) : (
                 filteredInfluencers.map((influencer) => (
                   <div
                     key={influencer.id}
-                    className={cn(
-                      "p-3 border rounded-lg cursor-pointer transition-all",
-                      formData.influencerIds.includes(influencer.id!)
-                        ? "bg-green-50 border-green-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                    )}
+                    className={pickClass(formData.influencerIds.includes(influencer.id!))}
                     onClick={() => toggleInfluencer(influencer.id!)}
                   >
                     <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={formData.influencerIds.includes(influencer.id!)}
-                        onChange={() => toggleInfluencer(influencer.id!)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <span className="mt-1 flex">
+                        <Checkbox
+                          checked={formData.influencerIds.includes(influencer.id!)}
+                          onChange={() => toggleInfluencer(influencer.id!)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </span>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{influencer.fullName}</p>
                         <p className="text-xs text-gray-600">
                           @{influencer.nickname}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <Pill tone="neutral" className="text-xs">
-                            {influencer.tier}
-                          </Pill>
+                          <StatusBadge status={influencer.tier} kind="tier" />
                           <span className="text-xs text-gray-500">
                             {influencer.totalFollowers?.toLocaleString() || 0} followers
                           </span>
@@ -545,70 +529,67 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* Brands */}
           <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-red-600" />
+              <div className="flex items-center justify-between">
+                <CardTitle icon={Package} tone="plum">
                   เลือก Brand <span className="text-red-500">*</span>
-                </div>
-                <Button type="button" size="sm" variant="ghost" onClick={() => {
- setBrandModalData({ mode: 'create' })
- setBrandModalOpen(true)
- }}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </CardTitle>
+                </CardTitle>
+                <IconButton
+                  icon={Plus}
+                  title="เพิ่ม Brand"
+                  onClick={() => {
+                    setBrandModalData({ mode: 'create' })
+                    setBrandModalOpen(true)
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {errors.brands && (
-                <Alert tone="error" className="mb-4">
-                  <div>{errors.brands}</div>
-                </Alert>
+                <Alert tone="error" className="mb-4">{errors.brands}</Alert>
               )}
 
               <div className="space-y-2">
                 {brands.map((brand) => (
                   <div
                     key={brand.id}
-                    className={cn(
-                      "p-3 border rounded-lg cursor-pointer transition-all",
-                      formData.brandIds.includes(brand.id!)
-                        ? "bg-green-50 border-green-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                    )}
+                    className={pickClass(formData.brandIds.includes(brand.id!))}
                     onClick={() => toggleBrand(brand.id!)}
                   >
                     <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={formData.brandIds.includes(brand.id!)}
                         onChange={() => toggleBrand(brand.id!)}
-                        className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                         onClick={(e) => e.stopPropagation()}
                       />
                       {brand.logo && (
-                        <img 
-                          src={brand.logo} 
+                        <img
+                          src={brand.logo}
                           alt={brand.name}
                           className="w-8 h-8 object-contain"
                         />
                       )}
                       <span className="font-medium flex-1">{brand.name}</span>
                       <div className="flex gap-1">
-                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
- e.stopPropagation()
- setBrandModalData({ mode: 'edit', brand })
- setBrandModalOpen(true)
- }}>
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
- e.stopPropagation()
- if (confirm(`ลบ Brand "${brand.name}"?`)) {
- deleteBrand(brand.id!)
- }
- }}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        <IconButton
+                          icon={Edit}
+                          title="แก้ไข Brand"
+                          size={28}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setBrandModalData({ mode: 'edit', brand })
+                            setBrandModalOpen(true)
+                          }}
+                        />
+                        <IconButton
+                          icon={Trash2}
+                          title="ลบ Brand"
+                          tone="danger"
+                          size={28}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteBrand(brand)
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -620,66 +601,54 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* Products */}
           <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-red-600" />
+              <div className="flex items-center justify-between">
+                <CardTitle icon={ShoppingBag} tone="sky">
                   เลือกสินค้า <span className="text-red-500">*</span>
-                </div>
+                </CardTitle>
                 {formData.brandIds.length > 0 && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => {
- setProductModalData({ 
- mode: 'create',
- defaultBrandId: formData.brandIds[0]
- })
- setProductModalOpen(true)
- }}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                  <IconButton
+                    icon={Plus}
+                    title="เพิ่มสินค้า"
+                    onClick={() => {
+                      setProductModalData({
+                        mode: 'create',
+                        defaultBrandId: formData.brandIds[0]
+                      })
+                      setProductModalOpen(true)
+                    }}
+                  />
                 )}
-              </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               {errors.products && (
-                <Alert tone="error" className="mb-4">
-                  <div>{errors.products}</div>
-                </Alert>
+                <Alert tone="error" className="mb-4">{errors.products}</Alert>
               )}
 
               {formData.brandIds.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
-                  กรุณาเลือก Brand ก่อน
-                </p>
+                <EmptyState size="sm" icon={<Package size={28} />} body="กรุณาเลือก Brand ก่อน" />
               ) : availableProducts.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
-                  ไม่มีสินค้าจาก Brand ที่เลือก
-                </p>
+                <EmptyState size="sm" icon={<ShoppingBag size={28} />} body="ไม่มีสินค้าจาก Brand ที่เลือก" />
               ) : (
                 <div className="space-y-2">
                   {availableProducts.map((product) => {
                     const brand = brands.find(b => b.id === product.brandId)
-                    
+
                     return (
                       <div
                         key={product.id}
-                        className={cn(
-                          "p-3 border rounded-lg cursor-pointer transition-all",
-                          formData.productIds.includes(product.id!)
-                            ? "bg-green-50 border-green-300"
-                            : "hover:bg-gray-50 border-gray-200"
-                        )}
+                        className={pickClass(formData.productIds.includes(product.id!))}
                         onClick={() => toggleProduct(product.id!)}
                       >
                         <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={formData.productIds.includes(product.id!)}
                             onChange={() => toggleProduct(product.id!)}
-                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                             onClick={(e) => e.stopPropagation()}
                           />
                           {product.image && (
-                            <img 
-                              src={product.image} 
+                            <img
+                              src={product.image}
                               alt={product.name}
                               className="w-8 h-8 object-cover rounded"
                             />
@@ -689,21 +658,26 @@ const handleSubmit = async (e: React.FormEvent) => {
                             <p className="text-xs text-gray-600">{brand?.name}</p>
                           </div>
                           <div className="flex gap-1">
-                            <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
- e.stopPropagation()
- setProductModalData({ mode: 'edit', product })
- setProductModalOpen(true)
- }}>
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button type="button" size="sm" variant="ghost" className="h-6 w-6" onClick={(e) => {
- e.stopPropagation()
- if (confirm(`ลบสินค้า "${product.name}"?`)) {
- deleteProduct(product.id!)
- }
- }}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            <IconButton
+                              icon={Edit}
+                              title="แก้ไขสินค้า"
+                              size={28}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setProductModalData({ mode: 'edit', product })
+                                setProductModalOpen(true)
+                              }}
+                            />
+                            <IconButton
+                              icon={Trash2}
+                              title="ลบสินค้า"
+                              tone="danger"
+                              size={28}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteProduct(product)
+                              }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -717,21 +691,11 @@ const handleSubmit = async (e: React.FormEvent) => {
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">
-          <Button type="button" variant="soft" onClick={() => router.push('/campaigns')}
- disabled={isSubmitting}>
+          <Button type="button" variant="soft" onClick={() => router.push('/campaigns')} disabled={isSubmitting}>
             ยกเลิก
           </Button>
-          <Button type="submit" disabled={isSubmitting} className="-">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                กำลังบันทึก...
-              </>
-            ) : (
-              <>
-                {isEditMode ? 'บันทึกการแก้ไข' : 'สร้าง Campaign'}
-              </>
-            )}
+          <Button type="submit" loading={isSubmitting}>
+            {isSubmitting ? 'กำลังบันทึก...' : isEditMode ? 'บันทึกการแก้ไข' : 'สร้าง Campaign'}
           </Button>
         </div>
       </form>

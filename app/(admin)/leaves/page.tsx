@@ -3,24 +3,19 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Progress, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { PageHeader, StatCard, StatusBadge, InfoPanel, ListRow, ListRows } from '@/components/shared'
+import { Button as AooButton, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, EmptyState } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useLeave } from '@/hooks/useLeave'
 import { 
   Calendar, 
-  FileText, 
   Clock, 
   CheckCircle,
   XCircle,
-  AlertCircle,
-  TrendingUp,
-  Plus,
-  History,
   CalendarCheck,
-  Users
+  Users,
+  Lightbulb
 } from 'lucide-react'
-import { gradients, colorClasses } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import LeaveBalance from '@/components/leave/LeaveBalance'
 import Link from 'next/link'
@@ -91,10 +86,8 @@ export default function LeavePage() {
 
       {/* Pending Alert */}
       {pendingCount > 0 && (
-        <Alert tone="info">
-          <div className="text-orange-800">
-            คุณมี <strong>{pendingCount}</strong> คำขอลาที่รอการอนุมัติ
-          </div>
+        <Alert tone="warning">
+          คุณมี <strong>{pendingCount}</strong> คำขอลาที่รอการอนุมัติ
         </Alert>
       )}
 
@@ -105,35 +98,9 @@ export default function LeavePage() {
           
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <Card padding={0}>
-              <CardContent className="p-6 text-center">
-                <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl mb-3`}>
-                  <Clock className="w-6 h-6 text-orange-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
-                <p className="text-sm text-gray-600">รออนุมัติ</p>
-              </CardContent>
-            </Card>
-
-            <Card padding={0}>
-              <CardContent className="p-6 text-center">
-                <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl mb-3`}>
-                  <CheckCircle className="w-6 h-6 text-teal-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{approvedCount}</p>
-                <p className="text-sm text-gray-600">อนุมัติแล้ว</p>
-              </CardContent>
-            </Card>
-
-            <Card padding={0}>
-              <CardContent className="p-6 text-center">
-                <div className={`inline-flex p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl mb-3`}>
-                  <XCircle className="w-6 h-6 text-red-600" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{rejectedCount}</p>
-                <p className="text-sm text-gray-600">ไม่อนุมัติ</p>
-              </CardContent>
-            </Card>
+            <StatCard label="รออนุมัติ" value={pendingCount} icon={Clock} tone="warning" />
+            <StatCard label="อนุมัติแล้ว" value={approvedCount} icon={CheckCircle} tone="success" />
+            <StatCard label="ไม่อนุมัติ" value={rejectedCount} icon={XCircle} tone="danger" />
           </div>
 
           {/* Recent Leave Requests */}
@@ -146,56 +113,48 @@ export default function LeavePage() {
             </CardHeader>
             <CardContent>
               {myLeaves.length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">ยังไม่มีประวัติการลา</p>
-                  <Link href="/leaves/request">
-                    <Button variant="soft" className="mt-4">
-                      <Plus className="w-4 h-4 mr-2" />
-                      ขอลาครั้งแรก
-                    </Button>
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={<Calendar size={40} />}
+                  title="ยังไม่มีประวัติการลา"
+                  action={
+                    <Link href="/leaves/request">
+                      <Button variant="soft" icon="Plus">
+                        ขอลาครั้งแรก
+                      </Button>
+                    </Link>
+                  }
+                />
               ) : (
                 <div className="space-y-3">
-                  {myLeaves.slice(0, 5).map((leave) => (
-                    <Card padding={0} key={leave.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">
-                                {LEAVE_TYPE_LABELS[leave.type]}
-                              </p>
-                              <Pill 
-                                tone={badgeTone(
-                                  leave.status === 'approved' ? 'success' :
-                                  leave.status === 'rejected' ? 'error' :
-                                  leave.status === 'cancelled' ? 'secondary' :
-                                  'warning'
-                                )}
-                              >
-                                {leave.status === 'approved' && 'อนุมัติแล้ว'}
-                                {leave.status === 'rejected' && 'ไม่อนุมัติ'}
-                                {leave.status === 'pending' && 'รออนุมัติ'}
-                                {leave.status === 'cancelled' && 'ยกเลิก'}
-                              </Pill>
-                            </div>
-                            <p className="text-sm text-gray-600">
+                  <ListRows variant="boxed">
+                    {myLeaves.slice(0, 5).map((leave) => (
+                      <ListRow
+                        key={leave.id}
+                        title={
+                          <span className="flex items-center gap-2">
+                            {LEAVE_TYPE_LABELS[leave.type]}
+                            <StatusBadge status={leave.status} />
+                          </span>
+                        }
+                        meta={
+                          <>
+                            <p>
                               {formatDateRange(leave.startDate, leave.endDate, 'dd MMM yyyy')}
                               <span className="ml-2">({leave.totalDays} วัน)</span>
                             </p>
-                            <p className="text-sm text-gray-500">{leave.reason}</p>
-                          </div>
+                            <p>{leave.reason}</p>
+                          </>
+                        }
+                        trailing={
                           <Link href="/leaves/history">
                             <Button variant="ghost" size="sm">
                               ดูรายละเอียด
                             </Button>
                           </Link>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        }
+                      />
+                    ))}
+                  </ListRows>
                   
                   {myLeaves.length > 5 && (
                     <Link href="/leaves/history" className="block">
@@ -215,7 +174,7 @@ export default function LeavePage() {
           {/* Quick Actions */}
           <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-lg">การดำเนินการ</CardTitle>
+              <CardTitle>การดำเนินการ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Link href="/leaves/request" className="block">
@@ -225,8 +184,7 @@ export default function LeavePage() {
                 </Button>
               </Link>
               <Link href="/leaves/history" className="block">
-                <Button className="w-full justify-start" variant="soft">
-                  <History className="w-4 h-4 mr-2" />
+                <Button className="w-full justify-start" variant="soft" icon="History">
                   ดูประวัติการลา
                 </Button>
               </Link>
@@ -237,35 +195,34 @@ export default function LeavePage() {
           {upcomingLeaves.length > 0 && (
             <Card padding={0}>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-red-600" />
+                <CardTitle icon={Calendar} tone="accent">
                   วันลาที่จะถึง
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {upcomingLeaves.map((leave) => (
-                  <div key={leave.id} className="p-3 bg-gray-50 rounded-lg">
+                  <InfoPanel key={leave.id}>
                     <p className="font-medium text-sm">
                       {LEAVE_TYPE_LABELS[leave.type]}
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
                       {formatDateRange(leave.startDate, leave.endDate, 'dd MMM yyyy')}
                     </p>
-                  </div>
+                  </InfoPanel>
                 ))}
               </CardContent>
             </Card>
           )}
 
           {/* Tips */}
-          <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.infoLight}`}>
+          <Card padding={0}>
             <CardHeader>
-              <CardTitle className="text-lg text-blue-900">
-                💡 เคล็ดลับ
+              <CardTitle icon={Lightbulb} tone="warning">
+                เคล็ดลับ
               </CardTitle>
             </CardHeader>
             <CardContent>
-             <ul className="space-y-2 text-sm text-blue-800">
+             <ul className="space-y-2 text-sm text-gray-700">
               <li>• ลาป่วยเกิน 2 วันต้องแนบใบรับรองแพทย์</li>
               <li>• ลากิจต้องแจ้งล่วงหน้า 3 วัน</li>      {/* เปลี่ยนจาก "ลาล่วงหน้าอย่างน้อย 3 วัน" */}
               <li>• ลาพักร้อนต้องแจ้งล่วงหน้า 7 วัน</li>  {/* เพิ่มบรรทัดนี้ */}
@@ -276,21 +233,19 @@ export default function LeavePage() {
 
           {/* Management Card for HR/Admin */}
           {isManagement && (
-            <Card padding={0} className={`border-0 shadow-md bg-gradient-to-r ${gradients.purpleLight}`}>
+            <Card padding={0}>
               <CardHeader>
-                <CardTitle className="text-lg text-purple-900 flex items-center gap-2">
-                  <Users className="w-5 h-5" />
+                <CardTitle icon={Users} tone="grape">
                   การจัดการ
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Link href="/leaves/management">
-                  <Button className="w-full justify-start" variant="soft">
-                    <FileText className="w-4 h-4 mr-2" />
+                  <Button className="w-full justify-start" variant="soft" icon="FileText">
                     จัดการคำขอลาพนักงาน
                   </Button>
                 </Link>
-                <p className="text-sm text-purple-700 mt-3">
+                <p className="text-sm text-gray-600 mt-3">
                   มีคำขอรออนุมัติ {teamLeaves.filter(l => l.status === 'pending').length} รายการ
                 </p>
               </CardContent>

@@ -8,26 +8,18 @@ import { useAuth } from '@/hooks/useAuth'
 import { useLeave } from '@/hooks/useLeave'
 import { 
   Calendar, 
-  Users, 
   Clock, 
   CheckCircle,
   XCircle,
-  AlertCircle,
-  Filter,
-  TrendingUp,
-  User,
-  FileText,
-  ChevronRight
+  FileText
 } from 'lucide-react'
-import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
 import { getLeaveRequests } from '@/lib/services/leaveService'
 import { LeaveRequest, LEAVE_TYPE_LABELS } from '@/types/leave'
-import { PageHeader } from '@/components/shared'
-import { Textarea, Input, Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select, Modal } from '@/components/aoo'
+import { PageHeader, StatCard, StatusBadge, FilterBar, FilterSelect, UserAvatar } from '@/components/shared'
+import { Textarea, Alert, Pill, Card, CardContent, Button, Modal, EmptyState } from '@/components/aoo'
 interface ExtendedLeaveRequest extends LeaveRequest {
   userAvatar?: string;
 }
@@ -61,25 +53,6 @@ const safeFormatDate = (date: any, formatString: string, options?: any) => {
     return '-'
   }
 }
-
-// Leave type styling
-const leaveTypeStyles = {
-  sick: {
-    bg: 'bg-pink-50',
-    border: 'border-pink-200',
-    shadow: 'shadow-pink-100/50'
-  },
-  personal: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    shadow: 'shadow-blue-100/50'
-  },
-  vacation: {
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    shadow: 'shadow-emerald-100/50'
-  }
-};
 
 export default function LeaveManagementPage() {
   const router = useRouter()
@@ -188,11 +161,8 @@ export default function LeaveManagementPage() {
   if (!canManage) {
     return (
       <div className="max-w-4xl">
-        <Alert tone="error">
-          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-          <div>
-            เฉพาะ HR, Admin และ Manager เท่านั้น
-          </div>
+        <Alert tone="error" title="ไม่มีสิทธิ์เข้าถึงหน้านี้">
+          เฉพาะ HR, Admin และ Manager เท่านั้น
         </Alert>
         <div className="mt-4 text-center">
           <Link href="/leaves">
@@ -220,169 +190,72 @@ export default function LeaveManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.grayLight} rounded-xl`}>
-                <FileText className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">รออนุมัติ</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{stats.pending}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.warningLight} rounded-xl`}>
-                <Clock className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">อนุมัติแล้ว</p>
-                <p className="text-2xl font-bold text-teal-600 mt-1">{stats.approved}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.successLight} rounded-xl`}>
-                <CheckCircle className="w-6 h-6 text-teal-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ไม่อนุมัติ</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">{stats.rejected}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br ${gradients.errorLight} rounded-xl`}>
-                <XCircle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ยกเลิก</p>
-                <p className="text-2xl font-bold text-gray-600 mt-1">{stats.cancelled}</p>
-              </div>
-              <div className={`p-3 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl`}>
-                <XCircle className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard label="ทั้งหมด" value={stats.total} icon={FileText} tone="sky" />
+        <StatCard label="รออนุมัติ" value={stats.pending} icon={Clock} tone="warning" />
+        <StatCard label="อนุมัติแล้ว" value={stats.approved} icon={CheckCircle} tone="success" />
+        <StatCard label="ไม่อนุมัติ" value={stats.rejected} icon={XCircle} tone="danger" />
+        <StatCard label="ยกเลิก" value={stats.cancelled} icon={XCircle} tone="muted" />
       </div>
 
       {/* Pending Alert */}
       {stats.pending > 0 && (
-        <Alert tone="info">
-          <p className="font-semibold text-orange-900">มีคำขอรออนุมัติ</p>
-          <div className="text-orange-800">
-            มี <strong>{stats.pending}</strong> คำขอลาที่รอการอนุมัติจากคุณ
-          </div>
+        <Alert tone="warning" title="มีคำขอรออนุมัติ">
+          มี <strong>{stats.pending}</strong> คำขอลาที่รอการอนุมัติจากคุณ
         </Alert>
       )}
 
       {/* Filters */}
-      <Card padding={0}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                                <Input
-                  prefix={<User size={16} />}
-                  placeholder="ค้นหาด้วยชื่อพนักงาน..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <Select value={filter} onChange={(e) => ((value: any) => setFilter(value))(e.target.value)} className="w-full md:w-48">
-<option value="">สถานะ</option>
-              
-              
-                <option value="all">ทั้งหมด</option>
-                <option value="pending">รออนุมัติ</option>
-                <option value="approved">อนุมัติแล้ว</option>
-                <option value="rejected">ไม่อนุมัติ</option>
-                <option value="cancelled">ยกเลิก</option>
-              
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar
+        search={searchTerm}
+        onSearch={setSearchTerm}
+        placeholder="ค้นหาด้วยชื่อพนักงาน..."
+        sticky={false}
+      >
+        <FilterSelect
+          label="สถานะ"
+          value={filter === 'all' ? null : filter}
+          options={[
+            { value: 'pending', label: 'รออนุมัติ' },
+            { value: 'approved', label: 'อนุมัติแล้ว' },
+            { value: 'rejected', label: 'ไม่อนุมัติ' },
+            { value: 'cancelled', label: 'ยกเลิก' },
+          ]}
+          onChange={(v) => setFilter((v ?? 'all') as typeof filter)}
+        />
+      </FilterBar>
 
       {/* Leave Requests List */}
       {filteredLeaves.length === 0 ? (
         <Card padding={0}>
-          <CardContent className="py-16 text-center">
-            <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">ไม่พบคำขอลา</p>
-          </CardContent>
+          <EmptyState icon={<Calendar size={40} />} title="ไม่พบคำขอลา" />
         </Card>
       ) : (
         <div className="space-y-3">
           {filteredLeaves.map((leave) => {
-            const style = leaveTypeStyles[leave.type];
             return (
-              <Card padding={0} key={leave.id} className={`border ${style.border} ${style.bg} hover:shadow-md transition-shadow`}>
+              <Card padding={0} key={leave.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       {/* Row 1: Employee Info + Type + Status */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          {/* Profile Image */}
-                          {leave.userAvatar ? (
-                            <img
-                              src={leave.userAvatar}
-                              alt={leave.userName}
-                              className="w-8 h-8 rounded-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                              }}
-                            />
-                          ) : null}
-                          <div className={`w-8 h-8 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center ${leave.userAvatar ? 'hidden' : ''}`}>
-                            <User className="w-4 h-4 text-gray-600" />
-                          </div>
+                          <UserAvatar name={leave.userName} imageUrl={leave.userAvatar} size="sm" />
                           
                           <div>
                             <span className="font-medium">{leave.userName}</span>
                           </div>
                           
-                          <Pill tone="neutral" className="text-xs">
-                            {LEAVE_TYPE_LABELS[leave.type]}
-                          </Pill>
+                          <StatusBadge status={leave.type} kind="leaveType" label={LEAVE_TYPE_LABELS[leave.type]} />
                           
                           {leave.urgentMultiplier > 1 && (
-                            <Pill tone="danger" className="text-xs">
+                            <Pill tone="danger">
                               ลาด่วน x{leave.urgentMultiplier}
                             </Pill>
                           )}
                           
                           {leave.attachments && leave.attachments.length > 0 && (
-                            <div className="flex items-center gap-1 text-blue-600">
+                            <div className="flex items-center gap-1 text-sky-600">
                               <FileText className="w-3.5 h-3.5" />
                               <span className="text-xs">{leave.attachments.length}</span>
                             </div>
@@ -390,20 +263,7 @@ export default function LeaveManagementPage() {
                         </div>
                         
                         {/* Status Badge */}
-                        <Pill
-                          tone={badgeTone(
-                            leave.status === 'approved' ? 'success' :
-                            leave.status === 'rejected' ? 'error' :
-                            leave.status === 'cancelled' ? 'secondary' :
-                            'warning'
-                          )}
-                          className="text-xs"
-                        >
-                          {leave.status === 'approved' && 'อนุมัติแล้ว'}
-                          {leave.status === 'rejected' && 'ไม่อนุมัติ'}
-                          {leave.status === 'pending' && 'รออนุมัติ'}
-                          {leave.status === 'cancelled' && 'ยกเลิก'}
-                        </Pill>
+                        <StatusBadge status={leave.status} />
                       </div>
                       
                       {/* Row 2: Date + Reason */}
@@ -441,16 +301,10 @@ export default function LeaveManagementPage() {
                       {/* Action Buttons */}
                       {leave.status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => handleApprove(leave.id!)}
- disabled={loading}
- className={`h-8 px-3 bg-gradient-to-r ${gradients.success}`}>
-                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                          <Button size="sm" icon="Check" onClick={() => handleApprove(leave.id!)} disabled={loading}>
                             อนุมัติ
                           </Button>
-                          <Button size="sm" variant="soft" onClick={() => handleReject(leave.id!)}
- disabled={loading}
- className="h-8 px-3">
-                            <XCircle className="w-3.5 h-3.5 mr-1" />
+                          <Button size="sm" variant="soft" icon="X" onClick={() => handleReject(leave.id!)} disabled={loading}>
                             ไม่อนุมัติ
                           </Button>
                         </>
@@ -458,10 +312,7 @@ export default function LeaveManagementPage() {
                       
                       {/* Cancel button for approved leaves (HR/Admin only) */}
                       {leave.status === 'approved' && ['hr', 'manager', 'admin'].includes(userData?.role || '') && (
-                        <Button size="sm" variant="soft" onClick={() => handleCancelApproved(leave.id!)}
- disabled={loading}
- className="h-8 px-3">
-                          <XCircle className="w-3.5 h-3.5 mr-1" />
+                        <Button size="sm" variant="soft" icon="X" onClick={() => handleCancelApproved(leave.id!)} disabled={loading}>
                           ยกเลิก
                         </Button>
                       )}
@@ -475,77 +326,78 @@ export default function LeaveManagementPage() {
       )}
       
       {/* Approve Dialog */}
-      <Modal open={approveDialogOpen} onClose={() => ((setApproveDialogOpen))(false)} title={<><span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" />
-              ยืนยันการอนุมัติ</span></>} description={<>คุณต้องการอนุมัติคำขอลานี้หรือไม่?</>}>
-          
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={() => { (() => setSelectedLeaveId(null))(); ((setApproveDialogOpen))(false) }}>
+      <Modal
+        open={approveDialogOpen}
+        onClose={() => setApproveDialogOpen(false)}
+        title={<span className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" />ยืนยันการอนุมัติ</span>}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setSelectedLeaveId(null); setApproveDialogOpen(false) }}>
               ยกเลิก
             </Button>
-            <Button onClick={async () => { await (confirmApprove)(); ((setApproveDialogOpen))(false) }}>
+            <Button loading={loading} onClick={async () => { await confirmApprove(); setApproveDialogOpen(false) }}>
               อนุมัติ
             </Button>
-          </div>
-        </Modal>
-      
+          </>
+        }
+      >
+        <p className="text-sm text-gray-600">คุณต้องการอนุมัติคำขอลานี้หรือไม่?</p>
+      </Modal>
+
       {/* Reject Dialog */}
-      <Modal open={rejectDialogOpen} onClose={() => ((setRejectDialogOpen))(false)} title={<><span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-red-600" />
-              ไม่อนุมัติคำขอลา</span></>} description={<>กรุณาระบุเหตุผลที่ไม่อนุมัติคำขอลานี้</>}>
-          
-          <div className="py-4">
-            <Textarea
-              placeholder="ระบุเหตุผล..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={() => { (() => {
-              setSelectedLeaveId(null)
-              setRejectReason('')
-            })(); ((setRejectDialogOpen))(false) }}>
+      <Modal
+        open={rejectDialogOpen}
+        onClose={() => setRejectDialogOpen(false)}
+        title={<span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-red-600" />ไม่อนุมัติคำขอลา</span>}
+        description="กรุณาระบุเหตุผลที่ไม่อนุมัติคำขอลานี้"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setSelectedLeaveId(null); setRejectReason(''); setRejectDialogOpen(false) }}>
               ยกเลิก
             </Button>
-            <Button variant="danger" onClick={async () => { await (confirmReject)(); ((setRejectDialogOpen))(false) }} 
- 
- disabled={!rejectReason.trim()}>
+            <Button variant="danger" loading={loading} onClick={async () => { await confirmReject(); setRejectDialogOpen(false) }} disabled={!rejectReason.trim()}>
               ไม่อนุมัติ
             </Button>
-          </div>
-        </Modal>
-      
+          </>
+        }
+      >
+        <Textarea
+          placeholder="ระบุเหตุผล..."
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          className="min-h-[100px]"
+        />
+      </Modal>
+
       {/* Cancel Approved Dialog */}
-      <Modal open={cancelDialogOpen} onClose={() => ((setCancelDialogOpen))(false)} title={<><span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-orange-600" />
-              ยกเลิกคำขอที่อนุมัติแล้ว</span></>} description={<>การยกเลิกจะคืนโควต้าให้กับพนักงาน กรุณาระบุเหตุผล</>}>
-          
-          <div className="py-4 space-y-3">
-            <Textarea
-              placeholder="ระบุเหตุผลที่ยกเลิก..."
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              className="min-h-[100px]"
-            />
-            <Alert tone="info">
-              <div>
-                <strong>หมายเหตุ:</strong> โควต้าจะถูกคืนให้พนักงานโดยอัตโนมัติ
-              </div>
-            </Alert>
-          </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={() => { (() => {
-              setSelectedLeaveId(null)
-              setCancelReason('')
-            })(); ((setCancelDialogOpen))(false) }}>
+      <Modal
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+        title={<span className="flex items-center gap-2"><XCircle className="w-5 h-5 text-orange-600" />ยกเลิกคำขอที่อนุมัติแล้ว</span>}
+        description="การยกเลิกจะคืนโควต้าให้กับพนักงาน กรุณาระบุเหตุผล"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setSelectedLeaveId(null); setCancelReason(''); setCancelDialogOpen(false) }}>
               ไม่ยกเลิก
             </Button>
-            <Button variant="danger" onClick={async () => { await (confirmCancelApproved)(); ((setCancelDialogOpen))(false) }} 
- 
- disabled={!cancelReason.trim()}>
+            <Button variant="danger" loading={loading} onClick={async () => { await confirmCancelApproved(); setCancelDialogOpen(false) }} disabled={!cancelReason.trim()}>
               ยืนยันยกเลิก
             </Button>
-          </div>
-        </Modal>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Textarea
+            placeholder="ระบุเหตุผลที่ยกเลิก..."
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <Alert tone="info">
+            <strong>หมายเหตุ:</strong> โควต้าจะถูกคืนให้พนักงานโดยอัตโนมัติ
+          </Alert>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -12,14 +12,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, endOfMonth, startOfMonth } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { ArrowDown, ArrowUp, ChevronsUpDown, Truck } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarX, ChevronsUpDown, Truck } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { canSeeDelivery } from '@/lib/services/user/access'
 import { useToast } from '@/hooks/useToast'
 import { getDeliveryRangeSummary } from '@/lib/services/delivery/points'
 import { getAttendanceReportForExport } from '@/lib/services/reportService'
-import { FilterCard, FilterField, PageHeader, Skeleton, TechLoader } from '@/components/shared'
-import { DateRangePicker } from '@/components/aoo'
+import { FilterCard, FilterField, PageHeader, SectionCard, Skeleton, TechLoader } from '@/components/shared'
+import { DateRangePicker, EmptyState } from '@/components/aoo'
 
 type Summary = Awaited<ReturnType<typeof getDeliveryRangeSummary>>
 /** `${YYYY-MM-DD}|${userId}` → สถานะจากรายงานเข้างาน */
@@ -157,7 +157,7 @@ export default function DeliveryReportPage() {
     const a = att.get(`${day}|${driverId}`)
     if (!a) return <span className="text-gray-300">—</span>
     if (a.status === 'absent')
-      return <span className="font-sans text-xs font-medium text-red-600">ขาด</span>
+      return <span className="font-sans text-xs font-medium text-[var(--ruby-700)]">ขาด</span>
     if (a.status === 'normal' || a.status === 'late' || a.hours > 0) {
       return (
         <span className="text-gray-400" title="มาทำงาน แต่ไม่มีงานส่งวันนี้">
@@ -166,7 +166,7 @@ export default function DeliveryReportPage() {
       )
     }
     if (a.note.includes('ลา'))
-      return <span className="font-sans text-xs font-medium text-sky-600">ลา</span>
+      return <span className="font-sans text-xs font-medium text-[var(--sun-700)]">ลา</span>
     return <span className="font-sans text-xs text-gray-400">หยุด</span>
   }
 
@@ -204,9 +204,9 @@ export default function DeliveryReportPage() {
       {loading ? (
         <Skeleton rows={10} />
       ) : allDays.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white px-6 py-14 text-center text-gray-500">
-          ช่วงที่เลือกยังมาไม่ถึง
-        </div>
+        <SectionCard>
+          <EmptyState icon={<CalendarX size={32} />} title="ช่วงที่เลือกยังมาไม่ถึง" />
+        </SectionCard>
       ) : (
         <div className="w-fit max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="border-collapse text-sm">

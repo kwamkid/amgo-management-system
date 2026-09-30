@@ -6,14 +6,14 @@ import { User, UpdateUserData } from '@/types/user'
 import { updateUser, getUser } from '@/lib/services/userService'
 import UserEditForm from '@/components/users/UserEditForm'
 import UserAvatar from '@/components/shared/UserAvatar'
-import { ArrowLeft, FileCheck, FileText } from 'lucide-react'
+import { ArrowLeft, FileCheck } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
 import { useAuth } from '@/hooks/useAuth'
 import { PageHeader, StatusBadge } from '@/components/shared'
 
-import { Alert, Card, CardContent, Button } from '@/components/aoo'
+import { Alert, Button, Spinner } from '@/components/aoo'
 export default function EditUserPage({ 
   params 
 }: { 
@@ -97,7 +97,7 @@ export default function EditUserPage({
               {error || 'ไม่พบข้อมูลพนักงาน'}
             </p>
             <Button variant="soft" onClick={() => router.push('/employees')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="h-4 w-4" />
               กลับไปหน้ารายการ
             </Button>
           </div>
@@ -116,13 +116,13 @@ export default function EditUserPage({
           // กดที่รูปเพื่อดึงรูปโปรไฟล์ล่าสุดจาก LINE มาใหม่
           <div className="flex items-center gap-3">
             <Link href={`/employees/${id}/contract`}>
-              <Button variant="soft" size="sm">
-                <FileText className="mr-1.5 h-4 w-4" /> สัญญาจ้าง
+              <Button variant="soft" size="sm" icon="FileText">
+                สัญญาจ้าง
               </Button>
             </Link>
             <Link href={`/employees/${id}/certificate`}>
               <Button variant="soft" size="sm">
-                <FileCheck className="mr-1.5 h-4 w-4" /> ใบรับรองเงินเดือน
+                <FileCheck className="h-3.5 w-3.5" /> ใบรับรองเงินเดือน
               </Button>
             </Link>
             {(user as { employmentStatus?: string }).employmentStatus === 'probation' && (
@@ -142,7 +142,7 @@ export default function EditUserPage({
             />
             {syncingPhoto && (
               <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <Spinner size="xs" tone="on-brand" />
               </div>
             )}
           </div>

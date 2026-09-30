@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TimePicker, Checkbox, Label, Input, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { TimePicker, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, Button, IconButton } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { 
@@ -21,7 +21,6 @@ import {
   Calendar,
   Users,
   AlertTriangle,
-  Loader2,
   TrendingUp
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -31,13 +30,22 @@ import {
   DEFAULT_DISCORD_SETTINGS,
   type DiscordSettings,
 } from '@/lib/discord/settings'
-import { gradients } from '@/lib/theme/colors'
 import TechLoader from '@/components/shared/TechLoader'
 import { PageHeader } from '@/components/shared'
 
 // ชนิดกับค่าเริ่มต้นย้ายไปอยู่ที่ lib/discord/settings.ts แล้ว
 // ตัวส่งข้อความใช้ชุดเดียวกัน — เดิมประกาศคนละที่แล้วไม่ตรงกัน
 const defaultSettings = DEFAULT_DISCORD_SETTINGS
+
+/** ช่อง Webhook ทั้งหมด — เรียงตามลำดับที่แสดง */
+const WEBHOOK_FIELDS: { key: keyof DiscordSettings['webhooks']; label: string; help: string }[] = [
+  { key: 'checkIn', label: 'Check-in/Check-out Channel', help: 'แจ้งเตือนการเช็คอิน/เอาท์ของพนักงาน' },
+  { key: 'leave', label: 'Leave Request Channel', help: 'แจ้งเตือนคำขอลาและการอนุมัติ' },
+  { key: 'hr', label: 'HR Notifications Channel', help: 'สรุปประจำวันและรายงานสำหรับ HR' },
+  { key: 'campaign', label: 'Influencer Campaign Channel', help: 'แจ้งเตือน Campaign, Submission และ Review ของ Influencer' },
+  { key: 'alerts', label: 'System Alerts Channel', help: 'การแจ้งเตือนระบบ เช่น พนักงานมาสาย, ทำงานเกินเวลา' },
+  { key: 'birthday', label: 'Birthday Channel', help: 'อวยพรวันเกิดพนักงานอัตโนมัติทุกเช้า' },
+]
 
 export default function DiscordSettingsPage() {
   const { userData } = useAuth()
@@ -138,11 +146,8 @@ export default function DiscordSettingsPage() {
 
       {/* Permission Warning */}
       {!canEdit && (
-        <Alert tone="warning">
-          <p className="font-semibold">สิทธิ์ไม่เพียงพอ</p>
-          <div>
-            เฉพาะ Admin และ HR เท่านั้นที่สามารถแก้ไขการตั้งค่าได้
-          </div>
+        <Alert tone="warning" title="สิทธิ์ไม่เพียงพอ">
+          เฉพาะ Admin และ HR เท่านั้นที่สามารถแก้ไขการตั้งค่าได้
         </Alert>
       )}
 
@@ -150,314 +155,68 @@ export default function DiscordSettingsPage() {
       <Card padding={0}>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-red-600" />
-              Webhook URLs
-            </CardTitle>
+            <CardTitle icon={MessageSquare} tone="grape">Webhook URLs</CardTitle>
             <a
               href="https://support.discord.com/hc/en-us/articles/228383668"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              วิธีสร้าง Webhook
-              <ExternalLink className="w-4 h-4" />
+              <Button variant="link" size="sm" iconRight="ExternalLink" tabIndex={-1}>
+                วิธีสร้าง Webhook
+              </Button>
             </a>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Check-in Channel */}
-          <div>
-            <Label>Check-in/Check-out Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.checkIn ? 'text' : 'password'}
-                  value={settings.webhooks.checkIn}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, checkIn: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('checkIn')}
- className="h-8 w-8">
-                    {showWebhooks.checkIn ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
+          {WEBHOOK_FIELDS.map(({ key, label, help }) => (
+            <div key={key}>
+              <Label>{label}</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="flex-1 relative">
+                  <Input
+                    type={showWebhooks[key] ? 'text' : 'password'}
+                    value={settings.webhooks[key]}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      webhooks: { ...settings.webhooks, [key]: e.target.value }
+                    })}
+                    placeholder="https://discord.com/api/webhooks/..."
+                    disabled={!canEdit}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                    <IconButton
+                      icon={showWebhooks[key] ? EyeOff : Eye}
+                      title={showWebhooks[key] ? 'ซ่อน URL' : 'แสดง URL'}
+                      onClick={() => toggleWebhookVisibility(key)}
+                    />
+                    {settings.webhooks[key] && (
+                      <IconButton icon={Copy} title="คัดลอก URL" onClick={() => copyWebhookUrl(settings.webhooks[key])} />
                     )}
-                  </Button>
-                  {settings.webhooks.checkIn && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.checkIn)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
+                  </div>
                 </div>
+                <Button
+                  onClick={() => testWebhook(key)}
+                  disabled={!settings.webhooks[key]}
+                  loading={testing === key}
+                  variant="secondary"
+                  aria-label="ทดสอบ Webhook"
+                  title="ทดสอบ Webhook"
+                >
+                  {testing !== key && <TestTube size={16} />}
+                </Button>
               </div>
-              <Button onClick={() => testWebhook('checkIn')}
- disabled={!settings.webhooks.checkIn || testing === 'checkIn'}
- variant="secondary">
-                {testing === 'checkIn' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
+              <p className="text-xs text-gray-500 mt-1">
+                {help}
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              แจ้งเตือนการเช็คอิน/เอาท์ของพนักงาน
-            </p>
-          </div>
-
-          {/* Leave Channel */}
-          <div>
-            <Label>Leave Request Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.leave ? 'text' : 'password'}
-                  value={settings.webhooks.leave}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, leave: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('leave')}
- className="h-8 w-8">
-                    {showWebhooks.leave ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                  {settings.webhooks.leave && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.leave)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={() => testWebhook('leave')}
- disabled={!settings.webhooks.leave || testing === 'leave'}
- variant="secondary">
-                {testing === 'leave' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              แจ้งเตือนคำขอลาและการอนุมัติ
-            </p>
-          </div>
-
-          {/* HR Channel */}
-          <div>
-            <Label>HR Notifications Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.hr ? 'text' : 'password'}
-                  value={settings.webhooks.hr}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, hr: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('hr')}
- className="h-8 w-8">
-                    {showWebhooks.hr ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                  {settings.webhooks.hr && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.hr)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={() => testWebhook('hr')}
- disabled={!settings.webhooks.hr || testing === 'hr'}
- variant="secondary">
-                {testing === 'hr' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              สรุปประจำวันและรายงานสำหรับ HR
-            </p>
-          </div>
-
-          {/* Campaign Channel - เพิ่มใหม่ */}
-          <div>
-            <Label>Influencer Campaign Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.campaign ? 'text' : 'password'}
-                  value={settings.webhooks.campaign}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, campaign: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('campaign')}
- className="h-8 w-8">
-                    {showWebhooks.campaign ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                  {settings.webhooks.campaign && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.campaign)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={() => testWebhook('campaign')}
- disabled={!settings.webhooks.campaign || testing === 'campaign'}
- variant="secondary">
-                {testing === 'campaign' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              แจ้งเตือน Campaign, Submission และ Review ของ Influencer
-            </p>
-          </div>
-
-          {/* Alerts Channel */}
-          <div>
-            <Label>System Alerts Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.alerts ? 'text' : 'password'}
-                  value={settings.webhooks.alerts}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, alerts: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('alerts')}
- className="h-8 w-8">
-                    {showWebhooks.alerts ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                  {settings.webhooks.alerts && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.alerts)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={() => testWebhook('alerts')}
- disabled={!settings.webhooks.alerts || testing === 'alerts'}
- variant="secondary">
-                {testing === 'alerts' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              การแจ้งเตือนระบบ เช่น พนักงานมาสาย, ทำงานเกินเวลา
-            </p>
-          </div>
-
-
-          {/* Birthday Channel */}
-          <div>
-            <Label>Birthday Channel</Label>
-            <div className="flex gap-2 mt-1">
-              <div className="flex-1 relative">
-                <Input
-                  type={showWebhooks.birthday ? 'text' : 'password'}
-                  value={settings.webhooks.birthday}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    webhooks: { ...settings.webhooks, birthday: e.target.value }
-                  })}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  disabled={!canEdit}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => toggleWebhookVisibility('birthday')}
- className="h-8 w-8">
-                    {showWebhooks.birthday ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                  {settings.webhooks.birthday && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => copyWebhookUrl(settings.webhooks.birthday)}
- className="h-8 w-8">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Button onClick={() => testWebhook('birthday')}
- disabled={!settings.webhooks.birthday || testing === 'birthday'}
- variant="secondary">
-                {testing === 'birthday' ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <TestTube className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              อวยพรวันเกิดพนักงานอัตโนมัติทุกเช้า
-            </p>
-          </div>
+          ))}
         </CardContent>
       </Card>
 
       {/* Notification Settings */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-red-600" />
-            การแจ้งเตือน
-          </CardTitle>
+          <CardTitle icon={Bell} tone="warning">การแจ้งเตือน</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -508,18 +267,8 @@ export default function DiscordSettingsPage() {
       {/* Save Button */}
       {canEdit && (
         <div className="flex justify-end">
-          <Button onClick={saveSettings} disabled={saving} size="lg" className={`bg-gradient-to-r ${gradients.primary}`}>
-            {saving ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                กำลังบันทึก...
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5 mr-2" />
-                บันทึกการตั้งค่า
-              </>
-            )}
+          <Button onClick={saveSettings} loading={saving} size="lg" variant="primary" icon="Save">
+            {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
           </Button>
         </div>
       )}

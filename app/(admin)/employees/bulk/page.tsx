@@ -13,6 +13,7 @@
 
 import { redirect } from 'next/navigation'
 import { createServerSupabase, getCurrentUser } from '@/lib/supabase/server'
+import { Alert } from '@/components/aoo/alert'
 import BulkEditTable, {
   type Company,
   type JobFunction,
@@ -27,10 +28,9 @@ export default async function BulkEditPage() {
 
   if (!['hr', 'admin'].includes(me.profile.role)) {
     return (
-      <div className="max-w-xl rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <p className="font-semibold">ไม่มีสิทธิ์เข้าหน้านี้</p>
-        <p className="mt-1">หน้านี้แก้ข้อมูลพนักงานและเงินเดือน เปิดให้เฉพาะฝ่ายบุคคลกับผู้ดูแลระบบ</p>
-      </div>
+      <Alert tone="warning" title="ไม่มีสิทธิ์เข้าหน้านี้" className="max-w-xl">
+        หน้านี้แก้ข้อมูลพนักงานและเงินเดือน เปิดให้เฉพาะฝ่ายบุคคลกับผู้ดูแลระบบ
+      </Alert>
     )
   }
 

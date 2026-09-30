@@ -23,9 +23,10 @@ import EmployeeTimeline from './EmployeeTimeline'
 import RemarksCard from './RemarksCard'
 import EndEmploymentDialog from './EndEmploymentDialog'
 import WorkScheduleCard from './WorkScheduleCard'
-import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label, Card, CardContent, CardHeader, CardTitle, Button, Select } from '@/components/aoo'
+import { TabBar, TabItem, SelectMenu, Input, Toggle, Checkbox, Label, Card, CardContent, CardHeader, CardTitle, Button, Field, Pill } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
-import { Phone, Calendar, Save, X, Banknote, Landmark } from 'lucide-react'
+import { useToast } from '@/hooks/useToast'
+import { Phone, Calendar, Banknote, Landmark, Briefcase } from 'lucide-react'
 import Image from 'next/image'
 import { THAI_BANKS } from '@/lib/constants/banks'
 const ROLE_TH: Record<string, string> = {
@@ -111,6 +112,7 @@ export default function UserEditForm({
   })
 
   const onProbation = formData.employmentStatus === 'probation'
+  const { showToast } = useToast()
 
   // PayCard จัดฉากการแก้ไว้ แล้วฝากฟังก์ชันเขียนจริงมาที่นี่ —
   // ทั้งหน้าบันทึกด้วยปุ่มเดียวท้ายฟอร์ม ไม่มีของบางส่วนหลุดไปก่อน
@@ -122,38 +124,38 @@ export default function UserEditForm({
     // Validate
     if (!formData.fullName?.trim()) {
       setTab('info')
-      alert('กรุณากรอกชื่อ-นามสกุล')
+      showToast('กรุณากรอกชื่อ-นามสกุล', 'error')
       return
     }
 
     // ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร — รายงานทุกใบเลยอ่านไม่ออกตามไปด้วย
     if (!formData.nickname?.trim()) {
       setTab('info')
-      alert('กรุณากรอกชื่อเล่น')
+      showToast('กรุณากรอกชื่อเล่น', 'error')
       return
     }
 
     if (!formData.phone?.trim()) {
       setTab('info')
-      alert('กรุณากรอกเบอร์โทรศัพท์')
+      showToast('กรุณากรอกเบอร์โทรศัพท์', 'error')
       return
     }
 
     if (!formData.birthDate) {
       setTab('info')
-      alert('กรุณาระบุวันเกิด')
+      showToast('กรุณาระบุวันเกิด', 'error')
       return
     }
 
     // สัญญาทดลองงานกับเงินเดือนหลังพ้นโปร ต้องรู้ว่าโปรจบเมื่อไหร่
     if (formData.employmentStatus === 'probation' && !formData.probationEndDate) {
       setTab('info')
-      alert('กรุณาระบุวันพ้นทดลองงาน')
+      showToast('กรุณาระบุวันพ้นทดลองงาน', 'error')
       return
     }
     
     // เงื่อนไขนี้อยู่คนละแท็บกับปุ่มบันทึก — ต้องพาไปให้เห็นด้วย
-    // ไม่งั้นขึ้น alert แล้วผู้ใช้หาไม่เจอว่าต้องแก้ตรงไหน
+    // ไม่งั้นขึ้นแจ้งเตือนแล้วผู้ใช้หาไม่เจอว่าต้องแก้ตรงไหน
     // (คนที่ไม่ต้องเช็คอิน ไม่ต้องมีสาขา)
     if (
       (formData.requiresCheckin ?? true) &&
@@ -161,7 +163,7 @@ export default function UserEditForm({
       !formData.allowCheckInOutsideLocation
     ) {
       setTab('location')
-      alert('กรุณาเลือกสาขาที่อนุญาตหรืออนุญาตให้เช็คอินนอกสถานที่')
+      showToast('กรุณาเลือกสาขาที่อนุญาตหรืออนุญาตให้เช็คอินนอกสถานที่', 'error')
       return
     }
     
@@ -178,7 +180,7 @@ export default function UserEditForm({
       const payErrors = await payFlushRef.current()
       if (payErrors.length) {
         setTab('pay')
-        alert(`ค่าตอบแทนบันทึกไม่ผ่าน:\n${payErrors.join('\n')}`)
+        showToast(`ค่าตอบแทนบันทึกไม่ผ่าน: ${payErrors.join(' · ')}`, 'error')
         return
       }
     }
@@ -221,31 +223,29 @@ export default function UserEditForm({
         <CardContent className="pt-6">
           {/* LINE Info (Read-only) */}
           <div className="grid md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <Label htmlFor="lineDisplayName">LINE Display Name</Label>
+            <Field label="LINE Display Name">
               <Input
                 id="lineDisplayName"
                 type="text"
                 value={user.lineDisplayName}
                 disabled
               />
-            </div>
-            
-            <div>
-              <Label htmlFor="lineUserId">LINE User ID</Label>
+            </Field>
+
+            <Field label="LINE User ID">
               <Input
                 id="lineUserId"
                 type="text"
                 value={user.lineUserId}
                 disabled
               />
-            </div>
+            </Field>
           </div>
           
           {/* Editable Fields */}
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="fullName">ชื่อ-นามสกุล *</Label>
+              <Field label="ชื่อ-นามสกุล" required>
               <Input
                 id="fullName"
                 type="text"
@@ -255,6 +255,7 @@ export default function UserEditForm({
                 required
                 disabled={isLoading}
               />
+              </Field>
               {user.nameVerified === false && (
                 <p className="mt-1 text-xs text-orange-700">
                   ตอนนี้ยังเป็นชื่อจาก LINE — กรุณาแก้เป็นชื่อจริง
@@ -262,8 +263,11 @@ export default function UserEditForm({
               )}
             </div>
 
-            <div>
-              <Label htmlFor="nickname">ชื่อเล่น *</Label>
+            <Field
+              label="ชื่อเล่น"
+              required
+              help="ใช้แสดงในรายงานและปฏิทินวันเกิด — ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร"
+            >
               <Input
                 id="nickname"
                 type="text"
@@ -273,14 +277,9 @@ export default function UserEditForm({
                 required
                 disabled={isLoading}
               />
-              <p className="mt-1 text-xs text-gray-500">
-                ใช้แสดงในรายงานและปฏิทินวันเกิด — ชื่อ LINE ดูไม่ออกว่าใครเป็นใคร
-              </p>
-            </div>
+            </Field>
 
-            <div>
-              <Label htmlFor="phone">เบอร์โทรศัพท์ *</Label>
-              <div className="relative">
+            <Field label="เบอร์โทรศัพท์" required>
                 <Input
                   id="phone"
                   prefix={<Phone size={16} />}
@@ -292,12 +291,9 @@ export default function UserEditForm({
                   required
                   disabled={isLoading}
                 />
-              </div>
-            </div>
+            </Field>
             
-            <div>
-              <Label htmlFor="birthDate">วันเกิด *</Label>
-              <div className="relative">
+            <Field label="วันเกิด" required>
                 <Input
                   id="birthDate"
                   prefix={<Calendar size={16} />}
@@ -307,16 +303,14 @@ export default function UserEditForm({
                   required
                   disabled={isLoading}
                 />
-              </div>
-            </div>
+            </Field>
 
             {/* วันเริ่มงานจริง — เดิมกรอกได้เฉพาะหน้าแก้หลายคนพร้อมกัน ทั้งที่ไทม์ไลน์
                 บอกให้มากรอกที่แท็บนี้ (หน่อยหาไม่เจอ 22 ส.ค. 69)
                 ค่าตั้งต้นของคนสมัครใหม่คือวันสมัคร ไม่ใช่วันเริ่มงานจริง —
                 กรอกมือเมื่อไหร่ถือว่ายืนยันแล้ว */}
             <div>
-              <Label htmlFor="startDate">วันเริ่มงาน</Label>
-              <div className="relative">
+              <Field label="วันเริ่มงาน">
                 <Input
                   id="startDate"
                   prefix={<Calendar size={16} />}
@@ -331,7 +325,7 @@ export default function UserEditForm({
                   }
                   disabled={isLoading}
                 />
-              </div>
+              </Field>
               {!user.startDateVerified && (
                 <p className="mt-1 text-xs text-amber-600">
                   ยังเป็นวันที่สมัครเข้าระบบ ไม่ใช่วันเริ่มงานจริง — ใช้คิดอายุงานกับสัญญาจ้าง
@@ -339,8 +333,7 @@ export default function UserEditForm({
               )}
             </div>
 
-            <div>
-              <Label htmlFor="nationalId">เลขบัตรประชาชน</Label>
+            <Field label="เลขบัตรประชาชน" help="ใช้พิมพ์ในสัญญาจ้าง">
               <Input
                 id="nationalId"
                 type="text"
@@ -354,11 +347,9 @@ export default function UserEditForm({
                 placeholder="13 หลัก"
                 disabled={isLoading}
               />
-              <p className="mt-1 text-xs text-gray-500">ใช้พิมพ์ในสัญญาจ้าง</p>
-            </div>
+            </Field>
 
-            <div>
-              <Label htmlFor="address">ที่อยู่</Label>
+            <Field label="ที่อยู่" help="ใช้พิมพ์ในสัญญาจ้าง">
               <Input
                 id="address"
                 type="text"
@@ -367,52 +358,43 @@ export default function UserEditForm({
                 placeholder="ที่อยู่ตามทะเบียนบ้าน"
                 disabled={isLoading}
               />
-              <p className="mt-1 text-xs text-gray-500">ใช้พิมพ์ในสัญญาจ้าง</p>
-            </div>
+            </Field>
           </div>
         </CardContent>
       </Card>
 
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">ตำแหน่งและสถานะ</CardTitle>
+          <CardTitle icon={Briefcase} tone="sky">ตำแหน่งและสถานะ</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* ตำแหน่งเดียวจบ — สิทธิ์ ตารางงาน รอบจ่ายเงิน ตามตำแหน่งอัตโนมัติ */}
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="company">บริษัท</Label>
-                <Select
-                  value={formData.companyId ?? ''}
-                  onChange={(e) => ((v) => setFormData({ ...formData, companyId: v || null }))(e.target.value)}
+              <Field label="บริษัท" asDiv>
+                <SelectMenu
+                  size="md"
+                  value={formData.companyId ?? null}
+                  options={companies.map((c) => ({ value: c.id, label: `${c.code} · ${c.name_th}` }))}
+                  onChange={(v) => setFormData({ ...formData, companyId: v || null })}
+                  placeholder="— ยังไม่ระบุ —"
+                  clearable="— ยังไม่ระบุ —"
                   disabled={isLoading}
-                >
-<option value="">— ยังไม่ระบุ —</option>
-                  
-                  
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>
-                    ))}
-                  
-                </Select>
-              </div>
+                />
+              </Field>
 
               <div>
-                <Label htmlFor="jobFunction">ตำแหน่ง</Label>
-                <Select
-                  value={formData.jobFunctionId ?? ''}
-                  onChange={(e) => ((v) => setFormData({ ...formData, jobFunctionId: v || null }))(e.target.value)}
-                  disabled={isLoading}
-                >
-<option value="">— ยังไม่ระบุ —</option>
-                  
-                  
-                    {functions.map((f) => (
-                      <option key={f.id} value={f.id}>{f.name_th}</option>
-                    ))}
-                  
-                </Select>
+                <Field label="ตำแหน่ง" asDiv>
+                  <SelectMenu
+                    size="md"
+                    value={formData.jobFunctionId ?? null}
+                    options={functions.map((f) => ({ value: f.id, label: f.name_th }))}
+                    onChange={(v) => setFormData({ ...formData, jobFunctionId: v || null })}
+                    placeholder="— ยังไม่ระบุ —"
+                    clearable="— ยังไม่ระบุ —"
+                    disabled={isLoading}
+                  />
+                </Field>
                 {(() => {
                   const picked = functions.find((f) => f.id === formData.jobFunctionId)
                   return picked?.default_role ? (
@@ -431,9 +413,7 @@ export default function UserEditForm({
                 <Label>สถานะการจ้าง</Label>
                 <div className="mt-1.5">
                   {['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') ? (
-                    <p className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-500">
-                      สิ้นสุดการเป็นพนักงานแล้ว
-                    </p>
+                    <Pill tone="neutral">สิ้นสุดการเป็นพนักงานแล้ว</Pill>
                   ) : (
                     <Segmented
                       value={formData.employmentStatus ?? 'active'}
@@ -452,8 +432,11 @@ export default function UserEditForm({
               </div>
 
               {onProbation && (
-                <div>
-                  <Label htmlFor="probationEndDate">วันพ้นทดลองงาน *</Label>
+                <Field
+                  label="วันพ้นทดลองงาน"
+                  required
+                  help="ใช้ลงวันที่เงินเดือนหลังพ้นโปร (แท็บเงินเดือน) และพิมพ์ในสัญญาทดลองงาน"
+                >
                   <Input
                     id="probationEndDate"
                     type="date"
@@ -463,10 +446,7 @@ export default function UserEditForm({
                     }
                     disabled={isLoading}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    ใช้ลงวันที่เงินเดือนหลังพ้นโปร (แท็บเงินเดือน) และพิมพ์ในสัญญาทดลองงาน
-                  </p>
-                </div>
+                </Field>
               )}
             </div>
 
@@ -498,8 +478,7 @@ export default function UserEditForm({
               </div>
 
               {user.id && !['resigned', 'terminated', 'retired'].includes(formData.employmentStatus ?? '') && (
-                <Button type="button" variant="soft" onClick={() => setShowEndDialog(true)}
- disabled={isLoading}>
+                <Button type="button" variant="soft" onClick={() => setShowEndDialog(true)} disabled={isLoading}>
                   สิ้นสุดการเป็นพนักงาน…
                 </Button>
               )}
@@ -522,10 +501,11 @@ export default function UserEditForm({
       <div hidden={tab !== 'pay'} className="space-y-5">
         {/* ประเภทการจ้าง + OT ช่องเดียวกัน (เจ้าของสั่ง 13 ส.ค. 69) — คอลัมน์ของ users
             ทั้งคู่ บันทึกผ่านปุ่มบันทึกท้ายฟอร์มเหมือนแท็บแรก */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
-            <Banknote size={16} className="text-gray-400" /> การจ้างและค่าล่วงเวลา
-          </h3>
+        <Card padding={0}>
+          <CardHeader>
+            <CardTitle icon={Banknote} tone="success">การจ้างและค่าล่วงเวลา</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label>ประเภทการจ้าง</Label>
@@ -573,18 +553,18 @@ export default function UserEditForm({
               </p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* บัญชีรับเงินเดือน — เจ้าของขอ 5 ก.ย. 69 (คอลัมน์มีอยู่แล้วแต่ไม่มีช่องกรอก ต้องใส่ทาง SQL)
             เลือกธนาคารจากรายการมีโลโก้ · เก็บเป็นรหัส เช่น SCB ตามข้อมูลเดิม */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
-            <Landmark size={16} className="text-gray-400" /> บัญชีรับเงินเดือน
-          </h3>
+        <Card padding={0}>
+          <CardHeader>
+            <CardTitle icon={Landmark} tone="sky">บัญชีรับเงินเดือน</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>ธนาคาร</Label>
-              <div className="mt-1.5">
+            <Field label="ธนาคาร" asDiv>
                 <SelectMenu
                   value={(formData.bankName as string | null) ?? null}
                   onChange={(v) => setFormData({ ...formData, bankName: v })}
@@ -597,11 +577,8 @@ export default function UserEditForm({
                   placeholder="เลือกธนาคาร"
                   disabled={isLoading}
                 />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="bankAccountNo">เลขบัญชี</Label>
-              <div className="mt-1.5">
+            </Field>
+            <Field label="เลขบัญชี" help="พิมพ์ตามหน้าสมุด/แอปธนาคาร มีขีดหรือไม่มีก็ได้">
                 <Input
                   id="bankAccountNo"
                   value={(formData.bankAccountNo as string | null) ?? ''}
@@ -611,11 +588,10 @@ export default function UserEditForm({
                   mono
                   disabled={isLoading}
                 />
-              </div>
-              <p className="mt-1.5 text-xs text-gray-500">พิมพ์ตามหน้าสมุด/แอปธนาคาร มีขีดหรือไม่มีก็ได้</p>
-            </div>
+            </Field>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {user.id && (
           <PayCard
@@ -768,12 +744,10 @@ export default function UserEditForm({
         className="flex items-center justify-end gap-3"
       >
 
-        <Button type="button" onClick={onCancel} variant="soft" disabled={isLoading}>
-          <X className="w-4 h-4 mr-2" />
+        <Button type="button" onClick={onCancel} variant="soft" icon="X" disabled={isLoading}>
           ยกเลิก
         </Button>
-        <Button type="submit" disabled={isLoading} className="-">
-          <Save className="w-4 h-4 mr-2" />
+        <Button type="submit" icon="Save" loading={isLoading}>
           {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}
         </Button>
       </div>

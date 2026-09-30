@@ -11,7 +11,8 @@ import { UserData } from '@/hooks/useAuth';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 
-import { Pill, Card, CardContent, CardHeader, CardTitle, Modal, Button } from '@/components/aoo'
+import { Pill, Card, CardContent, CardHeader, CardTitle, Modal, EmptyState } from '@/components/aoo'
+import { DateStepper, InfoPanel, ListRow, ListRows, UserAvatar } from '@/components/shared'
 interface EmployeeSectionProps {
   userData: UserData;
 }
@@ -125,28 +126,14 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           </CardHeader>
           <CardContent className="pt-6">
             {/* Month Navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={() => setCurrentMonth(prev => addDays(startOfMonth(prev), -1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              
-              <h3 className="text-lg font-semibold">
-                {format(currentMonth, 'MMMM yyyy', { locale: th })}
-              </h3>
-              
-              <button
-                onClick={() => setCurrentMonth(prev => addDays(endOfMonth(prev), 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+            <div className="flex items-center justify-center mb-6">
+              <DateStepper
+                label={format(currentMonth, 'MMMM yyyy', { locale: th })}
+                onPrev={() => setCurrentMonth(prev => addDays(startOfMonth(prev), -1))}
+                onNext={() => setCurrentMonth(prev => addDays(endOfMonth(prev), 1))}
+                prevLabel="เดือนก่อน"
+                nextLabel="เดือนถัดไป"
+              />
             </div>
 
             {/* ตอนโหลดต้องเห็นว่ากำลังโหลด ของเดิมขึ้นปฏิทินว่างเปล่าแล้วข้อมูล
@@ -190,7 +177,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                     className={`
                       relative aspect-square p-2 rounded-lg border
                       ${isCurrentDay ? 'bg-red-50 border-red-300' : 'border-gray-200'}
-                      ${hasBirthday ? 'bg-gradient-to-br from-pink-50 to-purple-50 cursor-pointer hover:from-pink-100 hover:to-purple-100' : ''}
+                      ${hasBirthday ? 'bg-[var(--pink-50)] cursor-pointer hover:bg-[var(--pink-100)]' : ''}
                       transition-colors
                     `}
                     onClick={() => hasBirthday && handleDateClick(day)}
@@ -212,7 +199,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                             />
                           ))}
                           {dayBirthdays.length > 3 && (
-                            <div className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs flex items-center justify-center border-2 border-white">
+                            <div className="w-6 h-6 rounded-full bg-[var(--grape-500)] text-white text-xs flex items-center justify-center border-2 border-white">
                               +{dayBirthdays.length - 3}
                             </div>
                           )}
@@ -244,7 +231,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
         {/* Right Column - Upcoming Birthdays */}
         <div className="space-y-6">
           {/* Upcoming Birthdays */}
-          <Card padding={0} className="-">
+          <Card padding={0}>
             <CardHeader>
               <CardTitle icon={PartyPopper} tone="grape">
                 วันเกิดใกล้ถึง (±5 วัน)
@@ -252,7 +239,7 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
             </CardHeader>
             <CardContent>
               {upcomingBirthdays.length > 0 ? (
-                <div className="space-y-3">
+                <ListRows>
                   {upcomingBirthdays.map(user => {
                     const birthdayThisYear = new Date(
                       new Date().getFullYear(),
@@ -263,41 +250,29 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                     const daysUntil = Math.ceil((birthdayThisYear.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                     
                     return (
-                      <div key={user.id} className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                        <img
-                          src={`/api/avatar/${user.id}`}
-                          alt={user.fullName}
-                          className="w-12 h-12 rounded-full"
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">
-                            {user.fullName}
-                          </p>
-                          <p className="text-sm text-gray-600">
+                      <ListRow
+                        key={user.id}
+                        leading={<UserAvatar name={user.fullName} userId={user.id} size="lg" />}
+                        title={user.fullName}
+                        meta={
+                          <>
                             {format(birthdayThisYear, 'dd MMMM', { locale: th })}
-                            {isToday && <span className="text-pink-600 font-medium ml-2">🎉 วันนี้!</span>}
+                            {isToday && <span className="text-[var(--pink-700)] font-medium ml-2">🎉 วันนี้!</span>}
                             {daysUntil > 0 && daysUntil <= 5 && (
-                              <span className="text-purple-600 ml-2">อีก {daysUntil} วัน</span>
+                              <span className="text-[var(--grape-700)] ml-2">อีก {daysUntil} วัน</span>
                             )}
                             {daysUntil < 0 && daysUntil >= -5 && (
                               <span className="text-gray-500 ml-2">{Math.abs(daysUntil)} วันที่แล้ว</span>
                             )}
-                          </p>
-                        </div>
-                        {isToday && (
-                          <Pill tone="accent" className="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
-                            HBD!
-                          </Pill>
-                        )}
-                      </div>
+                          </>
+                        }
+                        trailing={isToday ? <Pill tone="pink">HBD!</Pill> : undefined}
+                      />
                     );
                   })}
-                </div>
+                </ListRows>
               ) : (
-                <div className="text-center py-8">
-                  <Gift className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">ไม่มีวันเกิดในช่วงนี้</p>
-                </div>
+                <EmptyState icon={<Gift size={40} />} title="ไม่มีวันเกิดในช่วงนี้" />
               )}
             </CardContent>
           </Card>
@@ -311,23 +286,20 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                <ListRows className="max-h-[300px] overflow-y-auto">
                   {monthBirthdays.map(user => (
-                    <div key={user.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg">
-                      <img
-                        src={`/api/avatar/${user.id}`}
-                        alt={user.fullName}
-                        className="w-8 h-8 rounded-full"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{user.fullName}</p>
-                      </div>
-                      <span className="text-sm text-gray-600">
-                        {format(user.birthDate, 'dd MMM', { locale: th })}
-                      </span>
-                    </div>
+                    <ListRow
+                      key={user.id}
+                      leading={<UserAvatar name={user.fullName} userId={user.id} size="sm" />}
+                      title={user.fullName}
+                      trailing={
+                        <span className="text-sm text-gray-600">
+                          {format(user.birthDate, 'dd MMM', { locale: th })}
+                        </span>
+                      }
+                    />
                   ))}
-                </div>
+                </ListRows>
               </CardContent>
             </Card>
           )}
@@ -335,19 +307,22 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
       </div>
 
       {/* Birthday Dialog */}
-      <Modal open={showBirthdayDialog} onClose={() => ((setShowBirthdayDialog))(false)} title={<><span className="flex items-center gap-2"><Cake className="w-5 h-5 text-pink-600" />
-              วันเกิดวันที่ {selectedDate && format(selectedDate, 'dd MMMM', { locale: th })}</span></>}>
-          
+      <Modal
+        open={showBirthdayDialog}
+        onClose={() => setShowBirthdayDialog(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Cake className="w-5 h-5 text-[var(--pink-500)]" />
+            วันเกิดวันที่ {selectedDate && format(selectedDate, 'dd MMMM', { locale: th })}
+          </span>
+        }
+      >
           <div className="space-y-4 mt-4">
             {selectedDate && getBirthdaysForDay(selectedDate).map(user => {
               const age = new Date().getFullYear() - user.birthDate.getFullYear();
               return (
-                <div key={user.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg">
-                  <img
-                    src={`/api/avatar/${user.id}`}
-                    alt={user.fullName}
-                    className="w-16 h-16 rounded-full border-2 border-white shadow-md"
-                  />
+                <InfoPanel key={user.id} tone="pink" className="flex items-center gap-4">
+                  <UserAvatar name={user.fullName} userId={user.id} size="lg" className="border-2 border-white shadow-md" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{user.fullName}</h3>
                     <p className="text-sm text-gray-600">
@@ -355,14 +330,14 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
                        user.role === 'hr' ? 'ฝ่ายบุคคล' : 
                        user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
                     </p>
-                    <p className="text-sm text-purple-600 font-medium mt-1">
+                    <p className="text-sm text-[var(--grape-700)] font-medium mt-1">
                       อายุ {age} ปี
                     </p>
                   </div>
                   {isSameDay(selectedDate, new Date()) && (
                     <div className="text-2xl animate-bounce">🎉</div>
                   )}
-                </div>
+                </InfoPanel>
               );
             })}
           </div>

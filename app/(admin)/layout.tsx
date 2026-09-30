@@ -62,8 +62,7 @@ export default function AdminLayout({
           {drawerOpen && (
             <>
               <div
-                className="fixed inset-0 z-40 lg:hidden"
-                style={{ background: "rgba(26, 20, 17, 0.45)" }}
+                className="fixed inset-0 z-40 bg-[var(--overlay-scrim)] lg:hidden"
                 onClick={() => setDrawerOpen(false)}
                 aria-hidden
               />

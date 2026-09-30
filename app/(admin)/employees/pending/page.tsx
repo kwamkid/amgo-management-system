@@ -1,26 +1,21 @@
 'use client'
 
 import { usePendingUsers } from '@/hooks/useUsers'
-import { PageHeader } from '@/components/shared'
-import { Pill, Alert, badgeTone, Card, CardContent, Button } from '@/components/aoo'
+import { PageHeader, StatusBadge } from '@/components/shared'
+import { Pill, Card, CardContent, Button, IconButton, Modal, EmptyState, useConfirm } from '@/components/aoo'
 import { useUsers } from '@/hooks/useUsers'
 import { useLocations } from '@/hooks/useLocations'
 import { User } from '@/types/user'
-import { 
+import {
   Clock,
   CheckCircle,
   XCircle,
   Calendar,
   Phone,
   MapPin,
-  ArrowLeft,
-  User as UserIcon,
-  Shield,
   Link as LinkIcon,
-  AlertCircle,
   Eye
 } from 'lucide-react'
-import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useState } from 'react'
 import UserAvatar from '@/components/shared/UserAvatar'
@@ -30,9 +25,14 @@ export default function PendingUsersPage() {
   const { approveUser, deactivateUser } = useUsers()
   const { locations } = useLocations()
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const handleApprove = async (user: User) => {
-    if (confirm(`อนุมัติการลงทะเบียนของ ${user.displayName || user.fullName}?`)) {
+    const ok = await confirm({
+      title: `อนุมัติการลงทะเบียนของ ${user.displayName || user.fullName}?`,
+      confirmLabel: 'อนุมัติ',
+    })
+    if (ok) {
       const success = await approveUser(user.id!)
       if (success) {
         refetch()
@@ -41,25 +41,18 @@ export default function PendingUsersPage() {
   }
 
   const handleReject = async (user: User) => {
-    if (confirm(`ปฏิเสธการลงทะเบียนของ ${user.displayName || user.fullName}?\n\nการปฏิเสธจะทำให้พนักงานไม่สามารถเข้าใช้งานระบบได้`)) {
+    const ok = await confirm({
+      title: `ปฏิเสธการลงทะเบียนของ ${user.displayName || user.fullName}?`,
+      description: 'การปฏิเสธจะทำให้พนักงานไม่สามารถเข้าใช้งานระบบได้',
+      confirmLabel: 'ปฏิเสธ',
+      tone: 'danger',
+    })
+    if (ok) {
       const success = await deactivateUser(user.id!)
       if (success) {
         refetch()
       }
     }
-  }
-
-  const getRoleBadge = (role: string) => {
-  const roleConfig = {
-    admin: { label: 'ผู้ดูแลระบบ', variant: 'default' as const },
-    hr: { label: 'ฝ่ายบุคคล', variant: 'info' as const },
-    manager: { label: 'ผู้จัดการ', variant: 'success' as const },
-    employee: { label: 'พนักงาน', variant: 'secondary' as const },
-    driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
-  }
-    
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   const getLocationNames = (locationIds?: string[]) => {
@@ -91,13 +84,12 @@ export default function PendingUsersPage() {
       {/* Pending Users */}
       {pendingUsers.length === 0 ? (
         <Card padding={0}>
-          <CardContent className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
-              <Clock className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีผู้ใช้ที่รออนุมัติ</h3>
-            <p className="text-gray-500 text-base">พนักงานใหม่ที่สมัครจะแสดงที่นี่</p>
-          </CardContent>
+          <EmptyState
+            size="lg"
+            icon={<Clock size={40} />}
+            title="ไม่มีผู้ใช้ที่รออนุมัติ"
+            body="พนักงานใหม่ที่สมัครจะแสดงที่นี่"
+          />
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -111,7 +103,7 @@ export default function PendingUsersPage() {
                     <h3 className="font-semibold text-gray-900 text-lg">{user.displayName || user.fullName}</h3>
                     <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
                     <div className="mt-2">
-                      {getRoleBadge(user.role)}
+                      <StatusBadge status={user.role} />
                     </div>
                   </div>
                 </div>
@@ -161,31 +153,23 @@ export default function PendingUsersPage() {
                 )}
 
                 {user.allowCheckInOutsideLocation && (
-                  <div className="flex items-center gap-3 text-sm text-teal-600">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>อนุญาตเช็คอินนอกสถานที่</span>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Pill tone="success">อนุญาตเช็คอินนอกสถานที่</Pill>
                   </div>
                 )}
               </CardContent>
 
               {/* Card Footer - Actions */}
               <div className="p-6 pt-0 flex gap-2">
-                <Button onClick={() => handleApprove(user)}
- className="flex-1 -">
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                <Button onClick={() => handleApprove(user)} className="flex-1">
+                  <CheckCircle className="w-4 h-4" />
                   อนุมัติ
                 </Button>
-                <Button onClick={() => handleReject(user)}
- variant="secondary"
- className="flex-1">
-                  <XCircle className="w-4 h-4 mr-2" />
+                <Button onClick={() => handleReject(user)} variant="secondary" className="flex-1">
+                  <XCircle className="w-4 h-4" />
                   ปฏิเสธ
                 </Button>
-                <Button onClick={() => setSelectedUser(user)}
- variant="secondary"
- size="sm">
-                  <Eye className="w-4 h-4" />
-                </Button>
+                <IconButton icon={Eye} title="ดูรายละเอียด" tone="sunken" size={40} onClick={() => setSelectedUser(user)} />
               </div>
             </Card>
           ))}
@@ -193,97 +177,97 @@ export default function PendingUsersPage() {
       )}
 
       {/* User Detail Modal */}
-      {selectedUser && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedUser(null)}
-        >
-          <Card padding={0} className="max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}
-          >
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-4">รายละเอียดผู้สมัคร</h3>
+      <Modal
+        open={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        title="รายละเอียดผู้สมัคร"
+        maxWidth={448}
+        footer={
+          <>
+            <Button
+              onClick={() => {
+                if (selectedUser) handleApprove(selectedUser)
+                setSelectedUser(null)
+              }}
+              className="flex-1"
+            >
+              อนุมัติ
+            </Button>
+            <Button onClick={() => setSelectedUser(null)} variant="secondary" className="flex-1">
+              ปิด
+            </Button>
+          </>
+        }
+      >
+        {selectedUser && (
+          <>
+          {/* User Info */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
+              <div>
+                <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
+                <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
+                <div className="mt-2"><StatusBadge status={selectedUser.role} /></div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
+                <p className="font-medium">{selectedUser.phone || '-'}</p>
+              </div>
               
-              {/* User Info */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
-                  <div>
-                    <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
-                    <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
-                    <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
-                    <p className="font-medium">{selectedUser.phone || '-'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">วันเกิด</p>
-                    <p className="font-medium">
-                      {selectedUser.birthDate 
-                        ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        : '-'
-                      }
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
-                    <p className="font-medium">{getLocationNames(selectedUser.allowedLocationIds)}</p>
-                  </div>
-                  
-                  {selectedUser.inviteLinkCode && (
-                    <div>
-                      <p className="text-sm text-gray-500">Invite Link</p>
-                      <p className="font-medium">
-                        <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">วันที่สมัคร</p>
-                    <p className="font-medium">
-                      {selectedUser.createdAt 
-                        ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : '-'
-                      }
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <p className="text-sm text-gray-500">วันเกิด</p>
+                <p className="font-medium">
+                  {selectedUser.birthDate 
+                    ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                    : '-'
+                  }
+                </p>
               </div>
-
-              <div className="mt-6 flex gap-2">
-                <Button onClick={() => {
- handleApprove(selectedUser)
- setSelectedUser(null)
- }}
- className="flex-1 -">
-                  อนุมัติ
-                </Button>
-                <Button onClick={() => setSelectedUser(null)}
- variant="secondary"
- className="flex-1">
-                  ปิด
-                </Button>
+              
+              <div>
+                <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
+                <p className="font-medium">{getLocationNames(selectedUser.allowedLocationIds)}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              
+              {selectedUser.inviteLinkCode && (
+                <div>
+                  <p className="text-sm text-gray-500">Invite Link</p>
+                  <p className="font-medium">
+                    <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
+                  </p>
+                </div>
+              )}
+              
+              <div>
+                <p className="text-sm text-gray-500">วันที่สมัคร</p>
+                <p className="font-medium">
+                  {selectedUser.createdAt 
+                    ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : '-'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+      </Modal>
+
+      {confirmDialog}
     </div>
   )
 }

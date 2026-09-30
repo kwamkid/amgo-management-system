@@ -18,8 +18,16 @@ import { th } from 'date-fns/locale'
 import { CupSoda, ListChecks, RotateCcw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Input, Textarea } from '@/components/aoo'
-import { PageHeader, SectionCard, Segmented, TechLoader } from '@/components/shared'
+import { Button, EmptyState, Field, Input, Pill, Textarea } from '@/components/aoo'
+import {
+  InfoPanel,
+  ListRow,
+  ListRows,
+  PageHeader,
+  SectionCard,
+  Segmented,
+  TechLoader,
+} from '@/components/shared'
 import BottleIcon from './BottleIcon'
 import {
   createBatch,
@@ -232,9 +240,11 @@ export default function ProductionMixPage() {
       {/* 1) เลือกสูตร — ปุ่มโตกดง่ายบนมือถือ */}
       <SectionCard title="1 · เลือกสูตร">
         {recipes.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            ยังไม่มีสูตร — ให้แอดมินเพิ่มที่หน้า &ldquo;สูตรน้ำ&rdquo; ก่อน
-          </p>
+          <EmptyState
+            size="sm"
+            icon={<CupSoda size={28} />}
+            body={<>ยังไม่มีสูตร — ให้แอดมินเพิ่มที่หน้า &ldquo;สูตรน้ำ&rdquo; ก่อน</>}
+          />
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {recipes.map((r) => (
@@ -319,10 +329,7 @@ export default function ProductionMixPage() {
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
-            <label className="block">
-              <span className="mb-1 block text-xs text-gray-500">
-                Brix น้ำคั้นที่วัดได้ (เป้า {recipe.targetBrix ?? 12})
-              </span>
+            <Field label={`Brix น้ำคั้นที่วัดได้ (เป้า ${recipe.targetBrix ?? 12})`}>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -332,9 +339,8 @@ export default function ProductionMixPage() {
                 placeholder="0"
                 className="text-center text-lg font-semibold"
               />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-gray-500">ใช้ผลไม้ไป (กก.)</span>
+            </Field>
+            <Field label="ใช้ผลไม้ไป (กก.)">
               <Input
                 type="number"
                 inputMode="decimal"
@@ -344,7 +350,7 @@ export default function ProductionMixPage() {
                 placeholder="0"
                 className="text-center text-lg font-semibold"
               />
-            </label>
+            </Field>
           </div>
 
           {planTotalMl > 0 && (
@@ -454,7 +460,7 @@ export default function ProductionMixPage() {
           </div>
 
           {/* สรุป + % น้ำที่ได้ สด ๆ ก่อนบันทึก */}
-          <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+          <InfoPanel className="mt-4 text-sm text-gray-700">
             <div>
               ได้น้ำรวม{' '}
               <strong className="tabular-nums">{(outputMl / 1000).toLocaleString()} ลิตร</strong>
@@ -467,7 +473,7 @@ export default function ProductionMixPage() {
                 <strong className="tabular-nums text-red-600">{yieldPercent}%</strong> (yield)
               </div>
             )}
-          </div>
+          </InfoPanel>
 
           <Textarea
             value={note}
@@ -479,13 +485,15 @@ export default function ProductionMixPage() {
 
           <div className="mt-4 flex gap-2">
             <Button type="button" variant="ghost" onClick={reset} disabled={saving}>
-              <RotateCcw size={16} className="mr-1" /> เริ่มใหม่
+              <RotateCcw size={16} /> เริ่มใหม่
             </Button>
             <Button
               type="button"
-              className="h-12 flex-1 text-base"
+              size="lg"
+              className="flex-1"
               onClick={save}
-              disabled={saving || !readyToMix}
+              loading={saving}
+              disabled={!readyToMix}
             >
               {saving ? 'กำลังบันทึก…' : 'บันทึกการผสม'}
             </Button>
@@ -496,21 +504,20 @@ export default function ProductionMixPage() {
       {/* ที่บันทึกไปแล้ววันนี้ — ให้เห็นว่าลงระบบจริง */}
       {todayBatches.length > 0 && (
         <SectionCard title="บันทึกแล้ววันนี้">
-          <div className="divide-y divide-gray-100">
+          <ListRows>
             {todayBatches.map((b) => (
-              <div key={b.id} className="flex items-center justify-between py-2 text-sm">
-                <div>
-                  <span className="font-medium text-gray-800">{b.recipeName}</span>
-                  <span className="ml-2 text-gray-500">
-                    {(b.outputMl / 1000).toLocaleString()} ลิตร · {b.madeByName}
-                  </span>
-                </div>
-                {b.yieldPercent !== null && (
-                  <span className="tabular-nums font-semibold text-gray-700">{b.yieldPercent}%</span>
-                )}
-              </div>
+              <ListRow
+                key={b.id}
+                title={b.recipeName}
+                meta={`${(b.outputMl / 1000).toLocaleString()} ลิตร · ${b.madeByName}`}
+                trailing={
+                  b.yieldPercent !== null ? (
+                    <Pill tone="accent">{b.yieldPercent}%</Pill>
+                  ) : undefined
+                }
+              />
             ))}
-          </div>
+          </ListRows>
         </SectionCard>
       )}
     </div>

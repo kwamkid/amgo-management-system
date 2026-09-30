@@ -6,28 +6,34 @@ import { use, useState } from 'react'
 import { useInviteLink } from '@/hooks/useInviteLinks'
 import { useUsers } from '@/hooks/useUsers'
 import { useLocations } from '@/hooks/useLocations'
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Link as LinkIcon,
   Users,
   Copy,
-  QrCode,
   CheckCircle,
-  XCircle,
   Clock,
-  AlertCircle,
   Calendar,
-  User,
-  Eye
+  FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import TechLoader from '@/components/shared/TechLoader'
 import { useToast } from '@/hooks/useToast'
 import { User as UserType } from '@/types/user'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, StatCard, StatusBadge, DataTable, type Column } from '@/components/shared'
 import UserAvatar from '@/components/shared/UserAvatar'
+import { InviteLink } from '@/types/invite'
 
-import { Alert, Pill, badgeTone, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Alert, Pill, Card, CardContent, CardHeader, CardTitle, Button, IconButton, Modal, EmptyState } from '@/components/aoo'
+
+/** สถานะลิงก์ — ลำดับเดิม: หมดอายุ → ใช้ครบ → ปิดใช้งาน → ใช้งานได้ */
+function inviteStatus(link: InviteLink): 'expired' | 'used_up' | 'disabled' | 'active' {
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) return 'expired'
+  if (link.maxUses && link.usedCount >= link.maxUses) return 'used_up'
+  if (!link.isActive) return 'disabled'
+  return 'active'
+}
+
 export default function InviteLinkDetailPage({ 
   params 
 }: { 
@@ -46,57 +52,6 @@ export default function InviteLinkDetailPage({
     const url = `${window.location.origin}/register/invite?invite=${inviteLink.code}`
     navigator.clipboard.writeText(url)
     showToast('คัดลอกลิงก์แล้ว', 'success')
-  }
-
-  const getStatusBadge = () => {
-    if (!inviteLink) return null
-    const now = new Date()
-    
-    if (inviteLink.expiresAt && new Date(inviteLink.expiresAt) < now) {
-      return (
-        <Pill tone="neutral">
-          <XCircle className="w-4 h-4 mr-1" />
-          หมดอายุ
-        </Pill>
-      )
-    }
-    
-    if (inviteLink.maxUses && inviteLink.usedCount >= inviteLink.maxUses) {
-      return (
-        <Pill tone="warning">
-          <AlertCircle className="w-4 h-4 mr-1" />
-          ใช้ครบแล้ว
-        </Pill>
-      )
-    }
-    
-    if (!inviteLink.isActive) {
-      return (
-        <Pill tone="danger">
-          <XCircle className="w-4 h-4 mr-1" />
-          ปิดใช้งาน
-        </Pill>
-      )
-    }
-    
-    return (
-      <Pill tone="success">
-        <CheckCircle className="w-4 h-4 mr-1" />
-        ใช้งานได้
-      </Pill>
-    )
-  }
-
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      employee: { label: 'พนักงาน', variant: 'secondary' as const },
-      manager: { label: 'ผู้จัดการ', variant: 'info' as const },
-      hr: { label: 'ฝ่ายบุคคล', variant: 'default' as const },
-      driver: { label: 'พนักงานขับรถ', variant: 'info' as const }
-    }
-    
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
-    return <Pill tone={badgeTone(config.variant)}>{config.label}</Pill>
   }
 
   const getLocationNames = (locationIds?: string[]) => {
@@ -120,7 +75,7 @@ export default function InviteLinkDetailPage({
               {error || 'ไม่พบข้อมูล Invite Link'}
             </p>
             <Link href="/employees/invite-links"><Button variant="soft">
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-4 h-4" />
                 กลับไปหน้ารายการ
               </Button></Link>
           </div>
@@ -132,6 +87,60 @@ export default function InviteLinkDetailPage({
   // Filter users who used this invite link
   const linkedUsers = users.filter(user => user.inviteLinkId === id)
 
+  const userColumns: Column<UserType>[] = [
+    {
+      key: 'user',
+      header: 'พนักงาน',
+      mobilePrimary: true,
+      cell: (user) => (
+        <div className="flex items-center gap-3">
+          <UserAvatar name={user.fullName} userId={user.id} size="md" />
+          <div>
+            <p className="font-medium text-gray-900">{user.displayName || user.fullName}</p>
+            <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'phone',
+      header: 'ติดต่อ',
+      cell: (user) => <p className="text-sm text-gray-600">{user.phone || '-'}</p>,
+    },
+    {
+      key: 'status',
+      header: 'สถานะ',
+      cell: (user) =>
+        user.isActive ? (
+          <StatusBadge status="active" label="Active" />
+        ) : user.needsApproval ? (
+          <StatusBadge status="pending" />
+        ) : (
+          <StatusBadge status="inactive" label="Inactive" />
+        ),
+    },
+    {
+      key: 'createdAt',
+      header: 'วันที่สมัคร',
+      cell: (user) => (
+        <p className="text-sm text-gray-600">
+          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
+        </p>
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      align: 'right',
+      mobileFooterAction: true,
+      cell: (user) => (
+        <Link href={`/employees/${user.id}/edit`}>
+          <Button variant="ghost" size="sm">ดูรายละเอียด</Button>
+        </Link>
+      ),
+    },
+  ]
+
   return (
     <div className="max-w-6xl space-y-6">
       <PageHeader
@@ -141,70 +150,36 @@ export default function InviteLinkDetailPage({
         ).toLocaleDateString('th-TH')}`}
         icon={LinkIcon}
         backHref="/employees/invite-links"
-        actions={getStatusBadge()}
+        actions={<StatusBadge status={inviteStatus(inviteLink)} kind="invite" />}
       />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ใช้ไปแล้ว</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {inviteLink.usedCount} / {inviteLink.maxUses || '∞'}
-                </p>
-              </div>
-              <LinkIcon className="w-8 h-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0} className="-">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-700">พนักงานทั้งหมด</p>
-                <p className="text-2xl font-bold text-blue-900">{linkedUsers.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0} className="-">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-teal-700">Active</p>
-                <p className="text-2xl font-bold text-teal-900">
-                  {linkedUsers.filter(u => u.isActive).length}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-teal-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card padding={0} className="-">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-amber-700">รออนุมัติ</p>
-                <p className="text-2xl font-bold text-amber-900">
-                  {linkedUsers.filter(u => u.needsApproval).length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-amber-600" />
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="ใช้ไปแล้ว"
+          value={`${inviteLink.usedCount} / ${inviteLink.maxUses || '∞'}`}
+          icon={LinkIcon}
+          tone="plum"
+        />
+        <StatCard label="พนักงานทั้งหมด" value={linkedUsers.length} icon={Users} tone="sky" />
+        <StatCard
+          label="Active"
+          value={linkedUsers.filter(u => u.isActive).length}
+          icon={CheckCircle}
+          tone="success"
+        />
+        <StatCard
+          label="รออนุมัติ"
+          value={linkedUsers.filter(u => u.needsApproval).length}
+          icon={Clock}
+          tone="warning"
+        />
       </div>
 
       {/* Link Details */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">รายละเอียด</CardTitle>
+          <CardTitle icon={FileText} tone="sky">รายละเอียด</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-6">
@@ -215,9 +190,7 @@ export default function InviteLinkDetailPage({
                   <code className="flex-1 bg-gray-100 px-3 py-2 rounded text-sm break-all">
                     {window.location.origin}/register/invite?invite={inviteLink.code}
                   </code>
-                  <Button onClick={copyInviteLink} variant="ghost" size="sm">
-                    <Copy className="w-4 h-4 text-gray-600" />
-                  </Button>
+                  <IconButton icon={Copy} title="คัดลอกลิงก์" onClick={copyInviteLink} />
                 </div>
               </div>
               
@@ -247,7 +220,7 @@ export default function InviteLinkDetailPage({
                 <div className="mt-1 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">สิทธิ์:</span>
-                    {getRoleBadge(inviteLink.defaultRole)}
+                    <StatusBadge status={inviteLink.defaultRole} />
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">สาขา:</span>
@@ -271,167 +244,95 @@ export default function InviteLinkDetailPage({
       {/* Users Table */}
       <Card padding={0}>
         <CardHeader>
-          <CardTitle className="text-lg">พนักงานที่ใช้ลิงก์นี้</CardTitle>
+          <CardTitle icon={Users} tone="grape">พนักงานที่ใช้ลิงก์นี้</CardTitle>
         </CardHeader>
         
         {linkedUsers.length === 0 ? (
-          <CardContent className="text-center py-12">
-            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 text-base">ยังไม่มีพนักงานใช้ลิงก์นี้</p>
-          </CardContent>
+          <EmptyState icon={<Users size={40} />} title="ยังไม่มีพนักงานใช้ลิงก์นี้" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">พนักงาน</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">ติดต่อ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">สถานะ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-900">วันที่สมัคร</th>
-                  <th className="text-right px-6 py-3 text-sm font-medium text-gray-900">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {linkedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar name={user.fullName} userId={user.id} size="md" />
-                        <div>
-                          <p className="font-medium text-gray-900">{user.displayName || user.fullName}</p>
-                          <p className="text-sm text-gray-500">@{user.lineDisplayName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600">{user.phone || '-'}</p>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      {user.isActive ? (
-                        <Pill tone="success">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Active
-                        </Pill>
-                      ) : user.needsApproval ? (
-                        <Pill tone="warning">
-                          <Clock className="w-3 h-3 mr-1" />
-                          รออนุมัติ
-                        </Pill>
-                      ) : (
-                        <Pill tone="danger">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Inactive
-                        </Pill>
-                      )}
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600">
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('th-TH') : '-'}
-                      </p>
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <Link href={`/employees/${user.id}/edit`}><Button variant="ghost" size="sm">
-                          ดูรายละเอียด
-                        </Button></Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CardContent>
+            <DataTable columns={userColumns} rows={linkedUsers} rowKey={(u) => u.id!} />
+          </CardContent>
         )}
       </Card>
 
       {/* User Detail Modal */}
-      {selectedUser && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedUser(null)}
-        >
-          <Card padding={0} className="max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader>
-              <CardTitle>รายละเอียดผู้สมัคร</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* User Info */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
-                  <div>
-                    <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
-                    <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
-                    <div className="mt-2">{getRoleBadge(selectedUser.role)}</div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
-                    <p className="font-medium text-base">{selectedUser.phone || '-'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">วันเกิด</p>
-                    <p className="font-medium text-base">
-                      {selectedUser.birthDate 
-                        ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        : '-'
-                      }
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
-                    <p className="font-medium text-base">{getLocationNames(selectedUser.allowedLocationIds)}</p>
-                  </div>
-                  
-                  {selectedUser.inviteLinkCode && (
-                    <div>
-                      <p className="text-sm text-gray-500">Invite Link</p>
-                      <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-sm text-gray-500">วันที่สมัคร</p>
-                    <p className="font-medium text-base">
-                      {selectedUser.createdAt 
-                        ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : '-'
-                      }
-                    </p>
-                  </div>
-                </div>
+      <Modal
+        open={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        title="รายละเอียดผู้สมัคร"
+        maxWidth={448}
+        footer={
+          <Button onClick={() => setSelectedUser(null)} variant="secondary" className="w-full">
+            ปิด
+          </Button>
+        }
+      >
+        {selectedUser && (
+          <>
+          {/* User Info */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <UserAvatar name={selectedUser.fullName} userId={selectedUser.id} size="xl" />
+              <div>
+                <h4 className="font-semibold text-lg">{selectedUser.displayName || selectedUser.fullName}</h4>
+                <p className="text-gray-500">@{selectedUser.lineDisplayName}</p>
+                <div className="mt-2"><StatusBadge status={selectedUser.role} /></div>
               </div>
+            </div>
 
-              <div className="mt-6">
-                <Button onClick={() => setSelectedUser(null)}
- variant="secondary"
- className="w-full">
-                  ปิด
-                </Button>
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">เบอร์โทรศัพท์</p>
+                <p className="font-medium text-base">{selectedUser.phone || '-'}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              
+              <div>
+                <p className="text-sm text-gray-500">วันเกิด</p>
+                <p className="font-medium text-base">
+                  {selectedUser.birthDate 
+                    ? new Date(selectedUser.birthDate).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                    : '-'
+                  }
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm text-gray-500">สาขาที่อนุญาต</p>
+                <p className="font-medium text-base">{getLocationNames(selectedUser.allowedLocationIds)}</p>
+              </div>
+              
+              {selectedUser.inviteLinkCode && (
+                <div>
+                  <p className="text-sm text-gray-500">Invite Link</p>
+                  <Pill tone="neutral">{selectedUser.inviteLinkCode}</Pill>
+                </div>
+              )}
+              
+              <div>
+                <p className="text-sm text-gray-500">วันที่สมัคร</p>
+                <p className="font-medium text-base">
+                  {selectedUser.createdAt 
+                    ? new Date(selectedUser.createdAt).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : '-'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

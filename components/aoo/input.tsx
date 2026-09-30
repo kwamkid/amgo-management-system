@@ -266,6 +266,8 @@ export interface FieldProps {
   help?: string;
   /** Error message shown below the input (replaces help when present) */
   error?: string;
+  /** ข้อความเตือนสีเหลือง (แสดงเมื่อไม่มี error) */
+  warning?: string;
   /** Marks the label with an asterisk */
   required?: boolean;
   /**
@@ -285,6 +287,7 @@ export function Field({
   labelExtra,
   help,
   error,
+  warning,
   required,
   asDiv = false,
   children,
@@ -344,6 +347,7 @@ export function Field({
     <>
       {labelRow}
       {children}
+      {!error && warning && <span className="aoo-field-warning">{warning}</span>}
       {(error || help) && <span style={msgStyle}>{error ?? help}</span>}
     </>
   );

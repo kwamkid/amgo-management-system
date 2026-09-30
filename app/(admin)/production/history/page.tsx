@@ -13,10 +13,11 @@ import { History } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { DateRangePicker } from '@/components/aoo'
-import { Button, Modal } from '@/components/aoo'
+import { Button, Modal, Pill, useConfirm } from '@/components/aoo'
 import {
   DataTable,
   FilterCard,
+  InfoPanel,
   FilterField,
   PageHeader,
   Skeleton,
@@ -47,6 +48,7 @@ export default function ProductionHistoryPage() {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<ProductionBatch | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const { confirm: ask, dialog: confirmDialog } = useConfirm()
 
   const isAdmin = userData?.role === 'admin'
   const canSee = !!userData && (isAdmin || userData.jobFunctionCode === 'production')
@@ -84,7 +86,7 @@ export default function ProductionHistoryPage() {
   }, [batches])
 
   const remove = async (id: string) => {
-    if (!confirm('ลบบันทึกนี้ทิ้งเลยไหม?')) return
+    if (!(await ask({ title: 'ลบบันทึกนี้ทิ้งเลยไหม?', tone: 'danger', confirmLabel: 'ลบ' }))) return
     setDeleting(true)
     try {
       await deleteBatch(id)
@@ -215,7 +217,7 @@ export default function ProductionHistoryPage() {
           maxWidth={480}
           footer={
             isAdmin ? (
-              <Button type="button" variant="danger" onClick={() => remove(selected.id)} disabled={deleting}>
+              <Button type="button" variant="danger" onClick={() => remove(selected.id)} loading={deleting}>
                 {deleting ? 'กำลังลบ…' : 'ลบบันทึกนี้'}
               </Button>
             ) : undefined
@@ -223,11 +225,11 @@ export default function ProductionHistoryPage() {
         >
           <div className="space-y-4 text-sm">
             {selected.juiceBrix !== null && (
-              <div className="rounded-lg bg-sky-50 p-3 text-sky-800">
+              <InfoPanel tone="sky">
                 วัดได้: น้ำคั้น{' '}
                 <strong className="tabular-nums">{selected.juiceLiters?.toLocaleString()} ลิตร</strong>
                 {' '}· Brix <strong className="tabular-nums">{selected.juiceBrix}</strong>
-              </div>
+              </InfoPanel>
             )}
             <div>
               <div className="mb-1 font-semibold text-gray-700">
@@ -247,9 +249,9 @@ export default function ProductionHistoryPage() {
                       <td className="py-1.5">
                         {i.name}
                         {i.isYieldBase && (
-                          <span className="ml-1.5 rounded bg-orange-100 px-1 py-0.5 text-xs font-semibold text-orange-700">
+                          <Pill tone="accent" className="ml-1.5">
                             yield
-                          </span>
+                          </Pill>
                         )}
                       </td>
                       <td className="py-1.5 text-right tabular-nums text-gray-500">
@@ -289,17 +291,18 @@ export default function ProductionHistoryPage() {
             </div>
 
             {selected.yieldPercent !== null && (
-              <div className="rounded-lg bg-gray-50 p-3">
+              <InfoPanel>
                 ผลไม้ {selected.yieldBaseKg?.toLocaleString()} กก. → ได้น้ำ{' '}
                 {(selected.outputMl / 1000).toLocaleString()} ลิตร ={' '}
                 <strong className="text-red-600">ได้น้ำ {selected.yieldPercent}% ของผลไม้</strong> (yield)
-              </div>
+              </InfoPanel>
             )}
 
             {selected.note && <p className="text-gray-500">หมายเหตุ: {selected.note}</p>}
           </div>
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

@@ -12,7 +12,6 @@ import {
   LogOut,
   MapPin,
   RefreshCw,
-  Loader2,
   TrendingUp,
   UserCheck
 } from 'lucide-react';
@@ -24,11 +23,10 @@ import { getUsers } from '@/lib/services/userService';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { safeFormatDate } from '@/lib/utils/date';
-import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/shared/UserAvatar'
-import { StatCard } from '@/components/shared'
+import { StatCard, ListRow, ListRows } from '@/components/shared'
 
-import { Pill, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { Pill, type PillTone, Card, CardContent, CardHeader, CardTitle, Button, Spinner, EmptyState } from '@/components/aoo'
 interface AttendanceSectionProps {
   userData: UserData;
 }
@@ -40,7 +38,6 @@ interface AttendanceData {
 }
 
 export default function AttendanceSection({ userData }: AttendanceSectionProps) {
-  const router = useRouter();
   const [attendanceData, setAttendanceData] = useState<AttendanceData>({
     checkedIn: [],
     notCheckedIn: [],
@@ -116,14 +113,14 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
   const getShiftBadge = (record: CheckInRecord) => {
     if (!record.selectedShiftName) return null;
     
-    const shiftColors: Record<string, string> = {
-      'กะเช้า': 'bg-blue-100 text-blue-700',
-      'กะบ่าย': 'bg-purple-100 text-purple-700',
-      'กะดึก': 'bg-gray-700 text-white'
+    const shiftTones: Record<string, PillTone> = {
+      'กะเช้า': 'sky',
+      'กะบ่าย': 'grape',
+      'กะดึก': 'plum'
     };
     
     return (
-      <Pill tone="accent" className={`text-xs ${shiftColors[record.selectedShiftName] || 'bg-gray-100 text-gray-700'}`}>
+      <Pill tone={shiftTones[record.selectedShiftName] || 'neutral'}>
         {record.selectedShiftName}
       </Pill>
     );
@@ -136,7 +133,7 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -156,15 +153,11 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
         </div>
         
         <Button onClick={() => fetchAttendanceData(true)}
- disabled={refreshing}
+ loading={refreshing}
  variant="secondary"
  size="sm">
-          {refreshing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          <span className="ml-2">รีเฟรช</span>
+          {!refreshing && <RefreshCw className="w-4 h-4" />}
+          รีเฟรช
         </Button>
       </div>
 
@@ -187,9 +180,9 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </CardHeader>
           <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
             {workingCount === 0 ? (
-              <p className="text-center text-gray-500 py-8">ไม่มีพนักงานที่กำลังทำงาน</p>
+              <EmptyState icon={<Clock size={32} />} title="ไม่มีพนักงานที่กำลังทำงาน" size="sm" />
             ) : (
-              <div className="space-y-3">
+              <ListRows>
                 {attendanceData.checkedIn
                   .filter(user => {
                     const record = attendanceData.records[user.id!];
@@ -203,42 +196,40 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
                     const workingHours = Math.floor((Date.now() - checkinTime.getTime()) / (1000 * 60 * 60));
                     
                     return (
-                      <div 
-                        key={user.id} 
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                        onClick={() => router.push(`/employees/${user.id}`)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <UserAvatar name={user.fullName} userId={user.id} size="md" />
-                          <div>
-                            <p className="font-medium">{user.displayName || user.fullName}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="flex items-center gap-1 text-sm text-gray-600">
-                                <LogIn className="w-3.5 h-3.5" />
-                                {formatTime(record.checkinTime)}
-                              </span>
-                              <span className="flex items-center gap-1 text-sm text-gray-600">
-                                <MapPin className="w-3.5 h-3.5" />
-                                {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getShiftBadge(record)}
-                          {record.isLate && (
-                            <Pill tone="danger" className="text-xs">
-                              สาย {record.lateMinutes} นาที
+                      <ListRow
+                        key={user.id}
+                        href={`/employees/${user.id}`}
+                        leading={<UserAvatar name={user.fullName} userId={user.id} size="md" />}
+                        title={user.displayName || user.fullName}
+                        meta={
+                          <span className="mt-1 flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                              <LogIn className="w-3.5 h-3.5" />
+                              {formatTime(record.checkinTime)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {record.primaryLocationName || 'เช็คอินนอกสถานที่'}
+                            </span>
+                          </span>
+                        }
+                        trailing={
+                          <>
+                            {getShiftBadge(record)}
+                            {record.isLate && (
+                              <Pill tone="danger">
+                                สาย {record.lateMinutes} นาที
+                              </Pill>
+                            )}
+                            <Pill tone="sky">
+                              {workingHours} ชม.
                             </Pill>
-                          )}
-                          <Pill tone="success" className="text-xs">
-                            {workingHours} ชม.
-                          </Pill>
-                        </div>
-                      </div>
+                          </>
+                        }
+                      />
                     );
                   })}
-              </div>
+              </ListRows>
             )}
           </CardContent>
         </Card>
@@ -252,39 +243,35 @@ export default function AttendanceSection({ userData }: AttendanceSectionProps) 
           </CardHeader>
           <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
             {attendanceData.notCheckedIn.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">พนักงานเช็คอินครบแล้ว 🎉</p>
+              <EmptyState icon={<CheckCircle size={32} />} title="พนักงานเช็คอินครบแล้ว 🎉" size="sm" />
             ) : (
-              <div className="space-y-3">
+              <ListRows>
                 {attendanceData.notCheckedIn.map(user => (
-                  <div 
-                    key={user.id} 
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/employees/${user.id}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <UserAvatar name={user.fullName} userId={user.id} size="md" />
-                      <div>
-                        <p className="font-medium">{user.displayName || user.fullName}</p>
-                        <p className="text-sm text-gray-600">
-                          {user.role === 'manager' ? 'ผู้จัดการ' : 
-                           user.role === 'hr' ? 'ฝ่ายบุคคล' : 
-                           user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
-                        <Pill tone="neutral" className="text-xs">
-                          {user.allowedLocationIds.length} สาขา
+                  <ListRow
+                    key={user.id}
+                    href={`/employees/${user.id}`}
+                    leading={<UserAvatar name={user.fullName} userId={user.id} size="md" />}
+                    title={user.displayName || user.fullName}
+                    meta={
+                      user.role === 'manager' ? 'ผู้จัดการ' :
+                      user.role === 'hr' ? 'ฝ่ายบุคคล' :
+                      user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'
+                    }
+                    trailing={
+                      <>
+                        {user.allowedLocationIds && user.allowedLocationIds.length > 0 && (
+                          <Pill tone="neutral">
+                            {user.allowedLocationIds.length} สาขา
+                          </Pill>
+                        )}
+                        <Pill tone="danger">
+                          ยังไม่มา
                         </Pill>
-                      )}
-                      <Pill tone="danger" className="text-xs">
-                        ยังไม่มา
-                      </Pill>
-                    </div>
-                  </div>
+                      </>
+                    }
+                  />
                 ))}
-              </div>
+              </ListRows>
             )}
           </CardContent>
         </Card>

@@ -4,8 +4,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { InviteLink } from '@/types/invite'
 import Image from 'next/image'
-import { AlertCircle, CheckCircle } from 'lucide-react'
-import { Label, Input, Alert, Card, CardContent, Button } from '@/components/aoo'
+import { CheckCircle } from 'lucide-react'
+import { Field, Input, Pill, Alert, Card, CardContent, Button, Spinner } from '@/components/aoo'
 async function validateInviteCode(code: string): Promise<{ valid: boolean; link?: InviteLink; error?: string }> {
   const res = await fetch(`/api/invite/validate?code=${encodeURIComponent(code)}`)
   return res.json()
@@ -184,22 +184,18 @@ function RegisterForm() {
   if (loading) {
     return (
       <div className="text-center py-8">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
+        <Spinner size="md" />
       </div>
     )
   }
 
   if (error && !formData.lineUserId) {
     return (
-      <Alert tone="error">
-        <div>
-          <h3 className="text-lg font-semibold mb-2">เกิดข้อผิดพลาด</h3>
-          <p className="mb-4">{error}</p>
-          <Button onClick={() => router.push('/login')}
- variant="secondary">
-            กลับไปหน้า Login
-          </Button>
-        </div>
+      <Alert tone="error" title="เกิดข้อผิดพลาด">
+        <p className="mb-4">{error}</p>
+        <Button onClick={() => router.push('/login')} variant="secondary">
+          กลับไปหน้า Login
+        </Button>
       </Alert>
     )
   }
@@ -208,15 +204,15 @@ function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Invite Link Info */}
       {inviteLink && (
-        <Alert tone="success" className="-">
+        <Alert tone="success">
           <div>
-            <p className="text-teal-800 text-sm font-medium">
-              ใช้ลิงก์: <code className="bg-teal-100 px-2 py-1 rounded">{inviteLink.code}</code>
+            <p className="font-medium">
+              ใช้ลิงก์: <Pill tone="success" className="font-mono">{inviteLink.code}</Pill>
             </p>
             {inviteLink.note && (
-              <p className="text-teal-700 text-sm mt-1">{inviteLink.note}</p>
+              <p className="mt-1">{inviteLink.note}</p>
             )}
-            <div className="mt-2 text-xs text-teal-700">
+            <div className="mt-2 text-xs">
               <p>• สิทธิ์: {inviteLink.defaultRole === 'employee' ? 'พนักงาน' :
               inviteLink.defaultRole === 'manager' ? 'ผู้จัดการ' :
               inviteLink.defaultRole === 'hr' ? 'ฝ่ายบุคคล' :
@@ -234,30 +230,22 @@ function RegisterForm() {
       {/* Profile Picture */}
       {formData.linePictureUrl && (
         <div className="text-center">
-          <div className="relative inline-block">
-            <img
-              src={formData.linePictureUrl}
-              alt="Profile"
-              className="w-24 h-24 rounded-full"
-            />
-            <div className="absolute inset-0 rounded-full ring-4 ring-red-400 ring-offset-2"></div>
-          </div>
+          <img
+            src={formData.linePictureUrl}
+            alt="Profile"
+            className="inline-block w-24 h-24 rounded-full ring-4 ring-[var(--accent)] ring-offset-2"
+          />
           <p className="mt-2 text-sm text-gray-600">@{formData.lineDisplayName}</p>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <Alert tone="error">
-          <div>{error}</div>
-        </Alert>
+        <Alert tone="error">{error}</Alert>
       )}
 
       {/* Full Name */}
-      <div>
-        <Label htmlFor="fullName">
-          ชื่อ-นามสกุลเต็ม <span className="text-red-500">*</span>
-        </Label>
+      <Field label="ชื่อ-นามสกุลเต็ม" required help="ชื่อจริงตามบัตรประชาชน ใช้กับเอกสารและรายงานของบริษัท">
         <Input
           id="fullName"
           type="text"
@@ -265,18 +253,11 @@ function RegisterForm() {
           onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
           placeholder="กรอกชื่อ-นามสกุลจริง"
           required
-          className="mt-1"
         />
-        <p className="text-xs text-gray-500 mt-1">
-          ชื่อจริงตามบัตรประชาชน ใช้กับเอกสารและรายงานของบริษัท
-        </p>
-      </div>
+      </Field>
 
       {/* Nickname */}
-      <div>
-        <Label htmlFor="nickname">
-          ชื่อเล่น <span className="text-red-500">*</span>
-        </Label>
+      <Field label="ชื่อเล่น" required help="ชื่อที่ให้เพื่อนร่วมงานเรียก">
         <Input
           id="nickname"
           type="text"
@@ -284,16 +265,11 @@ function RegisterForm() {
           onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
           placeholder="เช่น แตน"
           required
-          className="mt-1"
         />
-        <p className="text-xs text-gray-500 mt-1">ชื่อที่ให้เพื่อนร่วมงานเรียก</p>
-      </div>
+      </Field>
 
       {/* Phone */}
-      <div>
-        <Label htmlFor="phone">
-          เบอร์โทรศัพท์ <span className="text-red-500">*</span>
-        </Label>
+      <Field label="เบอร์โทรศัพท์" required help="กรอกเบอร์โทร 10 หลัก">
         <Input
           id="phone"
           type="tel"
@@ -303,16 +279,11 @@ function RegisterForm() {
           pattern="[0-9]{10}"
           maxLength={10}
           required
-          className="mt-1"
         />
-        <p className="text-xs text-gray-500 mt-1">กรอกเบอร์โทร 10 หลัก</p>
-      </div>
+      </Field>
 
       {/* Birth Date */}
-      <div>
-        <Label htmlFor="birthDate">
-          วันเกิด <span className="text-red-500">*</span>
-        </Label>
+      <Field label="วันเกิด" required>
         <Input
           id="birthDate"
           type="date"
@@ -320,15 +291,14 @@ function RegisterForm() {
           onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
           max={new Date().toISOString().split('T')[0]}
           required
-          className="mt-1"
         />
-      </div>
+      </Field>
 
       {/* ชื่อซ้ำกับคนที่มีอยู่แล้ว — เตือนก่อน ไม่บล็อกตาย (คนชื่อซ้ำกันจริงก็มี)
           เจอของจริง 3 ก.ย. 69: สมัคร 2 รอบด้วย LINE คนละอัน ได้ 2 บัญชีชื่อเดียวกัน */}
       {duplicateWarning && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <p className="whitespace-pre-line text-sm text-amber-900">{duplicateWarning}</p>
+        <Alert tone="warning">
+          <p className="whitespace-pre-line">{duplicateWarning}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" variant="soft" size="sm" disabled={isSubmitting} onClick={(e) => handleSubmit(e, true)}>
               เป็นคนละคน — สมัครต่อ
@@ -337,19 +307,19 @@ function RegisterForm() {
               ยกเลิก
             </Button>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* Submit Button */}
-      <Button type="submit" disabled={isSubmitting || !!duplicateWarning} className="w-full -" size="lg">
+      <Button type="submit" disabled={isSubmitting || !!duplicateWarning} className="w-full" size="lg">
         {isSubmitting ? 'กำลังลงทะเบียน...' : 'ลงทะเบียน'}
       </Button>
 
       {/* Info Text */}
       <div className="text-center">
         {inviteLink && !inviteLink.requireApproval ? (
-          <div className="inline-flex items-center gap-2 text-teal-600 text-sm">
-            <CheckCircle className="w-4 h-4" />
+          <div data-tone="success" className="inline-flex items-center gap-2 text-[var(--tone-ink)] text-sm">
+            <CheckCircle size={16} />
             <span>คุณจะสามารถเข้าใช้งานได้ทันทีหลังลงทะเบียน</span>
           </div>
         ) : (
@@ -364,9 +334,9 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] px-4 py-8">
       <div className="relative w-full max-w-md">
-        <Card padding={0} className="backdrop-blur-xl /90">
+        <Card padding={0}>
           <CardContent className="p-8">
             {/* Header */}
             <div className="text-center mb-8">
@@ -386,7 +356,7 @@ export default function RegisterPage() {
             {/* Form with Suspense */}
             <Suspense fallback={
               <div className="text-center py-8">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-500 border-r-transparent"></div>
+                <Spinner size="md" />
               </div>
             }>
               <RegisterForm />

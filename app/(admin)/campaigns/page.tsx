@@ -1,35 +1,22 @@
 // ========== FILE: app/(admin)/campaigns/page.tsx ==========
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useInfluencers } from '@/hooks/useInfluencers'
 import { useBrands } from '@/hooks/useBrands'
 import { useProducts } from '@/hooks/useProducts'
-import { useUsers } from '@/hooks/useUsers'
-import { 
+import { useToast } from '@/hooks/useToast'
+import {
   TrendingUp,
-  Plus,
-  Calendar,
-  Users,
-  Package,
-  DollarSign,
-  Clock,
+  Search,
+  Filter,
+  X,
+  Edit,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Search,
-  Filter,
-  MoreVertical,
-  Eye,
-  Edit,
-  Copy,
-  FileText,
-  ChevronDown,
-  X,
-  Trash2,
-  Shield
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -37,10 +24,21 @@ import TechLoader from '@/components/shared/TechLoader'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { CampaignStatus } from '@/types/influencer'
-import { cn } from '@/lib/utils'
-import { Input, Pill, Card, Button, Select, ActionMenu, Progress } from '@/components/aoo'
+import {
+  Input,
+  Pill,
+  Card,
+  Button,
+  IconButton,
+  SelectMenu,
+  Field,
+  ActionMenu,
+  Progress,
+  EmptyState,
+  useConfirm,
+} from '@/components/aoo'
 import TableFooter from '@/components/shared/TableFooter'
-import { DataTable } from '@/components/shared'
+import { DataTable, StatCard, PageHeader, StatusBadge } from '@/components/shared'
 export default function CampaignsPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -152,54 +150,18 @@ export default function CampaignsPage() {
     setCurrentPage(1)
   }, [searchTerm, statusFilter, brandFilter, productFilter, creatorFilter])
 
-  // Status config
-  const statusConfig: Record<CampaignStatus, { 
-    label: string
-    icon: any
-    color: string 
-    bgColor: string
-  }> = {
-    pending: { 
-      label: 'รอดำเนินการ', 
-      icon: Clock, 
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100'
-    },
-    active: { 
-      label: 'กำลังดำเนินการ', 
-      icon: TrendingUp, 
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
-    },
-    reviewing: { 
-      label: 'รอตรวจสอบ', 
-      icon: AlertCircle, 
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100'
-    },
-    revising: { 
-      label: 'รอแก้ไข', 
-      icon: Edit, 
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100'
-    },
-    completed: { 
-      label: 'เสร็จสิ้น', 
-      icon: CheckCircle, 
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
-    },
-    cancelled: { 
-      label: 'ยกเลิก', 
-      icon: XCircle, 
-      color: 'text-red-600',
-      bgColor: 'bg-red-100'
-    }
-  }
+  const { showToast } = useToast()
+  const { confirm, dialog } = useConfirm()
 
   // Handle cancel campaign
   const handleCancelCampaign = async (id: string, name: string) => {
-    if (confirm(`ต้องการยกเลิก Campaign "${name}" ใช่หรือไม่?`)) {
+    const ok = await confirm({
+      title: `ต้องการยกเลิก Campaign "${name}" ใช่หรือไม่?`,
+      confirmLabel: 'ยกเลิก Campaign',
+      cancelLabel: 'ไม่ใช่',
+      tone: 'danger',
+    })
+    if (ok) {
       await cancelCampaign(id)
     }
   }
@@ -207,8 +169,14 @@ export default function CampaignsPage() {
   // Handle delete campaign (admin only)
   const handleDeleteCampaign = async (id: string, name: string) => {
     if (!isAdmin) return
-    
-    if (confirm(`ต้องการลบ Campaign "${name}" อย่างถาวรใช่หรือไม่?\n\n⚠️ การลบจะไม่สามารถกู้คืนได้`)) {
+
+    const ok = await confirm({
+      title: `ต้องการลบ Campaign "${name}" อย่างถาวรใช่หรือไม่?`,
+      description: '⚠️ การลบจะไม่สามารถกู้คืนได้',
+      confirmLabel: 'ลบถาวร',
+      tone: 'danger',
+    })
+    if (ok) {
       await deleteCampaign(id)
     }
   }
@@ -217,8 +185,8 @@ export default function CampaignsPage() {
   const copySubmissionLink = (code: string) => {
     const url = `${window.location.origin}/submit/${code}`
     navigator.clipboard.writeText(url)
-      .then(() => alert('คัดลอก Link สำเร็จ!'))
-      .catch(() => alert('ไม่สามารถคัดลอก Link ได้'))
+      .then(() => showToast('คัดลอก Link สำเร็จ!'))
+      .catch(() => showToast('ไม่สามารถคัดลอก Link ได้', 'error'))
   }
 
   // Handle stat card click
@@ -226,97 +194,39 @@ export default function CampaignsPage() {
     setStatusFilter(status)
   }
 
+  const creatorOptions = [
+    { value: 'all', label: 'ทั้งหมด' },
+    ...uniqueCreators.map((creator) => ({ value: creator.id as string, label: creator.name as string })),
+  ]
+
   if (loading) {
     return <TechLoader />
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            จัดการ Campaigns
-          </h1>
-          <p className="text-gray-600 mt-1 text-base">
-            สร้างและติดตาม Influencer Marketing Campaigns
-          </p>
-        </div>
-        
-        <Link href="/campaigns/create"><Button className="-">
-            <Plus className="w-5 h-5 mr-2" />
-            สร้าง Campaign
-          </Button></Link>
-      </div>
+      {dialog}
+
+      <PageHeader
+        title="จัดการ Campaigns"
+        description="สร้างและติดตาม Influencer Marketing Campaigns"
+        icon={TrendingUp}
+        actions={
+          <Link href="/campaigns/create">
+            <Button icon="Plus">สร้าง Campaign</Button>
+          </Link>
+        }
+      />
 
       {/* Stats Cards - Clickable */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-          <Card padding={0} className={cn( "p-3 md:p-4 cursor-pointer transition-all hover:shadow-md", statusFilter === 'all' && "ring-2 ring-red-500" )} onClick={() => handleStatCardClick('all')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-gray-600">ทั้งหมด</p>
-                <p className="text-lg md:text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-              <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
-            </div>
-          </Card>
-          
-          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-blue-50 to-indigo-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'active' && "ring-2 ring-blue-600" )} onClick={() => handleStatCardClick('active')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-blue-700">กำลังดำเนินการ</p>
-                <p className="text-lg md:text-2xl font-bold text-blue-900">{stats.byStatus.active}</p>
-              </div>
-              <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
-            </div>
-          </Card>
-          
-          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-orange-50 to-amber-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'revising' && "ring-2 ring-orange-600" )} onClick={() => handleStatCardClick('revising')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-orange-700">รอแก้ไข</p>
-                <p className="text-lg md:text-2xl font-bold text-orange-900">{stats.byStatus.revising}</p>
-              </div>
-              <Edit className="w-6 h-6 md:w-8 md:h-8 text-orange-600" />
-            </div>
-          </Card>
-          
-          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-yellow-50 to-amber-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'reviewing' && "ring-2 ring-yellow-600" )} onClick={() => handleStatCardClick('reviewing')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-yellow-700">รอตรวจสอบ</p>
-                <p className="text-lg md:text-2xl font-bold text-yellow-900">{stats.byStatus.reviewing}</p>
-              </div>
-              <AlertCircle className="w-6 h-6 md:w-8 md:h-8 text-yellow-600" />
-            </div>
-          </Card>
-          
-          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-green-50 to-emerald-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'completed' && "ring-2 ring-green-600" )} onClick={() => handleStatCardClick('completed')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-green-700">เสร็จสิ้น</p>
-                <p className="text-lg md:text-2xl font-bold text-green-900">{stats.byStatus.completed}</p>
-              </div>
-              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
-            </div>
-          </Card>
-
-          <Card padding={0} className={cn( "p-3 md:p-4 bg-gradient-to-br from-red-50 to-rose-100 cursor-pointer transition-all hover:shadow-md", statusFilter === 'cancelled' && "ring-2 ring-red-600" )} onClick={() => handleStatCardClick('cancelled')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs md:text-sm text-red-700">ยกเลิก</p>
-                <p className="text-lg md:text-2xl font-bold text-red-900">{stats.byStatus.cancelled}</p>
-              </div>
-              <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
-            </div>
-          </Card>
+          <StatCard label="ทั้งหมด" value={stats.total} icon={TrendingUp} tone="grape" onClick={() => handleStatCardClick('all')} selected={statusFilter === 'all'} />
+          <StatCard label="กำลังดำเนินการ" value={stats.byStatus.active} icon={TrendingUp} tone="sky" onClick={() => handleStatCardClick('active')} selected={statusFilter === 'active'} />
+          <StatCard label="รอแก้ไข" value={stats.byStatus.revising} icon={Edit} tone="accent" onClick={() => handleStatCardClick('revising')} selected={statusFilter === 'revising'} />
+          <StatCard label="รอตรวจสอบ" value={stats.byStatus.reviewing} icon={AlertCircle} tone="warning" onClick={() => handleStatCardClick('reviewing')} selected={statusFilter === 'reviewing'} />
+          <StatCard label="เสร็จสิ้น" value={stats.byStatus.completed} icon={CheckCircle} tone="success" onClick={() => handleStatCardClick('completed')} selected={statusFilter === 'completed'} />
+          <StatCard label="ยกเลิก" value={stats.byStatus.cancelled} icon={XCircle} tone="muted" onClick={() => handleStatCardClick('cancelled')} selected={statusFilter === 'cancelled'} />
         </div>
       )}
 
@@ -324,25 +234,25 @@ export default function CampaignsPage() {
       <div className="space-y-4">
         {/* Main Search & Filter Toggle */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="flex-1 relative">
-                        <Input
+          <div className="flex-1">
+            <Input
               prefix={<Search size={16} />}
               type="text"
               placeholder="ค้นหา Campaign, Influencer, Brand..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} className="text-base"
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
-          <Button variant="soft" onClick={() => setShowFilters(!showFilters)}
- className={cn(
- "flex items-center gap-2 w-full sm:w-auto justify-center",
- showFilters && "bg-gray-100"
- )}>
-            <Filter className="w-4 h-4" />
-            <span className="sm:inline">Filters</span>
+
+          <Button
+            variant={showFilters ? 'secondary' : 'soft'}
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full sm:w-auto"
+          >
+            <Filter size={16} />
+            Filters
             {(brandFilter || productFilter || creatorFilter !== 'all') && (
-              <Pill tone="danger" className="ml-1">
+              <Pill tone="danger">
                 {[brandFilter, productFilter, creatorFilter !== 'all' ? creatorFilter : ''].filter(Boolean).length}
               </Pill>
             )}
@@ -351,84 +261,73 @@ export default function CampaignsPage() {
 
         {/* Advanced Filters */}
         {showFilters && (
-          <Card className="p-4">
+          <Card>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Brand Filter */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Brand
-                </label>
+              <Field label="Brand" asDiv>
                 <div className="relative">
                   <Input
                     type="text"
                     placeholder="พิมพ์เพื่อค้นหา Brand..."
                     value={brandFilter}
                     onChange={(e) => setBrandFilter(e.target.value)}
-                    className="pr-8 text-base"
                   />
                   {brandFilter && (
-                    <button
+                    <IconButton
+                      icon={X}
+                      title="ล้าง Brand"
+                      size={28}
                       onClick={() => setBrandFilter('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2"
+                    />
                   )}
                 </div>
-              </div>
+              </Field>
 
               {/* Product Filter */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Product
-                </label>
+              <Field label="Product" asDiv>
                 <div className="relative">
                   <Input
                     type="text"
                     placeholder="พิมพ์เพื่อค้นหา Product..."
                     value={productFilter}
                     onChange={(e) => setProductFilter(e.target.value)}
-                    className="pr-8 text-base"
                   />
                   {productFilter && (
-                    <button
+                    <IconButton
+                      icon={X}
+                      title="ล้าง Product"
+                      size={28}
                       onClick={() => setProductFilter('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2"
+                    />
                   )}
                 </div>
-              </div>
+              </Field>
 
               {/* Creator Filter */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  ผู้สร้าง
-                </label>
-                <Select
-                  value={creatorFilter || "all"}
-                  onChange={(e) => ((value) => setCreatorFilter(value === "all" ? "" : value))(e.target.value)}
-                 className="text-base">
-<option value="">เลือกผู้สร้าง</option>
-                  
-                  
-                    <option value="all">ทั้งหมด</option>
-                    {uniqueCreators.map(creator => (
-                      <option key={creator.id} value={creator.id}>{creator.name}</option>
-                    ))}
-                  
-                </Select>
-              </div>
+              <Field label="ผู้สร้าง" asDiv className="sm:col-span-2 lg:col-span-1">
+                <SelectMenu
+                  size="md"
+                  value={creatorFilter || 'all'}
+                  options={creatorOptions}
+                  placeholder="เลือกผู้สร้าง"
+                  onChange={(value) => setCreatorFilter(value ?? 'all')}
+                />
+              </Field>
             </div>
 
             {/* Clear All Filters */}
             <div className="mt-4 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={() => {
- setBrandFilter('')
- setProductFilter('')
- setCreatorFilter('all')
- }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setBrandFilter('')
+                  setProductFilter('')
+                  setCreatorFilter('all')
+                }}
+              >
                 ล้าง Filter ทั้งหมด
               </Button>
             </div>
@@ -441,15 +340,12 @@ export default function CampaignsPage() {
         {/* Mobile View - Cards */}
         <div className="lg:hidden">
           {paginatedCampaigns.map((campaign) => {
-            const status = statusConfig[campaign.status]
-            const StatusIcon = status.icon
-            
             // Calculate progress
             const totalInfluencers = campaign.influencers?.length || 0
             const submittedCount = campaign.influencers?.filter(
               inf => ['submitted', 'resubmitted', 'approved'].includes(inf.submissionStatus)
             ).length || 0
-            const progress = totalInfluencers > 0 
+            const progress = totalInfluencers > 0
               ? Math.round((submittedCount / totalInfluencers) * 100)
               : 0
 
@@ -462,21 +358,16 @@ export default function CampaignsPage() {
             return (
               <div key={campaign.id} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className={`p-2 rounded-lg ${status.bgColor} flex-shrink-0`}>
-                      <StatusIcon className={`w-5 h-5 ${status.color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link 
-                        href={`/campaigns/${campaign.id}`}
-                        className="font-medium text-gray-900 hover:text-red-600 block truncate text-base"
-                      >
-                        {campaign.name}
-                      </Link>
-                      <p className="text-sm text-gray-500 line-clamp-2 mt-1">
-                        {campaign.description}
-                      </p>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/campaigns/${campaign.id}`}
+                      className="font-medium text-gray-900 hover:text-red-600 block truncate text-base"
+                    >
+                      {campaign.name}
+                    </Link>
+                    <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                      {campaign.description}
+                    </p>
                   </div>
                   <ActionMenu
                     items={[
@@ -484,22 +375,17 @@ export default function CampaignsPage() {
                         label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`)
                       },
                       {
-                        label: 'แก้ไข', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`),
+                        label: 'แก้ไข', icon: 'Pencil', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`),
                         disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                       },
                       { kind: 'divider' },
                       {
-                        label: 'ยกเลิก', icon: 'XCircle',
+                        label: 'ยกเลิก', icon: 'X',
                         onSelect: () => handleCancelCampaign(campaign.id!, campaign.name),
                         disabled: campaign.status === 'cancelled' || campaign.status === 'completed'
                       },
                       ...(isAdmin ? [{
-                        label: (
-                          <span className="flex items-center gap-2">
-                            <Trash2 className="w-4 h-4" />
-                            ลบถาวร
-                          </span>
-                        ),
+                        label: 'ลบถาวร', icon: 'Trash2',
                         onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const
                       }] : [])
                     ]}
@@ -527,20 +413,13 @@ export default function CampaignsPage() {
                         <span className="text-gray-600">Progress</span>
                         <span className="font-medium">{progress}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
+                      <Progress value={progress} tone="success" />
                     </div>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <Pill tone="accent" className={`${status.bgColor} ${status.color}`}>
-                    {status.label}
-                  </Pill>
+                  <StatusBadge status={campaign.status} kind="campaign" />
                   <span className="text-xs text-gray-500">
                     by {campaign.createdByName || '-'}
                   </span>
@@ -555,31 +434,18 @@ export default function CampaignsPage() {
           <DataTable
             columns={[
               {
-                key: 'status', header: '', width: 40,
-                cell: (campaign) => {
-                  const status = statusConfig[campaign.status]
-                  const StatusIcon = status.icon
-                  return (
-                    <div className={`p-2 rounded-lg ${status.bgColor} inline-block`}>
-                      <StatusIcon className={`w-4 h-4 ${status.color}`} />
-                    </div>
-                  )
-                },
-              },
-              {
                 key: 'campaign', header: 'Campaign', mobilePrimary: true, sortValue: (campaign) => campaign.name,
-                cell: (campaign) => {
-                  const status = statusConfig[campaign.status]
-                  return (
-                    <div>
-                      <Link href={`/campaigns/${campaign.id}`} className="font-medium text-gray-900 hover:text-red-600 text-base">
-                        {campaign.name}
-                      </Link>
-                      <p className="text-sm text-gray-500 line-clamp-1 max-w-xs">{campaign.description}</p>
-                      <Pill tone="accent" className={`${status.bgColor} ${status.color} mt-1`}>{status.label}</Pill>
+                cell: (campaign) => (
+                  <div>
+                    <Link href={`/campaigns/${campaign.id}`} className="font-medium text-gray-900 hover:text-red-600 text-base">
+                      {campaign.name}
+                    </Link>
+                    <p className="text-sm text-gray-500 line-clamp-1 max-w-xs">{campaign.description}</p>
+                    <div className="mt-1">
+                      <StatusBadge status={campaign.status} kind="campaign" />
                     </div>
-                  )
-                },
+                  </div>
+                ),
               },
               {
                 key: 'influencers', header: 'Influencers', hideOnMobile: true,
@@ -659,13 +525,13 @@ export default function CampaignsPage() {
                   <ActionMenu
                     items={[
                       { label: 'ดูรายละเอียด', icon: 'Eye', onSelect: () => router.push(`/campaigns/${campaign.id}`) },
-                      { label: 'แก้ไข Campaign', icon: 'Edit', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
+                      { label: 'แก้ไข Campaign', icon: 'Pencil', onSelect: () => router.push(`/campaigns/${campaign.id}/edit`), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
                       { label: 'ดู Brief', icon: 'FileText', onSelect: () => campaign.briefFileUrl && window.open(campaign.briefFileUrl, '_blank'), disabled: !campaign.briefFileUrl },
                       { kind: 'divider' },
                       ...(campaign.influencers?.slice(0, 3).map((inf) => ({ label: `Copy: ${inf.influencerName}`, icon: 'Copy', onSelect: () => copySubmissionLink(inf.submissionLink!) })) || []),
                       ...(campaign.influencers && campaign.influencers.length > 3 ? [{ label: `+${campaign.influencers.length - 3} more...`, onSelect: () => router.push(`/campaigns/${campaign.id}`) }] : []),
                       { kind: 'divider' },
-                      { label: 'ยกเลิก Campaign', icon: 'XCircle', onSelect: () => handleCancelCampaign(campaign.id!, campaign.name), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
+                      { label: 'ยกเลิก Campaign', icon: 'X', onSelect: () => handleCancelCampaign(campaign.id!, campaign.name), disabled: campaign.status === 'cancelled' || campaign.status === 'completed' },
                       ...(isAdmin ? [{ label: 'ลบถาวร (Admin)', icon: 'Trash2', onSelect: () => handleDeleteCampaign(campaign.id!, campaign.name), tone: 'danger' as const }] : []),
                     ]}
                   />
@@ -677,23 +543,24 @@ export default function CampaignsPage() {
             emptyTitle="ไม่มีแคมเปญ"
           />
         </div>
-        
+
         {/* Empty State */}
         {filteredCampaigns.length === 0 && (
-          <div className="text-center py-12">
-            <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 text-base">
-              {searchTerm || statusFilter !== 'all' || brandFilter || productFilter || creatorFilter !== 'all'
+          <EmptyState
+            icon={<TrendingUp size={40} />}
+            title={
+              searchTerm || statusFilter !== 'all' || brandFilter || productFilter || creatorFilter !== 'all'
                 ? 'ไม่พบ Campaign ที่ค้นหา'
-                : 'ยังไม่มี Campaign'}
-            </p>
-            {!searchTerm && statusFilter === 'all' && !brandFilter && !productFilter && creatorFilter === 'all' && (
-              <Link href="/campaigns/create"><Button variant="ghost" className="mt-4">
-                  <Plus className="w-5 h-5 mr-2" />
-                  สร้าง Campaign แรก
-                </Button></Link>
-            )}
-          </div>
+                : 'ยังไม่มี Campaign'
+            }
+            action={
+              !searchTerm && statusFilter === 'all' && !brandFilter && !productFilter && creatorFilter === 'all' ? (
+                <Link href="/campaigns/create">
+                  <Button variant="ghost" icon="Plus">สร้าง Campaign แรก</Button>
+                </Link>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Pagination */}

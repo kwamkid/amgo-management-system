@@ -5,19 +5,10 @@
 import { useState, useEffect } from 'react'
 import { PublicHolidayImport } from '@/types/holiday'
 import { useToast } from '@/hooks/useToast'
-import { 
-  Calendar,
-  Download,
-  X,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  Check
-} from 'lucide-react'
+import { Check } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { gradients } from '@/lib/theme/colors'
-import { Checkbox, Alert, Pill, Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@/components/aoo'
+import { Checkbox, Alert, Pill, Button, Modal, Spinner } from '@/components/aoo'
 interface ImportHolidaysDialogProps {
   year: number
   existingHolidays: string[] // existing holiday dates
@@ -120,43 +111,42 @@ export default function ImportHolidaysDialog({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card padding={0} className="w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <CardHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-red-600" />
-                เลือกวันหยุดราชการ
-              </CardTitle>
-              <CardDescription>
-                เลือกวันหยุดราชการประจำปี {year} ที่ต้องการนำเข้า
-              </CardDescription>
-            </div>
-            <Button onClick={onClose} variant="ghost" size="sm" className="h-8 w-8">
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="flex-grow overflow-auto">
+    <Modal
+      open
+      onClose={onClose}
+      maxWidth={672}
+      title="เลือกวันหยุดราชการ"
+      description={`เลือกวันหยุดราชการประจำปี ${year} ที่ต้องการนำเข้า`}
+      footer={
+        <>
+          <Button onClick={onClose} variant="soft" disabled={importing}>
+            ยกเลิก
+          </Button>
+          <Button
+            onClick={handleImport}
+            variant="primary"
+            icon="Download"
+            loading={importing}
+            disabled={loading || selectedHolidays.length === 0}
+          >
+            {importing ? 'กำลังนำเข้า...' : `นำเข้า ${selectedHolidays.length} วัน`}
+          </Button>
+        </>
+      }
+    >
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              <Spinner size="lg" />
             </div>
           ) : publicHolidays.length === 0 ? (
             <Alert tone="warning">
-              <div>
-                ไม่พบข้อมูลวันหยุดราชการสำหรับปี {year}
-              </div>
+              ไม่พบข้อมูลวันหยุดราชการสำหรับปี {year}
             </Alert>
           ) : (
             <div className="space-y-4">
               <Alert tone="info">
-                <div>
-                  พบวันหยุดราชการ {publicHolidays.length} วัน 
-                  {existingHolidays.length > 0 && ` (มีอยู่แล้ว ${existingHolidays.length} วัน)`}
-                </div>
+                พบวันหยุดราชการ {publicHolidays.length} วัน 
+                {existingHolidays.length > 0 && ` (มีอยู่แล้ว ${existingHolidays.length} วัน)`}
               </Alert>
 
               <div className="flex items-center justify-between mb-4">
@@ -210,7 +200,7 @@ export default function ImportHolidaysDialog({
                         </Pill>
                       )}
                       {!isExisting && isSelected && (
-                        <Check className="w-5 h-5 text-green-600 ml-2" />
+                        <Check size={20} className="text-green-600 ml-2" />
                       )}
                     </div>
                   )
@@ -218,27 +208,6 @@ export default function ImportHolidaysDialog({
               </div>
             </div>
           )}
-        </CardContent>
-        
-        <div className="flex-shrink-0 border-t p-6 flex gap-3 justify-end">
-          <Button onClick={onClose} variant="soft" disabled={importing}>
-            ยกเลิก
-          </Button>
-          <Button onClick={handleImport} disabled={importing || loading || selectedHolidays.length === 0} className={`bg-gradient-to-r ${gradients.primary}`}>
-            {importing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                กำลังนำเข้า...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 mr-2" />
-                นำเข้า {selectedHolidays.length} วัน
-              </>
-            )}
-          </Button>
-        </div>
-      </Card>
-    </div>
+    </Modal>
   )
 }

@@ -25,8 +25,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { CalendarClock, Plus, Trash2 } from 'lucide-react'
-import { Input, Card, CardContent, CardHeader, CardTitle, Button } from '@/components/aoo'
+import { CalendarClock, Trash2 } from 'lucide-react'
+import { Input, Card, CardContent, CardHeader, CardTitle, Button, IconButton, Pill, SelectMenu, type PillTone } from '@/components/aoo'
 const DAYS = [
   { dow: 0, label: 'อา.' },
   { dow: 1, label: 'จ.' },
@@ -41,11 +41,22 @@ type DayMode = 'work' | 'off' | 'optional'
 
 const NEXT: Record<DayMode, DayMode> = { work: 'off', off: 'optional', optional: 'work' }
 
-const MODE_STYLE: Record<DayMode, string> = {
-  work: 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
-  off: 'border-red-200 bg-red-50 text-red-700',
-  optional: 'border-amber-200 bg-amber-50 text-amber-700',
+// สีชิปวันมาจากโทเคน [data-tone] กลาง (หยุด = แดง · ไม่บังคับ = เหลือง) — วันทำงานเป็นชิปขาวธรรมดา
+const MODE_TONE: Record<DayMode, PillTone | undefined> = {
+  work: undefined,
+  off: 'danger',
+  optional: 'warning',
 }
+const CHIP_TONED =
+  'border-[color-mix(in_srgb,var(--tone)_28%,transparent)] bg-[var(--tone-soft)] text-[var(--tone-ink)]'
+const CHIP_PLAIN = 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+
+const DAYS_PER_WEEK_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: `${n} วัน` }))
+
+const EX_MODE_OPTIONS = [
+  { value: 'off', label: 'หยุด' },
+  { value: 'onsite', label: 'มาทำงาน' },
+]
 
 const MODE_LABEL: Record<DayMode, string> = {
   work: 'ทำงาน',
@@ -269,8 +280,7 @@ export default function WorkScheduleCard({
   return (
     <Card padding={0}>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <CalendarClock className="w-5 h-5 text-indigo-600" />
+        <CardTitle icon={CalendarClock} tone="grape">
           {title}
         </CardTitle>
       </CardHeader>
@@ -278,18 +288,14 @@ export default function WorkScheduleCard({
         {/* จำนวนวันทำงาน/สัปดาห์ */}
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-gray-700">ทำงานสัปดาห์ละ</p>
-          <select
-            value={daysPerWeek ?? ''}
-            onChange={(e) => setDaysPerWeek(e.target.value === '' ? null : Number(e.target.value))}
-            className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm"
-          >
-            <option value="">ตามตำแหน่ง</option>
-            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-              <option key={n} value={n}>
-                {n} วัน
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            value={daysPerWeek == null ? null : String(daysPerWeek)}
+            options={DAYS_PER_WEEK_OPTIONS}
+            placeholder="ตามตำแหน่ง"
+            clearable="ตามตำแหน่ง"
+            onChange={(v) => setDaysPerWeek(!v ? null : Number(v))}
+            className="w-36"
+          />
           <span className="text-xs text-gray-500">
             ใช้คิดวันขาดของคนที่วันหยุดไม่ตรงกันในแต่ละสัปดาห์
           </span>
@@ -303,13 +309,9 @@ export default function WorkScheduleCard({
               {hasPersonal ? 'ตั้งรายคนไว้' : 'ตามตำแหน่ง'}
             </span>
             {ALL_DAYS.some((d) => modes[d] !== jfModes[d]) && (
-              <button
-                type="button"
-                onClick={resetToJobFunction}
-                className="ml-auto text-xs text-blue-700 hover:underline"
-              >
+              <Button type="button" variant="link" size="sm" onClick={resetToJobFunction} className="ml-auto">
                 ใช้ตารางตามตำแหน่ง
-              </button>
+              </Button>
             )}
           </div>
           <p className="mb-2 text-xs text-gray-500">
@@ -320,12 +322,14 @@ export default function WorkScheduleCard({
           <div className="flex flex-wrap gap-1.5">
             {DAYS.map((d) => {
               const m = modes[d.dow] ?? 'work'
+              const tone = MODE_TONE[m]
               return (
                 <button
                   key={d.dow}
                   type="button"
+                  data-tone={tone}
                   onClick={() => toggleDay(d.dow)}
-                  className={`flex h-12 w-14 flex-col items-center justify-center rounded-lg border text-sm font-medium transition-colors ${MODE_STYLE[m]}`}
+                  className={`flex h-12 w-14 flex-col items-center justify-center rounded-lg border text-sm font-medium transition-colors ${tone ? CHIP_TONED : CHIP_PLAIN}`}
                   title={`วัน${d.label} — ${MODE_LABEL[m]} · คลิกเพื่อเปลี่ยน`}
                 >
                   {d.label}
@@ -351,14 +355,13 @@ export default function WorkScheduleCard({
               onChange={(e) => setExDate(e.target.value)}
               className="w-40"
             />
-            <select
+            <SelectMenu
+              size="md"
               value={exMode}
-              onChange={(e) => setExMode(e.target.value as 'off' | 'onsite')}
-              className="h-10 rounded-md border border-gray-200 bg-white px-2 text-sm"
-            >
-              <option value="off">หยุด</option>
-              <option value="onsite">มาทำงาน</option>
-            </select>
+              options={EX_MODE_OPTIONS}
+              onChange={(v) => v && setExMode(v as 'off' | 'onsite')}
+              className="w-32"
+            />
             <Input
               type="text"
               value={exNote}
@@ -366,8 +369,8 @@ export default function WorkScheduleCard({
               placeholder="หมายเหตุ (ไม่บังคับ)"
               className="w-44"
             />
-            <Button type="button" size="sm" onClick={addException} disabled={adding || !exDate}>
-              <Plus className="w-4 h-4 mr-1" /> เพิ่ม
+            <Button type="button" size="sm" icon="Plus" onClick={addException} disabled={!exDate} loading={adding}>
+              เพิ่ม
             </Button>
           </div>
 
@@ -376,26 +379,11 @@ export default function WorkScheduleCard({
               {exceptions.map((e) => (
                 <div key={e.id} className="flex items-center gap-2 text-sm">
                   <span className="w-24 shrink-0 text-gray-600">{thaiDate(e.exception_date)}</span>
-                  <span
-                    className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${
-                      e.work_mode === 'off'
-                        ? 'bg-red-50 text-red-700'
-                        : e.work_mode === 'optional'
-                          ? 'bg-amber-50 text-amber-700'
-                          : 'bg-green-50 text-green-700'
-                    }`}
-                  >
+                  <Pill tone={e.work_mode === 'off' ? 'danger' : e.work_mode === 'optional' ? 'warning' : 'success'}>
                     {e.work_mode === 'off' ? 'หยุด' : e.work_mode === 'optional' ? 'ไม่บังคับ' : 'มาทำงาน'}
-                  </span>
+                  </Pill>
                   {e.note && <span className="truncate text-gray-400">{e.note}</span>}
-                  <button
-                    type="button"
-                    onClick={() => removeException(e.id)}
-                    className="ml-auto p-1 text-gray-300 hover:text-red-600"
-                    title="ลบ"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <IconButton icon={Trash2} tone="danger" size={24} title="ลบ" onClick={() => removeException(e.id)} className="ml-auto" />
                 </div>
               ))}
             </div>
@@ -405,13 +393,13 @@ export default function WorkScheduleCard({
 
         {/* ต้องกดบันทึกเท่านั้น — ไม่ auto save (ปุ่มอยู่ในกรอบการ์ด) */}
         <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
-          {dirty && <span className="mr-auto text-xs text-orange-600">แก้แล้ว ยังไม่บันทึก</span>}
+          {dirty && <span className="mr-auto"><Pill tone="warning">แก้แล้ว ยังไม่บันทึก</Pill></span>}
           {onCancel && (
             <Button type="button" variant="soft" size="sm" onClick={onCancel} disabled={saving}>
               ยกเลิก
             </Button>
           )}
-          <Button type="button" size="sm" onClick={save} disabled={saving || !dirty}>
+          <Button type="button" size="sm" onClick={save} disabled={!dirty} loading={saving}>
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
           </Button>
         </div>

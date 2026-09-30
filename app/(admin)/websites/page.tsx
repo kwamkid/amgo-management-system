@@ -7,10 +7,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ExternalLink, Globe, Plus, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ExternalLink, Globe, Receipt, ServerCrash } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button } from '@/components/aoo'
+import { Button, Pill } from '@/components/aoo'
 import {
   DataTable,
   FilterBar,
@@ -125,12 +125,12 @@ export default function WebsitesPage() {
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900">{s.siteName}</span>
           {s.downSince && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">
+            <Pill tone="danger">
               <AlertTriangle size={11} /> ล่ม
-            </span>
+            </Pill>
           )}
           {!s.isActive && (
-            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ปิดแล้ว</span>
+            <Pill tone="neutral">ปิดแล้ว</Pill>
           )}
         </div>
       ),
@@ -171,9 +171,7 @@ export default function WebsitesPage() {
       sortValue: (s) => s.unpaidCount ?? 0,
       cell: (s) =>
         (s.unpaidCount ?? 0) > 0 ? (
-          <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-            ค้าง {s.unpaidCount}
-          </span>
+          <Pill tone="warning">ค้าง {s.unpaidCount}</Pill>
         ) : (
           <span className="text-xs text-gray-400">ครบ</span>
         ),
@@ -221,12 +219,10 @@ export default function WebsitesPage() {
         icon={Globe}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={checkNow} disabled={checking}>
-              <RefreshCw size={15} className={checking ? 'animate-spin' : ''} />
+            <Button variant="secondary" icon="RefreshCw" onClick={checkNow} loading={checking}>
               เช็คเว็บเดี๋ยวนี้
             </Button>
-            <Button onClick={() => router.push('/websites/new')}>
-              <Plus size={15} />
+            <Button icon="Plus" onClick={() => router.push('/websites/new')}>
               เพิ่มเว็บ
             </Button>
           </div>
@@ -234,10 +230,15 @@ export default function WebsitesPage() {
       />
 
       <StatGrid>
-        <StatCard label="เว็บที่ดูแลอยู่" value={stats.total} icon={Globe} />
-        <StatCard label="ใกล้หมดอายุ (30 วัน)" value={stats.expiring} tone={stats.expiring ? 'warning' : 'default'} />
-        <StatCard label="เว็บล่มตอนนี้" value={stats.down} tone={stats.down ? 'danger' : 'default'} />
-        <StatCard label="มีบิลค้าง" value={stats.unpaid} tone={stats.unpaid ? 'warning' : 'default'} />
+        <StatCard label="เว็บที่ดูแลอยู่" value={stats.total} icon={Globe} tone="sky" />
+        <StatCard
+          label="ใกล้หมดอายุ (30 วัน)"
+          value={stats.expiring}
+          icon={CalendarClock}
+          tone={stats.expiring ? 'warning' : 'success'}
+        />
+        <StatCard label="เว็บล่มตอนนี้" value={stats.down} icon={ServerCrash} tone={stats.down ? 'danger' : 'success'} />
+        <StatCard label="มีบิลค้าง" value={stats.unpaid} icon={Receipt} tone={stats.unpaid ? 'pink' : 'success'} />
       </StatGrid>
 
       <FilterBar search={q} onSearch={setQ} placeholder="ค้นหาโดเมน / เจ้าของ / โฮสต์">

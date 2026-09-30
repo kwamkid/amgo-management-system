@@ -7,6 +7,7 @@ import { GoogleMap, Marker, Circle, useJsApiLoader } from '@react-google-maps/ap
 import { LocationCheckResult } from '@/types/checkin'
 import { useLocations } from '@/hooks/useLocations'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
+import { Spinner } from '@/components/aoo'
 
 interface CheckInMapProps {
   userLat: number
@@ -64,7 +65,7 @@ export default function CheckInMap({
   if (loadError) {
     return (
       <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-        <p className="text-red-600">Error loading map</p>
+        <p className="text-sm text-[var(--ruby-700)]">Error loading map</p>
       </div>
     )
   }
@@ -72,7 +73,7 @@ export default function CheckInMap({
   if (!isLoaded) {
     return (
       <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Loading map...</p>
+        <Spinner size="md" />
       </div>
     )
   }

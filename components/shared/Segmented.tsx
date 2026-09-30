@@ -1,10 +1,12 @@
 'use client'
 
+import type { ComponentType } from 'react'
+
 // ปุ่มเลือกแบบกดสลับ (segmented) — ใช้แทน dropdown เมื่อตัวเลือกน้อย (2-3 ตัว)
-// เห็นทุกตัวเลือกพร้อมกัน กดทีเดียวจบ ไม่ต้องกางเมนู
+// เห็นทุกตัวเลือกพร้อมกัน กดทีเดียวจบ ไม่ต้องกางเมนู · สไตล์อยู่ที่ .aoo-segmented
 //
 // <Segmented value={type} onChange={setType}
-//   options={[{ value: 'monthly', label: 'รายเดือน' }, { value: 'daily', label: 'รายวัน' }]} />
+//   options={[{ value: 'monthly', label: 'รายเดือน' }, { value: 'daily', label: 'รายวัน', icon: Calendar }]} />
 
 export default function Segmented({
   value,
@@ -14,26 +16,24 @@ export default function Segmented({
   className = '',
 }: {
   value: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; icon?: ComponentType<{ size?: number }> }[]
   onChange: (v: string) => void
   disabled?: boolean
   className?: string
 }) {
   return (
-    <div className={`inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 ${className}`}>
-      {options.map((o) => (
+    <div className={className ? `aoo-segmented ${className}` : 'aoo-segmented'} role="group">
+      {options.map(({ value: v, label, icon: Icon }) => (
         <button
-          key={o.value}
+          key={v}
           type="button" // อยู่ในฟอร์ม — กันเผลอ submit
           disabled={disabled}
-          onClick={() => onChange(o.value)}
-          className={`rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors disabled:opacity-50 ${
-            value === o.value
-              ? 'bg-white font-medium text-gray-900 shadow-sm ring-1 ring-gray-200'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          aria-pressed={value === v}
+          onClick={() => onChange(v)}
+          className="aoo-segmented__opt"
         >
-          {o.label}
+          {Icon && <Icon size={15} />}
+          {label}
         </button>
       ))}
     </div>

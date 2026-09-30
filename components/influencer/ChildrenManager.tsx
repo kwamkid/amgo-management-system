@@ -3,17 +3,17 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  Baby, 
-  Plus, 
-  Trash2, 
+import {
+  Baby,
+  Trash2,
   Calendar,
   User
 } from 'lucide-react'
 import { Child } from '@/types/influencer'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Label, Input, Pill, Card, Button, Select } from '@/components/aoo'
+import { Input, Field, SelectMenu, DatePicker, Pill, Card, CardTitle, Button, IconButton } from '@/components/aoo'
+import { ListRows, ListRow } from '@/components/shared'
 interface ChildrenManagerProps {
   childrenData: Child[]
   onChange: (children: Child[]) => void
@@ -105,91 +105,78 @@ export default function ChildrenManager({
     onChange(childrenData.filter(child => child.id !== childId))
   }
 
-  // Get gender display
-  const getGenderDisplay = (gender: 'male' | 'female'): { text: string; color: string } => {
-    return gender === 'male' 
-      ? { text: 'ชาย', color: 'bg-blue-100 text-blue-700' }
-      : { text: 'หญิง', color: 'bg-pink-100 text-pink-700' }
+  const genderTone = (gender: 'male' | 'female') => (gender === 'male' ? 'sky' : 'pink') as 'sky' | 'pink'
+
+  const resetForm = () => {
+    setShowAddForm(false)
+    setNewChild({
+      nickname: '',
+      gender: 'male',
+      birthDate: ''
+    })
+    setErrors({})
   }
 
   return (
     <div className="space-y-4">
       {/* Children List */}
       {childrenData.length > 0 && (
-        <div className="space-y-3">
-          {childrenData.map((child, index) => {
-            const genderInfo = getGenderDisplay(child.gender)
-            
-            return (
-              <Card key={child.id} className="p-4">
-                <div className="flex items-start gap-4">
-                  {/* Child Icon */}
-                  <div className={`p-2 rounded-lg ${
-                    child.gender === 'male' ? 'bg-blue-100' : 'bg-pink-100'
-                  }`}>
-                    <Baby className={`w-5 h-5 ${
-                      child.gender === 'male' ? 'text-blue-600' : 'text-pink-600'
-                    }`} />
-                  </div>
-
-                  {/* Child Info */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">
-                        ลูกคนที่ {index + 1}: {child.nickname}
-                      </span>
-                      <Pill tone="accent" className={genderInfo.color}>
-                        {genderInfo.text}
-                      </Pill>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>
-                          เกิด: {child.birthDate 
-                            ? format(new Date(child.birthDate), 'dd MMMM yyyy', { locale: th })
-                            : '-'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
-                        <span>อายุ: {calculateAge(child.birthDate)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  {!disabled && (
-                    <Button onClick={() => handleRemoveChild(child.id!)}
- variant="ghost"
- size="sm">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+        <ListRows variant="boxed">
+          {childrenData.map((child, index) => (
+            <ListRow
+              key={child.id}
+              leading={
+                <span className="aoo-title-icon" data-tone={genderTone(child.gender)}>
+                  <Baby size={19} strokeWidth={2} />
+                </span>
+              }
+              title={
+                <span className="flex items-center gap-2">
+                  ลูกคนที่ {index + 1}: {child.nickname}
+                  <Pill tone={genderTone(child.gender)}>
+                    {child.gender === 'male' ? 'ชาย' : 'หญิง'}
+                  </Pill>
+                </span>
+              }
+              meta={
+                <span className="flex flex-wrap items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    เกิด: {child.birthDate
+                      ? format(new Date(child.birthDate), 'dd MMMM yyyy', { locale: th })
+                      : '-'
+                    }
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <User className="w-4 h-4" />
+                    อายุ: {calculateAge(child.birthDate)}
+                  </span>
+                </span>
+              }
+              trailing={
+                !disabled ? (
+                  <IconButton
+                    icon={Trash2}
+                    title="ลบข้อมูลลูก"
+                    tone="danger"
+                    onClick={() => handleRemoveChild(child.id!)}
+                  />
+                ) : undefined
+              }
+            />
+          ))}
+        </ListRows>
       )}
 
       {/* Add New Child Form */}
       {showAddForm ? (
-        <Card className="p-4 border-2">
+        <Card>
           <div className="space-y-4">
-            <h4 className="font-medium text-gray-900 flex items-center gap-2">
-              <Baby className="w-5 h-5" />
-              เพิ่มข้อมูลลูก
-            </h4>
-            
+            <CardTitle icon={Baby} tone="pink">เพิ่มข้อมูลลูก</CardTitle>
+
             <div className="grid md:grid-cols-2 gap-4">
               {/* Nickname */}
-              <div>
-                <Label htmlFor="child-nickname">
-                  ชื่อเล่น <span className="text-red-500">*</span>
-                </Label>
+              <Field label="ชื่อเล่น" required error={errors.nickname || undefined}>
                 <Input
                   id="child-nickname"
                   type="text"
@@ -200,91 +187,71 @@ export default function ChildrenManager({
                   }}
                   placeholder="เช่น: น้องแอล"
                   disabled={disabled}
-                  className={errors.nickname ? 'border-red-500' : ''}
+                  error={!!errors.nickname}
                 />
-                {errors.nickname && (
-                  <p className="text-sm text-red-600 mt-1">{errors.nickname}</p>
-                )}
-              </div>
+              </Field>
 
               {/* Gender */}
-              <div>
-                <Label htmlFor="child-gender">เพศ</Label>
-                <Select
+              <Field label="เพศ" asDiv>
+                <SelectMenu
+                  size="md"
                   value={newChild.gender}
-                  onChange={(e) => ((value: 'male' | 'female') => 
-                    setNewChild({ ...newChild, gender: value })
-                  )(e.target.value as 'male' | 'female')}
+                  options={[
+                    { value: 'male', label: 'ชาย' },
+                    { value: 'female', label: 'หญิง' },
+                  ]}
+                  onChange={(value) => {
+                    if (value) setNewChild({ ...newChild, gender: value as 'male' | 'female' })
+                  }}
                   disabled={disabled}
-                >
-                  
-                  
-                    <option value="male">ชาย</option>
-                    <option value="female">หญิง</option>
-                  
-                </Select>
-              </div>
+                />
+              </Field>
             </div>
 
             {/* Birth Date */}
-            <div>
-              <Label htmlFor="child-birthdate">
-                วันเกิด <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="child-birthdate"
-                type="date"
-                value={newChild.birthDate ? 
-                  (typeof newChild.birthDate === 'string' 
-                    ? newChild.birthDate 
+            <Field
+              label="วันเกิด"
+              required
+              asDiv
+              error={errors.birthDate || undefined}
+              help={newChild.birthDate ? `อายุ: ${calculateAge(newChild.birthDate)}` : undefined}
+            >
+              <DatePicker
+                value={newChild.birthDate ?
+                  (typeof newChild.birthDate === 'string'
+                    ? newChild.birthDate
                     : new Date(newChild.birthDate).toISOString().split('T')[0]
                   ) : ''
                 }
-                onChange={(e) => {
-                  setNewChild({ ...newChild, birthDate: e.target.value })
+                onChange={(value) => {
+                  setNewChild({ ...newChild, birthDate: value })
                   setErrors({ ...errors, birthDate: '' })
                 }}
                 max={new Date().toISOString().split('T')[0]} // Cannot be future date
                 disabled={disabled}
-                className={errors.birthDate ? 'border-red-500' : ''}
               />
-              {errors.birthDate && (
-                <p className="text-sm text-red-600 mt-1">{errors.birthDate}</p>
-              )}
-              {newChild.birthDate && (
-                <p className="text-sm text-gray-500 mt-1">
-                  อายุ: {calculateAge(newChild.birthDate)}
-                </p>
-              )}
-            </div>
+            </Field>
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button onClick={handleAddChild} disabled={disabled} className="-">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button type="button" icon="Plus" onClick={handleAddChild} disabled={disabled}>
                 เพิ่ม
               </Button>
-              <Button onClick={() => {
- setShowAddForm(false)
- setNewChild({
- nickname: '',
- gender: 'male',
- birthDate: ''
- })
- setErrors({})
- }}
- variant="secondary">
+              <Button type="button" variant="secondary" onClick={resetForm}>
                 ยกเลิก
               </Button>
             </div>
           </div>
         </Card>
       ) : (
-        <Button onClick={() => setShowAddForm(true)}
- variant="secondary"
- disabled={disabled}
- className="w-full border-2">
-          <Plus className="w-4 h-4 mr-2" />
+        <Button
+          type="button"
+          variant="secondary"
+          icon="Plus"
+          onClick={() => setShowAddForm(true)}
+          disabled={disabled}
+          className="w-full"
+        >
           เพิ่มข้อมูลลูก
         </Button>
       )}
@@ -294,21 +261,12 @@ export default function ChildrenManager({
         <div className="pt-4 border-t">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">จำนวนลูก:</span>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <span className="font-medium">
                 {childrenData.length} คน
               </span>
-              {childrenData.length > 0 && (
-                <>
-                  <span className="text-gray-400">|</span>
-                  <span className="text-blue-600">
-                    ชาย {childrenData.filter(c => c.gender === 'male').length}
-                  </span>
-                  <span className="text-pink-600">
-                    หญิง {childrenData.filter(c => c.gender === 'female').length}
-                  </span>
-                </>
-              )}
+              <Pill tone="sky">ชาย {childrenData.filter(c => c.gender === 'male').length}</Pill>
+              <Pill tone="pink">หญิง {childrenData.filter(c => c.gender === 'female').length}</Pill>
             </div>
           </div>
         </div>

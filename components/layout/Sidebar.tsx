@@ -255,14 +255,10 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
             onNavigate?.()
           }}
-          data-button-fx="ghost"
-          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm no-underline ${
-            isActive
-              ? 'bg-red-50 font-semibold text-red-700'
-              : 'font-medium text-gray-700'
-          }`}
+          aria-current={isActive ? 'page' : undefined}
+          className="aoo-nav-item"
         >
-          <span className={isActive ? 'text-red-500' : 'text-gray-400'}>{item.icon}</span>
+          <span className="aoo-nav-item__icon">{item.icon}</span>
           <span className="flex-1">{item.label}</span>
         </Link>
       )
@@ -272,18 +268,13 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
       <div key={item.label}>
         <button
           onClick={() => toggle(item.label)}
-          data-button-fx="ghost"
           aria-expanded={isOpen}
-          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm ${
-            childActive ? 'font-semibold text-red-700' : 'font-medium text-gray-700'
-          }`}
+          data-child-active={childActive || undefined}
+          className="aoo-nav-item"
         >
-          <span className={childActive ? 'text-red-500' : 'text-gray-400'}>{item.icon}</span>
+          <span className="aoo-nav-item__icon">{item.icon}</span>
           <span className="flex-1 text-left">{item.label}</span>
-          <ChevronDown
-            size={15}
-            className={`text-gray-400 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}
-          />
+          <ChevronDown size={15} className="aoo-nav-item__chevron" />
         </button>
 
         {isOpen && (
@@ -298,12 +289,10 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
                     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
                     onNavigate?.()
                   }}
-                  data-button-fx="ghost"
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm no-underline ${
-                    active ? 'bg-red-50 font-semibold text-red-700' : 'text-gray-600'
-                  }`}
+                  aria-current={active ? 'page' : undefined}
+                  className="aoo-nav-item aoo-nav-item--sub"
                 >
-                  <span className={active ? 'text-red-500' : 'text-gray-400'}>{sub.icon}</span>
+                  <span className="aoo-nav-item__icon">{sub.icon}</span>
                   <span className="flex-1">{sub.label}</span>
                 </Link>
               )

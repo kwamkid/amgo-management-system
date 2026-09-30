@@ -20,17 +20,26 @@ import {
   ExternalLink,
   FolderCheck,
   ListChecks,
-  Loader2,
   PlayCircle,
   Puzzle,
-  RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, HelpTooltip, Modal, TabBar, TabItem, useConfirm } from '@/components/aoo'
+import {
+  Button,
+  HelpTooltip,
+  Modal,
+  Pill,
+  Spinner,
+  TabBar,
+  TabItem,
+  useConfirm,
+  type PillTone,
+} from '@/components/aoo'
 import {
   DataTable,
+  InfoPanel,
   PageHeader,
   SectionCard,
   Segmented,
@@ -146,20 +155,20 @@ const ISSUE_LABEL: Record<string, string> = {
   blank_page: 'จอขาว',
 }
 
-const STATUS: Record<WebJob['status'], { label: string; cls: string }> = {
-  queued: { label: 'รอคิว', cls: 'bg-gray-100 text-gray-600' },
-  running: { label: 'กำลังทำ', cls: 'bg-blue-50 text-blue-700' },
-  done: { label: 'เสร็จ', cls: 'bg-green-50 text-green-700' },
-  failed: { label: 'ล้มเหลว', cls: 'bg-red-50 text-red-600' },
+const STATUS: Record<WebJob['status'], { label: string; tone: PillTone }> = {
+  queued: { label: 'รอคิว', tone: 'warning' },
+  running: { label: 'กำลังทำ', tone: 'sky' },
+  done: { label: 'เสร็จ', tone: 'success' },
+  failed: { label: 'ล้มเหลว', tone: 'danger' },
 }
 
 /** สีของแถบสุขภาพ + ป้าย — ใช้ชุดเดียวกันทั้งหน้าเพื่อให้อ่านซ้ำได้ */
 const HEALTH = {
-  suspect: { label: 'พบไฟล์ต้องสงสัย', bar: 'bg-red-500', chip: 'bg-red-50 text-red-700' },
-  pending: { label: 'ค้างอัปเดตปลั๊กอิน', bar: 'bg-amber-400', chip: 'bg-amber-50 text-amber-700' },
-  clean: { label: 'เรียบร้อย', bar: 'bg-green-500', chip: 'bg-green-50 text-green-700' },
-  unknown: { label: 'ยังไม่เคยตรวจ', bar: 'bg-gray-300', chip: 'bg-gray-100 text-gray-500' },
-} as const
+  suspect: { label: 'พบไฟล์ต้องสงสัย', bar: 'bg-red-500', tone: 'danger' },
+  pending: { label: 'ค้างอัปเดตปลั๊กอิน', bar: 'bg-amber-400', tone: 'warning' },
+  clean: { label: 'เรียบร้อย', bar: 'bg-green-500', tone: 'success' },
+  unknown: { label: 'ยังไม่เคยตรวจ', bar: 'bg-gray-300', tone: 'neutral' },
+} as const satisfies Record<string, { label: string; bar: string; tone: PillTone }>
 
 type Health = keyof typeof HEALTH
 
@@ -837,20 +846,19 @@ export default function WebJobsPage() {
                 </a>
               </HelpTooltip>
               {s.downSince && (
-                <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-600">ล่ม</span>
+                <Pill tone="danger" className="shrink-0">ล่ม</Pill>
               )}
               {/* ตอบ 200 แต่หน้าใช้ไม่ได้ — ต้องเห็นแยกจาก "ล่ม" ไม่งั้นเข้าใจผิดว่าปกติ */}
               {s.pageIssue && !s.downSince && (
-                <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
+                <Pill tone="warning" className="shrink-0">
                   {ISSUE_LABEL[s.pageIssue] ?? s.pageIssue}
-                </span>
+                </Pill>
               )}
               {expDays !== null && expDays <= 30 && (
-                <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${expDays < 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}
-                  title={`${exp!.label}หมดอายุ ${fmtDay(exp!.date)}`}
-                >
-                  {exp!.label} {expDays < 0 ? 'หมดแล้ว' : `${expDays} วัน`}
+                <span className="shrink-0" title={`${exp!.label}หมดอายุ ${fmtDay(exp!.date)}`}>
+                  <Pill tone={expDays < 0 ? 'danger' : 'warning'}>
+                    {exp!.label} {expDays < 0 ? 'หมดแล้ว' : `${expDays} วัน`}
+                  </Pill>
                 </span>
               )}
             </div>
@@ -883,9 +891,7 @@ export default function WebJobsPage() {
         if (s.downSince)
           return (
             <div>
-              <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.suspect.chip}`}>
-                ล่ม
-              </span>
+              <Pill tone={HEALTH.suspect.tone}>ล่ม</Pill>
               {when}
             </div>
           )
@@ -959,7 +965,7 @@ export default function WebJobsPage() {
         }
 
         if (!s.pluginsCheckedAt) return <span className="text-gray-300">—</span>
-        const chip = s.pendingPluginCount > 0 ? HEALTH.pending.chip : HEALTH.clean.chip
+        const chipTone = s.pendingPluginCount > 0 ? HEALTH.pending.tone : HEALTH.clean.tone
         return (
           <HelpTooltip
             variant="tooltip"
@@ -980,15 +986,13 @@ export default function WebJobsPage() {
             <span className="inline-block">
               <span className="inline-flex items-center gap-1">
                 {/* ไม่มีอะไรค้าง = บอกเป็นคำ อ่านแล้วจบ ไม่ต้องแปล "0/27" ในหัวอีกที */}
-                <span className={`rounded-md px-2 py-0.5 font-medium tabular-nums ${chip}`}>
+                <Pill tone={chipTone} className="tabular-nums">
                   {s.pendingPluginCount > 0 ? `${s.pendingPluginCount}/${s.pluginCount}` : 'UTD'}
-                </span>
+                </Pill>
                 {/* แยกกองให้ชัด — ของที่ระบบทำต่อได้ กับของที่ต้องคนตัดสินใจ
                     ต้องการการกระทำคนละแบบ ปนกันแล้วสีเหลืองจะไม่มีความหมาย */}
                 {s.blockedPluginCount > 0 && (
-                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
-                    ทำมือ {s.blockedPluginCount}
-                  </span>
+                  <Pill tone="neutral">ทำมือ {s.blockedPluginCount}</Pill>
                 )}
               </span>
               <span className="mt-0.5 block whitespace-nowrap text-xs text-gray-400">
@@ -1010,17 +1014,19 @@ export default function WebJobsPage() {
           // พร้อมปุ่มคัดลอกให้ AI · ป้ายที่บอกแค่ "ต้องสงสัย" แล้วจบคือทางตัน
           <button
             type="button"
-            className={`rounded-md px-2 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:brightness-95 ${HEALTH.suspect.chip}`}
+            className="rounded-full hover:brightness-95"
             onClick={(e) => {
               e.stopPropagation()
               openScan(s)
             }}
           >
-            {openingScan === s.id ? 'กำลังเปิด…' : 'ต้องสงสัย'}
+            <Pill tone={HEALTH.suspect.tone} className="underline decoration-dotted underline-offset-2">
+              {openingScan === s.id ? 'กำลังเปิด…' : 'ต้องสงสัย'}
+            </Pill>
           </button>
         ) : s.lastScanAt ? (
           <div>
-            <span className={`rounded-md px-2 py-0.5 font-medium ${HEALTH.clean.chip}`}>สะอาด</span>
+            <Pill tone={HEALTH.clean.tone}>สะอาด</Pill>
             <p className="mt-0.5 text-xs text-gray-400">{fmt(s.lastScanAt)}</p>
           </div>
         ) : (
@@ -1150,7 +1156,7 @@ export default function WebJobsPage() {
                         อ่านเหมือนระบบแฮงก์ ทั้งที่จริงแค่ยังไม่ถึงคิว */}
                     {mine ? (
                       running ? (
-                        <Loader2 size={15} className="animate-spin" />
+                        <Spinner size="xs" />
                       ) : (
                         <Clock size={15} className="opacity-60" />
                       )
@@ -1181,7 +1187,7 @@ export default function WebJobsPage() {
         <div>
           <span className="font-medium text-gray-900">{j.siteName || j.hostName || '—'}</span>
           {!j.siteName && j.hostName && (
-            <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">ทั้งโฮสต์</span>
+            <Pill tone="neutral" className="ml-1.5">ทั้งโฮสต์</Pill>
           )}
         </div>
       ),
@@ -1192,9 +1198,7 @@ export default function WebJobsPage() {
       header: 'สถานะ',
       align: 'center',
       cell: (j) => (
-        <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS[j.status].cls}`}>
-          {STATUS[j.status].label}
-        </span>
+        <Pill tone={STATUS[j.status].tone}>{STATUS[j.status].label}</Pill>
       ),
     },
     { key: 'summary', header: 'ผล', cell: (j) => <span className="text-sm text-gray-600">{summaryText(j)}</span> },
@@ -1219,12 +1223,11 @@ export default function WebJobsPage() {
         icon={ListChecks}
         actions={
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={load}>
-              <RefreshCw size={15} />
+            <Button variant="ghost" icon="RefreshCw" onClick={load}>
               รีเฟรช
             </Button>
             <Button variant="secondary" onClick={runNow} disabled={!!busy}>
-              <PlayCircle size={15} />
+              <PlayCircle size={16} />
               เร่งคิวเดี๋ยวนี้
             </Button>
           </div>
@@ -1237,6 +1240,7 @@ export default function WebJobsPage() {
         <StatCard
           label="เว็บที่ดูแลอยู่"
           value={stats.total}
+          tone="sky"
           hint={
             quick
               ? 'กดเพื่อกลับไปดูทุกเว็บ'
@@ -1314,19 +1318,19 @@ export default function WebJobsPage() {
         {/* "ตอนนี้ทำอะไรอยู่" ต้องเห็นด้วยตา ไม่ใช่ซ่อนใน tooltip ของปุ่ม —
             ป้าย "รอคิว" ที่ไม่บอกว่ารออะไร อ่านแล้วเหมือนระบบค้าง (เจ้าของทัก 15 ส.ค. 69) */}
         {queueBusy && (
-          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+          <InfoPanel tone="sky" className="mt-4">
             {runningNow.length > 0 ? (
               <>
-                <p className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-                  <Loader2 size={18} className="animate-spin" />
+                <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <Spinner size="sm" />
                   ตอนนี้กำลังทำ {runningNow.length} งาน (โฮสต์ละงานเดียว)
                 </p>
-                <ul className="mt-1.5 space-y-1 text-base text-blue-800">
+                <ul className="mt-1.5 space-y-1 text-base text-gray-800">
                   {runningNow.map((a) => (
                     <li key={a.id}>
                       {jobLabel(a)}
                       {a.progressTotal > 0 && (
-                        <span className="text-blue-700/70">
+                        <span className="text-gray-500">
                           {' '}
                           ({a.progressDone}/{a.progressTotal}
                           {a.progressNote ? ` · ${a.progressNote}` : ''})
@@ -1339,13 +1343,13 @@ export default function WebJobsPage() {
             ) : (
               // ช่วงระหว่างรอบ cron — ไม่มีอะไรเดินอยู่จริง ต้องบอกตรง ๆ
               // ไม่งั้น spinner หมุนทั้งที่ไม่มีงานทำ อ่านแล้วเข้าใจผิดหนักกว่าเดิม
-              <p className="flex items-center gap-2 text-lg font-semibold text-blue-900">
+              <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
                 <Clock size={18} />
                 ยังไม่มีงานที่กำลังทำ — รอระบบหยิบคิวรอบถัดไป (ทุก 1–2 นาที)
               </p>
             )}
             {queue.queued > 0 && (
-              <p className="mt-2 text-base text-blue-700/90">
+              <p className="mt-2 text-base text-gray-700">
                 รอคิวอีก {queue.queued} งาน — {queuedByType.map(([t, n]) => `${TYPE_LABEL[t]} ${n}`).join(' · ')}{' '}
                 · โฮสต์หนึ่งทำทีละงาน กด &quot;เร่งคิวเดี๋ยวนี้&quot; ข้างบนได้ถ้าไม่อยากรอรอบ cron
               </p>
@@ -1354,15 +1358,11 @@ export default function WebJobsPage() {
             {/* คิวเต็มไปอยู่ใน modal — ตัวหนังสือต้องใหญ่พอที่จะอ่านออก (เจ้าของบอก
                 16 ส.ค. 69 ว่า 12px เล็กไป 14px ก็ยังไม่เห็น) กางในการ์ดแล้วดันของ
                 ที่อยู่ข้างล่างหายไปทั้งจอ · ~98 ใบต้องเลื่อนดู modal เหมาะกว่า */}
-            <button
-              type="button"
-              onClick={() => setQueueOpen(true)}
-              className="mt-2.5 flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-base font-semibold text-blue-800 hover:bg-blue-50"
-            >
+            <Button variant="secondary" className="mt-2.5" onClick={() => setQueueOpen(true)}>
               <ListChecks size={18} />
               ดูคิวทั้งหมด {queue.queued + queue.running} งาน
-            </button>
-          </div>
+            </Button>
+          </InfoPanel>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
@@ -1389,7 +1389,7 @@ export default function WebJobsPage() {
                   onClick={() => fireFleet(type, label)}
                   disabled={!!busy || done}
                 >
-                  {mine ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
+                  {mine ? <Spinner size="xs" tone={i === 0 ? 'on-brand' : 'brand'} /> : <Icon size={15} />}
                   {done
                     ? `${label} — เข้าคิวครบแล้ว`
                     : mine
@@ -1400,8 +1400,7 @@ export default function WebJobsPage() {
             })}
           </span>
           {/* แยกจากปุ่มสั่งงาน — อันนี้ไม่เข้าคิว ไม่แตะโฮสต์ แค่รวมลิงก์ให้ */}
-          <Button variant="ghost" onClick={downloadList}>
-            <Download size={15} />
+          <Button variant="ghost" icon="Download" onClick={downloadList}>
             ดาวน์โหลดไฟล์สำรอง ({viewSites.filter((s) => s.lastBackupFile).length})
           </Button>
         </div>
@@ -1463,19 +1462,15 @@ export default function WebJobsPage() {
             {/* กรองอยู่ = ต้องเห็นชัดว่าทำไมตารางเหลือไม่กี่แถว พร้อมทางออกในที่เดียวกัน
                 (กรอบสีบนการ์ดอยู่คนละที่กับตาราง เลื่อนลงมาแล้วลืมว่ากรองไว้) */}
             {quick && (
-              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <InfoPanel tone="warning" className="mb-4 flex flex-wrap items-center gap-2 text-sm text-gray-800">
                 <span>
                   กรองอยู่: <strong>{QUICK[quick].label}</strong> — เห็น {viewSites.length} จาก{' '}
                   {tabSites.length} เว็บ{tab === 'all' ? 'ทั้งฟลีต' : `ในแพลน ${tab}`}
                 </span>
-                <button
-                  type="button"
-                  className="rounded-md px-2 py-0.5 font-medium underline decoration-dotted underline-offset-2 hover:bg-amber-100"
-                  onClick={() => setQuick('')}
-                >
+                <Button variant="link" size="sm" onClick={() => setQuick('')}>
                   ล้างตัวกรอง
-                </button>
-              </div>
+                </Button>
+              </InfoPanel>
             )}
 
             <DataTable
@@ -1527,7 +1522,7 @@ export default function WebJobsPage() {
                       key={r.job.id}
                       className={`flex items-baseline gap-3 py-2 text-base ${
                         r.job.status === 'running'
-                          ? 'font-semibold text-blue-900'
+                          ? 'font-semibold text-sky-700'
                           : 'text-gray-700'
                       }`}
                     >

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { needsSetup } from '@/lib/todo/tasks'
 import TechLoader from '@/components/shared/TechLoader'
@@ -18,6 +18,7 @@ export default function ProtectedRoute({
   redirectTo = '/login' 
 }: ProtectedRouteProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, userData, loading, error } = useAuth()
 
   useEffect(() => {
@@ -44,12 +45,14 @@ export default function ProtectedRoute({
       //
       // เช็คตรงนี้ ไม่ใช่แค่ตอนล็อกอิน — คนที่ล็อกอินค้างไว้ก่อนหน้าจะไม่เคย
       // ผ่านหน้า callback เลย ถ้าเช็คแค่ตอนล็อกอินก็ไม่มีวันโดนถาม
-      if (userData && needsSetup(userData)) {
+      // ยกเว้นหน้าวิธีติดตั้งแอป — การ์ด "เปิดแจ้งเตือน" ใน /setup ส่งมาที่นี่ (iPhone ต้อง
+      // ติดตั้งก่อน) ถ้าดีดกลับ /setup จะวนไม่จบ
+      if (userData && needsSetup(userData) && !pathname?.startsWith('/install')) {
         router.replace('/setup')
         return
       }
     }
-  }, [user, userData, loading, error, allowedRoles, router, redirectTo])
+  }, [user, userData, loading, error, allowedRoles, router, redirectTo, pathname])
 
   // Show loading state
   if (loading) {

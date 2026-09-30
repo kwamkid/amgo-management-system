@@ -34,6 +34,14 @@ const person = (over = {}) => ({
   nameVerified: true,
   discordUserId: '123456',
   isSystem: false,
+  role: 'employee',
+  // เพิ่ม 30 ก.ย. 69 — เลขบัญชี · บัตรประชาชน+ที่อยู่ · วันหยุด · แจ้งเตือน
+  bankName: 'KBANK',
+  bankAccountNo: '1234567890',
+  nationalId: '1101700203451',
+  address: '99 ถนนพระราม 2 แขวงแสมดำ เขตบางขุนเทียน กรุงเทพฯ',
+  needsDayOff: false,
+  hasPush: true,
   ...over,
 })
 
@@ -49,6 +57,11 @@ async function main() {
     ['ไม่มีชื่อเล่น', { nickname: null }, 'name'],
     ['ชื่อเล่นเป็นช่องว่างล้วน', { nickname: '   ' }, 'name'],
     ['ยังไม่ผูก Discord', { discordUserId: undefined }, 'discord'],
+    ['ยังไม่มีเลขบัญชี', { bankAccountNo: null }, 'bank'],
+    ['ยังไม่เลือกธนาคาร', { bankName: null }, 'bank'],
+    ['ยังไม่มีเลขบัตรประชาชน', { nationalId: null }, 'identity'],
+    ['ยังไม่มีที่อยู่', { address: '  ' }, 'identity'],
+    ['กลุ่ม 6 วันยังไม่มีวันหยุด 1 วัน', { needsDayOff: true }, 'dayoff'],
   ]
 
   for (const [label, over, expected] of cases) {
@@ -56,8 +69,19 @@ async function main() {
     check(ids.includes(expected), `${label} → ต้องขึ้นงาน "${expected}"`, ids.join(', ') || 'ว่าง')
   }
 
-  const all = pendingTodos(person({ nameVerified: false, nickname: '', discordUserId: undefined }))
-  check(all.length === TODO_TASKS.length, 'คนใหม่เอี่ยมติดครบทุกข้อ', `${all.length} ข้อ`)
+  const all = pendingTodos(
+    person({
+      nameVerified: false, nickname: '', discordUserId: undefined, bankAccountNo: null,
+      nationalId: null, needsDayOff: true, hasPush: false,
+    })
+  )
+  // แจ้งเตือนบังคับเฉพาะบนมือถือ — node ไม่ใช่มือถือ จึงไม่ติดข้อนั้น
+  check(all.length === TODO_TASKS.length - 1, 'คนใหม่เอี่ยมติดครบทุกข้อ (ยกเว้นแจ้งเตือนบนคอม)', `${all.length} ข้อ`)
+  check(!all.some((t) => t.id === 'push'), 'บนคอมไม่บังคับเปิดแจ้งเตือน')
+
+  // ผู้บริหารไม่ต้องผ่านเรื่องที่เพิ่ม 30 ก.ย. (เจ้าของสั่งเพื่อพนักงาน)
+  const adminIds = pendingTodos(person({ role: 'admin', bankAccountNo: null, nationalId: null, needsDayOff: true })).map((t) => t.id)
+  check(adminIds.length === 0, 'ผู้บริหารไม่ถูกบังคับเลขบัญชี/บัตร/วันหยุด', adminIds.join(', ') || 'ว่าง')
   check(blockingTodos(person({ nickname: null })).length === 1, 'งานที่บังคับถูกแยกออกมาได้')
 
   head('ข้อยกเว้น')
@@ -84,15 +108,19 @@ async function main() {
 
   const { data: rows, error } = await admin
     .from('users')
-    .select('id, full_name, nickname, name_verified, discord_user_id, is_system')
+    .select('id, full_name, nickname, name_verified, discord_user_id, is_system, role, bank_name, bank_account_no, national_id, address')
     .is('deleted_at', null)
     .eq('is_active', true)
 
   if (error) throw new Error(`ดึงรายชื่อไม่สำเร็จ: ${error.message}`)
 
   // กติกาที่ TeamTodoZone กับ LINE callback ใช้ (เขียนเป็น SQL/JS แยกกัน)
+  // (วันหยุด/แจ้งเตือนต้องคำนวณจากตารางอื่น — เทียบเฉพาะที่อยู่ในแถว users)
   const sqlRule = (u) =>
-    !u.is_system && (!u.name_verified || !u.nickname?.trim() || !u.discord_user_id)
+    !u.is_system &&
+    (!u.name_verified || !u.nickname?.trim() || !u.discord_user_id ||
+      (u.role !== 'admin' &&
+        (!u.bank_name || !u.bank_account_no?.trim() || !u.national_id?.trim() || !u.address?.trim())))
 
   // กติกาจากทะเบียน — แปลงแถวดิบเป็นรูปแบบเดียวกับ UserData
   const registryRule = (u) =>
@@ -101,6 +129,13 @@ async function main() {
       nameVerified: u.name_verified,
       discordUserId: u.discord_user_id ?? undefined,
       isSystem: u.is_system,
+      role: u.role,
+      bankName: u.bank_name,
+      bankAccountNo: u.bank_account_no,
+      nationalId: u.national_id,
+      address: u.address,
+      needsDayOff: false,
+      hasPush: true,
     })
 
   const mismatch = rows.filter((u) => sqlRule(u) !== registryRule(u))

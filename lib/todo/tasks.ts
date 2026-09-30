@@ -18,7 +18,22 @@
 
 import type { UserData } from '@/lib/services/user/mappers'
 
-export type TodoTaskId = 'name' | 'discord'
+export type TodoTaskId = 'name' | 'discord' | 'bank' | 'identity' | 'dayoff' | 'push'
+
+/**
+ * แจ้งเตือนบังคับเฉพาะบนมือถือ — คอมบางเครื่อง/เบราว์เซอร์รับ push ไม่ได้
+ * ถ้าบังคับบนคอมด้วย คนจะติดค้างหน้านี้โดยทำอะไรไม่ได้
+ */
+function onMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return (
+    /android|iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+  )
+}
+
+/** ผู้บริหาร (แอม/กอล์ฟ) ไม่ต้องผ่านเรื่องที่เพิ่ม 30 ก.ย. — เจ้าของสั่งเพื่อพนักงาน */
+const staffOnly = (u: UserData) => u.role !== 'admin'
 
 export type TodoTask = {
   id: TodoTaskId
@@ -53,6 +68,46 @@ export const TODO_TASKS: TodoTask[] = [
     done: (u) => !!u.discordUserId,
     href: '/setup',
     cta: 'เชื่อมต่อ',
+  },
+
+  // ── เพิ่ม 30 ก.ย. 69 — เจ้าของ: "ถ้าขาดข้อมูลอะไรให้เด้งที่เค้าเอง ให้กรอกก่อนทำงาน
+  //    อย่างอื่น" (การบอกให้ไปทำเองค่อนข้างยาก) ──────────────────────────────
+  {
+    id: 'bank',
+    title: 'บัญชีธนาคารรับเงินเดือน',
+    why: 'ใช้โอนเงินเดือนและเงินคืนจากใบเบิก — กรอกครั้งเดียว เปลี่ยนภายหลังต้องแจ้ง HR',
+    blocking: true,
+    done: (u) => !staffOnly(u) || (!!u.bankName && !!u.bankAccountNo?.trim()),
+    href: '/setup',
+    cta: 'กรอกเลขบัญชี',
+  },
+  {
+    id: 'identity',
+    title: 'เลขบัตรประชาชนและที่อยู่',
+    why: 'ใช้ออกสัญญาจ้างและใบรับรองเงินเดือน',
+    blocking: true,
+    done: (u) => !staffOnly(u) || (!!u.nationalId?.trim() && !!u.address?.trim()),
+    href: '/setup',
+    cta: 'กรอกข้อมูล',
+  },
+  {
+    id: 'dayoff',
+    title: 'เลือกวันหยุดประจำสัปดาห์',
+    // กลุ่มทำงาน 6 วัน (PC · พนักงานขาย · โกดัง · ADAY FRESH) — my_profile ตัดสินให้
+    why: 'ระบบใช้นับวันขาดและถามวันหยุดชดเชยตอนมาทำงานวันหยุด — เลือกแล้วเปลี่ยนต้องแจ้ง HR',
+    blocking: true,
+    done: (u) => !staffOnly(u) || !u.needsDayOff,
+    href: '/setup',
+    cta: 'เลือกวันหยุด',
+  },
+  {
+    id: 'push',
+    title: 'เปิดแจ้งเตือนบนมือถือ',
+    why: 'จะได้รู้ผลใบลา/ใบสลับวันหยุด/ใบเบิก และเตือนตอนลืมเช็คเอาท์',
+    blocking: true,
+    done: (u) => !staffOnly(u) || !!u.hasPush || !onMobile(),
+    href: '/setup',
+    cta: 'เปิดแจ้งเตือน',
   },
 ]
 

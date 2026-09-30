@@ -84,6 +84,8 @@ interface ProfilePayload {
   } | null
   has_srp_access: boolean
   has_web_access: boolean
+  has_push?: boolean
+  needs_day_off?: boolean
 }
 
 /**
@@ -129,6 +131,9 @@ export async function loadAuthState(authUser: User | null): Promise<AuthState> {
         : null,
     hasSrpAccess: !!p.has_srp_access,
     hasWebAccess: !!p.has_web_access,
+    // ของที่ /setup บังคับ (migration 20260930200000)
+    hasPush: !!p.has_push,
+    needsDayOff: !!p.needs_day_off,
   }
   return {
     user: authUser,

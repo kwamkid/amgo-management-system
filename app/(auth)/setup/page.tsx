@@ -20,7 +20,10 @@ import { createClient } from '@/lib/supabase/client'
 import { blockingTodos, TODO_TASKS } from '@/lib/todo/tasks'
 import UserAvatar from '@/components/shared/UserAvatar'
 import { DiscordIcon } from '@/components/icons/DiscordIcon'
-import { Alert, Button, Field, Input, Spinner } from '@/components/aoo'
+import { Alert, Button, Field, Input, SelectMenu, Spinner } from '@/components/aoo'
+import { THAI_BANKS } from '@/lib/constants/banks'
+import { enablePush, getPushState, inAppBrowser, type PushState } from '@/lib/push/client'
+import type { UserData } from '@/lib/services/user/mappers'
 import InfoPanel from '@/components/shared/InfoPanel'
 import SectionCard from '@/components/shared/SectionCard'
 
@@ -89,7 +92,7 @@ function Setup() {
           </p>
 
           <div className="mx-auto mt-4 flex max-w-xs items-center gap-2">
-            {[0, 1].map((i) => (
+            {Array.from({ length: total }, (_, i) => i).map((i) => (
               <div
                 key={i}
                 className={`h-1.5 flex-1 rounded-full ${
@@ -123,6 +126,15 @@ function Setup() {
             username={userData.discordUsername}
             error={discordError}
           />
+          {/* เพิ่ม 30 ก.ย. 69 — การ์ดที่ไม่เกี่ยวกับคนนี้ (ไม่ใช่กลุ่ม 6 วัน / ใช้คอม) ไม่ต้องโชว์ */}
+          {(pending.includes('bank') || userData.role !== 'admin') && (
+            <BankTask userData={userData} done={!pending.includes('bank')} />
+          )}
+          {(pending.includes('identity') || userData.role !== 'admin') && (
+            <IdentityTask userData={userData} done={!pending.includes('identity')} />
+          )}
+          {pending.includes('dayoff') && <DayOffTask />}
+          {pending.includes('push') && <PushTask />}
         </div>
 
         {pending.length === 0 && (
@@ -331,4 +343,251 @@ function TaskCard({
   )
   // ทำแล้ว = กล่องเทาจาง · ยังไม่ทำ = การ์ดขาวเด่น
   return done ? <InfoPanel>{body}</InfoPanel> : <SectionCard>{body}</SectionCard>
+}
+
+/* ------------------------------------------------------------------ *
+ *  3–6. เพิ่ม 30 ก.ย. 69 — เลขบัญชี · บัตรประชาชน+ที่อยู่ · วันหยุด · แจ้งเตือน
+ *  บันทึกแล้วโหลดหน้าใหม่ทั้งหน้า (useAuth อ่านข้อมูลครั้งเดียวตอนเปิดแอป)
+ * ------------------------------------------------------------------ */
+
+const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.nameTh, hint: b.code }))
+
+function BankTask({ userData, done }: { userData: UserData; done: boolean }) {
+  const [bank, setBank] = useState<string | null>(userData.bankName ?? null)
+  const [account, setAccount] = useState(userData.bankAccountNo ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const save = async () => {
+    const digits = account.replace(/\D/g, '')
+    if (!bank) return setError('เลือกธนาคาร')
+    if (digits.length < 10 || digits.length > 15) return setError('เลขบัญชีต้องเป็นตัวเลข 10–15 หลัก')
+    setSaving(true)
+    const { error: dbErr } = await createClient()
+      .from('users')
+      .update({ bank_name: bank, bank_account_no: digits })
+      .eq('id', userData.id!)
+    if (dbErr) {
+      setError(`บันทึกไม่สำเร็จ: ${dbErr.message}`)
+      setSaving(false)
+      return
+    }
+    window.location.reload()
+  }
+
+  return (
+    <TaskCard n={3} title="บัญชีธนาคารรับเงินเดือน" done={done}>
+      {done ? (
+        <p className="text-sm text-gray-600">
+          {THAI_BANKS.find((b) => b.code === userData.bankName)?.nameTh ?? userData.bankName} ·{' '}
+          {userData.bankAccountNo}
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-gray-600">
+            ใช้โอนเงินเดือนและเงินคืนจากใบเบิก · กรอกครั้งเดียว ถ้าจะเปลี่ยนภายหลังต้องแจ้ง HR
+          </p>
+          <div className="mt-3 space-y-2.5">
+            <Field label="ธนาคาร" asDiv>
+              <SelectMenu value={bank} options={BANK_OPTIONS} onChange={setBank} placeholder="เลือกธนาคาร" />
+            </Field>
+            <Field label="เลขบัญชี">
+              <Input
+                inputMode="numeric"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                placeholder="เช่น 1234567890"
+              />
+            </Field>
+          </div>
+          {error && <Alert tone="error" className="mt-3">{error}</Alert>}
+          <Button className="mt-3" onClick={save} loading={saving}>
+            บันทึก
+          </Button>
+        </>
+      )}
+    </TaskCard>
+  )
+}
+
+/** เลขบัตรประชาชนไทย — 13 หลัก หลักสุดท้ายเป็นเลขตรวจสอบ */
+function validThaiId(id: string): boolean {
+  if (!/^\d{13}$/.test(id)) return false
+  const sum = id
+    .slice(0, 12)
+    .split('')
+    .reduce((s, d, i) => s + Number(d) * (13 - i), 0)
+  return (11 - (sum % 11)) % 10 === Number(id[12])
+}
+
+function IdentityTask({ userData, done }: { userData: UserData; done: boolean }) {
+  const [nid, setNid] = useState(userData.nationalId ?? '')
+  const [address, setAddress] = useState(userData.address ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const save = async () => {
+    const digits = nid.replace(/\D/g, '')
+    if (!validThaiId(digits)) return setError('เลขบัตรประชาชนไม่ถูกต้อง — ตรวจอีกครั้ง (13 หลัก)')
+    if (address.trim().length < 10) return setError('กรอกที่อยู่ให้ครบ (บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด)')
+    setSaving(true)
+    const { error: dbErr } = await createClient()
+      .from('users')
+      .update({ national_id: digits, address: address.trim() })
+      .eq('id', userData.id!)
+    if (dbErr) {
+      setError(`บันทึกไม่สำเร็จ: ${dbErr.message}`)
+      setSaving(false)
+      return
+    }
+    window.location.reload()
+  }
+
+  return (
+    <TaskCard n={4} title="เลขบัตรประชาชนและที่อยู่" done={done}>
+      {done ? (
+        <p className="text-sm text-gray-600">บันทึกแล้ว</p>
+      ) : (
+        <>
+          <p className="text-sm text-gray-600">ใช้ออกสัญญาจ้างและใบรับรองเงินเดือน</p>
+          <div className="mt-3 space-y-2.5">
+            <Field label="เลขบัตรประชาชน">
+              <Input
+                inputMode="numeric"
+                value={nid}
+                onChange={(e) => setNid(e.target.value)}
+                placeholder="13 หลัก"
+                maxLength={17}
+              />
+            </Field>
+            <Field label="ที่อยู่ตามทะเบียนบ้าน">
+              <textarea
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                rows={3}
+                placeholder="บ้านเลขที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด รหัสไปรษณีย์"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+              />
+            </Field>
+          </div>
+          {error && <Alert tone="error" className="mt-3">{error}</Alert>}
+          <Button className="mt-3" onClick={save} loading={saving}>
+            บันทึก
+          </Button>
+        </>
+      )}
+    </TaskCard>
+  )
+}
+
+const DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+
+function DayOffTask() {
+  const [dow, setDow] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const save = async () => {
+    if (dow === null) return setError('เลือกวันหยุด 1 วัน')
+    setSaving(true)
+    const { error: dbErr } = await createClient().rpc('set_my_day_off', { p_dow: dow })
+    if (dbErr) {
+      setError(dbErr.message)
+      setSaving(false)
+      return
+    }
+    window.location.reload()
+  }
+
+  return (
+    <TaskCard n={5} title="เลือกวันหยุดประจำสัปดาห์" done={false}>
+      <p className="text-sm text-gray-600">
+        ทำงาน 6 วัน หยุด 1 วัน — เลือกวันที่หยุดประจำ · เลือกแล้วถ้าจะเปลี่ยนต้องแจ้ง HR
+      </p>
+      <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+        {DAYS.map((d, i) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => setDow(i)}
+            className={`h-11 rounded-lg border text-sm font-medium ${
+              dow === i
+                ? 'border-red-300 bg-red-50 text-red-700'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+      {error && <Alert tone="error" className="mt-3">{error}</Alert>}
+      <Button className="mt-3" onClick={save} loading={saving} disabled={dow === null}>
+        {dow === null ? 'เลือกวันก่อน' : `หยุดทุกวัน${DAYS[dow]}`}
+      </Button>
+    </TaskCard>
+  )
+}
+
+function PushTask() {
+  const [state, setState] = useState<PushState | null>(null)
+  const [inApp, setInApp] = useState<'line' | 'facebook' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    setInApp(inAppBrowser())
+    getPushState().then(setState)
+  }, [])
+
+  const turnOn = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const next = await enablePush()
+      setState(next)
+      if (next === 'subscribed') window.location.reload()
+      else if (next === 'denied') setError('เครื่องนี้ปิดการแจ้งเตือนไว้ — ทำตามขั้นตอนด้านบน')
+    } catch {
+      setError('เปิดแจ้งเตือนไม่สำเร็จ ลองอีกครั้ง')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <TaskCard n={6} title="เปิดแจ้งเตือนบนมือถือ" done={false}>
+      <p className="text-sm text-gray-600">
+        จะได้รู้ผลใบลา/ใบสลับวันหยุด/ใบเบิก และเตือนตอนลืมเช็คเอาท์
+      </p>
+      <div className="mt-3">
+        {inApp ? (
+          // หน้า /install มีขั้นตอนออกจาก LINE พร้อมรูปไอคอนจริง (ProtectedRoute ปล่อยผ่านหน้านี้)
+          <a href="/install">
+            <Button icon="ExternalLink">
+              เปิดจาก {inApp === 'line' ? 'LINE' : 'Facebook'} อยู่ — ดูวิธีเปิดในเบราว์เซอร์
+            </Button>
+          </a>
+        ) : state === 'ios-needs-install' ? (
+          <a href="/install">
+            <Button icon="Download">ติดตั้งแอปก่อน (iPhone ต้องติดตั้งถึงจะแจ้งเตือนได้)</Button>
+          </a>
+        ) : state === 'denied' ? (
+          <div className="text-sm text-gray-700">
+            เครื่องนี้เคยกดไม่อนุญาตไว้ — เข้าตั้งค่าของเบราว์เซอร์ → การแจ้งเตือน → อนุญาต
+            app.amgovenger.com แล้วกลับมากดปุ่มนี้
+            <div className="mt-2">
+              <Button onClick={turnOn} loading={busy}>
+                ลองอีกครั้ง
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button onClick={turnOn} loading={busy} icon="BellRing" disabled={state === null}>
+            เปิดแจ้งเตือน
+          </Button>
+        )}
+      </div>
+      {error && <Alert tone="error" className="mt-3">{error}</Alert>}
+    </TaskCard>
+  )
 }

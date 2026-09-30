@@ -4905,6 +4905,9 @@ export type Database = {
       is_finance: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       my_profile: { Args: never; Returns: Json }
+      set_my_day_off: { Args: { p_dow: number }; Returns: undefined }
+      is_six_day_worker: { Args: { p_user_id: string }; Returns: boolean }
+      weekly_off_days: { Args: { p_user_id: string }; Returns: number }
       stock_photo_people: {
         Args: never
         Returns: { id: string; name: string }[]

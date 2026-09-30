@@ -49,6 +49,10 @@ export interface UserData {
   jobWorkHours?: { start: string; end: string } | null
   /** มีสิทธิ์ SRP Calculator อย่างน้อย 1 แบรนด์ (useAuth เติมให้ · แอดมิน = true เสมอ) */
   hasSrpAccess?: boolean
+  /** เปิดแจ้งเตือนไว้อย่างน้อย 1 เครื่อง (my_profile — useAuth เติมให้) — /setup บังคับบนมือถือ */
+  hasPush?: boolean
+  /** อยู่กลุ่มทำงาน 6 วันแต่วันหยุดประจำยังไม่ใช่ 1 วัน — /setup ให้เลือกเอง */
+  needsDayOff?: boolean
   /** อยู่ในรายชื่อ web_owners — เมนูดูแลเว็บไซต์ลูกค้า (งานส่วนตัว แอดมินคนอื่นไม่เห็น) */
   hasWebAccess?: boolean
   inviteLinkId?: string

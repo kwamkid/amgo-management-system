@@ -1118,6 +1118,93 @@ export type Database = {
           },
         ]
       }
+      expense_claims: {
+        Row: {
+          amount: number
+          category: string
+          company_id: string | null
+          created_at: string
+          description: string
+          expense_date: string
+          finance_at: string | null
+          finance_id: string | null
+          id: string
+          manager_at: string | null
+          manager_id: string | null
+          no_receipt_reason: string | null
+          paid_at: string | null
+          paid_by: string | null
+          paid_note: string | null
+          payout: string
+          payroll_month: string | null
+          receipt_paths: string[]
+          rejected_at: string | null
+          rejected_by: string | null
+          rejected_reason: string | null
+          slip_path: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          company_id?: string | null
+          created_at?: string
+          description: string
+          expense_date: string
+          finance_at?: string | null
+          finance_id?: string | null
+          id?: string
+          manager_at?: string | null
+          manager_id?: string | null
+          no_receipt_reason?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_note?: string | null
+          payout?: string
+          payroll_month?: string | null
+          receipt_paths?: string[]
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_reason?: string | null
+          slip_path?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string
+          expense_date?: string
+          finance_at?: string | null
+          finance_id?: string | null
+          id?: string
+          manager_at?: string | null
+          manager_id?: string | null
+          no_receipt_reason?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_note?: string | null
+          payout?: string
+          payroll_month?: string | null
+          receipt_paths?: string[]
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_reason?: string | null
+          slip_path?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           applicable_location_ids: string[]
@@ -2056,6 +2143,7 @@ export type Database = {
           note: string
           ot_hours: number
           ot_rate: number
+          reimbursement: number
           total: number | null
           updated_at: string
           updated_by: string | null
@@ -2075,6 +2163,7 @@ export type Database = {
           note?: string
           ot_hours?: number
           ot_rate?: number
+          reimbursement?: number
           total?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -2094,6 +2183,7 @@ export type Database = {
           note?: string
           ot_hours?: number
           ot_rate?: number
+          reimbursement?: number
           total?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -4796,7 +4886,22 @@ export type Database = {
         Args: { p_date: string; p_user_id: string }
         Returns: number
       }
+      expense_finance_decide: {
+        Args: {
+          p_approve: boolean
+          p_id: string
+          p_payout?: string
+          p_payroll_month?: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      expense_manager_decide: {
+        Args: { p_approve: boolean; p_id: string; p_reason?: string }
+        Returns: undefined
+      }
       hr_inbox: { Args: never; Returns: Json }
+      is_finance: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }

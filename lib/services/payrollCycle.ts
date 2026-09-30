@@ -129,6 +129,19 @@ export function periodOf(cycle: CycleCode, date: Date): CycleWindow {
   return cycleWindow(cycle, new Date(d.getFullYear(), d.getMonth(), 1))
 }
 
+/**
+ * ป้ายงวด (วันที่ 1 ของเดือนที่ทำงาน) ของงวดที่วันนี้ตกอยู่
+ * ใช้ผูกใบเบิกแบบ "รวมเงินเดือน" เข้างวดที่ยังไม่ตัดยอด
+ */
+export function periodMonth(cycle: CycleCode, date: Date): Date {
+  const w = periodOf(cycle, date)
+  for (const offset of [0, 1, -1]) {
+    const m = new Date(w.to.getFullYear(), w.to.getMonth() + offset, 1)
+    if (cycleWindow(cycle, m).to.getTime() === w.to.getTime()) return m
+  }
+  return new Date(w.to.getFullYear(), w.to.getMonth(), 1)
+}
+
 /** สองวันนี้อยู่งวดเดียวกันไหม */
 export function sameCyclePeriod(cycle: CycleCode, a: Date, b: Date): boolean {
   const pa = periodOf(cycle, a)

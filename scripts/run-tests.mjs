@@ -24,6 +24,7 @@ const SUITES = [
   { file: 'test-fixed-schedule.mjs', title: 'เวลาปกติ · เวลางานของตำแหน่ง', noEnv: true },
   { file: 'test-payroll-cycle.mjs', title: 'รอบจ่าย · ช่วงงวดเงินเดือน', noEnv: true },
   { file: 'test-schedule-swap.mjs', title: 'ใบสลับวันหยุด', noEnv: true },
+  { file: 'test-expense-rules.mjs', title: 'ใบเบิกค่าใช้จ่าย · งวดที่รวมจ่าย', noEnv: true },
   { file: 'test-stock-photos.mjs', title: 'รูปสต็อก/หน้าร้านประจำวัน', noEnv: true },
   { file: 'test-push.mjs', title: 'แจ้งเตือน push · ใครได้รับ/ข้อความ', noEnv: true },
   { file: 'test-pwa-login.mjs', title: 'ล็อกอินจากแอป · state/nonce ผ่าน LINE', noEnv: true },

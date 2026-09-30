@@ -168,7 +168,9 @@ async function main() {
   for (const s of summary) {
     const rows = grid.filter((r) => r.full_name.trim() === s.full_name.trim())
     if (!rows.length) { unmatched++; continue }
-    const worked = rows.filter((r) => r.status === 'worked').length
+    // สรุปนับทั้งเข้าออฟฟิศและ WFH (attendance_period_summary: worked + worked_wfh)
+    // เดิมนับแค่ 'worked' — Call Center ที่ WFH ทั้งเดือน (ปู/ขวัญ) จึงตกทุกครั้ง
+    const worked = rows.filter((r) => r.status === 'worked' || r.status === 'worked_wfh').length
     if (worked !== s.days_worked) {
       matches = false
       console.log(`     ${s.full_name}: สรุปบอก ${s.days_worked} วัน แต่นับได้ ${worked}`)

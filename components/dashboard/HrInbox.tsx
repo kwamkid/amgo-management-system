@@ -21,6 +21,7 @@ import {
   Clock3,
   Copy,
   FileText,
+  Receipt,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
@@ -29,6 +30,7 @@ import { Skeleton, SectionCard, StatCard, type StatTone } from '@/components/sha
 import { Alert, Button, Card, CardHeader, CardTitle, Pill } from '@/components/aoo'
 import ForgotReviewList from '@/components/checkin/ForgotReviewList'
 import { fetchHrInbox, type HrInbox as Inbox, type PersonRef } from '@/lib/services/hrInboxService'
+import { countPending as countExpenses } from '@/lib/services/expenseService'
 
 /** โชว์ใบลืมเช็คเอาท์บนหน้าแรกกี่ใบ ที่เหลือไปดูหน้ารอดำเนินการ */
 const FORGOT_PREVIEW = 6
@@ -41,6 +43,8 @@ const INSTALL_URL = 'https://app.amgovenger.com/install'
 export default function HrInbox() {
   const { userData, loading } = useAuth()
   const [data, setData] = useState<Inbox | null>(null)
+  // ใบเบิก: รอผู้จัดการ + รอบัญชี · โอนแยกที่อนุมัติแล้วรอโอน
+  const [expenses, setExpenses] = useState({ manager: 0, finance: 0, toPay: 0 })
   const [error, setError] = useState<string | null>(null)
 
   const isHr = !!userData && ['hr', 'admin'].includes(userData.role)
@@ -52,6 +56,7 @@ export default function HrInbox() {
         setError(null)
       })
       .catch((e) => setError((e as Error).message))
+    countExpenses().then(setExpenses).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -63,7 +68,9 @@ export default function HrInbox() {
   if (!data) return <Skeleton rows={4} />
 
   const claimed = data.forgot.filter((f) => f.claimed_checkout_time).length
-  const pendingTotal = data.leave_pending + data.swap_pending + data.forgot.length
+  const expensePending = expenses.manager + expenses.finance
+  const pendingTotal =
+    data.leave_pending + data.swap_pending + data.forgot.length + expensePending + expenses.toPay
   const beforeStart = new Date().getHours() < ABSENT_FROM_HOUR
 
   return (
@@ -76,7 +83,7 @@ export default function HrInbox() {
           </CardTitle>
         </CardHeader>
 
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
           <Tile
             href="/leaves/management"
             icon={FileText}
@@ -98,6 +105,24 @@ export default function HrInbox() {
             count={data.forgot.length}
             tone="warning"
             sub={claimed ? `พนักงานแจ้งเวลาแล้ว ${claimed}` : undefined}
+          />
+          <Tile
+            href="/expenses/manage"
+            icon={Receipt}
+            label="ใบเบิกค่าใช้จ่าย"
+            count={expensePending + expenses.toPay}
+            tone="sky"
+            sub={
+              expensePending || expenses.toPay
+                ? [
+                    expenses.manager && `รอผู้จัดการ ${expenses.manager}`,
+                    expenses.finance && `รอบัญชี ${expenses.finance}`,
+                    expenses.toPay && `รอโอน ${expenses.toPay}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : undefined
+            }
           />
         </div>
 

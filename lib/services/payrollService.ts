@@ -128,6 +128,11 @@ export interface PayrollRow {
   otRate: number
   commission: number
   extra: number
+  /**
+   * เงินคืนจากใบเบิกค่าใช้จ่ายที่อนุมัติแบบ "รวมเงินเดือน" ของงวดนี้ — คิดจากใบเบิกเสมอ
+   * HR แก้มือไม่ได้ (ต้องตรงกับใบ) · แยกจาก "พิเศษ" เพราะเงินคืนไม่ใช่รายได้
+   */
+  reimbursement: number
   deduction: number
   note: string
   /** กติกาค่าคอมขั้นบันได/ค่าชิ้นงานของคนนี้ — มีเมื่อไหร่ ช่องค่าคอมจะมีปุ่มกรอกยอด */
@@ -148,7 +153,7 @@ export interface PayrollRow {
 }
 
 export const payrollTotal = (r: PayrollRow) =>
-  r.baseSalary + Math.round(r.otHours * r.otRate * 100) / 100 + r.commission + r.extra - r.deduction
+  r.baseSalary + Math.round(r.otHours * r.otRate * 100) / 100 + r.commission + r.extra + r.reimbursement - r.deduction
 
 /** กุญแจประจำแถว — คนเดียวมีหลายแถวได้ (แยกตามบริษัทผู้จ่าย) */
 export const rowKey = (r: Pick<PayrollRow, 'userId' | 'companyId'>) =>
@@ -292,6 +297,14 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
     client.from('user_pay_items').select('id, user_id, label, amount, calc, config, company_id'),
   ])
 
+  // ใบเบิกที่รวมจ่ายกับเงินเดือนงวดนี้ (อนุมัติแล้ว/จ่ายไปกับงวดนี้แล้ว)
+  const { data: claims } = await client
+    .from('expense_claims')
+    .select('user_id, company_id, amount')
+    .eq('payout', 'payroll')
+    .in('status', ['approved', 'paid'])
+    .eq('payroll_month', monthKey(month))
+
   const users = usersRes.data ?? []
   const fnOt = new Map((fnRes.data ?? []).map((f) => [f.id, f.ot_eligible]))
   const fnCycle = new Map((fnRes.data ?? []).map((f) => [f.id, f.payroll_cycle as string | null]))
@@ -349,6 +362,14 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
     tiers: ((p.config as { tiers?: PayTier[] } | null)?.tiers ?? null) as PayTier[] | null,
   })
 
+  // เงินคืนรายคน×บริษัท — ใบที่ไม่ระบุบริษัทจ่ายจากต้นสังกัด
+  const primaryOf = new Map(users.map((u) => [u.id, u.company_id as string | null]))
+  const reimburse = new Map<string, number>()
+  for (const c of claims ?? []) {
+    const key = `${c.user_id}|${(c.company_id ?? primaryOf.get(c.user_id)) ?? ''}`
+    reimburse.set(key, Math.round(((reimburse.get(key) ?? 0) + Number(c.amount)) * 100) / 100)
+  }
+
   const rows: PayrollRow[] = []
   for (const u of usersRes.data ?? []) {
     const primaryC = u.company_id as string | null
@@ -401,6 +422,7 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
         commission: saved ? Number(saved.commission) : 0,
         // รายได้พิเศษยอดคงที่ (ค่าตำแหน่ง/ค่าเดินทาง ฯลฯ) เติมให้เลยทุกเดือน
         extra: saved ? Number(saved.extra) : own.fixed,
+        reimbursement: reimburse.get(`${u.id}|${primaryC ?? ''}`) ?? 0,
         deduction: saved ? Number(saved.deduction) : 0,
         note: saved?.note ?? '',
         variableItems: own.variable,
@@ -414,6 +436,10 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
     const otherCompanies = new Set<string | null>([...byCompany.keys()])
     for (const s of savedRes.data ?? []) {
       if (s.user_id === u.id) otherCompanies.add(s.company_id as string | null)
+    }
+    // ใบเบิกที่บริษัทอื่นเป็นคนจ่ายคืน ก็ต้องมีแถวของบริษัทนั้น
+    for (const c of claims ?? []) {
+      if (c.user_id === u.id && c.company_id) otherCompanies.add(c.company_id)
     }
     otherCompanies.delete(primaryC)
 
@@ -437,6 +463,7 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
         otRate: saved ? Number(saved.ot_rate) : 0,
         commission: saved ? Number(saved.commission) : 0,
         extra: saved ? Number(saved.extra) : grp.fixed,
+        reimbursement: reimburse.get(`${u.id}|${c ?? ''}`) ?? 0,
         deduction: saved ? Number(saved.deduction) : 0,
         note: saved?.note ?? '',
         variableItems: grp.variable,
@@ -498,6 +525,7 @@ export async function savePayroll(
         ot_rate: r.otRate,
         commission: r.commission,
         extra: r.extra,
+        reimbursement: r.reimbursement,
         deduction: r.deduction,
         note: r.note,
         variable_inputs: Object.keys(r.variableInputs).length ? r.variableInputs : null,
@@ -507,6 +535,24 @@ export async function savePayroll(
       { onConflict: 'month,user_id,company_id' }
     )
   if (error) throw new Error(`บันทึกสรุปเงินเดือนไม่สำเร็จ: ${error.message}`)
+
+  // ใบเบิกที่รวมจ่ายกับงวดนี้ = จ่ายแล้วพร้อมเงินเดือน
+  const paidUsers = [...new Set(ready.filter((r) => r.reimbursement > 0).map((r) => r.userId))]
+  if (paidUsers.length) {
+    const { error: claimErr } = await (db ?? sb())
+      .from('expense_claims')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        paid_by: savedBy,
+        paid_note: `รวมจ่ายกับเงินเดือนงวด ${format(month, 'MM/yyyy')}`,
+      })
+      .eq('payout', 'payroll')
+      .eq('status', 'approved')
+      .eq('payroll_month', monthKey(month))
+      .in('user_id', paidUsers)
+    if (claimErr) throw new Error(`บันทึกงวดแล้ว แต่ตีตราใบเบิกว่าจ่ายแล้วไม่สำเร็จ: ${claimErr.message}`)
+  }
   return { saved: ready.length, locked }
 }
 

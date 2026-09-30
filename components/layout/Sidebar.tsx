@@ -42,7 +42,7 @@ import {
   Receipt,
   Layers,
   ListChecks,
-  Server, CalendarSync} from 'lucide-react'
+  Server, CalendarSync, ReceiptText} from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 
 interface NavItem {
@@ -93,6 +93,15 @@ const navSections: NavSection[] = [
           { label: 'สลับวันหยุด', href: '/leaves/swap', icon: subIcon(CalendarSync) },
           { label: 'จัดการคำขอลา', href: '/leaves/management', icon: subIcon(UserCog), roles: ['hr', 'admin', 'manager'] },
           { label: 'จัดการใบสลับวันหยุด', href: '/leaves/swap/management', icon: subIcon(CalendarSync), roles: ['hr', 'admin', 'manager'] },
+        ],
+      },
+      {
+        // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
+        label: 'เบิกค่าใช้จ่าย',
+        icon: icon(Receipt),
+        subItems: [
+          { label: 'ใบเบิกของฉัน', href: '/expenses', icon: subIcon(Receipt) },
+          { label: 'จัดการใบเบิก', href: '/expenses/manage', icon: subIcon(ReceiptText), roles: ['hr', 'admin', 'manager', 'finance'] },
         ],
       },
       {
@@ -215,6 +224,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     userRole,
     ...(userData?.seesDelivery ? ['delivery'] : []),
     ...(userData?.jobFunctionCode === 'production' ? ['production'] : []),
+    ...(userData?.jobFunctionCode === 'accountant' ? ['finance'] : []),
     ...(userData?.hasSrpAccess ? ['srp'] : []),
     ...(userData?.hasWebAccess ? ['website'] : []),
   ]

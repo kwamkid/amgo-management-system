@@ -401,6 +401,12 @@ export default function PayrollPage() {
               <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">OT/ชม.</th>
               <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">ค่าคอม</th>
               <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">พิเศษ</th>
+              <th
+                className="border-b border-gray-200 px-3 py-2 text-right font-medium"
+                title="เงินคืนจากใบเบิกค่าใช้จ่ายที่อนุมัติแบบรวมเงินเดือน — แก้ที่ใบเบิก ไม่ใช่ที่นี่"
+              >
+                เบิกคืน
+              </th>
               <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">หัก</th>
               <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">รวมโอน</th>
               <th className="border-b border-gray-200 px-3 py-2 text-left font-medium">หมายเหตุ</th>
@@ -500,6 +506,12 @@ export default function PayrollPage() {
                     onValueChange={(n) => patch(rowKey(r), 'extra', n)}
                   />
                 </td>
+                <td
+                  className="px-3 py-1.5 text-right font-mono tabular-nums text-gray-700"
+                  title="มาจากใบเบิกค่าใช้จ่ายที่อนุมัติแบบรวมเงินเดือน"
+                >
+                  {r.reimbursement ? baht.format(r.reimbursement) : <span className="text-gray-300">—</span>}
+                </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
                     className={`${cell} w-20`}
@@ -524,7 +536,7 @@ export default function PayrollPage() {
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 font-semibold">
-              <td colSpan={9} className="px-3 py-2 text-right">
+              <td colSpan={10} className="px-3 py-2 text-right">
                 รวมยอดโอน{filtering ? 'ตามตัวกรอง' : 'ทั้งหมด'} (
                 {visible.filter((r) => payrollTotal(r) > 0).length} คน)
               </td>
@@ -542,7 +554,8 @@ export default function PayrollPage() {
         คนที่มีค่าคอมขั้นบันได/ค่าชิ้นงาน กดไอคอนเครื่องคิดเลขในช่องค่าคอม
         เพื่อกรอกยอดขาย/จำนวนชิ้นแล้วระบบคิดให้ — หรือกด &quot;ดึงค่าคอมเดือนก่อน&quot; /
         กรอกเอง · ไฟล์โอนธนาคารมี รหัส ชื่อ ธนาคาร เลขบัญชี และยอดโอนของทุกคนที่ยอดมากกว่า 0
-        · กดชื่อพนักงานเพื่อแก้ตารางวันทำงาน/วันหยุดประจำ
+        · กดชื่อพนักงานเพื่อแก้ตารางวันทำงาน/วันหยุดประจำ · ช่องเบิกคืนมาจากใบเบิกค่าใช้จ่ายที่อนุมัติแบบรวมเงินเดือน
+        บันทึกงวดแล้วใบเบิกจะเปลี่ยนเป็นจ่ายแล้วให้เอง
       </p>
 
       {scheduleFor && (

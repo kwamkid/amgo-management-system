@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // รหัสเวอร์ชันที่ฝังลงโค้ดฝั่งเบราว์เซอร์ตอน build — UpdateWatcher เทียบกับ /api/version
+  // ว่ามี deploy ใหม่หรือยัง (Vercel ใส่ VERCEL_GIT_COMMIT_SHA ให้ทุก build)
+  env: {
+    NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev',
+  },
 
   // ssh2 (ใช้สั่ง WP-CLI บนโฮสต์ลูกค้า) มี native binding ที่ bundler ยัดเข้า
   // ESM chunk ไม่ได้ — ต้องปล่อยให้ require ตอนรันแทน

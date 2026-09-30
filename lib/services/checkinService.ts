@@ -28,7 +28,7 @@ import {
   normalEndTime,
   isForgotCheckout,
 } from './workingHoursService'
-import { getLocation } from './locationService'
+import { getLocation, locationFromEmbedded } from './locationService'
 import { getDeviceId } from '@/lib/utils/device'
 
 type Row = Database['public']['Tables']['checkins']['Row']
@@ -196,30 +196,45 @@ export async function createCheckIn(
   return row.id
 }
 
-/**
- * สิทธิ์ OT: ตั้งรายคนชนะ ไม่ตั้งใช้ของตำแหน่ง — noti เช็คเอาท์ใช้ตัดสินว่าควรโชว์โอทีไหม
- * (พนักงานทั่วไปทำเกิน 8 ชม. ระบบเก็บชั่วโมงไว้เป็นข้อมูล แต่ไม่ใช่เงินโอที)
- */
-export async function resolveOtEligible(userId: string): Promise<boolean> {
-  const { data } = await sb()
-    .from('users')
-    .select('ot_eligible, job_functions(ot_eligible)')
-    .eq('id', userId)
-    .single()
-  const jfRaw = data?.job_functions
-  const jf = (Array.isArray(jfRaw) ? jfRaw[0] : jfRaw) as { ot_eligible: boolean | null } | null
-  return data?.ot_eligible ?? jf?.ot_eligible ?? false
-}
-
 /* ------------------------------------------------------------------ */
 export async function checkOut(
   userId: string,
   checkoutData: CheckOutData
-): Promise<{ totalHours: number; overtimeHours: number; farKm: number; forgot: boolean }> {
-  const active = await getActiveCheckIn(userId)
-  if (!active) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
+): Promise<{
+  totalHours: number
+  overtimeHours: number
+  farKm: number
+  forgot: boolean
+  /** มีสิทธิ์ OT ไหม — noti เช็คเอาท์ใช้ต่อ (เดิมถามแยกอีกรอบด้วย resolveOtEligible) */
+  otEligible: boolean
+}> {
+  // กะที่เปิด + สาขา (พร้อมกะ) + สิทธิ์ OT ของเจ้าตัว ในคำขอเดียว (30 ก.ย. 69)
+  // เดิม 3 รอบต่อกัน: getActiveCheckIn → getLocation → resolveOtEligible
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+  const { data: openRows, error: openErr } = await sb()
+    .from('checkins')
+    .select(
+      '*, loc:locations!checkins_primary_location_id_fkey(*, shifts(*)), owner:users!checkins_user_id_fkey(ot_eligible, job_functions(ot_eligible))'
+    )
+    .eq('user_id', userId)
+    .eq('status', 'checked-in')
+    .is('checkout_time', null)
+    .gte('work_date', format(twoDaysAgo, 'yyyy-MM-dd'))
+    .order('checkin_time', { ascending: false })
+    .limit(1)
+  if (openErr) throw new Error(`ดึงกะที่เปิดอยู่ไม่สำเร็จ: ${openErr.message}`)
+  const openRow = openRows?.[0] as
+    | (Row & {
+        loc: unknown
+        owner: { ot_eligible: boolean | null; job_functions: { ot_eligible: boolean | null } | null } | null
+      })
+    | undefined
+  if (!openRow) throw new Error('ไม่พบการเช็คอินที่ยังไม่ได้เช็คเอาท์')
 
-  const location = active.primaryLocationId ? await getLocation(active.primaryLocationId) : null
+  const active = toRecord(openRow)
+  const location = openRow.loc ? locationFromEmbedded(openRow.loc) : null
+  const otEligible = openRow.owner?.ot_eligible ?? openRow.owner?.job_functions?.ot_eligible ?? false
 
   const checkinTime = new Date(active.checkinTime)
   const checkoutTime = new Date()
@@ -353,7 +368,7 @@ export async function checkOut(
   if (error) throw new Error(`เช็คเอาท์ไม่สำเร็จ: ${error.message}`)
 
   // ส่งเลขที่คำนวณจริงกลับไปให้ noti — ไม่ต้องคิดเองจากเวลาดิบอีก
-  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours, farKm, forgot }
+  return { totalHours: calc.totalHours, overtimeHours: calc.overtimeHours, farKm, forgot, otEligible }
 }
 
 /* ------------------------------------------------------------------ *
@@ -378,6 +393,26 @@ export async function getActiveCheckIn(userId: string): Promise<CheckInRecord | 
 
   if (error) throw new Error(`ดึงกะที่เปิดอยู่ไม่สำเร็จ: ${error.message}`)
   return data?.length ? toRecord(data[0]) : null
+}
+
+/**
+ * สถานะหน้าเช็คอินของคนที่ล็อกอินอยู่ในคำขอเดียว (RPC checkin_state — 30 ก.ย. 69)
+ * กะที่เปิดอยู่ + ตารางวันของวันนั้น + ยื่นใบสลับไว้หรือยัง
+ * (เดิม: หากะ → แล้วค่อยถาม expected_work_mode + ใบสลับ อีกรอบ)
+ */
+export async function getCheckInState(): Promise<{
+  active: CheckInRecord | null
+  mode: string | null
+  swapFiled: boolean
+}> {
+  const { data, error } = await sb().rpc('checkin_state')
+  if (error) throw new Error(`ดึงสถานะเช็คอินไม่สำเร็จ: ${error.message}`)
+  const st = (data ?? {}) as { active: Row | null; mode: string | null; swap_filed: boolean }
+  return {
+    active: st.active ? toRecord(st.active) : null,
+    mode: st.mode ?? null,
+    swapFiled: !!st.swap_filed,
+  }
 }
 
 /* ------------------------------------------------------------------ *

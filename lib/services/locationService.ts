@@ -48,6 +48,11 @@ const WITH_SHIFTS = '*, shifts(*)' as const
 type LocationWithShifts = LocationRow & { shifts: ShiftRow[] | null }
 const fromEmbedded = (r: LocationWithShifts) => toLocation(r, r.shifts ?? [])
 
+/** แปลงแถวสาขาที่ embed กะมาแล้ว (select '*, shifts(*)') — ใช้ตอนเช็คเอาท์ที่ join สาขามากับกะ */
+export function locationFromEmbedded(r: unknown): Location {
+  return fromEmbedded(r as LocationWithShifts)
+}
+
 function toLocation(row: LocationRow, shifts: ShiftRow[] = []): Location {
   return {
     id: row.id,

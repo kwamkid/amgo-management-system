@@ -69,7 +69,8 @@ export function useCheckIn(): UseCheckInReturn {
       setLoading(true)
       setError(null)
       
-      const activeCheckIn = await checkinService.getActiveCheckIn(userData.id)
+      // กะที่เปิดอยู่ + ตารางวัน + ใบสลับ ในคำขอเดียว (RPC checkin_state)
+      const { active: activeCheckIn, mode, swapFiled } = await checkinService.getCheckInState()
       setCurrentCheckIn(activeCheckIn)
 
       // ── เช็คอินค้างอยู่ในวันหยุดของตัวเอง แต่ยังไม่ได้ยื่นใบสลับ = ถามซ้ำ ──
@@ -77,17 +78,8 @@ export function useCheckIn(): UseCheckInReturn {
       // แค่ refresh ก็หนีได้ กลายเป็นบังคับแต่ในนาม
       if (activeCheckIn?.checkinTime) {
         const cin = new Date(activeCheckIn.checkinTime as Date)
-        if (cin.toDateString() === new Date().toDateString()) {
-          try {
-            const { expectedMode, hasSwapFor } = await import('@/lib/services/scheduleSwapService')
-            const [mode, filed] = await Promise.all([
-              expectedMode(userData.id, cin),
-              hasSwapFor(userData.id, cin),
-            ])
-            if (mode === 'off' && !filed) setSwapPromptDate(cin)
-          } catch {
-            // ถามไม่ได้ก็ไม่ควรทำให้หน้าเช็คอินพัง
-          }
+        if (cin.toDateString() === new Date().toDateString() && mode === 'off' && !swapFiled) {
+          setSwapPromptDate(cin)
         }
       }
     } catch (err) {
@@ -382,7 +374,8 @@ export function useCheckIn(): UseCheckInReturn {
       try {
         // เลขชั่วโมง/โอทีใช้ของที่คำนวณจริง (หักพัก/ตัดเวลาปิดร้านแล้ว) — เดิมคิดจาก
         // เวลาดิบ−8 เลยขึ้นโอทีทุกคน · และโชว์โอทีเฉพาะคนที่มีสิทธิ์ OT เท่านั้น
-        const otEligible = await checkinService.resolveOtEligible(userData.id)
+        // สิทธิ์ OT มากับผลเช็คเอาท์แล้ว — ไม่ต้องถามซ้ำ
+        const otEligible = hours.otEligible
         await DiscordNotificationService.notifyCheckOut(
           userData.id,
           // ชื่อจริง (ชื่อเล่น) — เหมือนฝั่งเช็คอิน

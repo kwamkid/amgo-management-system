@@ -4845,6 +4845,7 @@ export type Database = {
         Args: { p_now?: string }
         Returns: { checkin_id: string; remind_at: string; user_id: string }[]
       }
+      checkin_state: { Args: never; Returns: Json }
       claim_checkout_time: {
         Args: { p_checkin_id: string; p_note?: string; p_time: string }
         Returns: undefined

@@ -78,23 +78,6 @@ function cycleFields(w: CycleWindow, now: Date) {
   }
 }
 
-/** รอบจ่ายที่ตั้งไว้ตามตำแหน่ง — ใช้เมื่อคนนั้นไม่ได้ตั้งรายคน */
-async function loadJobFunctionCycles(client?: Db) {
-  const { data } = await (client ?? sb()).from('job_functions').select('id, payroll_cycle')
-  return new Map((data ?? []).map((f) => [f.id, f.payroll_cycle as string | null]))
-}
-
-/** คนที่ต้องมีแถวในงวด */
-async function loadPayrollUsers(client?: Db) {
-  const { data } = await (client ?? sb())
-    .from('users')
-    .select('id, payroll_cycle, job_function_id')
-    .eq('is_active', true)
-    .eq('is_system', false)
-    .is('deleted_at', null)
-  return data ?? []
-}
-
 export type PayTier = { upTo: number | null; percent: number }
 
 /** กติกาค่าตอบแทนผันแปรจาก user_pay_items — ต้องมียอดของเดือนถึงจะคิดเป็นเงินได้ */
@@ -188,39 +171,20 @@ export function calcVariablePay(item: VariablePayItem, input: number): number {
 
 const monthKey = (month: Date) => format(month, 'yyyy-MM-01')
 
-/**
- * เลขวันมา/ขาดของเดือน — ก้อนเดียวกับหน้ารายงาน (คิดกะหมุนเวียน/เลื่อนวันหยุดแล้ว)
- * แยกออกมาให้หน้า payroll รีเฟรชเฉพาะเลขนี้ได้ หลังแก้ตารางเวรจาก dialog
- * โดยไม่ต้องโหลดทั้งหน้าใหม่ (ค่าคอมที่ HR พิมพ์ค้างอยู่จะได้ไม่หาย)
- */
-export async function loadAttendanceDays(
-  month: Date,
-  client?: Db
-): Promise<Map<string, { work: number; absent: number }>> {
-  const [users, fnCycle] = await Promise.all([
-    loadPayrollUsers(client),
-    loadJobFunctionCycles(client),
-  ])
-  const { byUser, windows } = windowsByUser(users, fnCycle, month)
-  const attByCycle = await attendanceByWindow(windows, client)
-
-  const result = new Map<string, { work: number; absent: number }>()
-  for (const u of users) {
-    const w = byUser.get(u.id)!
-    const hit = attByCycle.get(w.cycle)?.get(u.id)
-    if (hit) result.set(u.id, hit)
-  }
-  return result
+/** เลขที่ระบบเป็นเจ้าของของงวด — วันมา/ขาด (ก้อนเดียวกับหน้ารายงาน) + OT ของคนมีสิทธิ์ */
+export interface PayrollReality {
+  att: Map<string, { work: number; absent: number }>
+  /** คนมีสิทธิ์ OT มี entry เสมอ (ไม่มี OT = 0) · คนไม่มีสิทธิ์ไม่มี entry */
+  ot: Map<string, number>
 }
 
 /**
- * ชั่วโมง OT จริงของเดือน — เฉพาะคนที่มีสิทธิ์ OT (รายคนชนะ ไม่ตั้งก็ตามตำแหน่ง)
- * คนมีสิทธิ์มี entry เสมอ (ไม่มี OT = 0) · คนไม่มีสิทธิ์ไม่มี entry
- * ปุ่ม "อัปเดตจากข้อมูลจริง" ใช้แยกว่าใครให้ระบบทับ ใครคงเลขที่ HR กรอกมือไว้
+ * วันมา/ขาด + OT ในรอบเดียว (30 ก.ย. 69) — เดิม loadAttendanceDays กับ loadOtHours
+ * ต่างคนต่างดึง users + job_functions แล้วคิดช่วงงวดเอง ปุ่ม "อัปเดตจากข้อมูลจริง"
+ * จึงยิงซ้ำสองชุด · ตอนนี้ดึงพนักงาน/ตำแหน่งชุดเดียว แล้วยิงรายงานกับ OT พร้อมกัน
  */
-export async function loadOtHours(month: Date, db?: Db): Promise<Map<string, number>> {
+export async function loadReality(month: Date, db?: Db): Promise<PayrollReality> {
   const client = db ?? sb()
-
   const [usersRes, fnRes] = await Promise.all([
     client
       .from('users')
@@ -236,15 +200,34 @@ export async function loadOtHours(month: Date, db?: Db): Promise<Map<string, num
   const fnCycle = new Map((fnRes.data ?? []).map((f) => [f.id, f.payroll_cycle as string | null]))
   const { byUser, windows } = windowsByUser(users, fnCycle, month)
 
-  // ดึงครอบทุกช่วงทีเดียวแล้วค่อยคัดตามช่วงของแต่ละคน — ยิง query เดียวพอ
-  const sums = await sumOvertimeInWindows(client, windows, byUser)
+  const [attByCycle, sums] = await Promise.all([
+    attendanceByWindow(windows, db),
+    // ดึงครอบทุกช่วงทีเดียวแล้วค่อยคัดตามช่วงของแต่ละคน — ยิง query เดียวพอ
+    sumOvertimeInWindows(client, windows, byUser),
+  ])
 
-  const result = new Map<string, number>()
+  const att = new Map<string, { work: number; absent: number }>()
+  const ot = new Map<string, number>()
   for (const u of users) {
+    const hit = attByCycle.get(byUser.get(u.id)!.cycle)?.get(u.id)
+    if (hit) att.set(u.id, hit)
     const otOk = u.ot_eligible ?? (u.job_function_id ? fnOt.get(u.job_function_id) : false) ?? false
-    if (otOk) result.set(u.id, Math.round((sums.get(u.id) ?? 0) * 100) / 100)
+    if (otOk) ot.set(u.id, Math.round((sums.get(u.id) ?? 0) * 100) / 100)
   }
-  return result
+  return { att, ot }
+}
+
+/** เลขวันมา/ขาดของเดือน — ดู loadReality */
+export async function loadAttendanceDays(
+  month: Date,
+  client?: Db
+): Promise<Map<string, { work: number; absent: number }>> {
+  return (await loadReality(month, client)).att
+}
+
+/** ชั่วโมง OT จริงของเดือน เฉพาะคนมีสิทธิ์ — ดู loadReality */
+export async function loadOtHours(month: Date, db?: Db): Promise<Map<string, number>> {
+  return (await loadReality(month, db)).ot
 }
 
 /**
@@ -280,7 +263,19 @@ async function sumOvertimeInWindows(
 }
 
 /* ------------------------------------------------------------------ */
+/** แถวงวดเงินเดือน */
 export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
+  return (await loadPayrollWithReality(month, db)).rows
+}
+
+/**
+ * แถวงวด + เลขจริง (วันมา/ขาด/OT) ที่คำนวณระหว่างทางอยู่แล้ว — cron ตัดยอดใช้ตัวนี้
+ * แทนการเรียก loadPayroll + loadAttendanceDays + loadOtHours ที่คำนวณชุดเดียวกัน 3 รอบ
+ */
+export async function loadPayrollWithReality(
+  month: Date,
+  db?: Db
+): Promise<{ rows: PayrollRow[] } & PayrollReality> {
   const client = db ?? sb()
 
   const [usersRes, savedRes, fnRes, payItemsRes, claimsRes] = await Promise.all([
@@ -370,6 +365,7 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
     reimburse.set(key, Math.round(((reimburse.get(key) ?? 0) + Number(c.amount)) * 100) / 100)
   }
 
+  const otOfEligible = new Map<string, number>()
   const rows: PayrollRow[] = []
   for (const u of usersRes.data ?? []) {
     const primaryC = u.company_id as string | null
@@ -399,6 +395,7 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
       // สิทธิ์ OT: รายคนชนะ ไม่ตั้งก็ตามตำแหน่ง — ไม่มีสิทธิ์ = ไม่เติมชั่วโมงให้
       const otOk =
         u.ot_eligible ?? (u.job_function_id ? fnOt.get(u.job_function_id) : false) ?? false
+      if (otOk) otOfEligible.set(u.id, Math.round((otByUser.get(u.id) ?? 0) * 100) / 100)
       const own = base(byCompany.get(primaryC))
       rows.push({
         userId: u.id,
@@ -473,7 +470,7 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
       })
     }
   }
-  return rows
+  return { rows, att: attByUser, ot: otOfEligible }
 }
 
 /* ------------------------------------------------------------------ *

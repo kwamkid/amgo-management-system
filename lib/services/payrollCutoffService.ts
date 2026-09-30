@@ -15,7 +15,7 @@
 // ปลอดภัยต่อการรันซ้ำ: แถวที่มีอยู่แล้วไม่ถูกแตะ (ของที่ HR กรอกมือไม่หาย)
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { loadPayroll, savePayroll, loadAttendanceDays, loadOtHours } from './payrollService'
+import { loadPayrollWithReality, savePayroll } from './payrollService'
 import { cycleCutoffToday, CYCLE_LABELS, type CycleCode } from './payrollCycle'
 
 const ALL_CYCLES: CycleCode[] = ['c28', 'c4', 'c30', 'eom']
@@ -43,11 +43,8 @@ export async function runPayrollCutoff(today: Date = new Date()): Promise<{
     if (!month) continue // วันนี้ไม่ใช่วันตัดยอดของรอบนี้
 
     try {
-      const [rows, att, ot] = await Promise.all([
-        loadPayroll(month, admin),
-        loadAttendanceDays(month, admin),
-        loadOtHours(month, admin),
-      ])
+      // แถวงวด + วันมา/ขาด/OT จากการคำนวณรอบเดียว (เดิมคำนวณชุดเดียวกัน 3 รอบ)
+      const { rows, att, ot } = await loadPayrollWithReality(month, admin)
 
       // แตะเฉพาะรอบที่ถึงวันตัดยอดวันนี้
       const mine = rows.filter((r) => r.cycle === cycle)

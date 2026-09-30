@@ -17,7 +17,7 @@ import { PageHeader, TechLoader } from '@/components/shared'
 import {
   loadPayroll,
   loadAttendanceDays,
-  loadOtHours,
+  loadReality,
   savePayroll,
   loadPreviousExtras,
   payrollCsv,
@@ -123,7 +123,7 @@ export default function PayrollPage() {
    */
   const refreshReality = async () => {
     try {
-      const [att, ot] = await Promise.all([loadAttendanceDays(month), loadOtHours(month)])
+      const { att, ot } = await loadReality(month)
       let changed = false
       setRows((prev) =>
         prev.map((r) => {

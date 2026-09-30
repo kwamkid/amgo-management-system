@@ -148,42 +148,6 @@ function buildNote(r: ReportRow): string {
   return parts.join(' · ')
 }
 
-async function fetchReport(
-  filters: AttendanceReportFilters,
-  limit: number,
-  offset: number
-): Promise<{ rows: AttendanceReportData[]; total: number }> {
-  // วันที่ยังมาไม่ถึงไม่ใช่วันขาด — เลือกทั้งเดือนแล้วรายงานต้องไม่โชว์อนาคตเป็นขาดงาน
-  const endCapped = filters.endDate > new Date() ? new Date() : filters.endDate
-
-  const { data, error } = await sb().rpc('attendance_report', {
-    p_from: ymd(filters.startDate),
-    p_to: ymd(endCapped),
-    p_user_ids: filters.userIds?.length ? filters.userIds : undefined,
-    p_location_id: filters.locationId ?? undefined,
-    p_only_present: filters.showOnlyPresent !== false,
-    p_limit: limit,
-    p_offset: offset,
-  })
-
-  if (error) throw new Error(`ดึงรายงานไม่สำเร็จ: ${error.message}`)
-
-  const rows = (data ?? []) as ReportRow[]
-
-  // full_name จากฟังก์ชันรายงานเป็นชื่อจริงล้วน — ทับด้วย "ชื่อจริง (ชื่อเล่น)"
-  const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(rows.map((r) => r.user_id))
-
-  return {
-    rows: rows.map((r) => {
-      const row = toReportData(r)
-      row.userName = names.get(r.user_id) || row.userName
-      return row
-    }),
-    total: rows.length ? Number(rows[0].total_count) : 0,
-  }
-}
-
 /**
  * ดึงทั้งช่วงให้ครบจริง ๆ — ผ่าน RPC ที่คืน jsonb ก้อนเดียว (ไม่ติดเพดาน 1,000 แถว
  * ของ PostgREST) เดิมขอเป็นช่วง ๆ ทีละ 1,000 แต่ฟังก์ชันรายงานคำนวณใหม่ทั้งชุด
@@ -192,7 +156,11 @@ async function fetchReport(
 async function fetchReportAll(
   filters: Omit<AttendanceReportFilters, 'page' | 'pageSize'>,
   client?: Db
-): Promise<{ rows: AttendanceReportData[]; total: number }> {
+): Promise<{
+  rows: AttendanceReportData[]
+  total: number
+  daysPerWeek: Map<string, number | null>
+}> {
   const endCapped = filters.endDate > new Date() ? new Date() : filters.endDate
 
   const { data, error } = await (client ?? sb()).rpc('attendance_report_json', {
@@ -205,54 +173,20 @@ async function fetchReportAll(
 
   if (error) throw new Error(`ดึงรายงานไม่สำเร็จ: ${error.message}`)
 
-  const raw = (data ?? []) as ReportRow[]
-  const { getDisplayNames } = await import('./user/queries')
-  const [names, swaps] = await Promise.all([
-    getDisplayNames(raw.map((r) => r.user_id), client),
-    swapNotes(filters.startDate, endCapped, client),
-  ])
+  // ชื่อ ("ชื่อจริง (ชื่อเล่น)") · หมายเหตุใบสลับ · วันทำงาน/สัปดาห์ มากับแต่ละแถวแล้ว
+  // (migration 20260930180000) — เดิมยิงต่ออีก 3 คำขอหลังได้ก้อนนี้
+  const raw = (data ?? []) as (ReportRow & { swap_note?: string | null; days_per_week?: number | null })[]
+  const daysPerWeek = new Map<string, number | null>()
   const rows = raw.map((r) => {
+    daysPerWeek.set(r.user_id, r.days_per_week ?? null)
     const row = toReportData(r)
-    row.userName = names.get(r.user_id) || row.userName
-    const swap = swaps.get(`${r.user_id}|${r.work_date}`)
-    if (swap) {
-      row.swapNote = swap
-      row.note = row.note ? `${row.note} · ${swap}` : swap
+    if (r.swap_note) {
+      row.swapNote = r.swap_note
+      row.note = row.note ? `${row.note} · ${r.swap_note}` : r.swap_note
     }
     return row
   })
-  return { rows, total: rows.length }
-}
-
-/**
- * หมายเหตุใบสลับวันหยุดของช่วงนั้น — คีย์ "คน|วันที่"
- *
- * พออนุมัติใบ วันที่มาทำงานกลายเป็นวันทำงานปกติ และวันที่หยุดชดเชยกลายเป็น
- * วันหยุดตามตาราง เลขทุกอย่างถูกต้องแล้วแต่ **เรื่องราวหายไปจากรายงาน** —
- * เปิดดูไม่รู้เลยว่าวันที่ 25 หยุดเพราะไปทำงานแทนวันที่ 9
- * (เจ้าของสั่งให้แสดง 16 ส.ค. 69)
- */
-async function swapNotes(
-  from: Date,
-  to: Date,
-  client?: Db
-): Promise<Map<string, string>> {
-  const { data } = await (client ?? sb())
-    .from('schedule_exceptions')
-    .select('user_id, exception_date, note')
-    .gte('exception_date', ymd(from))
-    .lte('exception_date', ymd(to))
-    .like('note', '[ใบสลับวันหยุด]%')
-
-  return new Map(
-    (data ?? []).map((e) => [`${e.user_id}|${e.exception_date}`, e.note.replace('[ใบสลับวันหยุด] ', '')])
-  )
-}
-
-/** วันทำงาน/สัปดาห์ของแต่ละคน — ใช้คิดวันขาดของกะหมุนเวียน */
-async function daysPerWeekMap(client?: Db): Promise<Map<string, number | null>> {
-  const { data } = await (client ?? sb()).from('users').select('id, days_per_week')
-  return new Map((data ?? []).map((u) => [u.id, u.days_per_week]))
+  return { rows, total: rows.length, daysPerWeek }
 }
 
 /* ------------------------------------------------------------------ *
@@ -269,11 +203,12 @@ export async function getReportDataset(range: {
   startDate: Date
   endDate: Date
 }): Promise<ReportDataset> {
-  const [{ rows }, dpw] = await Promise.all([
-    fetchReportAll({ startDate: range.startDate, endDate: range.endDate, showOnlyPresent: false }),
-    daysPerWeekMap(),
-  ])
-  return { rows, daysPerWeek: dpw }
+  const { rows, daysPerWeek } = await fetchReportAll({
+    startDate: range.startDate,
+    endDate: range.endDate,
+    showOnlyPresent: false,
+  })
+  return { rows, daysPerWeek }
 }
 
 /** กรอง + สรุป + ตัดหน้า จากก้อน cache — งานล้วน ๆ ในเบราว์เซอร์ ไม่แตะฐานข้อมูล */
@@ -333,11 +268,12 @@ export async function getAttendanceReportPaginated(
   const page = filters.page || 1
   const pageSize = filters.pageSize || 50
 
-  const { rows, total } = await fetchReport(filters, pageSize, (page - 1) * pageSize)
+  // สรุปด้านบนต้องคิดจากทั้งช่วง — ดึงทั้งช่วงครั้งเดียวแล้วตัดหน้าจากก้อนเดียวกัน
+  // (ลำดับเดียวกับ attendance_report: วันที่ → ชื่อ) เดิมเรียกฟังก์ชันรายงาน 2 รอบ
+  const { rows: all, daysPerWeek: dpw } = await fetchReportAll(filters)
+  const total = all.length
+  const rows = all.slice((page - 1) * pageSize, page * pageSize)
   const totalPages = Math.ceil(total / pageSize)
-
-  // สรุปด้านบนต้องคิดจากทั้งช่วง ไม่ใช่แค่หน้าที่กำลังดู
-  const [{ rows: all }, dpw] = await Promise.all([fetchReportAll(filters), daysPerWeekMap()])
 
   return {
     data: rows,
@@ -358,10 +294,7 @@ export async function getAttendanceReportForExport(
   /** ส่ง client ฝั่ง server มาได้ — งาน cron ไม่มี session ให้ RLS ใช้ */
   client?: Db
 ): Promise<AttendanceReportResponse> {
-  const [{ rows: filtered }, dpw] = await Promise.all([
-    fetchReportAll(filters, client),
-    daysPerWeekMap(client),
-  ])
+  const { rows: filtered, daysPerWeek: dpw } = await fetchReportAll(filters, client)
 
   return {
     data: filtered,

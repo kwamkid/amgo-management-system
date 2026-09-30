@@ -7,9 +7,19 @@
 // ห้าม auto save) — ส่วนสลับวันหยุดเป็นรายการเพิ่ม/ลบ มีปุ่ม "เพิ่ม" ของมันเองอยู่แล้ว
 //
 // ลำดับที่ระบบใช้ตัดสินว่าวันไหนต้องมาทำงาน (expected_work_mode):
-//   สลับรายวัน (schedule_exceptions) > วันหยุดประจำรายคน (user_work_schedules)
+//   สลับรายวัน (schedule_exceptions) > ตารางรายคน (user_work_schedules)
 //   > ตารางของตำแหน่ง > จ–ศ
 // ถ้ามาเช็คอินตรงวันหยุดประจำ รายงานถือว่า "เลื่อนไปหยุดวันอื่น" — ไม่นับขาดเพิ่ม
+//
+// ── บันทึกครบ 7 วัน (30 ก.ย. 69) ─────────────────────────────────────
+// เดิมเก็บแถวเฉพาะวันที่ติ๊กหยุด วันที่เหลือไหลไปใช้ตารางของตำแหน่ง — ขวัญ
+// ติ๊กหยุดเสาร์ แต่ตำแหน่ง Call Center หยุดอาทิตย์ ระบบเลยให้หยุด 2 วันซ้อน
+// ยื่นใบสลับไม่ผ่าน · ตอนนี้ตำแหน่งแบบวันตายตัวบันทึกครบทุกวัน ตารางรายคน
+// ทับตำแหน่งทั้งสัปดาห์ · ตำแหน่งกะหมุนเวียน (PC) ยังเก็บเฉพาะวันหยุด เพราะวันที่
+// เหลือต้องเป็น 'rotating' ให้รายงานคิดขาดตามจำนวนวัน/สัปดาห์
+//
+// วัน "ไม่บังคับ" (optional) = มาก็นับมา ไม่มาก็ไม่ขาด ไม่เด้งถามสลับวันหยุด
+// (กิ่งไผ่ เสาร์ — เจ้าของสั่ง 30 ก.ย. 69)
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +36,27 @@ const DAYS = [
   { dow: 5, label: 'ศ.' },
   { dow: 6, label: 'ส.' },
 ]
+
+type DayMode = 'work' | 'off' | 'optional'
+
+const NEXT: Record<DayMode, DayMode> = { work: 'off', off: 'optional', optional: 'work' }
+
+const MODE_STYLE: Record<DayMode, string> = {
+  work: 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+  off: 'border-red-200 bg-red-50 text-red-700',
+  optional: 'border-amber-200 bg-amber-50 text-amber-700',
+}
+
+const MODE_LABEL: Record<DayMode, string> = {
+  work: 'ทำงาน',
+  off: 'หยุด',
+  optional: 'ไม่บังคับ',
+}
+
+const toDayMode = (m: string | null | undefined): DayMode =>
+  m === 'off' ? 'off' : m === 'optional' ? 'optional' : 'work'
+
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
 
 interface ExceptionRow {
   id: string
@@ -54,18 +85,21 @@ export default function WorkScheduleCard({
   const { showToast } = useToast()
 
   // ค่าที่กำลังแก้ (ยังไม่เขียนจริง) + ค่าเดิมจากฐานข้อมูลไว้เทียบว่าแก้อะไรไปบ้าง
-  const [offDays, setOffDays] = useState<Set<number>>(new Set())
+  const [modes, setModes] = useState<Record<number, DayMode>>({})
+  const [origModes, setOrigModes] = useState<Record<number, DayMode>>({})
   const [daysPerWeek, setDaysPerWeek] = useState<number | null>(null)
-  const [origOffDays, setOrigOffDays] = useState<Set<number>>(new Set())
   const [origDaysPerWeek, setOrigDaysPerWeek] = useState<number | null>(null)
+  // ตารางรายคนมีอยู่แล้วไหม · ตำแหน่งเป็นกะหมุนเวียนไหม · โหมดทำงานของตำแหน่งรายวัน
+  const [hasPersonal, setHasPersonal] = useState(false)
+  const [rotating, setRotating] = useState(false)
+  const [workModeOf, setWorkModeOf] = useState<Record<number, 'onsite' | 'wfh'>>({})
+  const [jfModes, setJfModes] = useState<Record<number, DayMode>>({})
   const [saving, setSaving] = useState(false)
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const dirty =
-    daysPerWeek !== origDaysPerWeek ||
-    offDays.size !== origOffDays.size ||
-    [...offDays].some((d) => !origOffDays.has(d))
+    daysPerWeek !== origDaysPerWeek || ALL_DAYS.some((d) => modes[d] !== origModes[d])
 
   const [exDate, setExDate] = useState('')
   const [exMode, setExMode] = useState<'off' | 'onsite'>('off')
@@ -82,13 +116,43 @@ export default function WorkScheduleCard({
         .eq('user_id', userId)
         .order('exception_date', { ascending: false })
         .limit(20),
-      sb.from('users').select('days_per_week').eq('id', userId).single(),
+      sb
+        .from('users')
+        .select('days_per_week, job_functions(schedule_type, job_function_work_days(day_of_week, work_mode))')
+        .eq('id', userId)
+        .single(),
     ])
-    const off = new Set<number>(
-      (sched.data ?? []).filter((r) => r.work_mode === 'off').map((r) => r.day_of_week)
-    )
-    setOffDays(new Set(off))
-    setOrigOffDays(off)
+
+    const jfRaw = usr.data?.job_functions
+    const jf = (Array.isArray(jfRaw) ? jfRaw[0] : jfRaw) as {
+      schedule_type: string | null
+      job_function_work_days: { day_of_week: number; work_mode: string }[] | null
+    } | null
+    const jfDays = new Map((jf?.job_function_work_days ?? []).map((r) => [r.day_of_week, r.work_mode]))
+    const mine = new Map((sched.data ?? []).map((r) => [r.day_of_week, r.work_mode]))
+
+    // วันทำงานเขียนเป็น onsite/wfh ตามที่มีอยู่ (รายคนก่อน แล้วตำแหน่ง) — ไม่มีก็ onsite
+    const wm: Record<number, 'onsite' | 'wfh'> = {}
+    const jfm: Record<number, DayMode> = {}
+    const current: Record<number, DayMode> = {}
+    for (const d of ALL_DAYS) {
+      const own = mine.get(d)
+      // ตำแหน่งไม่มีตารางเลย → expected_work_mode ถอยไป จ–ศ (ส–อา หยุด) ให้โชว์ตรงกัน
+      const fromJf =
+        jfDays.get(d) ??
+        (jfDays.size === 0 && jf?.schedule_type !== 'rotating'
+          ? d === 0 || d === 6 ? 'off' : 'onsite'
+          : undefined)
+      wm[d] = own === 'wfh' || (own !== 'onsite' && fromJf === 'wfh') ? 'wfh' : 'onsite'
+      jfm[d] = toDayMode(fromJf)
+      current[d] = toDayMode(own ?? fromJf)
+    }
+    setWorkModeOf(wm)
+    setJfModes(jfm)
+    setModes(current)
+    setOrigModes(current)
+    setHasPersonal(mine.size > 0)
+    setRotating(jf?.schedule_type === 'rotating')
     setExceptions((ex.data as ExceptionRow[]) ?? [])
     setDaysPerWeek(usr.data?.days_per_week ?? null)
     setOrigDaysPerWeek(usr.data?.days_per_week ?? null)
@@ -102,15 +166,13 @@ export default function WorkScheduleCard({
 
   // แก้ค้างไว้ในหน้าก่อน — ยังไม่เขียนจริงจนกว่าจะกดบันทึก
   const toggleDay = (dow: number) => {
-    setOffDays((prev) => {
-      const next = new Set(prev)
-      if (next.has(dow)) next.delete(dow)
-      else next.add(dow)
-      return next
-    })
+    setModes((prev) => ({ ...prev, [dow]: NEXT[prev[dow] ?? 'work'] }))
   }
 
-  /** เขียนเฉพาะส่วนที่แก้: จำนวนวัน/สัปดาห์ + วันหยุดประจำที่เพิ่ม/เอาออก */
+  /** กลับไปใช้ตารางของตำแหน่ง (ลบตารางรายคนทิ้งตอนกดบันทึก) */
+  const resetToJobFunction = () => setModes({ ...jfModes })
+
+  /** จำนวนวัน/สัปดาห์ + ตารางรายคน (ตำแหน่งวันตายตัว = ครบ 7 วัน · กะหมุนเวียน = เฉพาะวันหยุด/ไม่บังคับ) */
   const save = async () => {
     const sb = createClient()
     setSaving(true)
@@ -122,29 +184,41 @@ export default function WorkScheduleCard({
           .eq('id', userId)
         if (error) throw error
       }
-      const removed = [...origOffDays].filter((d) => !offDays.has(d))
-      const added = [...offDays].filter((d) => !origOffDays.has(d))
-      if (removed.length) {
-        const { error } = await sb
-          .from('user_work_schedules')
-          .delete()
-          .eq('user_id', userId)
-          .in('day_of_week', removed)
-        if (error) throw error
+      const scheduleChanged = ALL_DAYS.some((d) => modes[d] !== origModes[d])
+      const sameAsJob = ALL_DAYS.every((d) => modes[d] === jfModes[d])
+
+      if (scheduleChanged) {
+        // ตรงกับตำแหน่งทุกวัน = ไม่ต้องมีตารางรายคน · กะหมุนเวียน = เก็บแค่วันที่ไม่ใช่วันทำงาน
+        const rows = sameAsJob
+          ? []
+          : ALL_DAYS.filter((d) => !rotating || modes[d] !== 'work').map((d) => ({
+              user_id: userId,
+              day_of_week: d,
+              work_mode: modes[d] === 'work' ? workModeOf[d] : modes[d],
+              note:
+                modes[d] === 'off' ? 'วันหยุดประจำ' : modes[d] === 'optional' ? 'เข้าได้ ไม่บังคับ' : 'วันทำงาน',
+            }))
+
+        // เขียนของใหม่ก่อนแล้วค่อยลบส่วนเกิน — ลบก่อนแล้วเขียนพัง ตารางจะหายทั้งสัปดาห์
+        if (rows.length) {
+          const { error } = await sb
+            .from('user_work_schedules')
+            .upsert(rows, { onConflict: 'user_id,day_of_week' })
+          if (error) throw error
+        }
+        const keep = rows.map((r) => r.day_of_week)
+        const drop = ALL_DAYS.filter((d) => !keep.includes(d))
+        if (drop.length) {
+          const { error } = await sb
+            .from('user_work_schedules')
+            .delete()
+            .eq('user_id', userId)
+            .in('day_of_week', drop)
+          if (error) throw error
+        }
+        setHasPersonal(rows.length > 0)
       }
-      if (added.length) {
-        const { error } = await sb.from('user_work_schedules').upsert(
-          added.map((d) => ({
-            user_id: userId,
-            day_of_week: d,
-            work_mode: 'off',
-            note: 'วันหยุดประจำ',
-          })),
-          { onConflict: 'user_id,day_of_week' }
-        )
-        if (error) throw error
-      }
-      setOrigOffDays(new Set(offDays))
+      setOrigModes({ ...modes })
       setOrigDaysPerWeek(daysPerWeek)
       showToast('บันทึกตารางวันทำงานแล้ว', 'success')
       onSaved?.()
@@ -223,27 +297,39 @@ export default function WorkScheduleCard({
 
         {/* วันหยุดประจำ */}
         <div>
-          <p className="text-sm font-medium text-gray-700">วันหยุดประจำ (คลิกวันที่หยุด)</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-gray-700">ตารางประจำสัปดาห์ (คลิกวันเพื่อเปลี่ยน)</p>
+            <span className="text-xs text-gray-500">
+              {hasPersonal ? 'ตั้งรายคนไว้' : 'ตามตำแหน่ง'}
+            </span>
+            {ALL_DAYS.some((d) => modes[d] !== jfModes[d]) && (
+              <button
+                type="button"
+                onClick={resetToJobFunction}
+                className="ml-auto text-xs text-blue-700 hover:underline"
+              >
+                ใช้ตารางตามตำแหน่ง
+              </button>
+            )}
+          </div>
           <p className="mb-2 text-xs text-gray-500">
-            ไม่เลือกเลย = ใช้ตารางของตำแหน่ง · มาเช็คอินตรงวันหยุดประจำ รายงานถือว่าเลื่อนไปหยุดวันอื่น
-            ไม่นับขาดเพิ่ม
+            คลิกวนได้ 3 แบบ: ทำงาน → <span className="text-red-700">หยุด</span> →{' '}
+            <span className="text-amber-700">ไม่บังคับ</span> (มาก็นับมา ไม่มาไม่นับขาด) · มาเช็คอินตรงวันหยุด
+            ระบบจะถามวันหยุดชดเชย
           </p>
           <div className="flex flex-wrap gap-1.5">
             {DAYS.map((d) => {
-              const off = offDays.has(d.dow)
+              const m = modes[d.dow] ?? 'work'
               return (
                 <button
                   key={d.dow}
                   type="button"
                   onClick={() => toggleDay(d.dow)}
-                  className={`h-9 w-11 rounded-lg border text-sm font-medium transition-colors ${
-                    off
-                      ? 'border-red-200 bg-red-50 text-red-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
-                  title={off ? `หยุดประจำวัน${d.label}` : 'คลิกเพื่อตั้งเป็นวันหยุดประจำ'}
+                  className={`flex h-12 w-14 flex-col items-center justify-center rounded-lg border text-sm font-medium transition-colors ${MODE_STYLE[m]}`}
+                  title={`วัน${d.label} — ${MODE_LABEL[m]} · คลิกเพื่อเปลี่ยน`}
                 >
                   {d.label}
+                  <span className="text-xs font-normal">{MODE_LABEL[m]}</span>
                 </button>
               )
             })}
@@ -294,10 +380,12 @@ export default function WorkScheduleCard({
                     className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${
                       e.work_mode === 'off'
                         ? 'bg-red-50 text-red-700'
-                        : 'bg-green-50 text-green-700'
+                        : e.work_mode === 'optional'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-green-50 text-green-700'
                     }`}
                   >
-                    {e.work_mode === 'off' ? 'หยุด' : 'มาทำงาน'}
+                    {e.work_mode === 'off' ? 'หยุด' : e.work_mode === 'optional' ? 'ไม่บังคับ' : 'มาทำงาน'}
                   </span>
                   {e.note && <span className="truncate text-gray-400">{e.note}</span>}
                   <button

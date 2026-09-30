@@ -219,7 +219,7 @@ export default function CheckInHistory({
               {record.autoCheckout && (
                 <Alert tone="info" className="mt-2 py-2">
                   <div className="text-xs text-blue-700">
-                    🤖 ระบบเช็คเอาท์อัตโนมัติ (ลืมเช็คเอาท์เกิน 12 ชั่วโมง)
+                    🤖 ลืมเช็คเอาท์ — ระบบปิดให้ที่เวลาเลิกงาน
                   </div>
                 </Alert>
               )}

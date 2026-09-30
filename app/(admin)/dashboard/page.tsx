@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import TodoZone from '@/components/dashboard/TodoZone';
 import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
+import HrInbox from '@/components/dashboard/HrInbox';
 import ProbationZone from '@/components/dashboard/ProbationZone';
 import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
@@ -44,6 +45,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ — ไม่มีอะไรค้างก็ไม่ขึ้น */}
       <TodoZone />
+
+      {/* HR/admin: รออนุมัติ · ขาดงานวันนี้ · ข้อมูลที่ยังไม่ครบ — ทุกอย่างที่ต้องทำในที่เดียว */}
+      <HrInbox />
 
       {/* HR/admin เห็นเพิ่มว่าต้องไปตามใครบ้าง */}
       <TeamTodoZone />

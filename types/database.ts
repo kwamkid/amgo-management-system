@@ -577,6 +577,9 @@ export type Database = {
           checkin_photo_url: string | null
           checkin_time: string
           checkin_type: string
+          claim_note: string | null
+          claimed_at: string | null
+          claimed_checkout_time: string | null
           checkout_lat: number | null
           checkout_lng: number | null
           checkout_note: string | null
@@ -623,6 +626,9 @@ export type Database = {
           checkin_photo_url?: string | null
           checkin_time: string
           checkin_type?: string
+          claim_note?: string | null
+          claimed_at?: string | null
+          claimed_checkout_time?: string | null
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
@@ -669,6 +675,9 @@ export type Database = {
           checkin_photo_url?: string | null
           checkin_time?: string
           checkin_type?: string
+          claim_note?: string | null
+          claimed_at?: string | null
+          claimed_checkout_time?: string | null
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
@@ -4733,6 +4742,10 @@ export type Database = {
         Args: { p_day: number; p_month_start: string }
         Returns: string
       }
+      claim_checkout_time: {
+        Args: { p_checkin_id: string; p_note?: string; p_time: string }
+        Returns: undefined
+      }
       consume_invite_link: {
         Args: { p_code: string }
         Returns: {
@@ -4757,6 +4770,10 @@ export type Database = {
           source: string
         }[]
       }
+      payroll_open_from: {
+        Args: { p_cycle: string; p_today: string }
+        Returns: string
+      }
       expand_leave_days: { Args: { p_request_id: string }; Returns: undefined }
       expected_work_mode: {
         Args: { p_date: string; p_user_id: string }
@@ -4766,6 +4783,7 @@ export type Database = {
         Args: { p_date: string; p_user_id: string }
         Returns: number
       }
+      hr_inbox: { Args: never; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import InstallBanner from "@/components/push/InstallBanner";
+import ForgotCheckoutPrompt from "@/components/checkin/ForgotCheckoutPrompt";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ToastProvider } from "@/components/aoo";
 import { Toaster } from "react-hot-toast";
@@ -84,6 +85,9 @@ export default function AdminLayout({
 
             {/* มือถือที่เปิดจากเบราว์เซอร์ — ชวนติดตั้งเป็นแอป (ซ่อนเองเมื่อเปิดจากแอปแล้ว) */}
             <InstallBanner />
+
+            {/* ลืมเช็คเอาท์ → ถามเวลาเลิกงานจริงทันทีที่เปิดแอป ต้องตอบก่อน */}
+            <ForgotCheckoutPrompt />
 
             {/* ชิดซ้ายเต็มความกว้าง ไม่บีบกลางจอ — หน้าหลังบ้านเป็นตารางหลายคอลัมน์
                 ถ้าตรึง max-width ไว้ ตารางจะโดนบีบทั้งที่จอยังเหลือที่ว่างอีกเยอะ */}

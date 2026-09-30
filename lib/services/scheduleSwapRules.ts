@@ -48,12 +48,22 @@ export function checkSwap(input: SwapCheckInput): string | null {
     return 'วันที่มาทำงานกับวันที่ไปหยุดต้องเป็นคนละวัน'
   }
 
+  // วันไม่บังคับ (30 ก.ย. 69) — มาก็นับมา ไม่มาก็ไม่ขาด จึงไม่มีอะไรให้สลับ
+  if (workedDateMode === 'optional') {
+    return `วันที่ ${dm(workedDate)} เป็นวันเข้าได้ไม่บังคับ มาทำงานได้เลยไม่ต้องยื่นสลับ`
+  }
+
   if (workedDateMode != null && workedDateMode !== 'off') {
     return `วันที่ ${dm(workedDate)} เป็นวันทำงานปกติอยู่แล้ว ไม่ต้องยื่นสลับ`
   }
 
   if (offDateMode === 'off') {
     return `วันที่ ${dm(offDate)} เป็นวันหยุดของคุณอยู่แล้ว เลือกวันทำงานเป็นวันหยุดชดเชย`
+  }
+
+  // ไม่มาก็ไม่นับขาดอยู่แล้ว — เอามาเป็นวันชดเชยเท่ากับได้หยุดฟรี
+  if (offDateMode === 'optional') {
+    return `วันที่ ${dm(offDate)} เป็นวันไม่บังคับอยู่แล้ว เลือกวันทำงานปกติเป็นวันหยุดชดเชย`
   }
 
   const pWorked = periodOf(cycle, workedDate)

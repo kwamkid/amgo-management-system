@@ -24,7 +24,6 @@ import type { Database } from '@/types/database'
 import { format } from 'date-fns'
 import {
   calculateWorkingHours,
-  needsOvertimeApproval,
   distanceMeters,
   normalEndTime,
   isForgotCheckout,
@@ -309,11 +308,10 @@ export async function checkOut(
     ? { ...calcRaw, overtimeHours: 0, totalHours: calcRaw.regularHours }
     : calcRaw
 
-  // เคสลืมไม่ต้องเข้าคิวอนุมัติโอที — ชั่วโมงโดนตัดที่เวลาเลิกงานไปแล้ว
-  // (ของเดิมปล่อยเข้าคิว ทำให้ใบที่ลืมค้างสถานะ "รออนุมัติ" ไม่มีวันจบ)
-  const needsApproval = location && !farKm && !forgot
-    ? needsOvertimeApproval(checkoutTime, location, checkinTime)
-    : false
+  // คิวอนุมัติ OT ปิดแล้ว (เจ้าของสั่ง 30 ก.ย. 69) — payroll ไม่เคยอ่านธงนี้
+  // ค้างไว้ 1,926 ใบโดยไม่มีผลกับเงิน · ส่วนที่เกินเวลาปิดสาขาถูกตัดใน
+  // calculateWorkingHours อยู่แล้ว ใบจึงจบที่ completed ทันที
+  const needsApproval = false
 
   // เคสลืม บันทึกเวลาออก = เวลาเลิกงานที่ระบบปิดให้ (เหมือน cron ปิดกะ) เวลาที่
   // กดจริงเก็บไว้ในหมายเหตุ — รายงานจะได้อ่านแล้วตรงกัน เวลาออกคู่กับชั่วโมง
@@ -563,6 +561,56 @@ export async function manualCheckout(
     new_value: checkoutTime.toISOString(),
     reason,
   })
+}
+
+/* ------------------------------------------------------------------ *
+ *  พนักงานแจ้งเวลาเลิกงานจริงของใบที่ลืมเช็คเอาท์ (30 ก.ย. 69)
+ *
+ *  ระบบปิดกะที่เวลาเลิกงานปกติ ไม่มี OT — "เราจับได้แค่นี้" (เจ้าของ)
+ *  เปิดแอปครั้งถัดไปถามเวลาจริง แล้วเก็บไว้ให้ HR อนุมัติ ยังไม่แตะชั่วโมง
+ * ------------------------------------------------------------------ */
+export interface UnansweredForgot {
+  id: string
+  workDate: string
+  checkinTime: Date
+  /** เวลาที่ระบบปิดให้ */
+  checkoutTime: Date
+}
+
+/** ใบล่าสุดที่ลืมเช็คเอาท์แล้วยังไม่ได้แจ้งเวลา (ย้อนดู 7 วัน) */
+export async function getUnansweredForgot(userId: string): Promise<UnansweredForgot | null> {
+  const since = new Date()
+  since.setDate(since.getDate() - 7)
+
+  const { data } = await sb()
+    .from('checkins')
+    .select('id, work_date, checkin_time, checkout_time')
+    .eq('user_id', userId)
+    .eq('hours_status', 'needs_review')
+    .eq('forgot_checkout', true)
+    .is('claimed_at', null)
+    .not('checkout_time', 'is', null)
+    .gte('checkin_time', since.toISOString())
+    .order('checkin_time', { ascending: false })
+    .limit(1)
+
+  const r = data?.[0]
+  if (!r || !r.checkout_time) return null
+  return {
+    id: r.id,
+    workDate: r.work_date!,
+    checkinTime: new Date(r.checkin_time),
+    checkoutTime: new Date(r.checkout_time),
+  }
+}
+
+export async function claimCheckoutTime(checkinId: string, time: Date, note: string): Promise<void> {
+  const { error } = await sb().rpc('claim_checkout_time', {
+    p_checkin_id: checkinId,
+    p_time: time.toISOString(),
+    p_note: note,
+  })
+  if (error) throw new Error(error.message)
 }
 
 /* ------------------------------------------------------------------ *

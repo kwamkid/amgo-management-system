@@ -1,101 +1,83 @@
 // app/(admin)/checkin/pending/page.tsx
+//
+// รอดำเนินการ — ใบลืมเช็คเอาท์ที่ HR ต้องตรวจ (30 ก.ย. 69)
+//
+// เดิมหน้านี้มี 2 ส่วน: กะที่เปิดค้าง + "รออนุมัติ OT" · คิว OT ปิดทิ้งแล้ว
+// (payroll ไม่เคยอ่าน ค้าง 1,926 ใบ) และตอนนี้ cron 00:05 ปิดทุกกะที่ข้ามวัน
+// เหลือสิ่งที่ HR ต้องทำจริงคือตรวจใบที่ระบบปิดให้ — ส่วนกะเปิดค้างยังอยู่
+// เผื่อ cron พลาด
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { PageHeader } from '@/components/shared'
+import { useCallback, useEffect, useState } from 'react'
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { format } from 'date-fns'
+import { PageHeader, SectionCard } from '@/components/shared'
+import TechLoader from '@/components/shared/TechLoader'
+import { Alert, EmptyState } from '@/components/aoo'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { CheckInRecord } from '@/types/checkin'
 import { getPendingCheckouts, manualCheckout } from '@/lib/services/checkinService'
-import { getPendingOvertimeInfo } from '@/lib/services/workingHoursService'
-import { getLocation } from '@/lib/services/locationService'
+import { fetchHrInbox, type ForgotItem } from '@/lib/services/hrInboxService'
 import PendingCheckouts from '@/components/checkin/PendingCheckouts'
-import { 
-  Clock, 
-  AlertTriangle,
-  Calendar,
-  Users,
-  CheckCircle,
-  XCircle,
-  Loader2
-} from 'lucide-react'
-import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
-import { gradients, colorClasses } from '@/lib/theme/colors'
-import TechLoader from '@/components/shared/TechLoader'
+import ForgotReviewList from '@/components/checkin/ForgotReviewList'
 
-import { Alert, Pill, Card, CardContent, CardHeader, CardTitle } from '@/components/aoo'
 export default function PendingCheckoutsPage() {
   const { userData } = useAuth()
   const { showToast } = useToast()
-  const [pendingRecords, setPendingRecords] = useState<CheckInRecord[]>([])
-  const [overtimeRecords, setOvertimeRecords] = useState<CheckInRecord[]>([])
+  const [forgot, setForgot] = useState<ForgotItem[]>([])
+  const [open, setOpen] = useState<CheckInRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<string | null>(null)
 
-  // Check if user has permission
-  const canManage = ['admin', 'hr', 'manager'].includes(userData?.role || '')
+  const canManage = ['admin', 'hr'].includes(userData?.role || '')
 
-  useEffect(() => {
-    if (canManage) {
-      fetchPendingData()
-    }
-  }, [canManage])
-
-  const fetchPendingData = async () => {
+  const load = useCallback(async () => {
     try {
-      setLoading(true)
-      
-      // Get all pending checkouts
-      const pending = await getPendingCheckouts()
-      
-      // Separate forgot checkouts and overtime approvals
-      const forgot = pending.filter(r => r.status === 'checked-in')
-      const overtime = pending.filter(r => r.status === 'pending')
-      
-      setPendingRecords(forgot)
-      setOvertimeRecords(overtime)
-    } catch (error) {
-      console.error('Error fetching pending data:', error)
-      showToast('ไม่สามารถโหลดข้อมูลได้', 'error')
+      const [inbox, pending] = await Promise.all([fetchHrInbox(), getPendingCheckouts()])
+      setForgot(inbox.forgot)
+      // กะที่ยังไม่ปิดของวันก่อน ๆ — วันนี้ยังทำงานอยู่ ไม่นับ
+      const today = format(new Date(), 'yyyy-MM-dd')
+      setOpen(
+        pending.filter(
+          (r) => r.status === 'checked-in' && format(new Date(r.checkinTime), 'yyyy-MM-dd') < today
+        )
+      )
+    } catch (e) {
+      showToast((e as Error).message, 'error')
     } finally {
       setLoading(false)
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleApproveCheckout = async (
+  useEffect(() => {
+    if (canManage) load()
+  }, [canManage, load])
+
+  const closeOpenShift = async (
     record: CheckInRecord,
     checkoutTime: Date,
     reason: string,
-    approveOvertime: boolean = false
+    approveOvertime = false
   ) => {
     if (!userData) return
-    
     try {
       setProcessing(record.id!)
-      
-      const checkinTime = record.checkinTime instanceof Date 
-        ? record.checkinTime 
-        : new Date(record.checkinTime)
-      
-      const dateStr = format(checkinTime, 'yyyy-MM-dd')
-      
       await manualCheckout(
         record.id!,
-        dateStr,
+        format(new Date(record.checkinTime), 'yyyy-MM-dd'),
         checkoutTime,
         userData.id!,
-        userData.fullName,
+        userData.displayName || userData.fullName,
         reason,
         approveOvertime
       )
-      
-      showToast('บันทึกการเช็คเอาท์สำเร็จ', 'success')
-      await fetchPendingData()
-    } catch (error) {
-      console.error('Error approving checkout:', error)
-      showToast('เกิดข้อผิดพลาด', 'error')
+      showToast('ปิดกะแล้ว', 'success')
+      await load()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
     } finally {
       setProcessing(null)
     }
@@ -103,139 +85,64 @@ export default function PendingCheckoutsPage() {
 
   if (!canManage) {
     return (
-      <div className="max-w-4xl">
-        <Alert tone="error">
-          <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-          <div>
-            เฉพาะ HR และ Admin เท่านั้น
-          </div>
-        </Alert>
-      </div>
+      <Alert tone="error">
+        <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+        <div>เฉพาะ HR และผู้ดูแลระบบ</div>
+      </Alert>
     )
   }
 
-  if (loading) {
-    return <TechLoader />
-  }
+  if (loading) return <TechLoader />
 
-  const totalPending = pendingRecords.length + overtimeRecords.length
+  const claimed = forgot.filter((f) => f.claimed_checkout_time).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
-        title="จัดการการเช็คเอาท์"
-        description="อนุมัติการเช็คเอาท์สำหรับพนักงานที่ลืมเช็คเอาท์หรือทำ OT"
+        title="ลืมเช็คเอาท์ รอตรวจ"
+        description="ระบบปิดกะให้ที่เวลาเลิกงานปกติ ไม่มี OT — ตรวจเฉพาะงวดที่ยังไม่ตัดยอด"
         icon={Clock}
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">รอดำเนินการ</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{totalPending}</p>
-              </div>
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.warningLight} rounded-full flex items-center justify-center`}>
-                <Clock className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ลืมเช็คเอาท์</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingRecords.length}</p>
-              </div>
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.warningLight} rounded-full flex items-center justify-center`}>
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card padding={0}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">รออนุมัติ OT</p>
-                <p className="text-2xl font-bold text-purple-600 mt-1">{overtimeRecords.length}</p>
-              </div>
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradients.purpleLight} rounded-full flex items-center justify-center`}>
-                <Users className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Forgot Checkouts Section */}
-      {pendingRecords.length > 0 && (
-        <Card padding={0}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-500" />
-              พนักงานลืมเช็คเอาท์
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              พนักงานที่ลืมเช็คเอาท์เกิน 12 ชั่วโมง
+      <SectionCard
+        title={`รอตรวจ ${forgot.length} ใบ${claimed ? ` · พนักงานแจ้งเวลาแล้ว ${claimed}` : ''}`}
+      >
+        {forgot.length === 0 ? (
+          <EmptyState
+            icon={<CheckCircle size={28} />}
+            title="ตรวจครบแล้ว"
+            body="ไม่มีใบลืมเช็คเอาท์ค้างในงวดนี้"
+          />
+        ) : (
+          <>
+            <p className="mb-1 text-xs text-gray-500">
+              ใบที่พนักงานแจ้งเวลาจริงมาแล้วอยู่บนสุด · อนุมัติ/แก้เวลา = คิดชั่วโมงใหม่ตามกติกาเดียวกับกดเช็คเอาท์เอง
+              (ตัดที่เวลาปิดสาขา) · ใช้เวลาระบบ = ชั่วโมงเดิม
             </p>
-          </CardHeader>
-          <CardContent>
-            <PendingCheckouts
-              records={pendingRecords}
-              onApprove={handleApproveCheckout}
-              processing={processing}
-              type="forgot"
-            />
-          </CardContent>
-        </Card>
-      )}
+            <ForgotReviewList items={forgot} onChanged={load} />
+          </>
+        )}
+      </SectionCard>
 
-      {/* Overtime Approvals Section */}
-      {overtimeRecords.length > 0 && (
-        <Card padding={0}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-purple-500" />
-              รออนุมัติทำงานล่วงเวลา
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              พนักงานที่ทำงานเกินเวลาปิดมากกว่า 1 ชั่วโมง
-            </p>
-          </CardHeader>
-          <CardContent>
-            <PendingCheckouts
-              records={overtimeRecords}
-              onApprove={handleApproveCheckout}
-              processing={processing}
-              type="overtime"
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Empty State */}
-      {totalPending === 0 && (
-        <Card padding={0}>
-          <CardContent className="py-16">
-            <div className="text-center">
-              <div className={`inline-flex p-4 bg-gradient-to-br ${gradients.successLight} rounded-full mb-4`}>
-                <CheckCircle className="w-16 h-16 text-teal-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                ไม่มีรายการรอดำเนินการ
-              </h3>
-              <p className="text-gray-600">
-                พนักงานทุกคนเช็คเอาท์เรียบร้อยแล้ว
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {open.length > 0 && (
+        <SectionCard
+          title={
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              กะที่ยังเปิดค้างข้ามวัน {open.length} ใบ
+            </span>
+          }
+        >
+          <p className="mb-2 text-xs text-gray-500">
+            ปกติระบบปิดให้ทุกคืน 00:05 — ถ้ายังค้างแปลว่า cron พลาด ปิดให้ที่นี่ได้
+          </p>
+          <PendingCheckouts
+            records={open}
+            onApprove={closeOpenShift}
+            processing={processing}
+            type="forgot"
+          />
+        </SectionCard>
       )}
     </div>
   )

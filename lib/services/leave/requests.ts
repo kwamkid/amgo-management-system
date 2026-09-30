@@ -87,9 +87,11 @@ export async function getLeaveRequests(
   },
   limit = 500
 ): Promise<LeaveRequest[]> {
+  // ชื่อปัจจุบันของเจ้าของใบ join มาในคำขอเดียว (30 ก.ย. 69 — เดิมดึงชื่ออีกรอบ)
+  // ตารางนี้ชี้ไป users 3 ทาง (ผู้ยื่น · ผู้อนุมัติ · ผู้ยกเลิก) ต้องระบุ FK
   let q = sb()
     .from('leave_requests')
-    .select('*')
+    .select('*, owner:users!leave_requests_user_id_fkey(display_name, full_name)')
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -107,10 +109,11 @@ export async function getLeaveRequests(
   if (error) throw new Error(`ดึงรายการลาไม่สำเร็จ: ${error.message}`)
 
   // ทับ userName (snapshot ชื่อจริงตอนยื่นใบลา) ด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
-  const requests = ((data ?? []) as LeaveRequestRow[]).map(toLeaveRequest)
-  const { getDisplayNames } = await import('../user/queries')
-  const names = await getDisplayNames(requests.map((r) => r.userId))
-  return requests.map((r) => ({ ...r, userName: names.get(r.userId) || r.userName }))
+  type WithOwner = LeaveRequestRow & { owner: { display_name: string | null; full_name: string } | null }
+  return ((data ?? []) as unknown as WithOwner[]).map((row) => {
+    const r = toLeaveRequest(row)
+    return { ...r, userName: row.owner?.display_name || row.owner?.full_name || r.userName }
+  })
 }
 
 /** ใบลาใบเดียว */

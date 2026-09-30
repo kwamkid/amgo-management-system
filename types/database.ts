@@ -4903,6 +4903,11 @@ export type Database = {
       hr_inbox: { Args: never; Returns: Json }
       is_finance: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      my_profile: { Args: never; Returns: Json }
+      stock_photo_people: {
+        Args: never
+        Returns: { id: string; name: string }[]
+      }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }
       is_web_owner: { Args: never; Returns: boolean }

@@ -43,6 +43,11 @@ function toWorkingHours(json: unknown): Location['workingHours'] {
   ) as Location['workingHours']
 }
 
+/** สาขา + กะในคำขอเดียว (embed ผ่าน FK shifts.location_id) — เดิมยิงแยก 2 รอบ */
+const WITH_SHIFTS = '*, shifts(*)' as const
+type LocationWithShifts = LocationRow & { shifts: ShiftRow[] | null }
+const fromEmbedded = (r: LocationWithShifts) => toLocation(r, r.shifts ?? [])
+
 function toLocation(row: LocationRow, shifts: ShiftRow[] = []): Location {
   return {
     id: row.id,
@@ -55,6 +60,7 @@ function toLocation(row: LocationRow, shifts: ShiftRow[] = []): Location {
     workingHours: toWorkingHours(row.working_hours),
     shifts: shifts
       .filter((s) => s.location_id === row.id)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
       .map((s) => ({
         id: s.id,
         name: s.name,
@@ -74,20 +80,12 @@ function toLocation(row: LocationRow, shifts: ShiftRow[] = []): Location {
 export async function getLocations(activeOnly = false): Promise<Location[]> {
   const client = sb()
 
-  let q = client.from('locations').select('*').order('name')
+  let q = client.from('locations').select(WITH_SHIFTS).order('name')
   if (activeOnly) q = q.eq('is_active', true)
 
   const { data: rows, error } = await q
   if (error) throw new Error(`ดึงรายการสถานที่ไม่สำเร็จ: ${error.message}`)
-  if (!rows?.length) return []
-
-  const { data: shifts } = await client
-    .from('shifts')
-    .select('*')
-    .in('location_id', rows.map((r) => r.id))
-    .order('start_time')
-
-  return rows.map((r) => toLocation(r, shifts ?? []))
+  return ((rows ?? []) as LocationWithShifts[]).map(fromEmbedded)
 }
 
 /* ------------------------------------------------------------------ */
@@ -97,20 +95,12 @@ export async function getLocation(locationId: string): Promise<Location | null> 
 
   const { data: row, error } = await client
     .from('locations')
-    .select('*')
+    .select(WITH_SHIFTS)
     .eq('id', locationId)
     .maybeSingle()
 
   if (error) throw new Error(`ดึงข้อมูลสถานที่ไม่สำเร็จ: ${error.message}`)
-  if (!row) return null
-
-  const { data: shifts } = await client
-    .from('shifts')
-    .select('*')
-    .eq('location_id', locationId)
-    .order('start_time')
-
-  return toLocation(row, shifts ?? [])
+  return row ? fromEmbedded(row as LocationWithShifts) : null
 }
 
 /* ------------------------------------------------------------------ */
@@ -120,20 +110,12 @@ export async function getLocationsByIds(locationIds: string[]): Promise<Location
 
   const { data: rows, error } = await client
     .from('locations')
-    .select('*')
+    .select(WITH_SHIFTS)
     .in('id', locationIds)
     .order('name')
 
   if (error) throw new Error(`ดึงข้อมูลสถานที่ไม่สำเร็จ: ${error.message}`)
-  if (!rows?.length) return []
-
-  const { data: shifts } = await client
-    .from('shifts')
-    .select('*')
-    .in('location_id', rows.map((r) => r.id))
-    .order('start_time')
-
-  return rows.map((r) => toLocation(r, shifts ?? []))
+  return ((rows ?? []) as LocationWithShifts[]).map(fromEmbedded)
 }
 
 /* ------------------------------------------------------------------ *

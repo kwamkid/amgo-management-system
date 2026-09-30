@@ -11,7 +11,6 @@ import { th } from 'date-fns/locale'
 import { Receipt } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { createClient } from '@/lib/supabase/client'
 import { getBank } from '@/lib/constants/banks'
 import {
   Alert,
@@ -66,7 +65,6 @@ export default function ExpenseManagePage() {
   const [rows, setRows] = useState<ExpenseClaim[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [banks, setBanks] = useState<Map<string, { bank: string | null; account: string | null }>>(new Map())
 
   // ไม่อนุมัติ / โอนแล้ว ต้องกรอกเพิ่ม — ใช้ modal เดียวสลับโหมด
   const [dialog, setDialog] = useState<{ mode: 'reject' | 'paid'; claim: ExpenseClaim } | null>(null)
@@ -82,14 +80,6 @@ export default function ExpenseManagePage() {
       if (tab === 'transfer') list = list.filter((c) => c.payout === 'transfer')
       if (tab === 'payroll') list = list.filter((c) => c.payout === 'payroll')
       setRows(list)
-
-      if (tab === 'transfer' && list.length) {
-        const { data } = await createClient()
-          .from('users')
-          .select('id, bank_name, bank_account_no')
-          .in('id', [...new Set(list.map((c) => c.userId))])
-        setBanks(new Map((data ?? []).map((u) => [u.id, { bank: u.bank_name, account: u.bank_account_no }])))
-      }
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
@@ -171,7 +161,6 @@ export default function ExpenseManagePage() {
         ) : (
           <ListRows variant="divided">
             {rows.map((c) => {
-              const bank = banks.get(c.userId)
               const payout = payoutOf[c.id] ?? c.payout
               return (
                 <ListRow
@@ -198,8 +187,8 @@ export default function ExpenseManagePage() {
                       {c.rejectedReason && <p className="text-xs text-red-600">ไม่อนุมัติ: {c.rejectedReason}</p>}
                       {tab === 'transfer' && (
                         <p className="text-xs font-medium text-gray-700">
-                          โอนเข้า: {getBank(bank?.bank)?.nameTh ?? bank?.bank ?? 'ยังไม่มีข้อมูลธนาคาร'}{' '}
-                          {bank?.account ?? ''}
+                          โอนเข้า: {getBank(c.bankName)?.nameTh ?? c.bankName ?? 'ยังไม่มีข้อมูลธนาคาร'}{' '}
+                          {c.bankAccountNo ?? ''}
                         </p>
                       )}
                       <ReceiptThumbs paths={c.slipPath ? [...c.receiptPaths, c.slipPath] : c.receiptPaths} />

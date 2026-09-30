@@ -10,20 +10,26 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Db } from '@/lib/supabase/db'
 import type { User } from '@/types/user'
-import { attachLocations, mapUser, type UserRow, type UserData } from './mappers'
+import { attachLocations, type UserRow, type UserData } from './mappers'
 
 const sb = () => createClient()
 
 /** UserData เป็น superset ของ User — หน้าจอเดิมประกาศตัวแปรเป็น User */
 const asUser = (u: UserData) => u as unknown as User
 
-async function locationsFor(userIds: string[]) {
-  if (!userIds.length) return []
-  const { data } = await sb()
-    .from('user_allowed_locations')
-    .select('user_id, location_id')
-    .in('user_id', userIds)
-  return data ?? []
+/**
+ * พนักงาน + สาขาที่เช็คอินได้ในคำขอเดียว (embed ผ่าน FK) — เดิมดึง users แล้วค่อยดึง
+ * user_allowed_locations อีกรอบต่อกันทุกหน้าที่มีรายชื่อพนักงาน (30 ก.ย. 69)
+ */
+const WITH_LOCS = '*, user_allowed_locations(location_id)'
+type RowWithLocs = UserRow & { user_allowed_locations?: { location_id: string }[] | null }
+
+function withLocs(rows: RowWithLocs[]): UserData[] {
+  const links = rows.flatMap((r) =>
+    (r.user_allowed_locations ?? []).map((l) => ({ user_id: r.id, location_id: l.location_id }))
+  )
+  const plain = rows.map(({ user_allowed_locations: _drop, ...r }) => r as UserRow)
+  return attachLocations(plain, links)
 }
 
 /**
@@ -79,20 +85,15 @@ export async function getUsers(
 
   const client = sb()
 
-  // กรองตามสาขาต้องรู้ก่อนว่าใครอยู่สาขานั้น (อยู่คนละตาราง)
-  let idsAtLocation: string[] | null = null
-  if (filters?.locationId) {
-    const { data } = await client
-      .from('user_allowed_locations')
-      .select('user_id')
-      .eq('location_id', filters.locationId)
-    idsAtLocation = (data ?? []).map((r) => r.user_id)
-    if (!idsAtLocation.length) return { users: [], lastDoc: null, hasMore: false }
-  }
+  // กรองตามสาขา = embed ซ้ำอีกชุดแบบ !inner แล้วกรองที่ชุดนั้น — ชุดแรกยังได้สาขาครบทุกสาขา
+  // (เดิมต้องยิงหาว่าใครอยู่สาขานั้นก่อน 1 รอบ)
+  const select = filters?.locationId
+    ? `${WITH_LOCS}, at:user_allowed_locations!inner(location_id)`
+    : WITH_LOCS
 
   let q = client
     .from('users')
-    .select('*')
+    .select(select)
     .is('deleted_at', null)
     .eq('is_system', false) // Dev Admin / Super Admin ไม่ใช่พนักงาน
     // เรียงตามรหัสพนักงาน — เลขน้อย = อยู่มานาน อ่านไล่ง่าย
@@ -101,7 +102,7 @@ export async function getUsers(
 
   if (filters?.role) q = q.eq('role', filters.role)
   if (filters?.isActive !== undefined) q = q.eq('is_active', filters.isActive)
-  if (idsAtLocation) q = q.in('id', idsAtLocation)
+  if (filters?.locationId) q = q.eq('at.location_id', filters.locationId)
 
   // ค้นในฐานข้อมูล ไม่ใช่ดึงมาทั้งบริษัทแล้วกรองในเบราว์เซอร์
   const filter = filters?.searchTerm ? orFilter(filters.searchTerm) : null
@@ -110,14 +111,12 @@ export async function getUsers(
   const { data, error } = await q
   if (error) throw new Error(`ดึงรายชื่อพนักงานไม่สำเร็จ: ${error.message}`)
 
-  const rows = (data ?? []) as UserRow[]
+  const rows = (data ?? []) as unknown as (RowWithLocs & { at?: unknown })[]
   const hasMore = rows.length > pageSize
-  const page = rows.slice(0, pageSize)
-
-  const links = await locationsFor(page.map((r) => r.id))
+  const page = rows.slice(0, pageSize).map(({ at: _at, ...r }) => r as RowWithLocs)
 
   return {
-    users: attachLocations(page, links).map(asUser),
+    users: withLocs(page).map(asUser),
     lastDoc: page.length ? { offset: offset + pageSize } : null,
     hasMore,
   }
@@ -128,15 +127,12 @@ export async function getUser(userId: string): Promise<User | null> {
   if (!userId) return null
   const client = sb()
 
-  const [{ data: row, error }, { data: locs }] = await Promise.all([
-    client.from('users').select('*').eq('id', userId).maybeSingle(),
-    client.from('user_allowed_locations').select('location_id').eq('user_id', userId),
-  ])
+  const { data: row, error } = await client.from('users').select(WITH_LOCS).eq('id', userId).maybeSingle()
 
   if (error) throw new Error(`ดึงข้อมูลพนักงานไม่สำเร็จ: ${error.message}`)
   if (!row) return null
 
-  return asUser(mapUser(row as UserRow, (locs ?? []).map((l) => l.location_id)))
+  return asUser(withLocs([row as unknown as RowWithLocs])[0])
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,7 +142,7 @@ export async function searchUsers(searchTerm: string): Promise<User[]> {
 
   const { data, error } = await sb()
     .from('users')
-    .select('*')
+    .select(WITH_LOCS)
     .is('deleted_at', null)
     .eq('is_system', false)
     .eq('is_active', true)
@@ -155,49 +151,36 @@ export async function searchUsers(searchTerm: string): Promise<User[]> {
     .limit(100)
 
   if (error) throw new Error(`ค้นหาพนักงานไม่สำเร็จ: ${error.message}`)
-
-  const rows = (data ?? []) as UserRow[]
-  return attachLocations(rows, await locationsFor(rows.map((r) => r.id))).map(asUser)
+  return withLocs((data ?? []) as unknown as RowWithLocs[]).map(asUser)
 }
 
 /* ------------------------------------------------------------------ */
 export async function getUsersByLocation(locationId: string): Promise<User[]> {
-  const client = sb()
-
-  const { data: links } = await client
-    .from('user_allowed_locations')
-    .select('user_id, location_id')
-    .eq('location_id', locationId)
-
-  const ids = (links ?? []).map((l) => l.user_id)
-  if (!ids.length) return []
-
-  const { data, error } = await client
+  const { data, error } = await sb()
     .from('users')
-    .select('*')
-    .in('id', ids)
+    .select(`${WITH_LOCS}, at:user_allowed_locations!inner(location_id)`)
+    .eq('at.location_id', locationId)
     .eq('is_active', true)
     .is('deleted_at', null)
     .order('full_name')
 
   if (error) throw new Error(`ดึงพนักงานตามสาขาไม่สำเร็จ: ${error.message}`)
-  return attachLocations((data ?? []) as UserRow[], links ?? []).map(asUser)
+  const rows = (data ?? []) as unknown as (RowWithLocs & { at?: unknown })[]
+  return withLocs(rows.map(({ at: _at, ...r }) => r as RowWithLocs)).map(asUser)
 }
 
 /* ------------------------------------------------------------------ */
 export async function getPendingUsers(): Promise<User[]> {
   const { data, error } = await sb()
     .from('users')
-    .select('*')
+    .select(WITH_LOCS)
     .eq('needs_approval', true)
     .is('deleted_at', null)
     .eq('is_system', false)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`ดึงรายชื่อรออนุมัติไม่สำเร็จ: ${error.message}`)
-
-  const rows = (data ?? []) as UserRow[]
-  return attachLocations(rows, await locationsFor(rows.map((r) => r.id))).map(asUser)
+  return withLocs((data ?? []) as unknown as RowWithLocs[]).map(asUser)
 }
 
 /* ------------------------------------------------------------------ *

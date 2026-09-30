@@ -14,7 +14,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { getImageUrls } from '@/lib/supabase/storage'
 import { resizeImage } from '@/lib/utils/resizeImage'
-import { getDisplayNames } from './user/queries'
 import { getUserCycle } from './scheduleSwapService'
 import {
   checkExpense,
@@ -50,6 +49,9 @@ export interface ExpenseClaim {
   paidNote: string | null
   slipPath: string | null
   createdAt: string
+  /** บัญชีรับโอนของเจ้าของใบ — มีเฉพาะรายการจาก listClaims (join มาพร้อมชื่อ) */
+  bankName?: string | null
+  bankAccountNo?: string | null
 }
 
 type Row = {
@@ -98,11 +100,27 @@ const toClaim = (r: Row): ExpenseClaim => ({
   createdAt: r.created_at,
 })
 
-/** ชื่อ snapshot ตอนยื่นอาจเป็นชื่อ LINE — ทับด้วยชื่อจริง (ชื่อเล่น) เสมอ */
-async function withNames(claims: ExpenseClaim[]): Promise<ExpenseClaim[]> {
-  const names = await getDisplayNames(claims.map((c) => c.userId))
-  return claims.map((c) => ({ ...c, userName: names.get(c.userId) ?? c.userName }))
+/**
+ * ชื่อ snapshot ตอนยื่นอาจเป็นชื่อ LINE — ทับด้วยชื่อจริง (ชื่อเล่น) เสมอ
+ * join ชื่อมาในคำขอเดียว · ตารางนี้ชี้ไป users 5 ทาง ต้องระบุ FK ของเจ้าของใบ
+ */
+const WITH_OWNER =
+  '*, owner:users!expense_claims_user_id_fkey(display_name, full_name, bank_name, bank_account_no)' as const
+type RowWithOwner = Row & {
+  owner: {
+    display_name: string | null
+    full_name: string
+    bank_name: string | null
+    bank_account_no: string | null
+  } | null
 }
+const toNamedClaim = (r: RowWithOwner): ExpenseClaim => ({
+  ...toClaim(r),
+  userName: r.owner?.display_name || r.owner?.full_name || r.user_name,
+  // แท็บรอโอนใช้ — เดิมดึงเลขบัญชีแยกอีกรอบหลังได้รายการใบ
+  bankName: r.owner?.bank_name ?? null,
+  bankAccountNo: r.owner?.bank_account_no ?? null,
+})
 
 export async function listMyClaims(userId: string): Promise<ExpenseClaim[]> {
   const { data, error } = await sb()
@@ -119,12 +137,12 @@ export async function listMyClaims(userId: string): Promise<ExpenseClaim[]> {
 export async function listClaims(statuses: ExpenseStatus[], limit = 200): Promise<ExpenseClaim[]> {
   const { data, error } = await sb()
     .from('expense_claims')
-    .select('*')
+    .select(WITH_OWNER)
     .in('status', statuses)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw new Error(`โหลดใบเบิกไม่สำเร็จ: ${error.message}`)
-  return withNames((data ?? []).map((r) => toClaim(r as Row)))
+  return ((data ?? []) as unknown as RowWithOwner[]).map(toNamedClaim)
 }
 
 /** จำนวนใบที่รอแต่ละขั้น — กล่องหน้าแรก HR */

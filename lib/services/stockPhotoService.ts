@@ -176,9 +176,10 @@ export async function listPhotos(params: {
   from: Date
   to: Date
 }): Promise<StockPhoto[]> {
+  // ชื่อปัจจุบันของคนถ่าย join มาในคำขอเดียว (30 ก.ย. 69 — เดิมดึงชื่ออีกรอบ)
   let q = sb()
     .from('stock_photos')
-    .select('*')
+    .select('*, owner:users!stock_photos_user_id_fkey(display_name, full_name)')
     .gte('work_date', format(params.from, 'yyyy-MM-dd'))
     .lte('work_date', format(params.to, 'yyyy-MM-dd'))
     .order('work_date', { ascending: false })
@@ -189,28 +190,23 @@ export async function listPhotos(params: {
   const { data, error } = await q
   if (error) throw new Error(`ดึงรูปไม่สำเร็จ: ${error.message}`)
 
-  const photos = (data ?? []).map((r) => toPhoto(r as Row))
   // ชื่อ snapshot ตอนถ่าย ทับด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
-  const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(photos.map((p) => p.userId))
-  return withUrls(photos.map((p) => ({ ...p, userName: names.get(p.userId) || p.userName })))
+  type WithOwner = Row & { owner: { display_name: string | null; full_name: string } | null }
+  return withUrls(
+    ((data ?? []) as unknown as WithOwner[]).map((row) => {
+      const p = toPhoto(row)
+      return { ...p, userName: row.owner?.display_name || row.owner?.full_name || p.userName }
+    })
+  )
 }
 
 /** คนที่ถูกตั้งค่าให้ถ่าย + คนที่เคยถ่าย — ตัวเลือกในมุมมองรายคน */
 export async function listPhotoPeople(): Promise<{ id: string; name: string }[]> {
-  const client = sb()
-  const [{ data: flagged }, { data: shot }] = await Promise.all([
-    client.from('users').select('id, display_name').eq('requires_stock_photos', true).eq('is_active', true),
-    client.from('stock_photos').select('user_id, user_name').order('taken_at', { ascending: false }).limit(2000),
-  ])
-  const byId = new Map<string, string>()
-  for (const u of flagged ?? []) byId.set(u.id, u.display_name ?? '')
-  for (const s of shot ?? []) if (!byId.has(s.user_id)) byId.set(s.user_id, s.user_name ?? '')
-
-  const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames([...byId.keys()])
-  return [...byId.entries()]
-    .map(([id, snap]) => ({ id, name: names.get(id) || snap }))
+  // RPC เดียว — เดิมดึงแถวรูป 2,000 แถวมาหาคนในเบราว์เซอร์ แล้วดึงชื่ออีกรอบ
+  const { data, error } = await sb().rpc('stock_photo_people')
+  if (error) throw new Error(`ดึงรายชื่อคนถ่ายรูปไม่สำเร็จ: ${error.message}`)
+  return (data ?? [])
+    .map((r) => ({ id: r.id, name: r.name ?? '' }))
     .sort((a, b) => a.name.localeCompare(b.name, 'th'))
 }
 

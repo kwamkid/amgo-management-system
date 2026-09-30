@@ -24,7 +24,7 @@ import { Pill, Card, CardContent, CardHeader, CardTitle, Button, Modal, Textarea
 export default function LeaveRequestsPage() {
   const router = useRouter();
   const { userData } = useAuth();
-  const { approveLeave, rejectLeave, loading } = useLeave();
+  const { approveLeave, rejectLeave, loading } = useLeave({ autoLoad: false });
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [fetching, setFetching] = useState(true);

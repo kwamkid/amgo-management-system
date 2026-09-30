@@ -39,7 +39,8 @@ export async function autoCheckoutPendingRecords(now: Date = new Date()): Promis
   // ตารางแบนหาได้ทีเดียวจากเวลาเช็คอิน
   const { data: stale, error } = await sb
     .from('checkins')
-    .select('id, user_id, user_name, checkin_time, shift_end_time, shift_start_time, primary_location_id')
+    // เวลาพักของสาขา join มาพร้อมกัน — เดิมดึงทีละใบในลูป (N+1)
+    .select('id, user_id, user_name, checkin_time, shift_end_time, shift_start_time, primary_location_id, locations(break_hours)')
     .eq('status', 'checked-in')
     .is('checkout_time', null)
     .lt('checkin_time', todayStart.toISOString())
@@ -57,15 +58,8 @@ export async function autoCheckoutPendingRecords(now: Date = new Date()): Promis
       const checkinTime = new Date(rec.checkin_time!)
 
       // ชั่วโมงคิดถึงเวลาเลิกงานปกติ (หักพักตามสาขา) — OT ไม่มีเด็ดขาด
-      let breakHours = 1
-      if (rec.primary_location_id) {
-        const { data: loc } = await sb
-          .from('locations')
-          .select('break_hours')
-          .eq('id', rec.primary_location_id)
-          .maybeSingle()
-        if (loc) breakHours = Number(loc.break_hours ?? 1)
-      }
+      const loc = rec.locations as { break_hours: number | null } | null
+      const breakHours = Number(loc?.break_hours ?? 1)
 
       const checkoutTime = autoCheckoutTime(
         checkinTime,

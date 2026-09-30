@@ -143,7 +143,13 @@ export default function EmployeesPage() {
   const { statistics } = useUserStatistics()
 
   // หน่วงการค้นหา ไม่ให้ยิงทุกตัวอักษร
+  // ข้ามรอบแรกตอนเปิดหน้า — useUsers โหลดให้แล้ว เดิมโหลดซ้ำอีกรอบหลัง 0.5 วิ (30 ก.ย. 69)
+  const searchMounted = useRef(false)
   useEffect(() => {
+    if (!searchMounted.current) {
+      searchMounted.current = true
+      return
+    }
     const timer = setTimeout(() => (search ? searchUsers(search) : refetch()), 500)
     return () => clearTimeout(timer)
   }, [search]) // eslint-disable-line react-hooks/exhaustive-deps

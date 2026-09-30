@@ -283,7 +283,7 @@ async function sumOvertimeInWindows(
 export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
   const client = db ?? sb()
 
-  const [usersRes, savedRes, fnRes, payItemsRes] = await Promise.all([
+  const [usersRes, savedRes, fnRes, payItemsRes, claimsRes] = await Promise.all([
     client
       .from('users')
       .select('id, full_name, display_name, employee_code, bank_name, bank_account_no, payroll_cycle, days_per_week, ot_eligible, job_function_id, company_id')
@@ -295,15 +295,15 @@ export async function loadPayroll(month: Date, db?: Db): Promise<PayrollRow[]> {
     client.from('job_functions').select('id, ot_eligible, payroll_cycle'),
     // กติการายได้พิเศษ — ยอดคงที่เติมช่องพิเศษให้เลย ค่าคอม/ค่าชิ้นงานรอยอดของเดือน
     client.from('user_pay_items').select('id, user_id, label, amount, calc, config, company_id'),
+    // ใบเบิกที่รวมจ่ายกับเงินเดือนงวดนี้ (อนุมัติแล้ว/จ่ายไปกับงวดนี้แล้ว) — ไม่รออะไร ยิงรอบเดียวกัน
+    client
+      .from('expense_claims')
+      .select('user_id, company_id, amount')
+      .eq('payout', 'payroll')
+      .in('status', ['approved', 'paid'])
+      .eq('payroll_month', monthKey(month)),
   ])
-
-  // ใบเบิกที่รวมจ่ายกับเงินเดือนงวดนี้ (อนุมัติแล้ว/จ่ายไปกับงวดนี้แล้ว)
-  const { data: claims } = await client
-    .from('expense_claims')
-    .select('user_id, company_id, amount')
-    .eq('payout', 'payroll')
-    .in('status', ['approved', 'paid'])
-    .eq('payroll_month', monthKey(month))
+  const claims = claimsRes.data
 
   const users = usersRes.data ?? []
   const fnOt = new Map((fnRes.data ?? []).map((f) => [f.id, f.ot_eligible]))

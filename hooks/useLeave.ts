@@ -18,7 +18,12 @@ import { pushNotify, toYmd } from '@/lib/push/notify'
  * 2. ไฟล์แนบถูกผูกกับใบลาจริง ๆ แล้ว ของเดิมอัปโหลดขึ้นไปแล้วลอยทิ้งไว้
  * 3. โควต้าไม่ต้อง refresh เองหลังอนุมัติ/ยกเลิก — ฐานข้อมูลคิดให้ตอนนั้นเลย
  */
-export const useLeave = () => {
+/**
+ * @param opts.autoLoad false = ไม่โหลดโควต้า/ใบลาเองตอนเปิดหน้า — หน้าจัดการใบลาใช้แค่ปุ่ม
+ *   อนุมัติ/ปฏิเสธ แล้วโหลดรายการของตัวเองอยู่แล้ว เดิมยิงเปล่า 5 คำขอทุกครั้ง (30 ก.ย. 69)
+ */
+export const useLeave = (opts: { autoLoad?: boolean } = {}) => {
+  const autoLoad = opts.autoLoad ?? true
   const { userData } = useAuth()
   const { showToast } = useToast()
 
@@ -279,8 +284,8 @@ export const useLeave = () => {
   }
 
   useEffect(() => {
-    if (userData) refreshData()
-  }, [userData, refreshData])
+    if (userData && autoLoad) refreshData()
+  }, [userData, refreshData, autoLoad])
 
   return {
     loading,

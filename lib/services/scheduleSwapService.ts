@@ -214,16 +214,21 @@ export async function listMySwaps(userId: string): Promise<ScheduleSwap[]> {
 }
 
 export async function listSwaps(status?: SwapStatus): Promise<ScheduleSwap[]> {
-  let q = sb().from('schedule_swaps').select('*').order('created_at', { ascending: false })
+  // ชื่อ snapshot ตอนยื่น ทับด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบันตามกติกาชื่อเล่นทุกที่
+  // join มาในคำขอเดียว · ตารางนี้ชี้ไป users 2 ทาง (ผู้ยื่น · ผู้อนุมัติ) ต้องระบุ FK
+  let q = sb()
+    .from('schedule_swaps')
+    .select('*, owner:users!schedule_swaps_user_id_fkey(display_name, full_name)')
+    .order('created_at', { ascending: false })
   if (status) q = q.eq('status', status)
   const { data, error } = await q
   if (error) throw new Error(`ดึงใบสลับวันหยุดไม่สำเร็จ: ${error.message}`)
 
-  const swaps = (data ?? []).map((r) => toSwap(r as SwapRow))
-  // ชื่อ snapshot ตอนยื่น ทับด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบันตามกติกาชื่อเล่นทุกที่
-  const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(swaps.map((s) => s.userId))
-  return swaps.map((s) => ({ ...s, userName: names.get(s.userId) || s.userName }))
+  type WithOwner = SwapRow & { owner: { display_name: string | null; full_name: string } | null }
+  return ((data ?? []) as unknown as WithOwner[]).map((row) => {
+    const sw = toSwap(row)
+    return { ...sw, userName: row.owner?.display_name || row.owner?.full_name || sw.userName }
+  })
 }
 
 /**

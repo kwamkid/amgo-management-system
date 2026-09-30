@@ -23,7 +23,7 @@
 import { createContext, useContext } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
-import { mapUser, type UserData } from '@/lib/services/user/mappers'
+import { mapUser, type UserData, type UserRow } from '@/lib/services/user/mappers'
 import { applyViewAs } from '@/lib/utils/viewAs'
 
 // การแปลงแถว users → UserData ย้ายไปอยู่ที่ lib/services/user/mappers.ts แล้ว
@@ -71,76 +71,64 @@ const signedOut = (error: string | null = null): AuthState => ({
   realRole: null,
 })
 
-/** โหลดข้อมูลผู้ใช้หนึ่งรอบ — AuthProvider เรียก */
+/** แถวที่ my_profile() คืนมา — ข้อมูลผู้ใช้ + ของประกอบในคำขอเดียว */
+interface ProfilePayload {
+  user: UserRow | null
+  location_ids: string[]
+  job_function: {
+    sees_delivery: boolean | null
+    code: string | null
+    schedule_type: string | null
+    work_start_time: string | null
+    work_end_time: string | null
+  } | null
+  has_srp_access: boolean
+  has_web_access: boolean
+}
+
+/**
+ * โหลดข้อมูลผู้ใช้หนึ่งรอบ — AuthProvider เรียก
+ *
+ * RPC my_profile() คืนทุกอย่างในคำขอเดียว (30 ก.ย. 69) — เดิมยิง 5 คำขอใน 2 รอบ:
+ * users + สาขาที่เช็คอินได้ → ตำแหน่ง + สิทธิ์ SRP + เจ้าของเว็บ
+ */
 export async function loadAuthState(authUser: User | null): Promise<AuthState> {
   if (!authUser) return signedOut()
 
   const sb = createClient()
-  const [{ data: row, error }, { data: locs }] = await Promise.all([
-    sb.from('users').select('*').eq('id', authUser.id).maybeSingle(),
-    sb.from('user_allowed_locations').select('location_id').eq('user_id', authUser.id),
-  ])
+  const { data, error } = await sb.rpc('my_profile')
 
   if (error) {
     console.error('ดึงข้อมูลผู้ใช้ไม่สำเร็จ:', error.message)
     return signedOut(FETCH_ERROR)
   }
 
+  const p = data as unknown as ProfilePayload | null
+  const row = p?.user
   if (!row || row.deleted_at) return signedOut('ไม่พบข้อมูลผู้ใช้')
 
   if (!row.is_active) {
-    const ended = ['resigned', 'terminated', 'retired'].includes(row.employment_status)
+    const ended = ['resigned', 'terminated', 'retired'].includes(row.employment_status ?? '')
     await sb.auth.signOut()
     return signedOut(ended ? 'บัญชีนี้สิ้นสุดการเป็นพนักงานแล้ว' : 'บัญชีของคุณยังไม่ได้รับการอนุมัติ')
   }
 
-  // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
-  let seesDelivery = false
-  let jobFunctionCode: string | undefined
-  // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
-  let scheduleType: string | undefined
-  // เวลาทำงานของตำแหน่ง (ฝ่ายผลิต 04:00–15:00) — ไม่ตั้ง = เวลาปกติ 08:30/09:00
-  let jobWorkHours: { start: string; end: string } | null = null
-
-  // 3 เรื่องนี้ไม่ขึ้นต่อกัน — ยิงพร้อมกัน
-  const [jfRes, srpRes, webRes] = await Promise.all([
-    row.job_function_id
-      ? sb
-          .from('job_functions')
-          .select('sees_delivery, code, schedule_type, work_start_time, work_end_time')
-          .eq('id', row.job_function_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-    // เมนู SRP Calculator — เห็นเมื่อได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ)
-    row.role === 'admin'
-      ? Promise.resolve({ count: 1 })
-      : sb.from('srp_brand_access').select('id', { count: 'exact', head: true }).eq('user_id', row.id),
-    // เมนูดูแลเว็บไซต์ลูกค้า — งานส่วนตัวของเจ้าของ ไม่ผูกกับ role
-    // (แอดมินคนอื่นก็ไม่เห็น ต้องมีชื่อใน web_owners เท่านั้น)
-    sb.from('web_owners').select('user_id', { count: 'exact', head: true }).eq('user_id', row.id),
-  ])
-
-  const jf = jfRes.data
-  if (jf) {
-    seesDelivery = jf.sees_delivery ?? false
-    jobFunctionCode = jf.code ?? undefined
-    scheduleType = jf.schedule_type ?? undefined
-    if (jf.work_start_time && jf.work_end_time) {
-      jobWorkHours = { start: jf.work_start_time, end: jf.work_end_time }
-    }
-  }
-  const hasSrpAccess = (srpRes.count ?? 0) > 0
-  const hasWebAccess = (webRes.count ?? 0) > 0
-
+  const jf = p.job_function
   // แอดมินสลับดูมุมมองสิทธิ์อื่นได้ (เครื่องมือทดสอบ) — จำลองแค่หน้าจอ ไม่ใช่สิทธิ์จริง
   const real = {
-    ...mapUser(row, (locs ?? []).map((l) => l.location_id)),
-    seesDelivery,
-    jobFunctionCode,
-    scheduleType,
-    jobWorkHours,
-    hasSrpAccess,
-    hasWebAccess,
+    ...mapUser(row, p.location_ids ?? []),
+    // สิทธิ์พิเศษตามตำแหน่ง — เห็นเมนูส่งของ (sees_delivery) + เมนูผลิต (code = production)
+    seesDelivery: jf?.sees_delivery ?? false,
+    jobFunctionCode: jf?.code ?? undefined,
+    // แบบตารางงาน — หน้าเช็คอินใช้ตัดสินว่าเลือกกะสาขา (PC) หรือใช้เวลาปกติ (คนไม่มีกะ)
+    scheduleType: jf?.schedule_type ?? undefined,
+    // เวลาทำงานของตำแหน่ง (ฝ่ายผลิต 04:00–15:00) — ไม่ตั้ง = เวลาปกติ 08:30/09:00
+    jobWorkHours:
+      jf?.work_start_time && jf?.work_end_time
+        ? { start: jf.work_start_time, end: jf.work_end_time }
+        : null,
+    hasSrpAccess: !!p.has_srp_access,
+    hasWebAccess: !!p.has_web_access,
   }
   return {
     user: authUser,

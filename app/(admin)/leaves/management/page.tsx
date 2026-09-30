@@ -57,7 +57,7 @@ const safeFormatDate = (date: any, formatString: string, options?: any) => {
 export default function LeaveManagementPage() {
   const router = useRouter()
   const { userData } = useAuth()
-  const { approveLeave, rejectLeave, cancelApprovedLeave, loading } = useLeave()
+  const { approveLeave, rejectLeave, cancelApprovedLeave, loading } = useLeave({ autoLoad: false })
   const [leaves, setLeaves] = useState<ExtendedLeaveRequest[]>([])
   const [allLeaves, setAllLeaves] = useState<ExtendedLeaveRequest[]>([]) // เก็บข้อมูลทั้งหมดสำหรับ stats
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending')

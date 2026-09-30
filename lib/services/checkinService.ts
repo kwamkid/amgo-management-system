@@ -87,14 +87,15 @@ const OFFSITE_HOURS_RULES = { workingHours: {} as Record<string, never>, breakHo
 
 /**
  * ทับ userName (snapshot ชื่อจริงตอนเช็คอิน) ด้วย "ชื่อจริง (ชื่อเล่น)" ปัจจุบัน
- * อ่านโปรไฟล์คนอื่นไม่ได้ (RLS) ก็คงชื่อเดิมไว้
+ * join ชื่อมาในคำขอเดียว (30 ก.ย. 69 — เดิมดึงใบแล้วค่อยดึงชื่ออีกรอบ)
+ * อ่านโปรไฟล์คนอื่นไม่ได้ (RLS) embed ได้ null ก็คงชื่อเดิมไว้
  */
-async function withDisplayNames(records: CheckInRecord[]): Promise<CheckInRecord[]> {
-  const { getDisplayNames } = await import('./user/queries')
-  const names = await getDisplayNames(records.map((r) => r.userId))
-  if (!names.size) return records
-  return records.map((r) => ({ ...r, userName: names.get(r.userId) || r.userName }))
-}
+const WITH_OWNER = '*, owner:users!checkins_user_id_fkey(display_name, full_name)'
+type RowWithOwner = Row & { owner: { display_name: string | null; full_name: string } | null }
+const toNamedRecord = (r: RowWithOwner): CheckInRecord => ({
+  ...toRecord(r),
+  userName: r.owner?.display_name || r.owner?.full_name || r.user_name,
+})
 
 /* ------------------------------------------------------------------ *
  *  ปิดกะที่ค้าง — ใช้ตอนคนลืมเช็คเอาท์แล้วมาเช็คอินวันใหม่
@@ -395,7 +396,7 @@ export async function getCheckInRecords(
 
   let q = sb()
     .from('checkins')
-    .select('*')
+    .select(WITH_OWNER)
     .order('checkin_time', { ascending: false })
     .range(offset, offset + pageSize) // ขอเกินมา 1 แถวเพื่อรู้ว่ายังมีต่อไหม
 
@@ -412,11 +413,11 @@ export async function getCheckInRecords(
   const { data, error } = await q
   if (error) throw new Error(`ดึงรายการเช็คอินไม่สำเร็จ: ${error.message}`)
 
-  const rows = data ?? []
+  const rows = (data ?? []) as unknown as RowWithOwner[]
   const hasMore = rows.length > pageSize
 
   return {
-    records: await withDisplayNames(rows.slice(0, pageSize).map(toRecord)),
+    records: rows.slice(0, pageSize).map(toNamedRecord),
     lastDoc: offset + pageSize,
     hasMore,
   }
@@ -483,14 +484,14 @@ export async function getPendingCheckouts(): Promise<CheckInRecord[]> {
 
   const { data, error } = await sb()
     .from('checkins')
-    .select('*')
+    .select(WITH_OWNER)
     .eq('status', 'checked-in')
     .is('checkout_time', null)
     .gte('work_date', format(weekAgo, 'yyyy-MM-dd'))
     .order('checkin_time', { ascending: false })
 
   if (error) throw new Error(`ดึงรายการที่ลืมเช็คเอาท์ไม่สำเร็จ: ${error.message}`)
-  return withDisplayNames((data ?? []).map(toRecord))
+  return ((data ?? []) as unknown as RowWithOwner[]).map(toNamedRecord)
 }
 
 /* ------------------------------------------------------------------ *

@@ -417,6 +417,25 @@ export function useCheckIn(): UseCheckInReturn {
     }
   }, [userData?.id])
 
+  // ── คิดใหม่ทุกครั้งที่ตำแหน่ง/รายชื่อสาขาเปลี่ยน (1 ต.ค. 69) ───────────────
+  // getCurrentLocation คิดผลไว้แค่ตอนที่ได้ GPS — ถ้า GPS ตอบกลับก่อนรายชื่อสาขาโหลด
+  // เสร็จ ผลจะไม่ถูกสร้างเลย และไม่มีอะไรคิดซ้ำ (ตำแหน่งมีแล้ว effect ข้างล่างจึงไม่
+  // ขอ GPS อีก) → ปุ่มเช็คอินค้างซีดทั้งที่อยู่ในพื้นที่ (เจ้าของเจอ 1 ต.ค. 08:53
+  // หลังสถานะหน้าเช็คอินโหลดเร็วขึ้นจนชนกันบ่อยขึ้น) · ตรงนี้คิดจากของที่มีทุกครั้ง
+  // ไม่ว่าอะไรมาก่อน
+  useEffect(() => {
+    if (!currentPosition || !userData || locations.length === 0) return
+    setLocationCheckResult(
+      locationDetectionService.checkUserLocation(
+        currentPosition.coords.latitude,
+        currentPosition.coords.longitude,
+        locations,
+        userData.allowedLocationIds || [],
+        userData.allowCheckInOutsideLocation || false
+      )
+    )
+  }, [currentPosition, locations, userData])
+
   // Get location when ready - NO MULTIPLE CALLS
   useEffect(() => {
     // Only get location if ALL conditions are met

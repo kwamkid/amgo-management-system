@@ -183,7 +183,7 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
               label="คลิก"
               value={fmtNum(stats.cur.clicks)}
               icon={MousePointerClick}
-              tone="sky"
+              tone="accent"
               hint={fmtPct(stats.cur.clicks, stats.prev.clicks)}
             />
             <StatCard
@@ -197,21 +197,21 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
               label="CTR"
               value={fmtCtr(stats.cur.ctr)}
               icon={Percent}
-              tone="pink"
+              tone="success"
               hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'}
             />
             <StatCard
               label="อันดับเฉลี่ย"
               value={stats.cur.position?.toFixed(1) ?? '—'}
               icon={TrendingUp}
-              tone="plum"
+              tone="warning"
               hint={fmtPosDelta(stats.cur.position, stats.prev.position)}
             />
           </StatGrid>
           {spark.length > 1 && (
             <Link href={`/seo/${site.id}`} className="block" aria-label="ดูรายละเอียด">
               <p className="mb-1 text-xs text-gray-400">คลิกรายวัน · กดเพื่อดูคำค้นและหน้า</p>
-              <Sparkline values={spark} tone="sky" />
+              <Sparkline values={spark} tone="accent" />
             </Link>
           )}
         </>

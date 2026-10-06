@@ -1,54 +1,51 @@
 // components/layout/Sidebar.tsx
 //
-// เมนูข้าง — ดีไซน์ตามระบบ aoosocial
+// เมนูข้าง — ปรับใหม่ 6 ต.ค. 69 ตามที่เจ้าของขอ: minimal · ไม่มีเงา · สีสดต่อเรื่อง
 //   · กว้าง 232px ตรึงซ้าย · จอแคบกว่า 1024px กลายเป็นลิ้นชักเลื่อนออกมา
-//   · เมนูที่กำลังอยู่ = พื้น coral-50 ตัวอักษร coral-700 ไอคอน coral-500
-//   · จัดกลุ่มด้วยหัวข้อตัวเล็กแทนที่จะไล่เรียงยาวเป็นพืด
+//   · แต่ละเมนูมีสีของเรื่องตัวเอง (tone): แดง=accent/danger (สีนำ) เหลือง=warning เขียว=success ม่วง=grape/plum น้ำตาล=sky — หน้าที่เปิดอยู่เป็นพื้นสีเต็ม · สไตล์อยู่ที่ .aoo-nav-* ใน globals.css
+//   · เมนูย่อยไม่มีไอคอน (ไอคอนซ้ำ ๆ ทำให้รก)
+//
+// โครงกลุ่ม:
+//   ของฉัน    — สิ่งที่พนักงานทุกคนทำกับตัวเอง (เช็คอิน · ลา · เบิก)
+//   รออนุมัติ — งานอนุมัติทั้งหมดรวมที่เดียว (เดิมซ่อนอยู่ท้ายเมนูย่อยของแต่ละเรื่อง
+//               หัวหน้าต้องกางทีละกลุ่มเพื่อหา) · พนักงานทั่วไปไม่เห็นกลุ่มนี้เลย
+//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · เว็บไซต์)
+//   จัดการ    — HR/แอดมิน (พนักงาน · รายงาน · เงินเดือน · เอกสาร · ตั้งค่า)
 
 'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  MapPin,
   Calendar,
+  CalendarSync,
   FileSignature,
   FileText,
   Settings,
   Clock,
-  UserCog,
-  CheckSquare,
   UserPlus,
   ChevronDown,
-  Shield,
-  MessageSquare,
   Truck,
-  Gauge,
-  Camera,
-  Map,
-  Home,
   Wallet,
-  TrendingUp,
   FlaskConical,
-  CupSoda,
-  BookOpen,
-  History,
   Calculator,
   Globe,
   Receipt,
-  Layers,
-  ListChecks,
-  Server, CalendarSync, ReceiptText} from 'lucide-react'
+  ReceiptText,
+  MapPinCheck,
+} from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
+import type { StatTone } from '@/components/shared'
 
 interface NavItem {
   label: string
   href?: string
-  icon: React.ReactNode
+  icon?: React.ReactNode
+  /** สีของเรื่องนี้ — เมนูย่อยใช้สีเดียวกับแม่ */
+  tone?: StatTone
   roles?: string[]
   subItems?: NavItem[]
 }
@@ -63,97 +60,100 @@ interface SidebarProps {
   onNavigate?: () => void
 }
 
-const icon = (I: typeof Clock) => <I size={18} strokeWidth={1.75} />
-const subIcon = (I: typeof Clock) => <I size={16} strokeWidth={1.75} />
+const icon = (I: typeof Clock) => <I size={17} strokeWidth={2} />
 
 const navSections: NavSection[] = [
   {
-    items: [{ label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard) }],
+    items: [{ label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard), tone: 'accent' }],
   },
   {
-    title: 'งานประจำวัน',
+    title: 'ของฉัน',
     items: [
       {
         label: 'เช็คอิน/เอาท์',
         icon: icon(Clock),
+        tone: 'warning',
         subItems: [
-          { label: 'เช็คอิน/เอาท์', href: '/checkin', icon: subIcon(CheckSquare) },
-          { label: 'ประวัติการเช็คอิน', href: '/checkin/history', icon: subIcon(Calendar) },
-          { label: 'แผนที่เช็คอิน', href: '/checkin/map', icon: subIcon(Map), roles: ['admin'] },
-          { label: 'รอดำเนินการ', href: '/checkin/pending', icon: subIcon(Clock), roles: ['hr', 'admin'] },
+          { label: 'เช็คอิน/เอาท์', href: '/checkin' },
+          { label: 'ประวัติการเช็คอิน', href: '/checkin/history' },
+          { label: 'แผนที่เช็คอิน', href: '/checkin/map', roles: ['admin'] },
         ],
       },
       {
         label: 'การลา',
         icon: icon(Calendar),
+        tone: 'grape',
         subItems: [
-          { label: 'ข้อมูลการลา', href: '/leaves', icon: subIcon(Calendar) },
-          { label: 'ขอลา', href: '/leaves/request', icon: subIcon(UserPlus) },
-          { label: 'ประวัติการลา', href: '/leaves/history', icon: subIcon(Clock) },
-          { label: 'สลับวันหยุด', href: '/leaves/swap', icon: subIcon(CalendarSync) },
-          { label: 'จัดการคำขอลา', href: '/leaves/management', icon: subIcon(UserCog), roles: ['hr', 'admin', 'manager'] },
-          { label: 'จัดการใบสลับวันหยุด', href: '/leaves/swap/management', icon: subIcon(CalendarSync), roles: ['hr', 'admin', 'manager'] },
+          { label: 'ข้อมูลการลา', href: '/leaves' },
+          { label: 'ขอลา', href: '/leaves/request' },
+          { label: 'ประวัติการลา', href: '/leaves/history' },
+          { label: 'สลับวันหยุด', href: '/leaves/swap' },
         ],
       },
+      // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — ฝั่งจัดการย้ายไปกลุ่มรออนุมัติ
+      { label: 'เบิกค่าใช้จ่าย', href: '/expenses', icon: icon(Receipt), tone: 'success' },
+    ],
+  },
+  {
+    title: 'รออนุมัติ',
+    items: [
+      { label: 'เช็คอินรอตรวจ', href: '/checkin/pending', icon: icon(MapPinCheck), tone: 'warning', roles: ['hr', 'admin'] },
+      { label: 'คำขอลา', href: '/leaves/management', icon: icon(Calendar), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
+      { label: 'ใบสลับวันหยุด', href: '/leaves/swap/management', icon: icon(CalendarSync), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
+      // 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
+      { label: 'ใบเบิก', href: '/expenses/manage', icon: icon(ReceiptText), tone: 'success', roles: ['hr', 'admin', 'manager', 'finance'] },
+      { label: 'พนักงานใหม่', href: '/employees/pending', icon: icon(UserPlus), tone: 'danger', roles: ['hr', 'admin', 'manager'] },
+    ],
+  },
+  {
+    title: 'งาน',
+    items: [
       {
-        // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
-        label: 'เบิกค่าใช้จ่าย',
-        icon: icon(Receipt),
-        subItems: [
-          { label: 'ใบเบิกของฉัน', href: '/expenses', icon: subIcon(Receipt) },
-          { label: 'จัดการใบเบิก', href: '/expenses/manage', icon: subIcon(ReceiptText), roles: ['hr', 'admin', 'manager', 'finance'] },
-        ],
-      },
-      {
-        label: 'Delivery Tracking',
+        label: 'ส่งของ',
         icon: icon(Truck),
+        tone: 'sky',
         // 'delivery' = ตำแหน่งที่ติดธง sees_delivery (Call Center) — ดู roleKeys ใน component
         roles: ['driver', 'admin', 'hr', 'delivery'],
         subItems: [
-          { label: 'สรุปประจำวัน', href: '/delivery', icon: subIcon(Home) },
-          { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin', icon: subIcon(Camera) },
-          { label: 'แผนที่การส่งของ', href: '/delivery/map', icon: subIcon(Map) },
+          { label: 'สรุปประจำวัน', href: '/delivery' },
+          { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin' },
+          { label: 'แผนที่การส่งของ', href: '/delivery/map' },
+        ],
+      },
+      {
+        label: 'การผลิต',
+        icon: icon(FlaskConical),
+        tone: 'danger',
+        // 'production' = ตำแหน่งพนักงานฝ่ายผลิต (ADAY FRESH) — เจ้าของสั่งให้ HR ไม่เห็น
+        roles: ['admin', 'production'],
+        subItems: [
+          { label: 'ผสมวันนี้', href: '/production' },
+          { label: 'สูตรน้ำ', href: '/production/recipes' },
+          { label: 'ประวัติการผลิต', href: '/production/history' },
         ],
       },
       {
         label: 'SRP Calculator',
         icon: icon(Calculator),
+        tone: 'plum',
         // 'srp' = ได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ) — สิทธิ์รายคนรายแบรนด์
         roles: ['admin', 'srp'],
         href: '/srp',
       },
       {
-        label: 'การผลิต',
-        icon: icon(FlaskConical),
-        // 'production' = ตำแหน่งพนักงานฝ่ายผลิต (ADAY FRESH) — เจ้าของสั่งให้ HR ไม่เห็น
-        roles: ['admin', 'production'],
-        subItems: [
-          { label: 'ผสมวันนี้', href: '/production', icon: subIcon(CupSoda) },
-          { label: 'สูตรน้ำ', href: '/production/recipes', icon: subIcon(BookOpen) },
-          { label: 'ประวัติการผลิต', href: '/production/history', icon: subIcon(History) },
-        ],
-      },
-      {
-        label: 'AOO Website',
+        // AOO Website + SEO / AEO รวมเป็นเมนูเดียว (6 ต.ค. 69) — ตั้งค่าเว็บ SEO เข้าจากปุ่มบนหน้า /seo
+        label: 'เว็บไซต์',
         icon: icon(Globe),
+        tone: 'sky',
         // งานส่วนตัวของเจ้าของ — ไม่มี 'admin' ในลิสต์โดยตั้งใจ ต้องมีชื่อใน web_owners เท่านั้น
         roles: ['website'],
         subItems: [
-          { label: 'รายการเว็บ', href: '/websites', icon: subIcon(Globe) },
-          { label: 'สั่งงานทั้งฟลีต', href: '/websites/jobs', icon: subIcon(ListChecks) },
-          { label: 'โฮสต์', href: '/websites/hosts', icon: subIcon(Server) },
-          { label: 'สลิปรอตรวจ', href: '/websites/slips', icon: subIcon(Receipt) },
-          { label: 'รุ่น/คอร์ส', href: '/websites/courses', icon: subIcon(Layers) },
-        ],
-      },
-      {
-        label: 'SEO / AEO',
-        icon: icon(TrendingUp),
-        // ผลบน Google ของเว็บที่ทำ SEO ให้ — งานส่วนตัวของเจ้าของ ใช้สิทธิ์เดียวกับ AOO Website
-        roles: ['website'],
-        subItems: [
-          { label: 'ภาพรวม', href: '/seo', icon: subIcon(TrendingUp) },
-          { label: 'ตั้งค่าเว็บ', href: '/seo/settings', icon: subIcon(Settings) },
+          { label: 'รายการเว็บ', href: '/websites' },
+          { label: 'SEO / AEO', href: '/seo' },
+          { label: 'สั่งงานทั้งฟลีต', href: '/websites/jobs' },
+          { label: 'โฮสต์', href: '/websites/hosts' },
+          { label: 'สลิปรอตรวจ', href: '/websites/slips' },
+          { label: 'รุ่น/คอร์ส', href: '/websites/courses' },
         ],
       },
     ],
@@ -164,52 +164,49 @@ const navSections: NavSection[] = [
       {
         label: 'พนักงาน',
         icon: icon(Users),
+        tone: 'accent',
         roles: ['hr', 'admin', 'manager'],
         subItems: [
           // แก้ไขหลายคนพร้อมกัน ไม่มีเมนูแล้ว — เข้าจากปุ่มบนหน้ารายการพนักงานทางเดียว
-          { label: 'รายการพนักงาน', href: '/employees', icon: subIcon(Users) },
+          { label: 'รายการพนักงาน', href: '/employees' },
           // ย้ายมาจากกลุ่มการลา — HR หาไม่เจอเพราะเป็นงานจัดการคน ไม่ใช่งานยื่นลา
-          { label: 'จัดการโควต้าวันลา', href: '/leaves/quota', icon: subIcon(Settings), roles: ['hr', 'admin'] },
-          { label: 'เชิญพนักงานใหม่', href: '/employees/invite-links', icon: subIcon(UserPlus) },
-          { label: 'รออนุมัติ', href: '/employees/pending', icon: subIcon(Clock) },
+          { label: 'โควต้าวันลา', href: '/leaves/quota', roles: ['hr', 'admin'] },
+          { label: 'เชิญพนักงานใหม่', href: '/employees/invite-links' },
         ],
       },
       {
         label: 'รายงาน',
         icon: icon(FileText),
+        tone: 'sky',
         // กลุ่มเปิดกว้างถึงสายส่ง (driver/delivery) — สิทธิ์จริงกรองรายเมนูข้างใน
         roles: ['hr', 'admin', 'manager', 'driver', 'delivery'],
         subItems: [
           // ⚠️ ใส่เฉพาะรายงานที่มีหน้าจริง — สร้างรายงานใหม่เมื่อไหร่ค่อยเพิ่มแถวที่นี่
           //    (หน้าศูนย์รวม /reports เอาออกจากเมนูแล้ว — เจ้าของบอกไม่จำเป็น)
-          { label: 'รายงานการเข้างาน', href: '/reports/checkin', icon: subIcon(Clock), roles: ['hr', 'admin', 'manager'] },
-          { label: 'Performance การมาทำงาน', href: '/reports/performance', icon: subIcon(TrendingUp), roles: ['hr', 'admin', 'manager'] },
-          { label: 'รายงานการส่งของ', href: '/delivery/report', icon: subIcon(Truck), roles: ['hr', 'admin', 'manager', 'driver', 'delivery'] },
-          { label: 'Performance การส่งของ', href: '/reports/delivery-performance', icon: subIcon(Gauge), roles: ['hr', 'admin', 'manager'] },
-          { label: 'รูปสต็อก/หน้าร้าน', href: '/reports/stock-photos', icon: subIcon(Camera), roles: ['hr', 'admin', 'manager'] },
+          { label: 'การเข้างาน', href: '/reports/checkin', roles: ['hr', 'admin', 'manager'] },
+          { label: 'Performance การมาทำงาน', href: '/reports/performance', roles: ['hr', 'admin', 'manager'] },
+          { label: 'การส่งของ', href: '/delivery/report', roles: ['hr', 'admin', 'manager', 'driver', 'delivery'] },
+          { label: 'Performance การส่งของ', href: '/reports/delivery-performance', roles: ['hr', 'admin', 'manager'] },
+          { label: 'รูปสต็อก/หน้าร้าน', href: '/reports/stock-photos', roles: ['hr', 'admin', 'manager'] },
         ],
       },
-      { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), roles: ['hr', 'admin'] },
+      { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), tone: 'success', roles: ['hr', 'admin'] },
       // จดหมาย/ประกาศจากแม่แบบกลาง — หน้าเดียวใช้ได้ทั้ง 3 บริษัท (สลับแค่โลโก้+ข้อมูล)
-      { label: 'เอกสารบริษัท', href: '/documents', icon: icon(FileSignature), roles: ['hr', 'admin', 'manager'] },
-    ],
-  },
-  {
-    title: 'ตั้งค่า',
-    items: [
+      { label: 'เอกสารบริษัท', href: '/documents', icon: icon(FileSignature), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
       {
         label: 'ตั้งค่าระบบ',
         icon: icon(Settings),
+        tone: 'neutral',
         roles: ['hr', 'admin'],
         subItems: [
           // ⚠️ ทุกลิงก์ต้องมีหน้าอยู่จริงใน app/(admin)/settings/
           //    Next.js prefetch ลิงก์ในเมนูอัตโนมัติ ลิงก์ตายจึงยิง 404
           //    รัวใน console ตั้งแต่เปิดหน้า โดยยังไม่มีใครกดด้วยซ้ำ
-          { label: 'สถานที่ทำงาน', href: '/settings/locations', icon: subIcon(MapPin) },
-          { label: 'บริษัท', href: '/settings/companies', icon: subIcon(Building2) },
-          { label: 'Discord', href: '/settings/discord', icon: subIcon(MessageSquare) },
-          { label: 'วันหยุด', href: '/settings/holidays', icon: subIcon(Calendar) },
-          { label: 'ผู้ใช้ระบบ', href: '/settings/users', icon: subIcon(Users), roles: ['admin'] },
+          { label: 'สถานที่ทำงาน', href: '/settings/locations' },
+          { label: 'บริษัท', href: '/settings/companies' },
+          { label: 'Discord', href: '/settings/discord' },
+          { label: 'วันหยุด', href: '/settings/holidays' },
+          { label: 'ผู้ใช้ระบบ', href: '/settings/users', roles: ['admin'] },
         ],
       },
       // เอาออกจากเมนูแล้ว 3 อัน — เป็นเครื่องมือช่วงย้ายระบบ ไม่ใช่ของที่ใช้งานจริง
@@ -221,10 +218,30 @@ const navSections: NavSection[] = [
   },
 ]
 
+/** ลิงก์ทุกตัวในเมนู (แบนราบ) — ใช้หาว่าหน้าไหนกำลังเปิดอยู่ */
+const allHrefs = navSections
+  .flatMap((s) => s.items)
+  .flatMap((it) => [it.href, ...(it.subItems ?? []).map((s) => s.href)])
+  .filter((h): h is string => !!h)
+
+/**
+ * ลิงก์ที่ตรงกับหน้าปัจจุบัน — เอาตัวที่ยาวที่สุดที่ pathname ขึ้นต้นด้วย
+ * หน้าลูกที่ไม่มีในเมนู (/seo/settings, /employees/123) จึงยังไฮไลต์เมนูแม่ได้
+ * และ /websites ไม่ไปติดไฮไลต์ตอนอยู่ /websites/jobs
+ */
+function matchHref(pathname: string) {
+  return (
+    allHrefs
+      .filter((h) => pathname === h || pathname.startsWith(`${h}/`))
+      .sort((a, b) => b.length - a.length)[0] ?? null
+  )
+}
+
 export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [expanded, setExpanded] = useState<string[]>([])
+  const current = useMemo(() => matchHref(pathname), [pathname])
 
   const userRole = userData?.role || 'employee'
   // นอกจาก role แล้ว บางตำแหน่งได้สิทธิ์พิเศษ — แทนเป็น key เสมือนในลิสต์เดียวกัน
@@ -244,10 +261,10 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   useEffect(() => {
     const open = navSections
       .flatMap((s) => s.items)
-      .filter((item) => item.subItems?.some((sub) => pathname === sub.href))
+      .filter((item) => item.subItems?.some((sub) => sub.href === current))
       .map((item) => item.label)
     setExpanded((prev) => Array.from(new Set([...prev, ...open])))
-  }, [pathname])
+  }, [current])
 
   const go = (href: string) => {
     router.push(href)
@@ -259,24 +276,27 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
       prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
     )
 
+  // คลิกปกติ = ปิดลิ้นชักบนมือถือ · คลิกพร้อมปุ่ม (เปิดแท็บใหม่) ไม่ต้องปิด
+  const onLinkClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+    onNavigate?.()
+  }
+
   const renderItem = (item: NavItem) => {
     const subs = item.subItems?.filter((s) => allowed(s.roles))
     const hasSubs = !!subs?.length
     const isOpen = expanded.includes(item.label)
-    const isActive = item.href === pathname
-    const childActive = subs?.some((s) => s.href === pathname) ?? false
+    const childActive = subs?.some((s) => s.href === current) ?? false
 
     if (!hasSubs) {
       return (
         <Link
           key={item.href}
           href={item.href!}
-          onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-            onNavigate?.()
-          }}
-          aria-current={isActive ? 'page' : undefined}
+          onClick={onLinkClick}
+          aria-current={item.href === current ? 'page' : undefined}
           className="aoo-nav-item"
+          data-tone={item.tone}
         >
           <span className="aoo-nav-item__icon">{item.icon}</span>
           <span className="flex-1">{item.label}</span>
@@ -285,7 +305,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     }
 
     return (
-      <div key={item.label}>
+      <div key={item.label} data-tone={item.tone}>
         <button
           onClick={() => toggle(item.label)}
           aria-expanded={isOpen}
@@ -298,25 +318,18 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
         </button>
 
         {isOpen && (
-          <div className="mt-0.5 ml-4 space-y-0.5 border-l border-gray-200 pl-3">
-            {subs!.map((sub) => {
-              const active = pathname === sub.href
-              return (
-                <Link
-                  key={sub.href}
-                  href={sub.href!}
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-                    onNavigate?.()
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                  className="aoo-nav-item aoo-nav-item--sub"
-                >
-                  <span className="aoo-nav-item__icon">{sub.icon}</span>
-                  <span className="flex-1">{sub.label}</span>
-                </Link>
-              )
-            })}
+          <div className="aoo-nav-sub">
+            {subs!.map((sub) => (
+              <Link
+                key={sub.href}
+                href={sub.href!}
+                onClick={onLinkClick}
+                aria-current={sub.href === current ? 'page' : undefined}
+                className="aoo-nav-sub__item"
+              >
+                {sub.label}
+              </Link>
+            ))}
           </div>
         )}
       </div>
@@ -324,26 +337,19 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-gray-200 bg-white">
-      <button
-        onClick={() => go('/dashboard')}
-        className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 px-4"
-      >
+    <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-gray-100 bg-white">
+      <button onClick={() => go('/dashboard')} className="flex h-14 shrink-0 items-center gap-2 px-4">
         <img src="/amgo-logo.svg" alt="AMGO" className="h-7 w-auto" />
         <span className="text-sm font-bold tracking-[0.12em] text-gray-700">AMGO HR</span>
       </button>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-1">
         {navSections.map((section, i) => {
           const items = section.items.filter((it) => allowed(it.roles))
           if (!items.length) return null
           return (
             <div key={section.title ?? i} className="space-y-0.5">
-              {section.title && (
-                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
-                  {section.title}
-                </p>
-              )}
+              {section.title && <p className="aoo-nav-section">{section.title}</p>}
               {items.map(renderItem)}
             </div>
           )

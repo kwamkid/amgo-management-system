@@ -21,6 +21,34 @@ const mapContainerStyle = {
   height: '100%'
 }
 
+// ── หมุดบนแผนที่ (เจ้าของขอ 6 ต.ค. 69) ───────────────────────────────────
+// เดิมตัวเรา = จุดฟ้าเล็ก · สาขา = ลูกศรแดง → คนดูนึกว่าลูกศรคือตัวเอง
+// ใหม่: ตัวเรา = หมุดหยดน้ำสีแดง (สีนำ) มีไอคอนคน ใหญ่และอยู่บนสุด
+//       สาขา = ป้ายไอคอนตึก · เขียว = อยู่ในเขต · เทาเข้ม = อยู่นอกเขต (ไม่ใช้แดงซ้ำกับตัวเรา)
+// Google Maps รับค่าสีจริงเท่านั้น จึงต้องเขียนค่าเดียวกับ token ใน globals.css ไว้ตรงนี้
+const COLOR_ME = '#F03D0E' // --brand-coral-500 (แดงนำ)
+const COLOR_IN = '#14532D' // --leaf-500 (เขียว Forest)
+const COLOR_OUT = '#3E3530' // --color-gray-700
+
+const svgUrl = (svg: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+
+/** หมุดหยดน้ำ + ไอคอนคน (lucide user) */
+const meIcon = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">
+  <path d="M22 54c0 0 19-17.6 19-32.5C41 10.7 32.5 3 22 3S3 10.7 3 21.5C3 36.4 22 54 22 54z" fill="${COLOR_ME}" stroke="#fff" stroke-width="3"/>
+  <g transform="translate(10 9.5)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="7" r="4"/><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+  </g></svg>`)
+
+/** ป้ายสี่เหลี่ยม + ไอคอนตึก (lucide building-2) */
+const officeIcon = (color: string) =>
+  svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="44" viewBox="0 0 38 44">
+  <path d="M19 43l-6-7h12z" fill="${color}"/>
+  <rect x="2" y="2" width="34" height="34" rx="10" fill="${color}" stroke="#fff" stroke-width="3"/>
+  <g transform="translate(7 7)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+    <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>
+  </g></svg>`)
+
 
 export default function CheckInMap({ 
   userLat, 
@@ -98,32 +126,29 @@ export default function CheckInMap({
         ]
       }}
     >
-      {/* User Marker */}
-      <Marker 
-        position={center}
-        icon={{
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#3B82F6',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3
-        }}
-      />
-      
-      {/* User Accuracy Circle */}
+      {/* ตัวเรา — วาดหลังสาขาและ zIndex สูงสุด ให้อยู่บนสุดเสมอ */}
       <Circle
         center={center}
         radius={30}
         options={{
-          fillColor: '#3B82F6',
-          fillOpacity: 0.1,
-          strokeColor: '#3B82F6',
-          strokeOpacity: 0.3,
-          strokeWeight: 1
+          fillColor: COLOR_ME,
+          fillOpacity: 0.12,
+          strokeColor: COLOR_ME,
+          strokeOpacity: 0.35,
+          strokeWeight: 1,
         }}
       />
-      
+      <Marker
+        position={center}
+        title="ตำแหน่งของคุณ"
+        zIndex={1000}
+        icon={{
+          url: meIcon,
+          scaledSize: new google.maps.Size(44, 56),
+          anchor: new google.maps.Point(22, 54),
+        }}
+      />
+
       {/* Location Markers and Radius */}
       {locations.map((location) => {
         const isInRange = locationCheckResult?.locationsInRange.some(l => l.id === location.id)
@@ -133,14 +158,12 @@ export default function CheckInMap({
             {/* Location Marker */}
             <Marker
               position={{ lat: location.lat, lng: location.lng }}
+              title={location.name}
+              zIndex={10}
               icon={{
-                path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-                scale: 6,
-                fillColor: isInRange ? '#16A34A' : '#DC2626',
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-                rotation: 180
+                url: officeIcon(isInRange ? COLOR_IN : COLOR_OUT),
+                scaledSize: new google.maps.Size(38, 44),
+                anchor: new google.maps.Point(19, 43),
               }}
             />
             
@@ -149,10 +172,10 @@ export default function CheckInMap({
               center={{ lat: location.lat, lng: location.lng }}
               radius={location.radius}
               options={{
-                fillColor: isInRange ? '#16A34A' : '#DC2626',
-                fillOpacity: 0.1,
-                strokeColor: isInRange ? '#16A34A' : '#DC2626',
-                strokeOpacity: 0.5,
+                fillColor: isInRange ? COLOR_IN : COLOR_OUT,
+                fillOpacity: isInRange ? 0.14 : 0.06,
+                strokeColor: isInRange ? COLOR_IN : COLOR_OUT,
+                strokeOpacity: isInRange ? 0.7 : 0.4,
                 strokeWeight: 2,
               }}
             />

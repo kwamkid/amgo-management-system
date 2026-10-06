@@ -358,13 +358,13 @@ export default function SeoSitePage() {
           </div>
 
           <StatGrid cols={4}>
-            <StatCard label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="sky"
+            <StatCard label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
               hint={fmtPct(stats.cur.clicks, stats.prev.clicks)} />
             <StatCard label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
               hint={fmtPct(stats.cur.impressions, stats.prev.impressions)} />
-            <StatCard label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="pink"
+            <StatCard label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
               hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'} />
-            <StatCard label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="plum"
+            <StatCard label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
               hint={fmtPosDelta(stats.cur.position, stats.prev.position)} />
           </StatGrid>
 
@@ -379,7 +379,7 @@ export default function SeoSitePage() {
           >
             <TrendChart
               points={chartPoints}
-              tone={metric === 'clicks' ? 'sky' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'pink' : 'plum'}
+              tone={metric === 'clicks' ? 'accent' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'success' : 'warning'}
               invert={metric === 'position'}
               label={METRICS.find((m) => m.value === metric)?.label}
               format={(v) =>

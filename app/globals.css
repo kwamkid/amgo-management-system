@@ -148,67 +148,71 @@
 
 /* ---- Tokens ---- */
 :root {
-  /* Brand: warm "Aoo" coral, plum, sun, lime */
-  --brand-coral-50:  #FFF1EC;
-  --brand-coral-100: #FFE0D4;
-  --brand-coral-200: #FFC3AC;
-  --brand-coral-300: #FF9879;
-  --brand-coral-400: #FA6B45;
-  --brand-coral-500: #EF4A22;
-  --brand-coral-600: #D03812;
-  --brand-coral-700: #A82A0C;
-  --brand-coral-800: #7C1F08;
-  --brand-coral-900: #4A1305;
+  /* Brand — สีสดแบบ Tupperware color library (เจ้าของเลือก 6 ต.ค. 69) · แดงนำ (brand-coral = แดง Radiant) · ไม่มีส้ม (เจ้าของตัดออก ใช้เหลืองแทน) · เขียว Forest (เข้ม — เจ้าของขอ) · แดง Radiant
+   · ม่วงเข้ม Royal (เจ้าของขอให้สดเข้ม) · น้ำตาล Caramel + เหลือง Sunshine = เตือน · 500 = core · 100 = tint · 900 = shade
+   ไม่มีสีฟ้าโดยตั้งใจ — ชื่อ token เดิมคงไว้ (sky = น้ำตาล · pink/grape/plum = ม่วง) เพื่อไม่ต้องแก้ทุกหน้า */
+  --brand-coral-50:  #FFE7DF;
+  --brand-coral-100: #FFD4C4;
+  --brand-coral-200: #FAA78D;
+  --brand-coral-300: #F78160;
+  --brand-coral-400: #F35B32;
+  --brand-coral-500: #F03D0E;
+  --brand-coral-600: #D9360B;
+  --brand-coral-700: #BC2D08;
+  --brand-coral-800: #A02404;
+  --brand-coral-900: #7D1900;
 
-  --brand-plum-50:   #FBF1F6;
-  --brand-plum-100:  #F4DCEA;
-  --brand-plum-200:  #E5B5D2;
-  --brand-plum-300:  #CE82B0;
-  --brand-plum-400:  #A8528A;
-  --brand-plum-500:  #7E3168;
-  --brand-plum-600:  #5F2350;
-  --brand-plum-700:  #43183A;
-  --brand-plum-800:  #2B0F25;
-  --brand-plum-900:  #170914;
+  --brand-plum-50:   #F7ECFB;
+  --brand-plum-100:  #F1DDF8;
+  --brand-plum-200:  #CDA4E0;
+  --brand-plum-300:  #B074CC;
+  --brand-plum-400:  #9245B8;
+  --brand-plum-500:  #7A1FA8;
+  --brand-plum-600:  #6B1B93;
+  --brand-plum-700:  #581679;
+  --brand-plum-800:  #45105F;
+  --brand-plum-900:  #2E0A40;
+
 
   /* Accents */
-  --sun-50:  #FFF8E1;
-  --sun-100: #FFEDB2;
-  --sun-300: #FFD64D;
-  --sun-500: #F5B400;
-  --sun-600: #E08A00; /* พื้นเต็มที่วางตัวหนังสือขาว (การ์ดตัวเลข) */
-  --sun-700: #8E6500;
+  --sun-50:  #FFFADD;
+  --sun-100: #FFF6C2;
+  --sun-300: #FFE157;
+  --sun-500: #FFD000;
+  --sun-600: #FFD000; /* พื้นเต็ม = เหลืองเลมอนสด · ตัวหนังสือบนพื้นนี้เป็นสีเข้ม (--sun-on) ไม่ใช่ขาว */
+  --sun-on:  #3D2E00; /* ตัวหนังสือบนพื้นเหลือง — เจ้าของเลือกเลมอนสด + ตัวหนังสือเข้ม 6 ต.ค. 69 */
+  --sun-700: #876C00;
 
-  --leaf-50:  #ECF8EF;
-  --leaf-100: #CFEDD7;
-  --leaf-300: #71CE89;
-  --leaf-500: #2BA85B;
-  --leaf-700: #146B36;
+  --leaf-50:  #EDF6F0;
+  --leaf-100: #DFEFE3;
+  --leaf-300: #6F997F;
+  --leaf-500: #14532D;
+  --leaf-700: #0D3C20;
 
-  --ruby-50:  #FDECEC;
-  --ruby-100: #F9C9C9;
-  --ruby-300: #EC7A7A;
-  --ruby-500: #D8362F;
-  --ruby-600: #B3261F;
-  --ruby-700: #8A1812;
+  --ruby-50:  #FFE7DF;
+  --ruby-100: #FFD4C4;
+  --ruby-300: #F78160;
+  --ruby-500: #F03D0E;
+  --ruby-600: #D9360B;
+  --ruby-700: #BC2D08;
 
-  --grape-50:  #F3EEFA;
-  --grape-100: #DDCEF1;
-  --grape-300: #A98AE0;
-  --grape-500: #7A4ACF;
-  --grape-700: #4A2891;
+  --grape-50:  #F7ECFB;
+  --grape-100: #F1DDF8;
+  --grape-300: #B074CC;
+  --grape-500: #7A1FA8;
+  --grape-700: #581679;
 
-  --sky-50:  #EAF5FD;
-  --sky-100: #C7E4F8;
-  --sky-300: #6DB9EE;
-  --sky-500: #1D8FE0;
-  --sky-700: #0B5A94;
+  --sky-50:  #FBF1E6;
+  --sky-100: #F8E6D2;
+  --sky-300: #DEAB78;
+  --sky-500: #C97A2E;
+  --sky-700: #92561F;
 
-  --pink-50:  #FDEEF3;
-  --pink-100: #F9CFDD;
-  --pink-300: #EF8BAE;
-  --pink-500: #E0457B;
-  --pink-700: #8C1D45;
+  --pink-50:  #F7ECFB;
+  --pink-100: #F1DDF8;
+  --pink-300: #B074CC;
+  --pink-500: #7A1FA8;
+  --pink-700: #581679;
 
   /* Neutrals — warm-tinted greys */
   --warm-0:   #FFFFFF;
@@ -314,7 +318,7 @@
   --shadow-md: 0 4px 10px rgba(58, 36, 22, 0.08), 0 2px 4px rgba(58, 36, 22, 0.05);
   --shadow-lg: 0 12px 32px rgba(58, 36, 22, 0.12), 0 4px 8px rgba(58, 36, 22, 0.06);
   --shadow-xl: 0 24px 60px rgba(58, 36, 22, 0.18), 0 8px 16px rgba(58, 36, 22, 0.08);
-  --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.25);
+  --shadow-focus: 0 0 0 3px rgba(240, 61, 14, 0.25);
 
   /* Overlay scrim — used by loading overlays + light modals.
      Light mode: warm ink at 35%. Dark mode override below. */
@@ -360,33 +364,33 @@
   --accent:        var(--brand-coral-500);
   --accent-hover:  var(--brand-coral-400);
   --accent-press:  var(--brand-coral-300);
-  --accent-soft:   rgba(239, 74, 34, 0.18);
+  --accent-soft:   rgba(240, 61, 14, 0.18);
 
-  --brand-coral-50:  rgba(239, 74, 34, 0.14);
-  --brand-coral-100: rgba(239, 74, 34, 0.22);
-  --brand-coral-700: #FF9879;
-  --brand-coral-800: #FFB390;
+  --brand-coral-50:  rgba(240, 61, 14, 0.14);
+  --brand-coral-100: rgba(240, 61, 14, 0.22);
+  --brand-coral-700: #FFA75A;
+  --brand-coral-800: #FFC38B;
 
-  --brand-plum-50:   rgba(126, 49, 104, 0.22);
-  --brand-plum-100:  rgba(126, 49, 104, 0.34);
-  --brand-plum-700:  #E5B5D2;
+  --brand-plum-50:   rgba(122, 31, 168, 0.3);
+  --brand-plum-100:  rgba(122, 31, 168, 0.45);
+  --brand-plum-700:  #CDA4E0;
 
-  --sun-50:   rgba(245, 180, 0, 0.16);
-  --sun-100:  rgba(245, 180, 0, 0.24);
-  --sun-700:  #FFD64D;
+  --sun-50:   rgba(255, 208, 0, 0.16);
+  --sun-100:  rgba(255, 208, 0, 0.24);
+  --sun-700:  #FFE157;
 
-  --leaf-50:  rgba(43, 168, 91, 0.16);
-  --leaf-100: rgba(43, 168, 91, 0.26);
-  --leaf-700: #71CE89;
+  --leaf-50:  rgba(20, 83, 45, 0.35);
+  --leaf-100: rgba(20, 83, 45, 0.50);
+  --leaf-700: #ACC8B6;
 
-  --ruby-50:  rgba(216, 54, 47, 0.16);
-  --ruby-100: rgba(216, 54, 47, 0.26);
-  --ruby-300: #F4A29F;
-  --ruby-700: #EC7A7A;
+  --ruby-50:  rgba(240, 61, 14, 0.16);
+  --ruby-100: rgba(240, 61, 14, 0.26);
+  --ruby-300: #FAA78D;
+  --ruby-700: #F78160;
 
-  --grape-50:  rgba(122, 74, 207, 0.20);
-  --grape-100: rgba(122, 74, 207, 0.30);
-  --grape-700: #B59AE6;
+  --grape-50:  rgba(122, 31, 168, 0.3);
+  --grape-100: rgba(122, 31, 168, 0.45);
+  --grape-700: #CDA4E0;
 
   /* Warm aliases now point to neutral so existing code that uses --warm-* still works. */
   --warm-100: rgba(255, 255, 255, 0.05);
@@ -405,7 +409,7 @@
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.8), 0 8px 16px rgba(0, 0, 0, 0.5);
-  --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.40);
+  --shadow-focus: 0 0 0 3px rgba(240, 61, 14, 0.40);
   --overlay-scrim: rgba(0, 0, 0, 0.6);
 }
 
@@ -429,32 +433,32 @@
 
     --accent-hover:  var(--brand-coral-400);
     --accent-press:  var(--brand-coral-300);
-    --accent-soft:   rgba(239, 74, 34, 0.18);
+    --accent-soft:   rgba(240, 61, 14, 0.18);
 
-    --brand-coral-50:  rgba(239, 74, 34, 0.14);
-    --brand-coral-100: rgba(239, 74, 34, 0.22);
-    --brand-coral-700: #FF9879;
+    --brand-coral-50:  rgba(240, 61, 14, 0.14);
+    --brand-coral-100: rgba(240, 61, 14, 0.22);
+    --brand-coral-700: #FFA75A;
 
-    --brand-plum-50:   rgba(126, 49, 104, 0.22);
-    --brand-plum-100:  rgba(126, 49, 104, 0.34);
-    --brand-plum-700:  #E5B5D2;
+    --brand-plum-50:   rgba(122, 31, 168, 0.3);
+    --brand-plum-100:  rgba(122, 31, 168, 0.45);
+    --brand-plum-700:  #CDA4E0;
 
-    --sun-50:   rgba(245, 180, 0, 0.16);
-    --sun-100:  rgba(245, 180, 0, 0.24);
-    --sun-700:  #FFD64D;
+    --sun-50:   rgba(255, 208, 0, 0.16);
+    --sun-100:  rgba(255, 208, 0, 0.24);
+    --sun-700:  #FFE157;
 
-    --leaf-50:  rgba(43, 168, 91, 0.16);
-    --leaf-100: rgba(43, 168, 91, 0.26);
-    --leaf-700: #71CE89;
+    --leaf-50:  rgba(20, 83, 45, 0.35);
+    --leaf-100: rgba(20, 83, 45, 0.50);
+    --leaf-700: #ACC8B6;
 
-    --ruby-50:  rgba(216, 54, 47, 0.16);
-    --ruby-100: rgba(216, 54, 47, 0.26);
-    --ruby-300: #F4A29F;
-    --ruby-700: #EC7A7A;
+    --ruby-50:  rgba(240, 61, 14, 0.16);
+    --ruby-100: rgba(240, 61, 14, 0.26);
+    --ruby-300: #FAA78D;
+    --ruby-700: #F78160;
 
-    --grape-50:  rgba(122, 74, 207, 0.20);
-    --grape-100: rgba(122, 74, 207, 0.30);
-    --grape-700: #B59AE6;
+    --grape-50:  rgba(122, 31, 168, 0.3);
+    --grape-100: rgba(122, 31, 168, 0.45);
+    --grape-700: #CDA4E0;
 
     --warm-100: rgba(255, 255, 255, 0.05);
     --warm-150: rgba(255, 255, 255, 0.09);
@@ -467,7 +471,7 @@
     --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.4);
     --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.8), 0 8px 16px rgba(0, 0, 0, 0.5);
-    --shadow-focus: 0 0 0 3px rgba(239, 74, 34, 0.40);
+    --shadow-focus: 0 0 0 3px rgba(240, 61, 14, 0.40);
     --overlay-scrim: rgba(0, 0, 0, 0.6);
   }
 }
@@ -724,7 +728,7 @@ input, textarea { font-family: var(--font-sans); }
 [data-tone] { --tone: var(--sky-500); --tone-soft: var(--sky-100); --tone-ink: var(--sky-700); --tone-on: #fff; }
 [data-tone="accent"]  { --tone: var(--brand-coral-500); --tone-soft: var(--brand-coral-100); --tone-ink: var(--brand-coral-700); }
 [data-tone="success"] { --tone: var(--leaf-500);  --tone-soft: var(--leaf-100);  --tone-ink: var(--leaf-700); }
-[data-tone="warning"] { --tone: var(--sun-600);   --tone-soft: var(--sun-100);   --tone-ink: var(--sun-700); }
+[data-tone="warning"] { --tone: var(--sun-600);   --tone-soft: var(--sun-100);   --tone-ink: var(--sun-700); --tone-on: var(--sun-on); }
 [data-tone="danger"]  { --tone: var(--ruby-500);  --tone-soft: var(--ruby-100);  --tone-ink: var(--ruby-700); }
 [data-tone="info"],
 [data-tone="grape"]   { --tone: var(--grape-500); --tone-soft: var(--grape-100); --tone-ink: var(--grape-700); }
@@ -859,37 +863,56 @@ button.aoo-stat:active { filter: brightness(0.88); }
   color: var(--tone-ink);
 }
 
-/* ---------- Sidebar nav item — active = solid accent pill ---------- */
+/* ---------- Sidebar nav (เจ้าของสั่งปรับ 6 ต.ค. 69: minimal · ไม่มีเงา · สีสดต่อเรื่อง) ----------
+ * แต่ละเมนูมี data-tone ของตัวเอง (เช็คอิน=ฟ้า · ลา=ม่วง · เบิก=เขียว …) ไอคอนอยู่ในชิปสีอ่อน
+ * หน้าที่เปิดอยู่ = พื้นสีเต็มของเรื่องนั้น ตัวหนังสือขาว · เมนูย่อยไม่มีไอคอน เป็นรายการบาง ๆ บนเส้นสีเดียวกัน
+ * ห้ามใส่ box-shadow — เจ้าของบอกเงาทำให้ดูหม่น */
+.aoo-nav-section { padding: 0 10px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--fg-4); }
 .aoo-nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 5px 8px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
-  color: var(--fg-2);
+  color: var(--fg-1);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.aoo-nav-item:hover { background: var(--warm-100); color: var(--fg-1); }
-.aoo-nav-item--sub { padding-block: 6px; color: var(--fg-3); }
-.aoo-nav-item__icon { display: inline-flex; color: var(--fg-4); }
+.aoo-nav-item:hover { background: color-mix(in srgb, var(--tone, var(--accent)) 9%, transparent); }
+.aoo-nav-item__icon {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
+  color: var(--tone, var(--accent));
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+/* เหลืองสดบนพื้นเหลืองอ่อนแทบมองไม่เห็น — ไอคอนเมนูสีเหลืองใช้เหลืองเข้ม (ink) แทน */
+[data-tone="warning"] .aoo-nav-item__icon, .aoo-nav-item[data-tone="warning"] .aoo-nav-item__icon { color: var(--tone-ink); }
 .aoo-nav-item__chevron { color: var(--fg-4); transition: transform var(--dur-fast) var(--ease-out); }
 .aoo-nav-item[aria-expanded="false"] .aoo-nav-item__chevron { transform: rotate(-90deg); }
-.aoo-nav-item[data-child-active] { color: var(--accent); font-weight: 600; }
-.aoo-nav-item[data-child-active] .aoo-nav-item__icon { color: var(--accent); }
-.aoo-nav-item[aria-current="page"] {
-  background: var(--accent);
-  color: var(--fg-on-brand);
-  font-weight: 600;
-  box-shadow: 0 4px 12px -4px var(--accent);
+/* เมนูแม่ที่มีหน้าลูกเปิดอยู่ — ชิปไอคอนเป็นสีเต็ม ชื่อเป็นสีของเรื่อง */
+.aoo-nav-item[data-child-active] { color: var(--tone-ink, var(--accent)); font-weight: 600; }
+.aoo-nav-item[data-child-active] .aoo-nav-item__icon { background: var(--tone, var(--accent)); color: var(--tone-on, #fff); }
+.aoo-nav-item[aria-current="page"] { background: var(--tone, var(--accent)); color: var(--tone-on, #fff); font-weight: 600; }
+.aoo-nav-item[aria-current="page"] .aoo-nav-item__icon { background: rgba(255, 255, 255, 0.22); color: var(--tone-on, #fff); }
+
+.aoo-nav-sub { margin: 2px 0 6px 23px; padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--tone, var(--accent)) 25%, transparent); display: grid; gap: 1px; }
+.aoo-nav-sub__item {
+  display: block; padding: 6px 10px; border-radius: 9px;
+  color: var(--fg-3); font-size: 14px; text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.aoo-nav-item[aria-current="page"] .aoo-nav-item__icon { color: inherit; }
+.aoo-nav-sub__item:hover { color: var(--fg-1); background: color-mix(in srgb, var(--tone, var(--accent)) 8%, transparent); }
+.aoo-nav-sub__item[aria-current="page"] {
+  color: var(--tone-ink, var(--accent)); font-weight: 600;
+  background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
+}
 
 /* ---------- Well — neutral inset panel inside a card (<InfoPanel>) ---------- */
 .aoo-well {
@@ -1799,110 +1822,171 @@ div.aoo-accounts-grid {
   --color-neutral-800: #29221e;
   --color-neutral-900: #1a1411;
 
-  /* ── coral = สีแบรนด์ (แทน red/rose) ────────────────────── */
-  --color-red-50: #fff1ec;
-  --color-red-100: #ffe0d4;
-  --color-red-200: #ffc3ac;
-  --color-red-300: #ff9879;
-  --color-red-400: #fa6b45;
-  --color-red-500: #ef4a22;
-  --color-red-600: #d03812;
-  --color-red-700: #a82a0c;
-  --color-red-800: #7c1f08;
-  --color-red-900: #4a1305;
+  /* ── แดง (red/rose) — 6 ต.ค. 69 แยกจากส้มแบรนด์แล้ว ─────── */
+  --color-red-50: #ffe7df;
+  --color-red-100: #ffd4c4;
+  --color-red-200: #faa78d;
+  --color-red-300: #f78160;
+  --color-red-400: #f35b32;
+  --color-red-500: #f03d0e;
+  --color-red-600: #d9360b;
+  --color-red-700: #bc2d08;
+  --color-red-800: #a02404;
+  --color-red-900: #7d1900;
 
-  --color-rose-50: #fff1ec;
-  --color-rose-100: #ffe0d4;
-  --color-rose-200: #ffc3ac;
-  --color-rose-300: #ff9879;
-  --color-rose-400: #fa6b45;
-  --color-rose-500: #ef4a22;
-  --color-rose-600: #d03812;
-  --color-rose-700: #a82a0c;
-  --color-rose-800: #7c1f08;
-  --color-rose-900: #4a1305;
+  --color-rose-50: #ffe7df;
+  --color-rose-100: #ffd4c4;
+  --color-rose-200: #faa78d;
+  --color-rose-300: #f78160;
+  --color-rose-400: #f35b32;
+  --color-rose-500: #f03d0e;
+  --color-rose-600: #d9360b;
+  --color-rose-700: #bc2d08;
+  --color-rose-800: #a02404;
+  --color-rose-900: #7d1900;
 
   /* ── sun = เตือน (แทน amber/yellow) ────────────────────── */
 
-  --color-amber-50: #fff8e1;
-  --color-amber-100: #ffedb2;
-  --color-amber-200: #ffe28a;
-  --color-amber-300: #ffd64d;
-  --color-amber-400: #fcc51f;
-  --color-amber-500: #f5b400;
-  --color-amber-600: #ce9700;
-  --color-amber-700: #8e6500;
-  --color-amber-800: #6a4c00;
-  --color-amber-900: #4a3500;
+  --color-amber-50: #fffadd;
+  --color-amber-100: #fff6c2;
+  --color-amber-200: #ffeb88;
+  --color-amber-300: #ffe157;
+  --color-amber-400: #ffd827;
+  --color-amber-500: #ffd000;
+  --color-amber-600: #ffd000;
+  --color-amber-700: #876c00;
+  --color-amber-800: #644e00;
+  --color-amber-900: #3d2e00;
 
-  --color-yellow-50: #fff8e1;
-  --color-yellow-100: #ffedb2;
-  --color-yellow-200: #ffe28a;
-  --color-yellow-300: #ffd64d;
-  --color-yellow-400: #fcc51f;
-  --color-yellow-500: #f5b400;
-  --color-yellow-600: #ce9700;
-  --color-yellow-700: #8e6500;
-  --color-yellow-800: #6a4c00;
-  --color-yellow-900: #4a3500;
+  --color-yellow-50: #fffadd;
+  --color-yellow-100: #fff6c2;
+  --color-yellow-200: #ffeb88;
+  --color-yellow-300: #ffe157;
+  --color-yellow-400: #ffd827;
+  --color-yellow-500: #ffd000;
+  --color-yellow-600: #ffd000;
+  --color-yellow-700: #876c00;
+  --color-yellow-800: #644e00;
+  --color-yellow-900: #3d2e00;
 
   /* ── leaf = สำเร็จ (แทน green) ─────────────────────────── */
-  --color-green-50: #ecf8ef;
-  --color-green-100: #cfedd7;
-  --color-green-200: #a8e0b8;
-  --color-green-300: #71ce89;
-  --color-green-400: #47bb6d;
-  --color-green-500: #2ba85b;
-  --color-green-600: #1f8b49;
-  --color-green-700: #146b36;
-  --color-green-800: #0f5029;
-  --color-green-900: #0a361b;
+  --color-green-50: #edf6f0;
+  --color-green-100: #dfefe3;
+  --color-green-200: #a2c0ac;
+  --color-green-300: #6f997f;
+  --color-green-400: #3d7251;
+  --color-green-500: #14532d;
+  --color-green-600: #114927;
+  --color-green-700: #0d3c20;
+  --color-green-800: #0a2f18;
+  --color-green-900: #05200f;
 
 
 
-  /* ── grape = ข้อมูล (แทน blue/indigo/violet/purple) ─────── */
-  --color-blue-50: #f3eefa;
-  --color-blue-100: #ddcef1;
-  --color-blue-200: #c6b0e9;
-  --color-blue-300: #a98ae0;
-  --color-blue-400: #8f66d8;
-  --color-blue-500: #7a4acf;
-  --color-blue-600: #6036b0;
-  --color-blue-700: #4a2891;
-  --color-blue-800: #371d6d;
-  --color-blue-900: #26144a;
+  /* ── ม่วงพลัม (แทน blue/indigo/violet/purple — ไม่มีสีฟ้า) ─ */
+  --color-blue-50: #f7ecfb;
+  --color-blue-100: #f1ddf8;
+  --color-blue-200: #cda4e0;
+  --color-blue-300: #b074cc;
+  --color-blue-400: #9245b8;
+  --color-blue-500: #7a1fa8;
+  --color-blue-600: #6b1b93;
+  --color-blue-700: #581679;
+  --color-blue-800: #45105f;
+  --color-blue-900: #2e0a40;
 
-  --color-indigo-50: #f3eefa;
-  --color-indigo-100: #ddcef1;
-  --color-indigo-200: #c6b0e9;
-  --color-indigo-300: #a98ae0;
-  --color-indigo-400: #8f66d8;
-  --color-indigo-500: #7a4acf;
-  --color-indigo-600: #6036b0;
-  --color-indigo-700: #4a2891;
-  --color-indigo-800: #371d6d;
-  --color-indigo-900: #26144a;
+  --color-indigo-50: #f7ecfb;
+  --color-indigo-100: #f1ddf8;
+  --color-indigo-200: #cda4e0;
+  --color-indigo-300: #b074cc;
+  --color-indigo-400: #9245b8;
+  --color-indigo-500: #7a1fa8;
+  --color-indigo-600: #6b1b93;
+  --color-indigo-700: #581679;
+  --color-indigo-800: #45105f;
+  --color-indigo-900: #2e0a40;
 
-  --color-violet-50: #f3eefa;
-  --color-violet-100: #ddcef1;
-  --color-violet-300: #a98ae0;
-  --color-violet-500: #7a4acf;
-  --color-violet-600: #6036b0;
-  --color-violet-700: #4a2891;
+  --color-violet-50: #f7ecfb;
+  --color-violet-100: #f1ddf8;
+  --color-violet-300: #b074cc;
+  --color-violet-500: #7a1fa8;
+  --color-violet-600: #6b1b93;
+  --color-violet-700: #581679;
 
-  --color-purple-50: #f3eefa;
-  --color-purple-100: #ddcef1;
-  --color-purple-200: #c6b0e9;
-  --color-purple-300: #a98ae0;
-  --color-purple-400: #8f66d8;
-  --color-purple-500: #7a4acf;
-  --color-purple-600: #6036b0;
-  --color-purple-700: #4a2891;
-  --color-purple-800: #371d6d;
-  --color-purple-900: #26144a;
+  --color-purple-50: #f7ecfb;
+  --color-purple-100: #f1ddf8;
+  --color-purple-200: #cda4e0;
+  --color-purple-300: #b074cc;
+  --color-purple-400: #9245b8;
+  --color-purple-500: #7a1fa8;
+  --color-purple-600: #6b1b93;
+  --color-purple-700: #581679;
+  --color-purple-800: #45105f;
+  --color-purple-900: #2e0a40;
 
 
 
+  /* ── ส้มแบรนด์ · น้ำตาลคาราเมล (แทน sky/cyan/teal) · ม่วง (แทน pink) ── */
+  --color-orange-50: #fffadd;
+  --color-orange-100: #fff6c2;
+  --color-orange-200: #ffeb88;
+  --color-orange-300: #ffe157;
+  --color-orange-400: #ffd827;
+  --color-orange-500: #ffd000;
+  --color-orange-600: #ffd000;
+  --color-orange-700: #876c00;
+  --color-orange-800: #644e00;
+  --color-orange-900: #3d2e00;
+  --color-sky-50: #fbf1e6;
+  --color-sky-100: #f8e6d2;
+  --color-sky-200: #eac6a1;
+  --color-sky-300: #deab78;
+  --color-sky-400: #d2904f;
+  --color-sky-500: #c97a2e;
+  --color-sky-600: #b06a27;
+  --color-sky-700: #92561f;
+  --color-sky-800: #734216;
+  --color-sky-900: #4e2a0c;
+  --color-cyan-50: #fbf1e6;
+  --color-cyan-100: #f8e6d2;
+  --color-cyan-200: #eac6a1;
+  --color-cyan-300: #deab78;
+  --color-cyan-400: #d2904f;
+  --color-cyan-500: #c97a2e;
+  --color-cyan-600: #b06a27;
+  --color-cyan-700: #92561f;
+  --color-cyan-800: #734216;
+  --color-cyan-900: #4e2a0c;
+  --color-teal-50: #fbf1e6;
+  --color-teal-100: #f8e6d2;
+  --color-teal-200: #eac6a1;
+  --color-teal-300: #deab78;
+  --color-teal-400: #d2904f;
+  --color-teal-500: #c97a2e;
+  --color-teal-600: #b06a27;
+  --color-teal-700: #92561f;
+  --color-teal-800: #734216;
+  --color-teal-900: #4e2a0c;
+  --color-pink-50: #f7ecfb;
+  --color-pink-100: #f1ddf8;
+  --color-pink-200: #cda4e0;
+  --color-pink-300: #b074cc;
+  --color-pink-400: #9245b8;
+  --color-pink-500: #7a1fa8;
+  --color-pink-600: #6b1b93;
+  --color-pink-700: #581679;
+  --color-pink-800: #45105f;
+  --color-pink-900: #2e0a40;
+  --color-emerald-50: #edf6f0;
+  --color-emerald-100: #dfefe3;
+  --color-emerald-200: #a2c0ac;
+  --color-emerald-300: #6f997f;
+  --color-emerald-400: #3d7251;
+  --color-emerald-500: #14532d;
+  --color-emerald-600: #114927;
+  --color-emerald-700: #0d3c20;
+  --color-emerald-800: #0a2f18;
+  --color-emerald-900: #05200f;
   /* ── รัศมีเงียบ ๆ ตามระบบ: 8 เป็นค่าเริ่มต้น ───────────── */
   --radius-sm: 6px;
   --radius-md: 8px;

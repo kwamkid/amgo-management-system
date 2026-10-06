@@ -53,7 +53,7 @@ const createOnsiteMarkerIcon = () => ({
 
 const createOffsiteMarkerIcon = () => ({
   path: google.maps.SymbolPath.CIRCLE,
-  fillColor: '#7A4ACF', // --grape-500 (offsite) — Google Maps needs a literal colour
+  fillColor: '#7A1FA8', // --grape-500 (offsite) — Google Maps needs a literal colour
   fillOpacity: 1,
   strokeColor: '#ffffff',
   strokeWeight: 2,

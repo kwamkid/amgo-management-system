@@ -6,7 +6,7 @@
 // เห็นอันดับ (หรือ "ไม่ติด") · ขึ้นลงจากรอบก่อน · หน้าที่ติดตรงกับหน้าเป้าหมายไหม
 // · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, CheckCircle2, ListChecks, Loader2, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Field, IconButton, Input, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
@@ -61,6 +61,27 @@ const SHOW_DONE_MIN = 60
 const clock = (iso: string | number) =>
   new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
 
+/**
+ * ref ของของที่ลอยมุมขวาล่าง — จองความสูงไว้ใน --toast-offset ให้ toast ต่อ stack ขึ้นไปข้างบน
+ * ไม่ทับกัน · หายไป = คืนที่
+ */
+function useToastOffset() {
+  const observer = useRef<ResizeObserver | null>(null)
+  return useCallback((el: HTMLElement | null) => {
+    const root = document.documentElement
+    observer.current?.disconnect()
+    observer.current = null
+    if (!el) {
+      root.style.removeProperty('--toast-offset')
+      return
+    }
+    const set = () => root.style.setProperty('--toast-offset', `${el.offsetHeight + 12}px`)
+    observer.current = new ResizeObserver(set)
+    observer.current.observe(el)
+    set()
+  }, [])
+}
+
 const wrongPage = (k: TargetKeyword) => {
   const cur = k.snapshots[0]
   return !!(k.targetPath && cur?.rankedUrl && pathOf(cur.rankedUrl) !== k.targetPath)
@@ -82,6 +103,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [now, setNow] = useState(() => Date.now())
   /** แผงคิวเปิดอยู่ไหม — ปิดแล้วเหลือปุ่มกลมมุมขวาล่าง */
   const [queueOpen, setQueueOpen] = useState(true)
+  const floatRef = useToastOffset()
 
   const loadQueue = () => getRankQueue(site.id).then(setQueue).catch(() => {})
 
@@ -374,13 +396,13 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       </div>
 
       {showQueue && queue && !queueOpen && (
-        <button type="button" className="aoo-queue-fab" onClick={() => setQueueOpen(true)} aria-label="เปิดคิวเช็คอันดับ">
+        <button ref={floatRef} type="button" className="aoo-queue-fab" onClick={() => setQueueOpen(true)} aria-label="เปิดคิวเช็คอันดับ">
           {queue.pending ? <Loader2 size={22} className="animate-spin" /> : <ListChecks size={22} />}
           {queue.pending > 0 && <span className="aoo-queue-fab__badge">{queue.pending}</span>}
         </button>
       )}
       {showQueue && queue && queueOpen && (
-        <div className="aoo-queue" role="status">
+        <div ref={floatRef} className="aoo-queue" role="status">
           <div className="aoo-queue__head">
             {queue.pending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             <span>

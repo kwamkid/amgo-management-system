@@ -157,7 +157,8 @@ function ToastStack({ toasts }: { toasts: ToastItem[] }) {
       style={{
         position: "fixed",
         right: 24,
-        bottom: 24,
+        // ของลอยมุมขวาล่าง (เช่นคิวเช็คอันดับ) จองที่ไว้ผ่าน --toast-offset → toast ต่อ stack ขึ้นไปข้างบน ไม่ทับ
+        bottom: "calc(24px + var(--toast-offset, 0px))",
         display: "flex",
         flexDirection: "column-reverse",
         alignItems: "flex-end",

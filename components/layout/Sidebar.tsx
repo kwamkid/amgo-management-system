@@ -9,7 +9,7 @@
 //   ของฉัน    — สิ่งที่พนักงานทุกคนทำกับตัวเอง (เช็คอิน · ลา · เบิก)
 //   รออนุมัติ — งานอนุมัติทั้งหมดรวมที่เดียว (เดิมซ่อนอยู่ท้ายเมนูย่อยของแต่ละเรื่อง
 //               หัวหน้าต้องกางทีละกลุ่มเพื่อหา) · พนักงานทั่วไปไม่เห็นกลุ่มนี้เลย
-//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · เว็บไซต์)
+//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · เว็บไซต์ · SEO / AEO)
 //   จัดการ    — HR/แอดมิน (พนักงาน · รายงาน · เงินเดือน · เอกสาร · ตั้งค่า)
 
 'use client'
@@ -33,6 +33,7 @@ import {
   FlaskConical,
   Calculator,
   Globe,
+  TrendingUp,
   Receipt,
   ReceiptText,
   MapPinCheck,
@@ -141,7 +142,6 @@ const navSections: NavSection[] = [
         href: '/srp',
       },
       {
-        // AOO Website + SEO / AEO รวมเป็นเมนูเดียว (6 ต.ค. 69) — ตั้งค่าเว็บ SEO เข้าจากปุ่มบนหน้า /seo
         label: 'เว็บไซต์',
         icon: icon(Globe),
         tone: 'sky',
@@ -149,12 +149,20 @@ const navSections: NavSection[] = [
         roles: ['website'],
         subItems: [
           { label: 'รายการเว็บ', href: '/websites' },
-          { label: 'SEO / AEO', href: '/seo' },
           { label: 'สั่งงานทั้งฟลีต', href: '/websites/jobs' },
           { label: 'โฮสต์', href: '/websites/hosts' },
           { label: 'สลิปรอตรวจ', href: '/websites/slips' },
           { label: 'รุ่น/คอร์ส', href: '/websites/courses' },
         ],
+      },
+      {
+        // แยกจากเว็บไซต์ (เจ้าของสั่ง 6 ต.ค. 69 — คนละงาน: บริการดูแล SEO/AEO เป็นอีกโปรเจกต์)
+        // ตั้งค่าเว็บ SEO เข้าจากปุ่มบนหน้า /seo
+        label: 'SEO / AEO',
+        icon: icon(TrendingUp),
+        tone: 'success',
+        roles: ['website'],
+        href: '/seo',
       },
     ],
   },

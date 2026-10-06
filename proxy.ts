@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts (Next 16 เปลี่ยนชื่อจาก middleware.ts — ทำงานเหมือนเดิม)
 //
 // หน้าที่หลักคือ "ต่ออายุ session ของ Supabase ทุก request"
 // ถ้าไม่ทำ token จะหมดอายุแล้วผู้ใช้หลุดออกจากระบบเองระหว่างใช้งาน
@@ -10,7 +10,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(

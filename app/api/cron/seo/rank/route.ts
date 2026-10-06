@@ -13,6 +13,7 @@ import { isAuthorizedCron } from '@/lib/cron-auth'
 import { hasDataForSeoCredentials } from '@/lib/services/seo/dataforseo'
 import { collectRanks, postDueRanks, RANK_BUDGET_MS } from '@/lib/services/seo/rankSync'
 import { requireWebOwner } from '@/lib/services/seo/owner'
+import { sendSeoDigest } from '@/lib/services/seo/seoAlerts'
 
 export const maxDuration = 60
 
@@ -24,8 +25,10 @@ async function run(opts: { siteId?: string; post: boolean; force?: boolean }) {
   const deadline = Date.now() + RANK_BUDGET_MS
   try {
     const collected = await collectRanks(sb, deadline)
+    // ผลที่หน้าเว็บเก็บก่อน cron = cron ไม่เห็นความเปลี่ยนแปลงแล้ว → แจ้งจากตรงนี้แทน
+    if (collected.events.length) await sendSeoDigest(sb, collected.events, []).catch(() => {})
     const posted = opts.post ? await postDueRanks(sb, { siteId: opts.siteId, force: opts.force }) : null
-    return NextResponse.json({ success: true, collected, posted })
+    return NextResponse.json({ success: true, collected: { ...collected, events: collected.events.length }, posted })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }

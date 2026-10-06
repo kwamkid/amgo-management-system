@@ -6,10 +6,38 @@
 // เห็นอันดับ (หรือ "ไม่ติด") · ขึ้นลงจากรอบก่อน · หน้าที่ติดตรงกับหน้าเป้าหมายไหม
 // · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, CheckCircle2, ListChecks, Loader2, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Bot,
+  CheckCircle2,
+  ListChecks,
+  Loader2,
+  Plus,
+  Radar,
+  Sparkles,
+  Target,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  X,
+} from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, Field, IconButton, Input, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
+import { useToastOffset } from '@/hooks/useToastOffset'
+import {
+  Alert,
+  Button,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  Pill,
+  Progress,
+  Select,
+  Textarea,
+  Toggle,
+  useConfirm,
+} from '@/components/aoo'
 import { DataTable, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   addTargetKeywords,
@@ -59,28 +87,12 @@ const POLL_MS = 30_000
 const SHOW_DONE_MIN = 60
 
 const clock = (iso: string | number) =>
-  new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+  new Date(iso).toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Bangkok',
+  })
 
-/**
- * ref ของของที่ลอยมุมขวาล่าง — จองความสูงไว้ใน --toast-offset ให้ toast ต่อ stack ขึ้นไปข้างบน
- * ไม่ทับกัน · หายไป = คืนที่
- */
-function useToastOffset() {
-  const observer = useRef<ResizeObserver | null>(null)
-  return useCallback((el: HTMLElement | null) => {
-    const root = document.documentElement
-    observer.current?.disconnect()
-    observer.current = null
-    if (!el) {
-      root.style.removeProperty('--toast-offset')
-      return
-    }
-    const set = () => root.style.setProperty('--toast-offset', `${el.offsetHeight + 12}px`)
-    observer.current = new ResizeObserver(set)
-    observer.current.observe(el)
-    set()
-  }, [])
-}
 
 const wrongPage = (k: TargetKeyword) => {
   const cur = k.snapshots[0]
@@ -94,8 +106,15 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [busy, setBusy] = useState<'check' | 'collect' | null>(null)
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ lines: '', groupName: '', targetPath: '', priority: '2' })
+  const [form, setForm] = useState({
+    lines: '',
+    groupName: '',
+    targetPath: '',
+    priority: '2',
+  })
   const [saving, setSaving] = useState(false)
+  /** ช่องเสริม (กลุ่ม/หน้า/ความสำคัญ) ซ่อนไว้ — ปกติแค่วางคำบรรทัดละคำ */
+  const [moreOpts, setMoreOpts] = useState(false)
   const [detail, setDetail] = useState<TargetKeyword | null>(null)
   const [queue, setQueue] = useState<RankQueue | null>(null)
   const [lastPoll, setLastPoll] = useState<number | null>(null)
@@ -105,7 +124,10 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [queueOpen, setQueueOpen] = useState(true)
   const floatRef = useToastOffset()
 
-  const loadQueue = () => getRankQueue(site.id).then(setQueue).catch(() => {})
+  const loadQueue = () =>
+    getRankQueue(site.id)
+      .then(setQueue)
+      .catch(() => {})
 
   const load = () =>
     Promise.all([
@@ -142,9 +164,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         return
       }
       const parts = [
-        c.done ? `ได้ผลแล้ว ${c.done} คำ` : null,
-        c.waiting ? `รอผลอีก ${c.waiting} คำ` : null,
-        c.failed ? `ล้มเหลว ${c.failed} คำ` : null,
+        c.failed ? `ล้มเหลว ${c.failed} งาน` : null,
         p?.posted ? `ส่งเช็ค ${p.posted} คำ ($${p.costUsd.toFixed(3)}) — ผลมาในไม่กี่นาที หน้านี้ดึงให้เอง` : null,
         ...(p?.skipped ?? []),
       ].filter(Boolean)
@@ -184,7 +204,10 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const add = async () => {
     setSaving(true)
     try {
-      const n = await addTargetKeywords(site.id, { ...form, priority: Number(form.priority) })
+      const n = await addTargetKeywords(
+        site.id,
+        moreOpts ? { ...form, priority: Number(form.priority) } : { lines: form.lines },
+      )
       showToast(`บันทึก ${n} คำ`)
       setAdding(false)
       setForm({ lines: '', groupName: '', targetPath: '', priority: '2' })
@@ -224,7 +247,11 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       aio: detailed.filter((k) => k.snapshots[0].hasAiOverview).length,
       aioUs: detailed.filter((k) => k.snapshots[0].aiOverviewCitesUs).length,
       aioChecked: detailed.length,
-      lastCheck: checked.map((k) => k.snapshots[0].checkedOn).sort().pop() ?? null,
+      lastCheck:
+        checked
+          .map((k) => k.snapshots[0].checkedOn)
+          .sort()
+          .pop() ?? null,
       pending: list.filter((k) => k.pending).length,
     }
   }, [rows])
@@ -239,7 +266,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         if (filter === 'wrong') return wrongPage(k)
         return true
       }),
-    [rows, filter]
+    [rows, filter],
   )
 
   const columns: Column<TargetKeyword>[] = [
@@ -254,11 +281,13 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <div className="min-w-0">
           <div className="break-words font-medium text-gray-900">
             {k.keyword}
-            {k.priority === 1 && <Pill tone="accent" className="ml-1.5">หลัก</Pill>}
+            {k.priority === 1 && (
+              <Pill tone="accent" className="ml-1.5">
+                หลัก
+              </Pill>
+            )}
           </div>
-          <div className="text-xs text-gray-400">
-            {[k.groupName, k.targetPath].filter(Boolean).join(' · ') || '—'}
-          </div>
+          <div className="text-xs text-gray-400">{[k.groupName, k.targetPath].filter(Boolean).join(' · ') || '—'}</div>
         </div>
       ),
     },
@@ -296,7 +325,11 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 {fmtRank(cur.position)}
               </span>
               {k.dropUnconfirmed ? (
-                <span className="aoo-delta" data-tone="warning" title="รอบนี้ร่วงหนักผิดปกติ ระบบจะเช็คซ้ำให้พรุ่งนี้ก่อนสรุป">
+                <span
+                  className="aoo-delta"
+                  data-tone="warning"
+                  title="รอบนี้ร่วงหนักผิดปกติ ระบบจะเช็คซ้ำให้พรุ่งนี้ก่อนสรุป"
+                >
                   รอเช็คซ้ำ
                 </span>
               ) : (
@@ -309,8 +342,19 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 )
               )}
             </div>
+            {cur.samples > 1 && cur.position != null && cur.hits < cur.samples && (
+              <div
+                className="text-xs text-gray-400"
+                title="Google เสิร์ฟผลหลายชุดสลับกัน — ค้นหลายครั้ง เจอเราไม่ทุกครั้ง"
+              >
+                เจอ {cur.hits}/{cur.samples} ครั้ง
+              </div>
+            )}
             {k.gscPosition != null && (
-              <div className="text-xs text-gray-400" title="อันดับเฉลี่ยที่คนค้นจริงเห็น 7 วันล่าสุด (Google Search Console)">
+              <div
+                className="text-xs text-gray-400"
+                title="อันดับเฉลี่ยที่คนค้นจริงเห็น 7 วันล่าสุด (Google Search Console)"
+              >
                 คนค้นจริงเห็น ~{k.gscPosition.toFixed(1)}
               </div>
             )}
@@ -392,8 +436,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((k) => k.isTracked).length
-  const showQueue =
-    !!queue && (queue.pending > 0 || now - new Date(queue.postedAt).getTime() < SHOW_DONE_MIN * 60_000)
+  const showQueue = !!queue && (queue.pending > 0 || now - new Date(queue.postedAt).getTime() < SHOW_DONE_MIN * 60_000)
   const nextIn = lastPoll ? Math.max(0, Math.ceil((lastPoll + POLL_MS - now) / 1000)) : null
 
   return (
@@ -415,7 +458,13 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       </div>
 
       {showQueue && queue && !queueOpen && (
-        <button ref={floatRef} type="button" className="aoo-queue-fab" onClick={() => setQueueOpen(true)} aria-label="เปิดคิวเช็คอันดับ">
+        <button
+          ref={floatRef}
+          type="button"
+          className="aoo-queue-fab"
+          onClick={() => setQueueOpen(true)}
+          aria-label="เปิดคิวเช็คอันดับ"
+        >
           {queue.pending ? <Loader2 size={22} className="animate-spin" /> : <ListChecks size={22} />}
           {queue.pending > 0 && <span className="aoo-queue-fab__badge">{queue.pending}</span>}
         </button>
@@ -458,10 +507,34 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
 
       {rows && rows.length > 0 && (
         <StatGrid cols={4}>
-          <StatCard label="ติดหน้าแรก" value={`${stats.top10}/${stats.checked}`} icon={Trophy} tone="accent" hint="อันดับ 1–10" />
-          <StatCard label="ติด 100 อันดับ" value={`${stats.ranked}/${stats.checked}`} icon={Target} tone="grape" hint="ที่เหลือยังไม่ติดเลย" />
-          <StatCard label="Google มี AI ตอบ" value={stats.aioChecked ? `${stats.aio}/${stats.aioChecked}` : '—'} icon={Bot} tone="success" hint={stats.aioChecked ? 'คำที่ Google ขึ้นกล่องคำตอบ AI ด้านบน' : 'รู้หลังเช็คผ่าน amgo รอบแรก'} />
-          <StatCard label="AI อ้างเรา" value={stats.aioChecked ? `${stats.aioUs}/${stats.aio}` : '—'} icon={Sparkles} tone="warning" hint="กล่อง AI ใส่ลิงก์เว็บเราเป็นที่มา" />
+          <StatCard
+            label="ติดหน้าแรก"
+            value={`${stats.top10}/${stats.checked}`}
+            icon={Trophy}
+            tone="accent"
+            hint="อันดับ 1–10"
+          />
+          <StatCard
+            label="ติด 100 อันดับ"
+            value={`${stats.ranked}/${stats.checked}`}
+            icon={Target}
+            tone="grape"
+            hint="ที่เหลือยังไม่ติดเลย"
+          />
+          <StatCard
+            label="Google มี AI ตอบ"
+            value={stats.aioChecked ? `${stats.aio}/${stats.aioChecked}` : '—'}
+            icon={Bot}
+            tone="success"
+            hint={stats.aioChecked ? 'คำที่ Google ขึ้นกล่องคำตอบ AI ด้านบน' : 'รู้หลังเช็คผ่าน amgo รอบแรก'}
+          />
+          <StatCard
+            label="AI อ้างเรา"
+            value={stats.aioChecked ? `${stats.aioUs}/${stats.aio}` : '—'}
+            icon={Sparkles}
+            tone="warning"
+            hint="กล่อง AI ใส่ลิงก์เว็บเราเป็นที่มา"
+          />
         </StatGrid>
       )}
 
@@ -471,14 +544,14 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
           {/* อธิบายแต่ละช่อง — เจ้าของงงว่า "มี · ไม่อ้างเรา" คืออะไร (6 ต.ค. 69) */}
           <ul className="mt-2 space-y-0.5 text-xs text-gray-500">
             <li>
-              <b>อันดับ</b> — Google ไทย ค้นจากเครื่องกลาง (ไม่ล็อกอิน ไม่มีประวัติ) ผลแกว่งได้วันต่อวัน ·
-              บรรทัดเล็ก &quot;คนค้นจริงเห็น&quot; = อันดับเฉลี่ย 7 วันจาก Search Console ใช้เทียบ ·
-              ร่วงหนักผิดปกติจะขึ้น &quot;รอเช็คซ้ำ&quot; แล้วระบบเช็คให้อีกรอบวันถัดไป
+              <b>อันดับ</b> — Google ไทย ค้นจากเครื่องกลาง (ไม่ล็อกอิน ไม่มีประวัติ) ผลแกว่งได้วันต่อวัน · บรรทัดเล็ก
+              &quot;คนค้นจริงเห็น&quot; = อันดับเฉลี่ย 7 วันจาก Search Console ใช้เทียบ · ร่วงหนักผิดปกติจะขึ้น
+              &quot;รอเช็คซ้ำ&quot; แล้วระบบเช็คให้อีกรอบวันถัดไป
             </li>
             <li>
-              <b>Google AI ตอบ</b> — กล่องคำตอบ AI (AI Overview) บนสุดของหน้า Google ·{' '}
-              <b>AI อ้างเรา</b> = ใส่ลิงก์เว็บเราเป็นที่มา · <b>AI ไม่อ้างเรา</b> = มีกล่อง AI แต่อ้างเว็บอื่น (โอกาสงาน AEO) ·
-              ตอนนี้เช็คเฉพาะ Google — ChatGPT / Perplexity / Gemini อยู่ในเฟส 3
+              <b>Google AI ตอบ</b> — กล่องคำตอบ AI (AI Overview) บนสุดของหน้า Google · <b>AI อ้างเรา</b> =
+              ใส่ลิงก์เว็บเราเป็นที่มา · <b>AI ไม่อ้างเรา</b> = มีกล่อง AI แต่อ้างเว็บอื่น (โอกาสงาน AEO) ·
+              ChatGPT / Perplexity / Gemini ดูที่แท็บ &quot;AI ตอบ (AEO)&quot;
             </li>
           </ul>
         </div>
@@ -511,27 +584,54 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         }
       >
         <div className="space-y-4">
-          <Field label="คำ (บรรทัดละคำ)" required help='ใส่ยอดค้นหาท้ายบรรทัดได้ เช่น "รวมแชท, 210" · คำที่มีอยู่แล้วจะอัปเดตแทนเพิ่มซ้ำ'>
+          <Field
+            label="คำ (บรรทัดละคำ)"
+            required
+            help='วางได้ทีละหลายคำ · ใส่ยอดค้นหาท้ายบรรทัดได้ เช่น "รวมแชท, 210" · คำที่มีอยู่แล้วไม่เพิ่มซ้ำ'
+          >
             <Textarea
-              rows={6}
+              rows={8}
+              autoFocus
               value={form.lines}
               onChange={(e) => setForm({ ...form, lines: e.target.value })}
-              placeholder={'รวมแชท, 210\nระบบรวมแชท, 140'}
+              placeholder={'รวมแชท\nระบบรวมแชท\nโปรแกรมตอบแชท'}
             />
           </Field>
-          <Field label="กลุ่มคำ">
-            <Input value={form.groupName} onChange={(e) => setForm({ ...form, groupName: e.target.value })} placeholder="แชท" />
-          </Field>
-          <Field label="หน้าเป้าหมาย" help="path ของหน้าที่อยากให้ติด เช่น /features/chat — ใช้เตือนเมื่อ Google เอาหน้าอื่นไปติดแทน">
-            <Input value={form.targetPath} onChange={(e) => setForm({ ...form, targetPath: e.target.value })} placeholder="/features/chat" />
-          </Field>
-          <Field label="ความสำคัญ">
-            <Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
-              <option value="1">1 · คำหลักของหน้า</option>
-              <option value="2">2 · คำรอง</option>
-              <option value="3">3 · ติดตามไว้ดู</option>
-            </Select>
-          </Field>
+          <button
+            type="button"
+            className="text-sm font-medium text-gray-500 underline"
+            onClick={() => setMoreOpts((v) => !v)}
+          >
+            {moreOpts ? 'ซ่อนตัวเลือกเพิ่มเติม' : 'ตัวเลือกเพิ่มเติม (กลุ่ม · หน้าเป้าหมาย · ความสำคัญ)'}
+          </button>
+          {moreOpts && (
+            <>
+              <Field label="กลุ่มคำ">
+                <Input
+                  value={form.groupName}
+                  onChange={(e) => setForm({ ...form, groupName: e.target.value })}
+                  placeholder="แชท"
+                />
+              </Field>
+              <Field
+                label="หน้าเป้าหมาย"
+                help="path ของหน้าที่อยากให้ติด เช่น /features/chat — ใช้เตือนเมื่อ Google เอาหน้าอื่นไปติดแทน"
+              >
+                <Input
+                  value={form.targetPath}
+                  onChange={(e) => setForm({ ...form, targetPath: e.target.value })}
+                  placeholder="/features/chat"
+                />
+              </Field>
+              <Field label="ความสำคัญ">
+                <Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+                  <option value="1">1 · คำหลักของหน้า</option>
+                  <option value="2">2 · คำรอง</option>
+                  <option value="3">3 · ติดตามไว้ดู</option>
+                </Select>
+              </Field>
+            </>
+          )}
         </div>
       </Modal>
 
@@ -539,13 +639,17 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         open={!!detail}
         onClose={() => setDetail(null)}
         title={detail ? `"${detail.keyword}" · ${fmtRank(detail.snapshots[0]?.position)}` : ''}
-        description={detail?.snapshots[0] ? `เช็คเมื่อ ${fmtGscDate(detail.snapshots[0].checkedOn)} · Google ประเทศไทย` : undefined}
+        description={
+          detail?.snapshots[0] ? `เช็คเมื่อ ${fmtGscDate(detail.snapshots[0].checkedOn)} · Google ประเทศไทย` : undefined
+        }
         maxWidth={640}
       >
         {detail?.snapshots[0] && (
           <div className="space-y-4 text-sm">
             {!detail.snapshots[0].detailed && (
-              <p className="text-gray-500">ผลรอบนี้นำเข้าจากระบบแผน SEO เดิม มีแค่อันดับ — คู่แข่งและ AI Overview จะเห็นหลังเช็คผ่าน amgo</p>
+              <p className="text-gray-500">
+                ผลรอบนี้นำเข้าจากระบบแผน SEO เดิม มีแค่อันดับ — คู่แข่งและ AI Overview จะเห็นหลังเช็คผ่าน amgo
+              </p>
             )}
             <div>
               <p className="mb-2 font-semibold text-gray-700">10 อันดับแรก</p>

@@ -252,6 +252,9 @@ export interface RankSnapshot {
   topCompetitors: { rank: number; domain: string; url: string; title: string }[]
   /** false = ได้มาแค่อันดับ (ประวัติที่นำเข้าจาก seo-system เดิม) ไม่มีคู่แข่ง/AI Overview */
   detailed: boolean
+  /** ค้นกี่ครั้ง / เจอเรากี่ครั้ง — Google เสิร์ฟผลหลายชุดสลับกัน */
+  samples: number
+  hits: number
 }
 
 export interface TargetKeyword {
@@ -278,6 +281,11 @@ export interface TargetKeyword {
 export interface SeoSettings {
   monthlyBudgetUsd: number
   rankDevice: 'mobile' | 'desktop'
+  /** ค้นคำละกี่ครั้งต่อรอบ (Google เสิร์ฟผลหลายชุดสลับกัน) */
+  rankSamples: number
+  aeoEngines: AeoEngineKey[]
+  aeoRecheckDays: number
+  alertsEnabled: boolean
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -298,7 +306,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   const [{ data: snaps }, { data: pending }, { data: gsc }] = await Promise.all([
     sb()
       .from('seo_rank_snapshots')
-      .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors')
+      .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits')
       .in('keyword_id', ids)
       .gte('checked_on', since)
       .order('checked_on', { ascending: false })
@@ -324,6 +332,8 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       aiOverviewRefs: (s.ai_overview_refs as any) ?? [],
       topCompetitors: (s.top_competitors as any) ?? [],
       detailed: s.top_competitors != null,
+      samples: s.samples,
+      hits: s.hits,
     })
     byKw.set(s.keyword_id, list)
   }
@@ -380,7 +390,7 @@ export async function getRankQueue(siteId: string): Promise<RankQueue | null> {
   const since = new Date(Date.now() - 2 * 24 * 3600_000).toISOString()
   const { data, error } = await sb()
     .from('seo_rank_tasks')
-    .select('status, posted_at, seo_keywords!inner(site_id)')
+    .select('keyword_id, status, posted_at, seo_keywords!inner(site_id)')
     .eq('seo_keywords.site_id', siteId)
     .gte('posted_at', since)
     .order('posted_at', { ascending: false })
@@ -389,13 +399,16 @@ export async function getRankQueue(siteId: string): Promise<RankQueue | null> {
   // งานที่ส่งห่างจากงานล่าสุดไม่เกิน 10 นาที = รอบเดียวกัน
   const newest = new Date(data[0].posted_at).getTime()
   const batch = data.filter((t) => newest - new Date(t.posted_at).getTime() < 10 * 60_000)
-  const pending = batch.filter((t) => t.status === 'pending').length
+  // นับเป็นคำ (คำละหลายตัวอย่าง) — คำเสร็จเมื่อทุกตัวอย่างไม่ค้างแล้ว
+  const byKw = new Map<string, string[]>()
+  for (const t of batch) byKw.set(t.keyword_id, [...(byKw.get(t.keyword_id) ?? []), t.status])
+  const states = [...byKw.values()]
   return {
     postedAt: data[0].posted_at,
-    total: batch.length,
-    done: batch.filter((t) => t.status === 'done').length,
-    failed: batch.filter((t) => t.status === 'failed').length,
-    pending,
+    total: states.length,
+    done: states.filter((st) => !st.includes('pending') && st.includes('done')).length,
+    failed: states.filter((st) => !st.includes('pending') && !st.includes('done')).length,
+    pending: states.filter((st) => st.includes('pending')).length,
   }
 }
 
@@ -417,11 +430,15 @@ async function ensurePage(siteId: string, path: string): Promise<string | null> 
  * เพิ่มคำทีละหลายคำ — 1 บรรทัด 1 คำ · ใส่ยอดค้นหาท้ายบรรทัดได้ "รวมแชท, 210"
  * คำที่มีอยู่แล้วจะอัปเดตกลุ่ม/หน้า/ยอดค้นหาแทนการเพิ่มซ้ำ
  */
+/**
+ * เพิ่มคำ — บรรทัดละคำ (ใส่ยอดค้นหาท้ายบรรทัดได้ "รวมแชท, 210")
+ * ช่องเสริมที่เว้นว่าง = ไม่แตะค่าเดิมของคำที่มีอยู่แล้ว (เดิมเผลอล้างกลุ่ม/หน้าเป้าหมายทิ้ง)
+ */
 export async function addTargetKeywords(
   siteId: string,
-  input: { lines: string; groupName: string; targetPath: string; priority: number }
+  input: { lines: string; groupName?: string; targetPath?: string; priority?: number }
 ): Promise<number> {
-  const pageId = await ensurePage(siteId, input.targetPath)
+  const pageId = input.targetPath?.trim() ? await ensurePage(siteId, input.targetPath) : undefined
   const rows = input.lines
     .split('\n')
     .map((l) => l.trim())
@@ -433,9 +450,9 @@ export async function addTargetKeywords(
       return {
         site_id: siteId,
         keyword,
-        group_name: input.groupName.trim() || null,
-        target_page_id: pageId,
-        priority: input.priority,
+        ...(input.groupName?.trim() ? { group_name: input.groupName.trim() } : {}),
+        ...(pageId ? { target_page_id: pageId } : {}),
+        ...(input.priority ? { priority: input.priority } : {}),
         ...(vol != null ? { search_volume: vol } : {}),
       }
     })
@@ -456,19 +473,145 @@ export async function deleteTargetKeyword(id: string) {
 }
 
 export async function getSeoSettings(): Promise<SeoSettings> {
-  const { data } = await sb().from('seo_settings').select('monthly_budget_usd, rank_device').maybeSingle()
+  const { data } = await sb()
+    .from('seo_settings')
+    .select('monthly_budget_usd, rank_device, rank_samples, aeo_engines, aeo_recheck_days, alerts_enabled')
+    .maybeSingle()
   return {
     monthlyBudgetUsd: Number(data?.monthly_budget_usd ?? 10),
     rankDevice: (data?.rank_device ?? 'mobile') as 'mobile' | 'desktop',
+    rankSamples: data?.rank_samples ?? 3,
+    aeoEngines: (data?.aeo_engines ?? ['chatgpt', 'perplexity', 'gemini']) as AeoEngineKey[],
+    aeoRecheckDays: data?.aeo_recheck_days ?? 7,
+    alertsEnabled: data?.alerts_enabled ?? true,
   }
 }
 
 export async function saveSeoSettings(s: SeoSettings) {
   const { error } = await sb()
     .from('seo_settings')
-    .update({ monthly_budget_usd: s.monthlyBudgetUsd, rank_device: s.rankDevice, updated_at: new Date().toISOString() })
+    .update({
+      monthly_budget_usd: s.monthlyBudgetUsd,
+      rank_device: s.rankDevice,
+      rank_samples: s.rankSamples,
+      aeo_engines: s.aeoEngines,
+      aeo_recheck_days: s.aeoRecheckDays,
+      alerts_enabled: s.alertsEnabled,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', true)
   if (error) throw new Error(error.message)
+}
+
+// ── AEO (เฟส 3) — คำถามที่ถาม AI แล้วดูว่าตอบถึงเราไหม ───────────────────
+
+export type AeoEngineKey = 'chatgpt' | 'perplexity' | 'gemini'
+
+/** ลำดับคอลัมน์ + ชื่อที่แสดง (ราคา/โมเดลอยู่ฝั่งเซิร์ฟเวอร์ใน aeo.ts) */
+export const AEO_ENGINE_LABELS: { key: AeoEngineKey; label: string }[] = [
+  { key: 'chatgpt', label: 'ChatGPT' },
+  { key: 'perplexity', label: 'Perplexity' },
+  { key: 'gemini', label: 'Gemini' },
+]
+
+export interface AeoResult {
+  engine: AeoEngineKey
+  checkedOn: string
+  mentioned: boolean
+  cited: boolean
+  sources: { domain: string; title: string; url: string }[]
+  answer: string
+  model: string | null
+}
+
+export interface AeoPrompt {
+  id: string
+  prompt: string
+  isTracked: boolean
+  /** ผลล่าสุดต่อ AI */
+  latest: Partial<Record<AeoEngineKey, AeoResult>>
+  /** ใหม่ → เก่า ทุก AI */
+  history: AeoResult[]
+}
+
+export async function getAeoPrompts(siteId: string): Promise<AeoPrompt[]> {
+  const { data: prompts, error } = await sb()
+    .from('seo_aeo_prompts')
+    .select('id, prompt, is_tracked')
+    .eq('site_id', siteId)
+    .order('created_at')
+  if (error) throw new Error(error.message)
+  if (!prompts?.length) return []
+  const { data: results } = await sb()
+    .from('seo_aeo_results')
+    .select('prompt_id, engine, checked_on, mentioned, cited, sources, answer, model')
+    .in(
+      'prompt_id',
+      prompts.map((p) => p.id)
+    )
+    .order('checked_on', { ascending: false })
+    .limit(2000)
+  const byPrompt = new Map<string, AeoResult[]>()
+  for (const r of results ?? []) {
+    const list = byPrompt.get(r.prompt_id) ?? []
+    list.push({
+      engine: r.engine as AeoEngineKey,
+      checkedOn: r.checked_on,
+      mentioned: r.mentioned,
+      cited: r.cited,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sources: (r.sources as any) ?? [],
+      answer: r.answer ?? '',
+      model: r.model,
+    })
+    byPrompt.set(r.prompt_id, list)
+  }
+  return prompts.map((p) => {
+    const history = byPrompt.get(p.id) ?? []
+    const latest: AeoPrompt['latest'] = {}
+    for (const h of history) if (!latest[h.engine]) latest[h.engine] = h
+    return { id: p.id, prompt: p.prompt, isTracked: p.is_tracked, latest, history }
+  })
+}
+
+/** เพิ่มคำถามทีละหลายบรรทัด — ซ้ำของเดิมข้ามไป · คืนจำนวนที่เพิ่ม */
+export async function addAeoPrompts(siteId: string, lines: string) {
+  const rows = Array.from(new Set(lines.split('\n').map((l) => l.trim()).filter(Boolean))).map((prompt) => ({
+    site_id: siteId,
+    prompt,
+  }))
+  if (!rows.length) return 0
+  const { data, error } = await sb()
+    .from('seo_aeo_prompts')
+    .upsert(rows, { onConflict: 'site_id,prompt', ignoreDuplicates: true })
+    .select('id')
+  if (error) throw new Error(error.message)
+  return data?.length ?? 0
+}
+
+export async function setAeoPromptTracked(id: string, isTracked: boolean) {
+  const { error } = await sb().from('seo_aeo_prompts').update({ is_tracked: isTracked }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteAeoPrompt(id: string) {
+  const { error } = await sb().from('seo_aeo_prompts').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+/** ยอด Bing ในช่วงวันที่ — null = ไม่มีข้อมูล Bing เลย (ยังไม่ตั้ง key / ไม่ได้ลงทะเบียนเว็บ) */
+export async function getBingTotals(siteId: string, from: string, to: string) {
+  const { data } = await sb()
+    .from('seo_bing_daily')
+    .select('clicks, impressions')
+    .eq('site_id', siteId)
+    .gte('date', from)
+    .lte('date', to)
+  if (!data?.length) return null
+  return {
+    clicks: data.reduce((a, r) => a + r.clicks, 0),
+    impressions: data.reduce((a, r) => a + r.impressions, 0),
+  }
 }
 
 /** ค่า API เดือนนี้ (เวลาไทย) */

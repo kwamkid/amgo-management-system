@@ -44,8 +44,12 @@ export async function monthSpend(sb: SupabaseClient) {
 }
 
 async function settings(sb: SupabaseClient) {
-  const { data } = await sb.from('seo_settings').select('monthly_budget_usd, rank_device').maybeSingle()
-  return { budget: Number(data?.monthly_budget_usd ?? 10), device: (data?.rank_device ?? 'mobile') as Device }
+  const { data } = await sb.from('seo_settings').select('monthly_budget_usd, rank_device, rank_samples').maybeSingle()
+  return {
+    budget: Number(data?.monthly_budget_usd ?? 10),
+    device: (data?.rank_device ?? 'mobile') as Device,
+    samples: Math.max(1, Math.min(5, data?.rank_samples ?? 3)),
+  }
 }
 
 async function costPerTask(sb: SupabaseClient) {
@@ -61,22 +65,39 @@ async function costPerTask(sb: SupabaseClient) {
 
 // ── เก็บผล ─────────────────────────────────────────────────────────────
 
+export type RankEvent = {
+  site: string
+  keyword: string
+  kind: 'top10' | 'dropped' | 'aio_cited' | 'aio_lost'
+  from: number | null
+  to: number | null
+}
+
+/** ผลของงานเดียวที่ได้มาแล้ว — รอรวมกับงานอื่นของคำเดียวกันวันเดียวกัน */
+type Sample = { taskId: string; keywordId: string; device: string; checkedOn: string; site: string; keyword: string; p: ReturnType<typeof parseSerp> }
+
+/**
+ * เก็บผลงานที่ค้าง · คำหนึ่งส่งหลายตัวอย่าง (rank_samples) → รวมเป็นแถวเดียวต่อวัน:
+ * อันดับ = ดีสุดที่เจอ · hits = เจอเรากี่ครั้ง · AI Overview = มีในตัวอย่างไหนก็นับ
+ * คืน events (ติดหน้าแรก/หลุดจริง/AI เริ่ม-เลิกอ้าง) ไว้แจ้ง Discord
+ */
 export async function collectRanks(sb: SupabaseClient, deadline: number) {
   const { data: tasks } = await sb
     .from('seo_rank_tasks')
-    .select('task_id, keyword_id, device, posted_at, seo_keywords(keyword, seo_sites(domain))')
+    .select('task_id, keyword_id, device, posted_at, seo_keywords(keyword, seo_sites(domain, display_name))')
     .eq('status', 'pending')
     .order('posted_at')
     .limit(COLLECT_LIMIT)
 
-  let done = 0
   let waiting = 0
   let failed = 0
+  const samples: Sample[] = []
 
   type Task = NonNullable<typeof tasks>[number]
   const handle = async (t: Task) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const domain = (t.seo_keywords as any)?.seo_sites?.domain as string | undefined
+    const kw = t.seo_keywords as any
+    const domain = kw?.seo_sites?.domain as string | undefined
     const r = await getSerpTask(t.task_id)
     if (r.state === 'pending') {
       if (Date.now() - new Date(t.posted_at).getTime() > TASK_EXPIRE_MS) {
@@ -93,34 +114,98 @@ export async function collectRanks(sb: SupabaseClient, deadline: number) {
       failed++
       return
     }
-    const p = parseSerp(r.items, domain)
-    const { error } = await sb.from('seo_rank_snapshots').upsert(
-      {
-        keyword_id: t.keyword_id,
-        // วันที่ส่งงาน ไม่ใช่วันที่มาเก็บ — DataForSEO ค้นให้ภายในไม่กี่นาทีหลังส่ง
-        // ส่วน cron มาเก็บผลวันถัดไป ถ้าใช้วันเก็บ อันดับจะเลื่อนไปผิดวันหนึ่งวัน
-        checked_on: bangkokDate(new Date(t.posted_at)),
-        device: t.device,
-        position: p.position,
-        ranked_url: p.rankedUrl,
-        has_ai_overview: p.hasAiOverview,
-        ai_overview_cites_us: p.aiOverviewCitesUs,
-        ai_overview_refs: p.aiOverviewRefs,
-        top_competitors: p.topCompetitors,
-      },
-      { onConflict: 'keyword_id,checked_on,device' }
-    )
-    if (error) throw new Error(`บันทึกอันดับไม่ได้: ${error.message}`)
-    await sb.from('seo_rank_tasks').update({ status: 'done' }).eq('task_id', t.task_id)
-    done++
+    samples.push({
+      taskId: t.task_id,
+      keywordId: t.keyword_id,
+      device: t.device,
+      // วันที่ส่งงาน ไม่ใช่วันที่มาเก็บ — DataForSEO ค้นให้ภายในไม่กี่นาทีหลังส่ง
+      // ส่วน cron มาเก็บผลวันถัดไป ถ้าใช้วันเก็บ อันดับจะเลื่อนไปผิดวันหนึ่งวัน
+      checkedOn: bangkokDate(new Date(t.posted_at)),
+      site: kw?.seo_sites?.display_name ?? domain,
+      keyword: kw?.keyword ?? '',
+      p: parseSerp(r.items, domain),
+    })
   }
 
-  // ถามผลพร้อมกันทีละ 8 งาน — ทีละงานใช้ ~1 วิ 44 คำไม่ทันเวลาที่เหลือหลังดึง GSC
+  // ถามผลพร้อมกันทีละ 8 งาน — ทีละงานใช้ ~1 วิ ไม่ทันเวลาที่เหลือหลังดึง GSC
   const list = tasks ?? []
   for (let i = 0; i < list.length && Date.now() < deadline; i += COLLECT_CONCURRENCY) {
     await Promise.all(list.slice(i, i + COLLECT_CONCURRENCY).map(handle))
   }
-  return { done, waiting, failed }
+
+  // รวมตัวอย่างของคำเดียวกันวันเดียวกัน (รวมกับที่บันทึกไว้แล้วจากรอบก่อน ถ้ามี)
+  const groups = new Map<string, Sample[]>()
+  for (const x of samples) {
+    const key = `${x.keywordId}|${x.checkedOn}|${x.device}`
+    groups.set(key, [...(groups.get(key) ?? []), x])
+  }
+  const events: RankEvent[] = []
+  for (const group of groups.values()) {
+    const { keywordId, checkedOn, device, site, keyword } = group[0]
+    const [{ data: existing }, { data: prevRows }] = await Promise.all([
+      sb
+        .from('seo_rank_snapshots')
+        .select('position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits')
+        .eq('keyword_id', keywordId)
+        .eq('checked_on', checkedOn)
+        .eq('device', device)
+        .maybeSingle(),
+      sb
+        .from('seo_rank_snapshots')
+        .select('position, ai_overview_cites_us, has_ai_overview, top_competitors')
+        .eq('keyword_id', keywordId)
+        .eq('device', device)
+        .lt('checked_on', checkedOn)
+        .order('checked_on', { ascending: false })
+        .limit(2),
+    ])
+    const [prevRow, prev2] = prevRows ?? []
+    // ตัวอย่างที่เจอเราอันดับดีสุดเป็นตัวหลัก (คู่แข่ง/AI Overview เอาจากตัวนั้น)
+    const sorted = [...group].sort((a, b) => (a.p.position ?? 999) - (b.p.position ?? 999))
+    const best = sorted[0].p
+    const prevSamples = existing?.samples ?? 0
+    const keepExisting = existing && (existing.position ?? 999) <= (best.position ?? 999)
+    const merged = {
+      keyword_id: keywordId,
+      checked_on: checkedOn,
+      device,
+      position: keepExisting ? existing!.position : best.position,
+      ranked_url: keepExisting ? existing!.ranked_url : best.rankedUrl,
+      has_ai_overview: !!existing?.has_ai_overview || group.some((g) => g.p.hasAiOverview),
+      ai_overview_cites_us: !!existing?.ai_overview_cites_us || group.some((g) => g.p.aiOverviewCitesUs),
+      ai_overview_refs: keepExisting ? existing!.ai_overview_refs : best.aiOverviewRefs,
+      top_competitors: keepExisting ? existing!.top_competitors : best.topCompetitors,
+      samples: prevSamples + group.length,
+      hits: (existing?.hits ?? 0) + group.filter((g) => g.p.position != null).length,
+    }
+    const { error } = await sb.from('seo_rank_snapshots').upsert(merged, { onConflict: 'keyword_id,checked_on,device' })
+    if (error) throw new Error(`บันทึกอันดับไม่ได้: ${error.message}`)
+    await sb
+      .from('seo_rank_tasks')
+      .update({ status: 'done' })
+      .in('task_id', group.map((g) => g.taskId))
+
+    // แจ้งเตือนเฉพาะรอบแรกของวันนั้น (กันแจ้งซ้ำตอนตัวอย่างทยอยมา) · ประวัติที่นำเข้าไม่มีข้อมูล AI → ไม่เทียบ AI
+    if (!existing && prevRow) {
+      const from = prevRow.position
+      const to = merged.position
+      if (to != null && to <= 10 && (from == null || from > 10)) events.push({ site, keyword, kind: 'top10', from, to })
+      const bad = to == null || to > 20
+      // หลุดหน้าแรก — ร่วงหนักรอบแรกยังไม่แจ้ง (อาจแค่ Google สลับชุดผล) รอรอบเช็คซ้ำยืนยันก่อน
+      const prevWasSuspect = !!prev2 && isSuspiciousDrop(from, prev2.position)
+      if (prevWasSuspect && bad && prev2.position != null && prev2.position <= 10)
+        events.push({ site, keyword, kind: 'dropped', from: prev2.position, to })
+      else if (from != null && from <= 10 && bad && !isSuspiciousDrop(to, from))
+        events.push({ site, keyword, kind: 'dropped', from, to })
+      if (prevRow.top_competitors != null) {
+        if (merged.ai_overview_cites_us && !prevRow.ai_overview_cites_us)
+          events.push({ site, keyword, kind: 'aio_cited', from, to })
+        if (!merged.ai_overview_cites_us && prevRow.ai_overview_cites_us)
+          events.push({ site, keyword, kind: 'aio_lost', from, to })
+      }
+    }
+  }
+  return { done: samples.length, waiting, failed, events }
 }
 
 // ── ส่งงาน ─────────────────────────────────────────────────────────────
@@ -140,7 +225,7 @@ export async function postDueRanks(
   opts: { siteId?: string; force?: boolean } = {}
 ): Promise<PostSummary> {
   const skipped: string[] = []
-  const { budget, device } = await settings(sb)
+  const { budget, device, samples } = await settings(sb)
 
   let q = sb.from('seo_keywords').select('id, keyword, site_id, seo_sites!inner(is_active)').eq('is_tracked', true)
   q = opts.siteId ? q.eq('site_id', opts.siteId) : q.eq('seo_sites.is_active', true)
@@ -191,17 +276,18 @@ export async function postDueRanks(
   if (!due.length) return { posted: 0, costUsd: 0, skipped }
 
   const spent = await monthSpend(sb)
-  const estimate = due.length * (await costPerTask(sb))
+  const estimate = due.length * samples * (await costPerTask(sb))
   if (spent + estimate > budget) {
     skipped.push(
-      `ไม่ส่ง ${due.length} คำ — ใช้ไปแล้ว $${spent.toFixed(2)} + รอบนี้ ~$${estimate.toFixed(2)} เกินเพดาน $${budget.toFixed(2)}/เดือน`
+      `ไม่ส่ง ${due.length} คำ (×${samples} ครั้ง) — ใช้ไปแล้ว $${spent.toFixed(2)} + รอบนี้ ~$${estimate.toFixed(2)} เกินเพดาน $${budget.toFixed(2)}/เดือน`
     )
     await alertBudgetOnce(sb, spent, budget)
     return { posted: 0, costUsd: 0, skipped }
   }
 
+  // คำละหลายตัวอย่าง — Google เสิร์ฟผลหลายชุดสลับกัน ค้นครั้งเดียวอาจได้ชุดที่ไม่มีเรา
   const { posted, failed } = await postSerpTasks(
-    due.map((k) => ({ keyword: k.keyword, tag: k.id })),
+    due.flatMap((k) => Array.from({ length: samples }, () => ({ keyword: k.keyword, tag: k.id }))),
     device
   )
   const cost = posted.reduce((s, p) => s + p.cost, 0)
@@ -212,11 +298,11 @@ export async function postDueRanks(
       endpoint: 'serp/task_post',
       units: posted.length,
       cost_usd: cost,
-      note: `อันดับ ${device} ${posted.length} คำ`,
+      note: `อันดับ ${device} ${due.length} คำ × ${samples} ครั้ง`,
     })
   }
   if (failed.length) skipped.push(`ส่งไม่สำเร็จ ${failed.length} คำ: ${failed[0].error}`)
-  return { posted: posted.length, costUsd: cost, skipped }
+  return { posted: Math.round(posted.length / samples), costUsd: cost, skipped }
 }
 
 /** แจ้ง Discord ว่าชนเพดาน — เดือนละครั้ง (จดไว้ใน note ของ seo_api_costs แถวศูนย์บาท) */

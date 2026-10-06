@@ -2832,6 +2832,127 @@ export type Database = {
         }
         Relationships: []
       }
+      seo_bing_daily: {
+        Row: {
+          clicks: number
+          date: string
+          impressions: number
+          site_id: string
+        }
+        Insert: {
+          clicks?: number
+          date: string
+          impressions?: number
+          site_id: string
+        }
+        Update: {
+          clicks?: number
+          date?: string
+          impressions?: number
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_bing_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_aeo_results: {
+        Row: {
+          answer: string | null
+          checked_on: string
+          cited: boolean
+          cost_usd: number | null
+          created_at: string
+          engine: string
+          id: number
+          mentioned: boolean
+          model: string | null
+          prompt_id: string
+          sources: Json | null
+        }
+        Insert: {
+          answer?: string | null
+          checked_on: string
+          cited?: boolean
+          cost_usd?: number | null
+          created_at?: string
+          engine: string
+          id?: never
+          mentioned?: boolean
+          model?: string | null
+          prompt_id: string
+          sources?: Json | null
+        }
+        Update: {
+          answer?: string | null
+          checked_on?: string
+          cited?: boolean
+          cost_usd?: number | null
+          created_at?: string
+          engine?: string
+          id?: never
+          mentioned?: boolean
+          model?: string | null
+          prompt_id?: string
+          sources?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_aeo_results_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "seo_aeo_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_aeo_prompts: {
+        Row: {
+          created_at: string
+          id: string
+          is_tracked: boolean
+          keyword_id: string | null
+          prompt: string
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          keyword_id?: string | null
+          prompt: string
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          keyword_id?: string | null
+          prompt?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_aeo_prompts_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "seo_keywords"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_aeo_prompts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_gsc_daily: {
         Row: {
           clicks: number
@@ -3009,10 +3130,12 @@ export type Database = {
           created_at: string
           device: string
           has_ai_overview: boolean
+          hits: number
           id: number
           keyword_id: string
           position: number | null
           ranked_url: string | null
+          samples: number
           top_competitors: Json | null
         }
         Insert: {
@@ -3023,10 +3146,12 @@ export type Database = {
           created_at?: string
           device?: string
           has_ai_overview?: boolean
+          hits?: number
           id?: never
           keyword_id: string
           position?: number | null
           ranked_url?: string | null
+          samples?: number
           top_competitors?: Json | null
         }
         Update: {
@@ -3037,10 +3162,12 @@ export type Database = {
           created_at?: string
           device?: string
           has_ai_overview?: boolean
+          hits?: number
           id?: never
           keyword_id?: string
           position?: number | null
           ranked_url?: string | null
+          samples?: number
           top_competitors?: Json | null
         }
         Relationships: [
@@ -3090,21 +3217,33 @@ export type Database = {
       }
       seo_settings: {
         Row: {
+          aeo_engines: string[]
+          aeo_recheck_days: number
+          alerts_enabled: boolean
           id: boolean
           monthly_budget_usd: number
           rank_device: string
+          rank_samples: number
           updated_at: string
         }
         Insert: {
+          aeo_engines?: string[]
+          aeo_recheck_days?: number
+          alerts_enabled?: boolean
           id?: boolean
           monthly_budget_usd?: number
           rank_device?: string
+          rank_samples?: number
           updated_at?: string
         }
         Update: {
+          aeo_engines?: string[]
+          aeo_recheck_days?: number
+          alerts_enabled?: boolean
           id?: boolean
           monthly_budget_usd?: number
           rank_device?: string
+          rank_samples?: number
           updated_at?: string
         }
         Relationships: []

@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Field, IconButton, Input, Modal, Pill, Select, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, PageHeader, SectionCard, SiteFavicon, TechLoader, type Column } from '@/components/shared'
 import {
+  AEO_ENGINE_LABELS,
   deleteSeoSite,
   fmtGscDate,
   getMonthApiSpend,
@@ -300,13 +301,13 @@ export default function SeoSettingsPage() {
 
       <SectionCard
         className="mb-6"
-        title="งบค่าเช็คอันดับ (DataForSEO)"
-        description="ทุกครั้งที่เช็คอันดับเสียเงิน · ถึงเพดานแล้วระบบหยุดเช็คจนถึงต้นเดือนหน้า และแจ้ง Discord"
+        title="งบและการเช็คอัตโนมัติ (DataForSEO)"
+        description="เช็คอันดับและถาม AI เสียเงินทุกครั้ง · ถึงเพดานแล้วระบบหยุดจนถึงต้นเดือนหน้า และแจ้ง Discord"
       >
         {budget && (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="sm:w-48">
-              <Field label="เพดานต่อเดือน (USD)">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="เพดานต่อเดือน (USD)" help={`เดือนนี้ใช้ไป $${spend.toFixed(3)}`}>
                 <Input
                   type="number"
                   min={0}
@@ -315,8 +316,6 @@ export default function SeoSettingsPage() {
                   onChange={(e) => setBudget({ ...budget, monthlyBudgetUsd: Number(e.target.value) })}
                 />
               </Field>
-            </div>
-            <div className="sm:w-48">
               <Field label="เช็คอันดับแบบ">
                 <Select
                   value={budget.rankDevice}
@@ -326,13 +325,67 @@ export default function SeoSettingsPage() {
                   <option value="desktop">คอมพิวเตอร์</option>
                 </Select>
               </Field>
+              <Field
+                label="ค้นคำละกี่ครั้งต่อรอบ"
+                help="Google เสิร์ฟผลหลายชุดสลับกัน ค้นหลายครั้งแล้วเอาอันดับดีสุด · ครั้งละ ~$0.006"
+              >
+                <Select
+                  value={String(budget.rankSamples)}
+                  onChange={(e) => setBudget({ ...budget, rankSamples: Number(e.target.value) })}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n} ครั้ง{n === 3 ? ' (แนะนำ)' : ''}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
-            <Button loading={savingBudget} onClick={saveBudget}>
-              บันทึก
-            </Button>
-            <p className="text-sm text-gray-500 sm:ml-auto">
-              เดือนนี้ใช้ไป <b>${spend.toFixed(3)}</b> จาก ${budget.monthlyBudgetUsd.toFixed(2)}
-            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="AI ที่ถาม (แท็บ AI ตอบ)">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                  {AEO_ENGINE_LABELS.map((e) => (
+                    <label key={e.key} className="inline-flex items-center gap-2 text-sm">
+                      <Toggle
+                        size="sm"
+                        checked={budget.aeoEngines.includes(e.key)}
+                        onChange={(v) =>
+                          setBudget({
+                            ...budget,
+                            aeoEngines: v ? [...budget.aeoEngines, e.key] : budget.aeoEngines.filter((x) => x !== e.key),
+                          })
+                        }
+                        aria-label={e.label}
+                      />
+                      {e.label}
+                    </label>
+                  ))}
+                </div>
+              </Field>
+              <Field label="ถาม AI ซ้ำทุกกี่วัน" help="ต่อคำถาม 3 AI ~$0.08 ต่อรอบ">
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={budget.aeoRecheckDays}
+                  onChange={(e) => setBudget({ ...budget, aeoRecheckDays: Number(e.target.value) })}
+                />
+              </Field>
+              <Field label="แจ้งเตือน Discord" help="ติดหน้าแรก/หลุด · AI เริ่ม/เลิกอ้างเรา · คลิกลดหนัก (วันจันทร์)">
+                <div className="pt-1">
+                  <Toggle
+                    checked={budget.alertsEnabled}
+                    onChange={(v) => setBudget({ ...budget, alertsEnabled: v })}
+                    aria-label="แจ้งเตือน Discord"
+                  />
+                </div>
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <Button loading={savingBudget} onClick={saveBudget}>
+                บันทึก
+              </Button>
+            </div>
           </div>
         )}
       </SectionCard>

@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, MousePointerClick, Percent, RefreshCw, Search, Settings, TrendingUp } from 'lucide-react'
+import { Eye, MousePointerClick, Percent, Search, Settings, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, EmptyState, Pill } from '@/components/aoo'
@@ -47,7 +47,6 @@ export default function SeoOverviewPage() {
   const [totals, setTotals] = useState<Map<string, DailyTotal[]>>(new Map())
   const [range, setRange] = useState('28')
   const [mode, setMode] = useState<CompareMode>('prev')
-  const [syncing, setSyncing] = useState(false)
 
   const canSee = !!userData?.hasWebAccess
 
@@ -74,29 +73,6 @@ export default function SeoOverviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSee])
 
-  // ปกติ cron ดึงทุกเช้า — ปุ่มนี้ไว้ดึงทันที และกดซ้ำเพื่อเร่ง backfill ได้
-  const syncNow = async () => {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/cron/seo/gsc-daily', { method: 'POST' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'ดึงข้อมูลไม่สำเร็จ')
-      const results = json.results as { site: string; status: string; detail: string }[]
-      const bad = results.filter((r) => r.status !== 'ok')
-      showToast(
-        bad.length
-          ? bad.map((r) => `${r.site}: ${r.detail}`).join(' · ')
-          : `ดึงแล้ว ${results.length} เว็บ`,
-        bad.some((r) => r.status === 'error') ? 'error' : 'success'
-      )
-      await load()
-    } catch (e) {
-      showToast((e as Error).message, 'error')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   if (!canSee || sites === null) return <TechLoader />
 
   return (
@@ -106,14 +82,10 @@ export default function SeoOverviewPage() {
         description="ผลบน Google Search รายวัน — ดูว่างานที่ทำไปได้ผลหรือยัง"
         icon={TrendingUp}
         actions={
-          <>
-            <Button variant="secondary" icon={Settings} href="/seo/settings">
-              ตั้งค่าเว็บ
-            </Button>
-            <Button icon={RefreshCw} loading={syncing} onClick={syncNow} disabled={!sites.length}>
-              ดึงข้อมูลตอนนี้
-            </Button>
-          </>
+          // ไม่มีปุ่มดึงเอง (เจ้าของสั่งเอาออก 6 ต.ค. 69 — cron ตี 4 ดึงให้ทุกวันอยู่แล้ว กดแล้วงง)
+          <Button variant="secondary" icon={Settings} href="/seo/settings">
+            ตั้งค่าเว็บ
+          </Button>
         }
       />
 
@@ -168,7 +140,7 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
       description={
         site.syncedThrough
           ? `ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (วันตามเวลา US — Google ช้า 2–3 วัน) · ${mode === 'yoy' ? 'เทียบช่วงเดียวกันปีที่แล้ว' : `เทียบ ${days} วันก่อนหน้า`}`
-          : 'ยังไม่มีข้อมูล — กด "ดึงข้อมูลตอนนี้" หรือรอรอบ 04:00'
+          : 'ยังไม่มีข้อมูล — ระบบดึงให้รอบตี 4'
       }
     >
       {site.lastError && (

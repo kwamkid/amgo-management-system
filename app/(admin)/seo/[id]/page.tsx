@@ -8,11 +8,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Eye, MousePointerClick, Percent, RefreshCw, TrendingUp } from 'lucide-react'
+import { Eye, MousePointerClick, Percent, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Input, TabBar, TabItem } from '@/components/aoo'
 import TargetKeywords from './TargetKeywords'
+import AiAnswers from './AiAnswers'
 import {
   DataTable,
   PageHeader,
@@ -35,6 +36,7 @@ import {
   fmtNum,
   fmtPct,
   fmtPosDelta,
+  getBingTotals,
   getDailyTotals,
   getSeoSite,
   periodLabel,
@@ -100,13 +102,12 @@ export default function SeoSitePage() {
   const [mode, setMode] = useState<CompareMode>('prev')
   const [metric, setMetric] = useState('clicks')
   // แท็บแรก = คำเป้าหมาย เพราะเว็บใหม่ยังไม่มีข้อมูล GSC ให้ดู
-  const [tab, setTab] = useState<'target' | 'query' | 'page'>('target')
+  const [tab, setTab] = useState<'target' | 'ai' | 'query' | 'page'>('target')
   const dim: 'query' | 'page' = tab === 'page' ? 'page' : 'query'
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [rows, setRows] = useState<CompareRow[] | null>(null)
   const [shown, setShown] = useState(PAGE_SIZE)
-  const [syncing, setSyncing] = useState(false)
 
   const canSee = !!userData?.hasWebAccess
 
@@ -138,6 +139,14 @@ export default function SeoSitePage() {
   // ตารางคำค้นเก็บแค่ 90 วัน — เทียบได้เฉพาะเมื่อทั้งช่วงนี้และช่วงก่อนอยู่ใน 90 วัน
   // (เทียบปีก่อน / ช่วงยาว ใช้ได้กับการ์ดและกราฟ ซึ่งมาจากยอดรวมที่เก็บไว้ตลอด)
   const canCompare = mode === 'prev' && days * 2 <= DETAIL_DAYS
+
+  // Bing ช่วงเดียวกัน — โชว์บรรทัดเดียวใต้ตัวเลือกช่วง (ไม่มีข้อมูล = ไม่โชว์ · ต้องตั้ง BING_WEBMASTER_API_KEY)
+  const [bing, setBing] = useState<{ clicks: number; impressions: number } | null>(null)
+  useEffect(() => {
+    if (!site?.id || !per) return
+    getBingTotals(site.id, per.cur.from, per.cur.to).then(setBing).catch(() => setBing(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site?.id, per?.cur.from, per?.cur.to])
   const tableDays = Math.min(days, DETAIL_DAYS)
   const table = site?.syncedThrough
     ? canCompare
@@ -162,26 +171,6 @@ export default function SeoSitePage() {
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site?.id, site?.syncedThrough, dim, range, canCompare])
-
-  const syncNow = async () => {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/cron/seo/gsc-daily', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId: id }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'ดึงข้อมูลไม่สำเร็จ')
-      const r = json.results?.[0]
-      showToast(r ? r.detail : 'ไม่มีเว็บให้ดึง', r?.status === 'error' ? 'error' : 'success')
-      await loadSite()
-    } catch (e) {
-      showToast((e as Error).message, 'error')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   const stats = useMemo(
     () => (per ? { cur: sumTotals(totals, per.cur.from, per.cur.to), prev: sumTotals(totals, per.prev.from, per.prev.to) } : null),
@@ -329,11 +318,6 @@ export default function SeoSitePage() {
         description={`${site.domain} · ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (เวลา US)`}
         icon={TrendingUp}
         backHref="/seo"
-        actions={
-          <Button icon={RefreshCw} loading={syncing} onClick={syncNow}>
-            ดึงข้อมูลตอนนี้
-          </Button>
-        }
       />
 
       {site.lastError && (
@@ -343,14 +327,14 @@ export default function SeoSitePage() {
       )}
       {!site.backfillDone && site.backfillFrom && (
         <Alert tone="info" className="mb-4">
-          กำลังดึงข้อมูลย้อนหลัง — คำค้นตอนนี้มีถึง {fmtGscDate(site.backfillFrom)} · ช่วงยาว ๆ อาจยังไม่ครบ (กด
-          &quot;ดึงข้อมูลตอนนี้&quot; ซ้ำเพื่อเร่งได้)
+          กำลังดึงข้อมูลย้อนหลัง — คำค้นตอนนี้มีถึง {fmtGscDate(site.backfillFrom)} · ช่วงยาว ๆ อาจยังไม่ครบ
+          (ระบบดึงต่อให้ทุกเช้าตี 4)
         </Alert>
       )}
 
       {!per || !stats ? (
         <SectionCard>
-          <p className="text-sm text-gray-500">ยังไม่มีข้อมูล — กด &quot;ดึงข้อมูลตอนนี้&quot;</p>
+          <p className="text-sm text-gray-500">ยังไม่มีข้อมูล — ระบบดึงให้รอบตี 4</p>
         </SectionCard>
       ) : (
         <>
@@ -358,6 +342,11 @@ export default function SeoSitePage() {
             <Segmented value={range} onChange={setRange} options={RANGES} />
             <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={COMPARE_OPTIONS} />
             <span className="text-xs text-gray-400">{periodLabel(per)}</span>
+            {bing && (
+              <span className="text-xs text-gray-500">
+                · Bing ช่วงนี้: คลิก {fmtNum(bing.clicks)} · การแสดงผล {fmtNum(bing.impressions)}
+              </span>
+            )}
           </div>
 
           <StatGrid cols={4}>
@@ -396,12 +385,15 @@ export default function SeoSitePage() {
 
       <TabBar ariaLabel="มุมมอง" className="mb-3 mt-2">
         <TabItem active={tab === 'target'} onClick={() => setTab('target')} label="คำเป้าหมาย (อันดับ)" />
+        <TabItem active={tab === 'ai'} onClick={() => setTab('ai')} label="AI ตอบ (AEO)" />
         <TabItem active={tab === 'query'} onClick={() => setTab('query')} label="คำค้นที่ Google เจอเรา" />
         <TabItem active={tab === 'page'} onClick={() => setTab('page')} label="หน้า" />
       </TabBar>
 
       {tab === 'target' ? (
         <TargetKeywords site={site} />
+      ) : tab === 'ai' ? (
+        <AiAnswers site={site} />
       ) : !per || !stats ? (
         <SectionCard>
           <p className="text-sm text-gray-500">ยังไม่มีข้อมูลจาก Search Console — Google ยังไม่เคยแสดงเว็บนี้ หรือยังไม่ได้ดึงข้อมูล</p>

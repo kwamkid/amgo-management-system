@@ -7,7 +7,7 @@
 // · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, CheckCircle2, Loader2, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
+import { Bot, CheckCircle2, ListChecks, Loader2, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Field, IconButton, Input, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
@@ -80,6 +80,8 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [lastPoll, setLastPoll] = useState<number | null>(null)
   const [polling, setPolling] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  /** แผงคิวเปิดอยู่ไหม — ปิดแล้วเหลือปุ่มกลมมุมขวาล่าง */
+  const [queueOpen, setQueueOpen] = useState(true)
 
   const loadQueue = () => getRankQueue(site.id).then(setQueue).catch(() => {})
 
@@ -125,6 +127,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         ...(p?.skipped ?? []),
       ].filter(Boolean)
       showToast(parts.join(' · ') || 'ไม่มีงานค้าง', 'success')
+      if (p?.posted) setQueueOpen(true)
       await load()
     } catch (e) {
       if (!silent) showToast((e as Error).message, 'error')
@@ -370,43 +373,46 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         </div>
       </div>
 
-      {showQueue && queue && (
-        <Alert
-          className="mb-3"
-          tone={queue.pending ? 'info' : queue.failed ? 'warning' : 'success'}
-          hideIcon
-          title={
-            <span className="inline-flex items-center gap-1.5">
-              {queue.pending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+      {showQueue && queue && !queueOpen && (
+        <button type="button" className="aoo-queue-fab" onClick={() => setQueueOpen(true)} aria-label="เปิดคิวเช็คอันดับ">
+          {queue.pending ? <Loader2 size={22} className="animate-spin" /> : <ListChecks size={22} />}
+          {queue.pending > 0 && <span className="aoo-queue-fab__badge">{queue.pending}</span>}
+        </button>
+      )}
+      {showQueue && queue && queueOpen && (
+        <div className="aoo-queue" role="status">
+          <div className="aoo-queue__head">
+            {queue.pending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+            <span>
               {queue.pending
                 ? `กำลังเช็คอันดับ — ได้ผลแล้ว ${queue.done + queue.failed}/${queue.total} คำ`
                 : `เช็คเสร็จแล้ว ${queue.done}/${queue.total} คำ${queue.failed ? ` · ล้มเหลว ${queue.failed}` : ''}`}
             </span>
-          }
-          action={
-            queue.pending ? (
-              <Button size="sm" variant="secondary" loading={polling} onClick={pollNow}>
-                ถามผลตอนนี้
-              </Button>
-            ) : undefined
-          }
-        >
+            <button type="button" className="aoo-queue__close" onClick={() => setQueueOpen(false)} aria-label="ย่อคิว">
+              <X size={16} />
+            </button>
+          </div>
           <Progress
-            className="my-2"
+            className="mt-2"
             value={queue.done + queue.failed}
             max={queue.total}
-            tone={queue.pending ? 'info' : 'success'}
+            tone={queue.pending ? 'grape' : 'success'}
             aria-label="ความคืบหน้าการเช็คอันดับ"
           />
-          <div className="text-xs">
-            ส่งเข้าคิวเมื่อ {clock(queue.postedAt)}
+          <div className="aoo-queue__meta">
+            ส่งเข้าคิว {clock(queue.postedAt)}
             {queue.pending
-              ? ` · Google ค้นในคิว ปกติ 5–30 นาที · ถามผลให้เองทุก 30 วิ${
-                  lastPoll ? ` (ล่าสุด ${clock(lastPoll)} · อีก ${nextIn} วิ)` : ''
-                } · ปิดหน้านี้ได้ ผลไม่หาย`
+              ? ` · ปกติ 5–30 นาที · ถามผลเองทุก 30 วิ${lastPoll ? ` (อีก ${nextIn} วิ)` : ''} · ปิดหน้านี้ได้ ผลไม่หาย`
               : ''}
           </div>
-        </Alert>
+          {queue.pending > 0 && (
+            <div className="aoo-queue__foot">
+              <button type="button" className="aoo-queue__link" onClick={pollNow} disabled={polling}>
+                {polling ? 'กำลังถาม…' : 'ถามผลตอนนี้'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {rows && rows.length > 0 && (

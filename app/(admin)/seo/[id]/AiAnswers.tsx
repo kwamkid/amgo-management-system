@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bot, CheckCircle2, Loader2, MessageSquarePlus, Send, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { useToastOffset } from '@/hooks/useToastOffset'
-import { Button, Field, IconButton, Modal, Pill, Progress, Textarea, Toggle, useConfirm } from '@/components/aoo'
+import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   AEO_ENGINE_LABELS,
@@ -19,6 +19,7 @@ import {
   fmtGscDate,
   getAeoPrompts,
   getTargetKeywords,
+  setAeoPromptKeyword,
   setAeoPromptTracked,
   type AeoPrompt,
   type AeoResult,
@@ -39,6 +40,9 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   const [googleAi, setGoogleAi] = useState<{ cited: number; total: number } | null>(null)
   const [adding, setAdding] = useState(false)
   const [lines, setLines] = useState('')
+  /** คำเป้าหมายที่จะผูกกับคำถามที่เพิ่ม — ผลไปโชว์ในตารางคำเป้าหมายด้วย */
+  const [linkKw, setLinkKw] = useState('')
+  const [keywords, setKeywords] = useState<{ id: string; keyword: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<AeoPrompt | null>(null)
   /** ความคืบหน้าตอนกดถาม — null = ไม่ได้ถามอยู่ */
@@ -56,6 +60,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       // Google AI Overview มาจากผลเช็คอันดับ — นับเฉพาะรอบที่มีข้อมูล AI (ไม่นับประวัติที่นำเข้า)
       getTargetKeywords(site.id)
         .then((kws) => {
+          setKeywords(kws.map((k) => ({ id: k.id, keyword: k.keyword })))
           const withAio = kws.filter((k) => k.snapshots[0]?.detailed && k.snapshots[0].hasAiOverview)
           setGoogleAi({ cited: withAio.filter((k) => k.snapshots[0].aiOverviewCitesUs).length, total: withAio.length })
         })
@@ -99,10 +104,11 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   const add = async () => {
     setSaving(true)
     try {
-      const n = await addAeoPrompts(site.id, lines)
+      const n = await addAeoPrompts(site.id, lines, linkKw || null)
       showToast(`เพิ่ม ${n} คำถาม`)
       setAdding(false)
       setLines('')
+      setLinkKw('')
       await load()
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -150,7 +156,12 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       mobilePrimary: true,
       sticky: true,
       width: 280,
-      cell: (p) => <div className="break-words font-medium text-gray-900">{p.prompt}</div>,
+      cell: (p) => (
+        <div className="min-w-0">
+          <div className="break-words font-medium text-gray-900">{p.prompt}</div>
+          <div className="text-xs text-gray-400">{p.keyword ? `คำเป้าหมาย: ${p.keyword}` : 'ยังไม่ผูกคำเป้าหมาย'}</div>
+        </div>
+      ),
     },
     ...AEO_ENGINE_LABELS.map(
       (e): Column<AeoPrompt> => ({
@@ -298,6 +309,20 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
             placeholder={'แนะนำร้านกระเช้าผลไม้ ส่งด่วนในกรุงเทพ\nซื้อกระเช้าเยี่ยมคนป่วยที่ไหนดี'}
           />
         </Field>
+        <Field
+          label="ผูกกับคำเป้าหมาย"
+          help="ไม่บังคับ · ผลของ AI แต่ละตัวจะไปโชว์ในตารางคำเป้าหมายของคำนั้นด้วย"
+          className="mt-4"
+        >
+          <Select value={linkKw} onChange={(e) => setLinkKw(e.target.value)}>
+            <option value="">— ไม่ผูก —</option>
+            {keywords.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.keyword}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </Modal>
 
       <Modal
@@ -309,6 +334,24 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       >
         {detail && (
           <div className="space-y-5 text-sm">
+            <Field label="ผูกกับคำเป้าหมาย">
+              <Select
+                value={detail.keywordId ?? ''}
+                onChange={async (e) => {
+                  const v = e.target.value || null
+                  setDetail({ ...detail, keywordId: v, keyword: keywords.find((k) => k.id === v)?.keyword ?? null })
+                  await setAeoPromptKeyword(detail.id, v).catch((err) => showToast(err.message, 'error'))
+                  load()
+                }}
+              >
+                <option value="">— ไม่ผูก —</option>
+                {keywords.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.keyword}
+                  </option>
+                ))}
+              </Select>
+            </Field>
             {AEO_ENGINE_LABELS.map((e) => {
               const r = detail.latest[e.key]
               return (

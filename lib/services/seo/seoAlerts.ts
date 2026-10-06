@@ -6,6 +6,7 @@
 //   · คำเป้าหมายเพิ่งติดหน้าแรก / หลุดจากหน้าแรก (หลุด = หลังเช็คซ้ำยืนยันแล้วเท่านั้น)
 //   · กล่อง AI ของ Google / ChatGPT / Perplexity / Gemini เริ่มอ้าง หรือเลิกอ้างเว็บเรา
 //   · วันจันทร์: คลิกจาก Google 7 วันล่าสุดลด ≥ 30% จาก 7 วันก่อน (เว็บที่มีคลิก ≥ 50)
+//   · สรุป AI อ้างเรา แยกทีละ AI ต่อเว็บ — ทุกวันจันทร์ และวันที่ AI มีความเปลี่ยนแปลง
 // ปิดได้ที่หน้าตั้งค่า SEO (seo_settings.alerts_enabled)
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -13,6 +14,7 @@ import { sendWebAlert } from '@/lib/services/web/webAlerts'
 import type { RankEvent } from './rankSync'
 import type { AeoEvent } from './aeoSync'
 import { AEO_ENGINES } from './aeo'
+import { fmtAiSummary, getAiSummaries } from './aiSummary'
 
 const DROP_PCT = 0.3
 const MIN_CLICKS = 50
@@ -66,15 +68,34 @@ export async function sendSeoDigest(sb: SupabaseClient, rankEvents: RankEvent[],
     ...rankEvents.filter((e) => e.kind === 'aio_lost').map((e) => `Google AI · ${e.site} · ${e.keyword}`),
     ...aeoEvents.filter((e) => e.kind === 'lost').map((e) => `${label(e.engine)} · ${e.site} · ${e.prompt}`),
   ]
-  if (cited.length) fields.push({ name: '✨ AI เริ่มอ้างเรา', value: list(cited) })
-  if (lost.length) fields.push({ name: '⚠️ AI เลิกอ้างเรา', value: list(lost) })
+  // เรียงตามชื่อ AI ให้อ่านทีละตัว
+  if (cited.length) fields.push({ name: '✨ AI เริ่มอ้างเรา', value: list(cited.sort()) })
+  if (lost.length) fields.push({ name: '⚠️ AI เลิกอ้างเรา', value: list(lost.sort()) })
 
-  if (bangkokDay() === 'Mon') {
+  // สรุปแยกทีละ AI ต่อเว็บ (เจ้าของขอ 7 ต.ค. 69) — แนบเมื่อ AI มีความเปลี่ยนแปลง และทุกวันจันทร์
+  const monday = bangkokDay() === 'Mon'
+  if (monday || cited.length || lost.length) {
+    const { data: sites } = await sb.from('seo_sites').select('id, display_name').eq('is_active', true)
+    const sums = await getAiSummaries(
+      sb,
+      (sites ?? []).map((x) => x.id)
+    )
+    const lines = (sites ?? [])
+      .map((x) => {
+        const t = fmtAiSummary(sums.get(x.id)!)
+        return t ? `**${x.display_name}** — ${t}` : null
+      })
+      .filter((x): x is string => !!x)
+    if (lines.length) fields.push({ name: '🤖 AI อ้างลิงก์เรา (อ้าง/ทั้งหมด แยกทีละ AI)', value: list(lines) })
+  }
+
+  if (monday) {
     const drops = await gscWeeklyDrops(sb)
     if (drops.length)
       fields.push({ name: '🔻 คลิกจาก Google ลดลงเยอะ (สัปดาห์นี้ vs ก่อน)', value: `${list(drops)}\nเช็คก่อนว่าเป็นช่วงเทศกาลหรือเปล่า` })
   }
 
+  // สรุป AI อย่างเดียว (วันจันทร์ที่ไม่มีอะไรเปลี่ยน) ก็ส่ง — เป็นรายงานประจำสัปดาห์
   if (!fields.length) return 'ไม่มีเรื่องต้องแจ้ง'
   const ok = await sendWebAlert({
     title: '📊 SEO / AEO — สรุปความเปลี่ยนแปลง',

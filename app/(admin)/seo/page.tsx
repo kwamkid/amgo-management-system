@@ -14,6 +14,7 @@ import { Eye, MousePointerClick, Percent, Search, Settings, TrendingUp } from 'l
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, EmptyState, Pill } from '@/components/aoo'
+import { AI_ENGINES, type AiSummary } from '@/lib/services/seo/aiSummary'
 import { PageHeader, SectionCard, Segmented, SiteFavicon, Sparkline, StatCard, StatGrid, TechLoader } from '@/components/shared'
 import {
   addDays,
@@ -24,6 +25,7 @@ import {
   fmtPct,
   fmtPosDelta,
   getDailyTotals,
+  getSiteAiSummaries,
   getSeoSites,
   periods,
   sumTotals,
@@ -45,6 +47,7 @@ export default function SeoOverviewPage() {
 
   const [sites, setSites] = useState<SeoSite[] | null>(null)
   const [totals, setTotals] = useState<Map<string, DailyTotal[]>>(new Map())
+  const [ai, setAi] = useState<Map<string, AiSummary>>(new Map())
   const [range, setRange] = useState('28')
   const [mode, setMode] = useState<CompareMode>('prev')
 
@@ -60,7 +63,10 @@ export default function SeoOverviewPage() {
       // ดึงพอสำหรับเทียบปีก่อนของช่วงยาวสุด (90 + 364 วัน)
       const latest = list.map((s) => s.syncedThrough).filter(Boolean).sort().pop()
       const from = addDays(latest ?? new Date().toISOString().slice(0, 10), -460)
-      setTotals(await getDailyTotals(list.map((s) => s.id), from))
+      const ids = list.map((s) => s.id)
+      const [t, a] = await Promise.all([getDailyTotals(ids, from), getSiteAiSummaries(ids).catch(() => new Map())])
+      setTotals(t)
+      setAi(a)
       setSites(list)
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -106,7 +112,14 @@ export default function SeoOverviewPage() {
           </div>
           <div className="space-y-4">
             {sites.map((s) => (
-              <SiteCard key={s.id} site={s} rows={totals.get(s.id) ?? []} days={Number(range)} mode={mode} />
+              <SiteCard
+                key={s.id}
+                site={s}
+                rows={totals.get(s.id) ?? []}
+                ai={ai.get(s.id)}
+                days={Number(range)}
+                mode={mode}
+              />
             ))}
           </div>
         </>
@@ -115,7 +128,19 @@ export default function SeoOverviewPage() {
   )
 }
 
-function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[]; days: number; mode: CompareMode }) {
+function SiteCard({
+  site,
+  rows,
+  ai,
+  days,
+  mode,
+}: {
+  site: SeoSite
+  rows: DailyTotal[]
+  ai?: AiSummary
+  days: number
+  mode: CompareMode
+}) {
   const stats = useMemo(() => {
     if (!site.syncedThrough) return null
     const { cur, prev } = periods(site.syncedThrough, days, mode)
@@ -180,6 +205,17 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
               hint={fmtPosDelta(stats.cur.position, stats.prev.position)}
             />
           </StatGrid>
+          {ai && AI_ENGINES.some((e) => ai[e.key].total) && (
+            // แยกทีละ AI ว่าอ้างลิงก์เรากี่ข้อ (เจ้าของขอ 7 ต.ค. 69) — เขียว = อ้างอย่างน้อย 1
+            <Link href={`/seo/${site.id}`} className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="ดู AI ตอบ">
+              <span className="text-xs text-gray-400">AI อ้างเรา:</span>
+              {AI_ENGINES.filter((e) => ai[e.key].total).map((e) => (
+                <Pill key={e.key} tone={ai[e.key].cited ? 'success' : 'neutral'}>
+                  {e.label} {ai[e.key].cited}/{ai[e.key].total}
+                </Pill>
+              ))}
+            </Link>
+          )}
           {spark.length > 1 && (
             <Link href={`/seo/${site.id}`} className="block" aria-label="ดูรายละเอียด">
               <p className="mb-1 text-xs text-gray-400">คลิกรายวัน · กดเพื่อดูคำค้นและหน้า</p>

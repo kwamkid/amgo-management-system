@@ -45,6 +45,7 @@ import {
   fmtGscDate,
   fmtNum,
   fmtRank,
+  AEO_ENGINE_LABELS,
   getRankQueue,
   getTargetKeywords,
   setKeywordTracked,
@@ -383,17 +384,36 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       },
     },
     {
+      // แยกทีละ AI (เจ้าของขอ 7 ต.ค. 69): Google = กล่อง AI บนหน้าผลค้นหา · ที่เหลือ = คำถามในแท็บ AI ตอบที่ผูกคำนี้
       key: 'aio',
-      header: 'Google AI ตอบ',
+      header: 'AI อ้างเราไหม',
       cell: (k) => {
         const cur = k.snapshots[0]
+        const chips: { label: string; state: 'cited' | 'mentioned' | 'no' | 'none' }[] = []
         // ประวัติที่นำเข้ามีแค่อันดับ — ไม่รู้ว่ามี AI Overview ไหม อย่าเดาว่า "ไม่มี"
-        if (!cur?.detailed) return <span className="text-gray-400">—</span>
-        if (!cur.hasAiOverview) return <span className="text-xs text-gray-400">ไม่มี AI ตอบ</span>
-        return cur.aiOverviewCitesUs ? (
-          <Pill tone="success">AI อ้างเรา</Pill>
-        ) : (
-          <Pill tone="neutral">AI ไม่อ้างเรา</Pill>
+        if (cur?.detailed)
+          chips.push({
+            label: 'Google',
+            state: !cur.hasAiOverview ? 'none' : cur.aiOverviewCitesUs ? 'cited' : 'no',
+          })
+        for (const e of AEO_ENGINE_LABELS) {
+          const r = k.ai[e.key]
+          if (r) chips.push({ label: e.label, state: r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no' })
+        }
+        if (!chips.length) return <span className="text-gray-400">—</span>
+        return (
+          <div className="flex flex-wrap gap-1">
+            {chips.map((c) => (
+              <Pill
+                key={c.label}
+                tone={c.state === 'cited' ? 'success' : c.state === 'mentioned' ? 'warning' : 'neutral'}
+                className={c.state === 'none' || c.state === 'no' ? 'opacity-60' : undefined}
+              >
+                {c.state === 'cited' ? '✓' : c.state === 'mentioned' ? '~' : '✗'} {c.label}
+                {c.state === 'none' ? ' ไม่มีกล่อง AI' : ''}
+              </Pill>
+            ))}
+          </div>
         )
       },
     },
@@ -549,9 +569,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
               &quot;รอเช็คซ้ำ&quot; แล้วระบบเช็คให้อีกรอบวันถัดไป
             </li>
             <li>
-              <b>Google AI ตอบ</b> — กล่องคำตอบ AI (AI Overview) บนสุดของหน้า Google · <b>AI อ้างเรา</b> =
-              ใส่ลิงก์เว็บเราเป็นที่มา · <b>AI ไม่อ้างเรา</b> = มีกล่อง AI แต่อ้างเว็บอื่น (โอกาสงาน AEO) ·
-              ChatGPT / Perplexity / Gemini ดูที่แท็บ &quot;AI ตอบ (AEO)&quot;
+              <b>AI อ้างเราไหม</b> — แยกทีละ AI: <b>✓</b> ใส่ลิงก์เว็บเรา · <b>~</b> เอ่ยชื่อเราแต่ไม่ใส่ลิงก์ · <b>✗</b>{' '}
+              อ้างเว็บอื่น (โอกาสงาน AEO) · Google = กล่อง AI บนหน้าผลค้นหา · ChatGPT / Perplexity / Gemini มาจากคำถามที่ผูกคำนี้ในแท็บ
+              &quot;AI ตอบ (AEO)&quot; (คำที่ยังไม่มีคำถามผูก จะเห็นแค่ Google)
             </li>
           </ul>
         </div>

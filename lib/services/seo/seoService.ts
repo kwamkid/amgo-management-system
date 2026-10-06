@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { isSuspiciousDrop } from './rankRules'
+import { getAiSummaries } from './aiSummary'
 
 const sb = () => createClient()
 
@@ -275,6 +276,11 @@ export interface TargetKeyword {
   gscPosition: number | null
   /** อันดับรอบล่าสุดร่วงหนัก/หลุด และยังไม่ได้เช็คซ้ำยืนยัน — cron จะเช็คซ้ำให้วันถัดไป */
   dropUnconfirmed: boolean
+  /**
+   * AI แชทตอบถึงเราไหม — จากคำถามในแท็บ AI ตอบที่ผูกกับคำนี้ (ผลล่าสุดต่อ AI)
+   * ผูกหลายคำถาม = อ้างในข้อไหนก็นับว่าอ้าง · ไม่มีคำถามผูก = ว่าง
+   */
+  ai: Partial<Record<AeoEngineKey, { cited: boolean; mentioned: boolean }>>
 }
 
 
@@ -303,7 +309,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   const since = new Date(Date.now() - 180 * 24 * 3600_000).toISOString().slice(0, 10)
   // GSC ช้า 2–3 วัน — เอา 10 วันย้อนหลังเพื่อให้ได้ราว 7 วันที่มีข้อมูล
   const gscSince = new Date(Date.now() - 10 * 24 * 3600_000).toISOString().slice(0, 10)
-  const [{ data: snaps }, { data: pending }, { data: gsc }] = await Promise.all([
+  const [{ data: snaps }, { data: pending }, { data: gsc }, { data: aiRows }] = await Promise.all([
     sb()
       .from('seo_rank_snapshots')
       .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits')
@@ -319,6 +325,12 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .in('query', (kws ?? []).map((k) => k.keyword))
       .gte('date', gscSince)
       .limit(5000),
+    sb()
+      .from('seo_aeo_results')
+      .select('prompt_id, engine, checked_on, cited, mentioned, seo_aeo_prompts!inner(keyword_id)')
+      .in('seo_aeo_prompts.keyword_id', ids)
+      .order('checked_on', { ascending: false })
+      .limit(2000),
   ])
   const byKw = new Map<string, RankSnapshot[]>()
   for (const s of snaps ?? []) {
@@ -355,6 +367,23 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     gscAvg.set(q, a)
   }
 
+  // ผลล่าสุดต่อ (คำถาม × AI) แล้วรวมเข้าคำเป้าหมายที่ผูก
+  const aiByKw = new Map<string, TargetKeyword['ai']>()
+  const seenAi = new Set<string>()
+  for (const r of (aiRows ?? []) as any[]) {
+    const key = `${r.prompt_id}|${r.engine}`
+    if (seenAi.has(key)) continue
+    seenAi.add(key)
+    const kwId = r.seo_aeo_prompts.keyword_id as string
+    const m = aiByKw.get(kwId) ?? {}
+    const cur = m[r.engine as AeoEngineKey]
+    m[r.engine as AeoEngineKey] = {
+      cited: !!cur?.cited || r.cited,
+      mentioned: !!cur?.mentioned || r.mentioned || r.cited,
+    }
+    aiByKw.set(kwId, m)
+  }
+
   return (kws ?? []).map((k: any) => ({
     id: k.id,
     keyword: k.keyword,
@@ -373,6 +402,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       const [cur, prev] = byKw.get(k.id) ?? []
       return !!cur && !!prev && isSuspiciousDrop(cur.position, prev.position)
     })(),
+    ai: aiByKw.get(k.id) ?? {},
   }))
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -528,6 +558,9 @@ export interface AeoPrompt {
   id: string
   prompt: string
   isTracked: boolean
+  /** คำเป้าหมายที่ผูกไว้ — ผลไปโชว์ในตารางคำเป้าหมายด้วย */
+  keywordId: string | null
+  keyword: string | null
   /** ผลล่าสุดต่อ AI */
   latest: Partial<Record<AeoEngineKey, AeoResult>>
   /** ใหม่ → เก่า ทุก AI */
@@ -537,7 +570,7 @@ export interface AeoPrompt {
 export async function getAeoPrompts(siteId: string): Promise<AeoPrompt[]> {
   const { data: prompts, error } = await sb()
     .from('seo_aeo_prompts')
-    .select('id, prompt, is_tracked')
+    .select('id, prompt, is_tracked, keyword_id, seo_keywords(keyword)')
     .eq('site_id', siteId)
     .order('created_at')
   if (error) throw new Error(error.message)
@@ -570,15 +603,25 @@ export async function getAeoPrompts(siteId: string): Promise<AeoPrompt[]> {
     const history = byPrompt.get(p.id) ?? []
     const latest: AeoPrompt['latest'] = {}
     for (const h of history) if (!latest[h.engine]) latest[h.engine] = h
-    return { id: p.id, prompt: p.prompt, isTracked: p.is_tracked, latest, history }
+    return {
+      id: p.id,
+      prompt: p.prompt,
+      isTracked: p.is_tracked,
+      keywordId: p.keyword_id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      keyword: (p.seo_keywords as any)?.keyword ?? null,
+      latest,
+      history,
+    }
   })
 }
 
 /** เพิ่มคำถามทีละหลายบรรทัด — ซ้ำของเดิมข้ามไป · คืนจำนวนที่เพิ่ม */
-export async function addAeoPrompts(siteId: string, lines: string) {
+export async function addAeoPrompts(siteId: string, lines: string, keywordId?: string | null) {
   const rows = Array.from(new Set(lines.split('\n').map((l) => l.trim()).filter(Boolean))).map((prompt) => ({
     site_id: siteId,
     prompt,
+    ...(keywordId ? { keyword_id: keywordId } : {}),
   }))
   if (!rows.length) return 0
   const { data, error } = await sb()
@@ -624,3 +667,11 @@ export async function getMonthApiSpend(): Promise<number> {
 
 /** อันดับเป็นข้อความ — null = ไม่ติด 100 */
 export const fmtRank = (p: number | null | undefined) => (p == null ? 'ไม่ติด' : `#${p}`)
+
+/** สรุป AI ตัวไหนอ้างเรา แยกทีละ AI ต่อเว็บ (หน้ารายการ SEO) */
+export const getSiteAiSummaries = (siteIds: string[]) => getAiSummaries(sb(), siteIds)
+
+export async function setAeoPromptKeyword(id: string, keywordId: string | null) {
+  const { error } = await sb().from('seo_aeo_prompts').update({ keyword_id: keywordId }).eq('id', id)
+  if (error) throw new Error(error.message)
+}

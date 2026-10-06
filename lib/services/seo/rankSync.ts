@@ -16,6 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSerpTask, parseSerp, postSerpTasks, type Device } from './dataforseo'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
+import { isSuspiciousDrop } from './rankRules'
 
 /** เช็คซ้ำเมื่อผลล่าสุดเก่ากว่ากี่วัน */
 const RECHECK_DAYS = 7
@@ -152,30 +153,41 @@ export async function postDueRanks(
     sb.from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
     sb
       .from('seo_rank_snapshots')
-      .select('keyword_id, checked_on')
+      .select('keyword_id, checked_on, position')
       .eq('device', device)
       .in('keyword_id', ids)
       .order('checked_on', { ascending: false }),
   ])
   const hasPending = new Set((pending ?? []).map((p) => p.keyword_id))
   const lastChecked = new Map<string, string>()
-  for (const s of latest ?? []) if (!lastChecked.has(s.keyword_id)) lastChecked.set(s.keyword_id, s.checked_on)
+  // 2 รอบล่าสุดต่อคำ — ไว้ดูว่ารอบล่าสุดร่วงหนักจนต้องเช็คซ้ำไหม
+  const lastTwo = new Map<string, (number | null)[]>()
+  for (const s of latest ?? []) {
+    if (!lastChecked.has(s.keyword_id)) lastChecked.set(s.keyword_id, s.checked_on)
+    const two = lastTwo.get(s.keyword_id) ?? []
+    if (two.length < 2) lastTwo.set(s.keyword_id, [...two, s.position])
+  }
 
   const today = bangkokDate()
   const cutoff = bangkokDate(new Date(Date.now() - (RECHECK_DAYS - 1) * 24 * 3600_000))
   let nPending = 0
   let nToday = 0
   let nFresh = 0
+  let nRecheck = 0
   const due = keywords.filter((k) => {
     if (hasPending.has(k.id)) return nPending++, false
     const last = lastChecked.get(k.id)
     if (last === today) return nToday++, false
+    // รอบล่าสุดร่วงหนัก = เช็คซ้ำวันถัดไปเลย ไม่รอครบ 7 วัน (ผล SERP แกว่ง อย่าเพิ่งเชื่อรอบเดียว)
+    const [cur, prev] = lastTwo.get(k.id) ?? []
+    if (prev !== undefined && isSuspiciousDrop(cur ?? null, prev)) return nRecheck++, true
     if (!opts.force && last && last > cutoff) return nFresh++, false
     return true
   })
   if (nPending) skipped.push(`${nPending} คำมีงานรอผลอยู่แล้ว`)
   if (nToday) skipped.push(`${nToday} คำเช็คไปแล้ววันนี้`)
   if (nFresh) skipped.push(`${nFresh} คำเช็คไปไม่ถึง ${RECHECK_DAYS} วัน`)
+  if (nRecheck) skipped.push(`${nRecheck} คำร่วงหนักรอบก่อน — เช็คซ้ำยืนยัน`)
   if (!due.length) return { posted: 0, costUsd: 0, skipped }
 
   const spent = await monthSpend(sb)

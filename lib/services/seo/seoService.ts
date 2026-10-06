@@ -4,6 +4,7 @@
 // ตาราง seo_gsc_* อ่านได้อย่างเดียว · เขียนเฉพาะ cron ฝั่งเซิร์ฟเวอร์
 
 import { createClient } from '@/lib/supabase/client'
+import { isSuspiciousDrop } from './rankRules'
 
 const sb = () => createClient()
 
@@ -264,7 +265,15 @@ export interface TargetKeyword {
   /** ใหม่ → เก่า */
   snapshots: RankSnapshot[]
   pending: boolean
+  /**
+   * อันดับเฉลี่ยจาก Google Search Console 7 วันล่าสุด (คนค้นจริง) — null = ไม่มีคนเห็นเราในคำนี้
+   * ไว้เทียบกับ DataForSEO ที่ค้นครั้งเดียวจากเครื่องกลาง ผลแกว่งได้
+   */
+  gscPosition: number | null
+  /** อันดับรอบล่าสุดร่วงหนัก/หลุด และยังไม่ได้เช็คซ้ำยืนยัน — cron จะเช็คซ้ำให้วันถัดไป */
+  dropUnconfirmed: boolean
 }
+
 
 export interface SeoSettings {
   monthlyBudgetUsd: number
@@ -284,7 +293,9 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   if (!ids.length) return []
 
   const since = new Date(Date.now() - 180 * 24 * 3600_000).toISOString().slice(0, 10)
-  const [{ data: snaps }, { data: pending }] = await Promise.all([
+  // GSC ช้า 2–3 วัน — เอา 10 วันย้อนหลังเพื่อให้ได้ราว 7 วันที่มีข้อมูล
+  const gscSince = new Date(Date.now() - 10 * 24 * 3600_000).toISOString().slice(0, 10)
+  const [{ data: snaps }, { data: pending }, { data: gsc }] = await Promise.all([
     sb()
       .from('seo_rank_snapshots')
       .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors')
@@ -293,6 +304,13 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .order('checked_on', { ascending: false })
       .limit(1000),
     sb().from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
+    sb()
+      .from('seo_gsc_daily')
+      .select('query, date, position, impressions')
+      .eq('site_id', siteId)
+      .in('query', (kws ?? []).map((k) => k.keyword))
+      .gte('date', gscSince)
+      .limit(5000),
   ])
   const byKw = new Map<string, RankSnapshot[]>()
   for (const s of snaps ?? []) {
@@ -310,6 +328,23 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     byKw.set(s.keyword_id, list)
   }
   const pend = new Set((pending ?? []).map((p) => p.keyword_id))
+
+  // GSC แยกแถวตามหน้า — ต่อวันเอาหน้าที่อันดับดีสุด (คือสิ่งที่คนเห็น) แล้วเฉลี่ยถ่วงด้วยการแสดงผล
+  const best = new Map<string, { position: number; impressions: number }>()
+  for (const g of gsc ?? []) {
+    const key = `${g.query}|${g.date}`
+    const cur = best.get(key)
+    if (!cur || g.position < cur.position) best.set(key, { position: g.position, impressions: g.impressions })
+  }
+  const gscAvg = new Map<string, { sum: number; w: number }>()
+  for (const [key, v] of best) {
+    const q = key.slice(0, key.lastIndexOf('|'))
+    const a = gscAvg.get(q) ?? { sum: 0, w: 0 }
+    a.sum += v.position * v.impressions
+    a.w += v.impressions
+    gscAvg.set(q, a)
+  }
+
   return (kws ?? []).map((k: any) => ({
     id: k.id,
     keyword: k.keyword,
@@ -320,6 +355,14 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     isTracked: k.is_tracked,
     snapshots: byKw.get(k.id) ?? [],
     pending: pend.has(k.id),
+    gscPosition: (() => {
+      const a = gscAvg.get(k.keyword)
+      return a && a.w ? a.sum / a.w : null
+    })(),
+    dropUnconfirmed: (() => {
+      const [cur, prev] = byKw.get(k.id) ?? []
+      return !!cur && !!prev && isSuspiciousDrop(cur.position, prev.position)
+    })(),
   }))
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

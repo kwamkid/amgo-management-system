@@ -41,7 +41,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nigh
 
 ---
 
-## 2. งานที่ตั้งไว้ — 9 งาน
+## 2. งานที่ตั้งไว้ — 10 งาน
 
 ตั้งครบแล้วที่ cron-job.org เมื่อ 16 ส.ค. 69 · ตารางนี้ตรงกับของจริงบนหน้าเว็บ
 
@@ -56,6 +56,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nigh
 | 7 | เช็คเว็บล่ม | ทุกชั่วโมง | เว็บ |
 | 8 | อวยพรวันเกิดพนักงาน | 09:30 | คน |
 | 9 | เตือนให้เช็คเอาท์ (push) — **ต้องเพิ่มเอง** (30 ก.ย. 69) | ทุก 15 นาที | คน |
+| 10 | ดึงผล Google Search Console (เมนู SEO / AEO) — **ต้องเพิ่มเอง** (6 ต.ค. 69) | 05:00 | SEO |
 
 ### งานที่ 9 · เตือนให้เช็คเอาท์ (push)
 
@@ -74,6 +75,26 @@ curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nigh
 PC ที่อยู่ทำ OT ถึงห้างปิดเป็นประจำจะโดนเตือนราว 22:30 ไม่ใช่ทุกหกโมงเย็น
 
 ส่งถึงเฉพาะคนที่เปิดแจ้งเตือนไว้ · คำตอบมี `due` / `reminded` / `delivered` ให้ดูว่าส่งถึงกี่เครื่อง
+
+### งานที่ 10 · ดึงผล Google Search Console (SEO / AEO)
+
+| ช่อง | ค่า |
+|---|---|
+| Title | `AMGO — SEO ดึง GSC รายวัน` |
+| URL | `https://app.amgovenger.com/api/cron/seo/gsc-daily` |
+| Schedule | Every day at 05:00 |
+| Timezone | `Asia/Bangkok` |
+| Request method | `GET` |
+| Header | `Authorization: Bearer <CRON_SECRET>` |
+| Treat as success | HTTP `200` |
+
+**ทำอะไร:** ดึงยอดรวม + คำค้น × หน้า ของทุกเว็บใน `seo_sites` ย้อน 5 วัน (GSC ช้า 2–3 วัน
+ข้อมูลสดยังขยับได้) แล้วใช้เวลาที่เหลือ backfill ย้อนทีละ 14 วันจนครบ 16 เดือน —
+รอบแรก ๆ backfill ไม่จบในรอบเดียว รอบถัดไปทำต่อเอง (กดปุ่ม "ดึงข้อมูลตอนนี้" บนหน้า `/seo` ซ้ำเพื่อเร่งได้)
+
+ต้องมี env `GSC_SERVICE_ACCOUNT_JSON` (JSON key ของ `seo-reporting@codelab-school.iam.gserviceaccount.com`)
+และเว็บนั้นต้องเพิ่มอีเมล service account ใน GSC แบบ Restricted แล้ว · พังครั้งแรกแจ้ง Discord ห้อง alerts
+คำตอบมี `results[]` บอกผลทุกเว็บพร้อมเหตุผล
 
 ### งานที่ 1 · ปิดกะให้คนที่ลืมเช็คเอาท์
 

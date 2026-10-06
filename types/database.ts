@@ -2802,6 +2802,156 @@ export type Database = {
           },
         ]
       }
+      seo_gsc_daily: {
+        Row: {
+          clicks: number
+          ctr: number
+          date: string
+          id: number
+          impressions: number
+          page: string
+          position: number
+          query: string
+          site_id: string
+        }
+        Insert: {
+          clicks?: number
+          ctr?: number
+          date: string
+          id?: never
+          impressions?: number
+          page: string
+          position: number
+          query: string
+          site_id: string
+        }
+        Update: {
+          clicks?: number
+          ctr?: number
+          date?: string
+          id?: never
+          impressions?: number
+          page?: string
+          position?: number
+          query?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_gsc_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_gsc_totals: {
+        Row: {
+          clicks: number
+          ctr: number
+          date: string
+          impressions: number
+          position: number | null
+          site_id: string
+        }
+        Insert: {
+          clicks?: number
+          ctr?: number
+          date: string
+          impressions?: number
+          position?: number | null
+          site_id: string
+        }
+        Update: {
+          clicks?: number
+          ctr?: number
+          date?: string
+          impressions?: number
+          position?: number | null
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_gsc_totals_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_sites: {
+        Row: {
+          backfill_done: boolean
+          backfill_from: string | null
+          bing_site_url: string | null
+          created_at: string
+          display_name: string
+          domain: string
+          gsc_access: string
+          gsc_checked_at: string | null
+          gsc_property: string | null
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_synced_at: string | null
+          note: string | null
+          sync_locked_at: string | null
+          synced_through: string | null
+          updated_at: string
+          web_site_id: string | null
+        }
+        Insert: {
+          backfill_done?: boolean
+          backfill_from?: string | null
+          bing_site_url?: string | null
+          created_at?: string
+          display_name: string
+          domain: string
+          gsc_access?: string
+          gsc_checked_at?: string | null
+          gsc_property?: string | null
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_synced_at?: string | null
+          note?: string | null
+          sync_locked_at?: string | null
+          synced_through?: string | null
+          updated_at?: string
+          web_site_id?: string | null
+        }
+        Update: {
+          backfill_done?: boolean
+          backfill_from?: string | null
+          bing_site_url?: string | null
+          created_at?: string
+          display_name?: string
+          domain?: string
+          gsc_access?: string
+          gsc_checked_at?: string | null
+          gsc_property?: string | null
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_synced_at?: string | null
+          note?: string | null
+          sync_locked_at?: string | null
+          synced_through?: string | null
+          updated_at?: string
+          web_site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_sites_web_site_id_fkey"
+            columns: ["web_site_id"]
+            isOneToOne: false
+            referencedRelation: "web_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           created_at: string
@@ -4954,6 +5104,27 @@ export type Database = {
       seed_leave_quota: {
         Args: { p_user_id: string; p_year: number }
         Returns: number
+      }
+      seo_gsc_compare: {
+        Args: {
+          p_dim: string
+          p_from: string
+          p_limit?: number
+          p_prev_from: string
+          p_prev_to: string
+          p_site: string
+          p_to: string
+        }
+        Returns: {
+          clicks: number
+          first_seen: string
+          impressions: number
+          key: string
+          position: number
+          prev_clicks: number
+          prev_impressions: number
+          prev_position: number
+        }[]
       }
       srp_role: { Args: { b_id: string }; Returns: string }
       storage_usage: {

@@ -818,6 +818,33 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-stat:focus-visible,
 .aoo-stat[data-selected="true"] { outline: 3px solid var(--fg-1); outline-offset: 2px; }
 
+/* ---------- Trend chart / sparkline (<TrendChart> <Sparkline>) ----------
+ * สีตาม data-tone ของกราฟ · แท่ง = ค่ารายวัน (จาง) · เส้น = ค่าเฉลี่ย 7 วัน (เข้ม)
+ * เส้นใช้ vector-effect ให้ความหนาคงที่แม้ SVG ยืดตามความกว้าง */
+.aoo-trend { position: relative; }
+.aoo-trend__plot { position: relative; height: 180px; border-bottom: 1px solid var(--border-1); }
+.aoo-trend__plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.aoo-trend__bar { fill: var(--tone); opacity: 0.28; }
+.aoo-trend__bar[data-hover="true"] { opacity: 0.7; }
+.aoo-trend__line { fill: none; stroke: var(--tone); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.aoo-trend__raw { fill: none; stroke: var(--tone); stroke-width: 1.25; opacity: 0.4; vector-effect: non-scaling-stroke; }
+.aoo-trend__guide { stroke: var(--fg-3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.aoo-trend__ymax { position: absolute; left: 0; top: -2px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__tip {
+  position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
+  padding: 4px 8px; border-radius: var(--r-sm); background: var(--fg-1); color: var(--bg-surface);
+  font-size: 12px; line-height: 1.4; box-shadow: var(--shadow-md); z-index: 2;
+}
+.aoo-trend__legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--tone); }
+.aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
+/* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
+.aoo-delta { font-size: 12px; color: var(--tone-ink); }
+.aoo-delta[data-tone="muted"] { color: var(--fg-3); }
+.aoo-spark { display: block; width: 100%; height: 36px; }
+.aoo-spark polyline { fill: none; stroke: var(--tone); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+
 /* ---------- Card title icon chip (<CardTitle icon tone>) ---------- */
 .aoo-title-icon {
   display: inline-flex;

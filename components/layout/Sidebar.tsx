@@ -146,6 +146,16 @@ const navSections: NavSection[] = [
           { label: 'รุ่น/คอร์ส', href: '/websites/courses', icon: subIcon(Layers) },
         ],
       },
+      {
+        label: 'SEO / AEO',
+        icon: icon(TrendingUp),
+        // ผลบน Google ของเว็บที่ทำ SEO ให้ — งานส่วนตัวของเจ้าของ ใช้สิทธิ์เดียวกับ AOO Website
+        roles: ['website'],
+        subItems: [
+          { label: 'ภาพรวม', href: '/seo', icon: subIcon(TrendingUp) },
+          { label: 'ตั้งค่าเว็บ', href: '/seo/settings', icon: subIcon(Settings) },
+        ],
+      },
     ],
   },
   {

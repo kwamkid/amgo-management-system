@@ -2802,6 +2802,36 @@ export type Database = {
           },
         ]
       }
+      seo_api_costs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          endpoint: string
+          id: number
+          note: string | null
+          provider: string
+          units: number
+        }
+        Insert: {
+          cost_usd: number
+          created_at?: string
+          endpoint: string
+          id?: never
+          note?: string | null
+          provider: string
+          units?: number
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          endpoint?: string
+          id?: never
+          note?: string | null
+          provider?: string
+          units?: number
+        }
+        Relationships: []
+      }
       seo_gsc_daily: {
         Row: {
           clicks: number
@@ -2880,6 +2910,204 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seo_keywords: {
+        Row: {
+          created_at: string
+          group_name: string | null
+          id: string
+          is_tracked: boolean
+          keyword: string
+          priority: number
+          search_volume: number | null
+          site_id: string
+          target_page_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          is_tracked?: boolean
+          keyword: string
+          priority?: number
+          search_volume?: number | null
+          site_id: string
+          target_page_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          is_tracked?: boolean
+          keyword?: string
+          priority?: number
+          search_volume?: number | null
+          site_id?: string
+          target_page_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_keywords_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_keywords_target_page_id_fkey"
+            columns: ["target_page_id"]
+            isOneToOne: false
+            referencedRelation: "seo_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_pages: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          path: string
+          site_id: string
+          target_intent: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          path: string
+          site_id: string
+          target_intent?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          path?: string
+          site_id?: string
+          target_intent?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_pages_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_rank_snapshots: {
+        Row: {
+          ai_overview_cites_us: boolean
+          ai_overview_refs: Json | null
+          checked_on: string
+          cost_usd: number | null
+          created_at: string
+          device: string
+          has_ai_overview: boolean
+          id: number
+          keyword_id: string
+          position: number | null
+          ranked_url: string | null
+          top_competitors: Json | null
+        }
+        Insert: {
+          ai_overview_cites_us?: boolean
+          ai_overview_refs?: Json | null
+          checked_on: string
+          cost_usd?: number | null
+          created_at?: string
+          device?: string
+          has_ai_overview?: boolean
+          id?: never
+          keyword_id: string
+          position?: number | null
+          ranked_url?: string | null
+          top_competitors?: Json | null
+        }
+        Update: {
+          ai_overview_cites_us?: boolean
+          ai_overview_refs?: Json | null
+          checked_on?: string
+          cost_usd?: number | null
+          created_at?: string
+          device?: string
+          has_ai_overview?: boolean
+          id?: never
+          keyword_id?: string
+          position?: number | null
+          ranked_url?: string | null
+          top_competitors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_rank_snapshots_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "seo_keywords"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_rank_tasks: {
+        Row: {
+          device: string
+          error: string | null
+          keyword_id: string
+          posted_at: string
+          status: string
+          task_id: string
+        }
+        Insert: {
+          device?: string
+          error?: string | null
+          keyword_id: string
+          posted_at?: string
+          status?: string
+          task_id: string
+        }
+        Update: {
+          device?: string
+          error?: string | null
+          keyword_id?: string
+          posted_at?: string
+          status?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_rank_tasks_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "seo_keywords"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_settings: {
+        Row: {
+          id: boolean
+          monthly_budget_usd: number
+          rank_device: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          monthly_budget_usd?: number
+          rank_device?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          monthly_budget_usd?: number
+          rank_device?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       seo_sites: {
         Row: {

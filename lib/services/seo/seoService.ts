@@ -238,3 +238,171 @@ export const fmtGscDate = (d?: string | null) =>
 
 export const fmtNum = (n: number) => n.toLocaleString('th-TH')
 export const fmtCtr = (r: number) => `${(r * 100).toFixed(1)}%`
+
+// ── เฟส 2: คำเป้าหมาย + อันดับ (DataForSEO) ─────────────────────────────
+
+export interface RankSnapshot {
+  checkedOn: string
+  position: number | null
+  rankedUrl: string | null
+  hasAiOverview: boolean
+  aiOverviewCitesUs: boolean
+  aiOverviewRefs: { domain: string; url: string }[]
+  topCompetitors: { rank: number; domain: string; url: string; title: string }[]
+  /** false = ได้มาแค่อันดับ (ประวัติที่นำเข้าจาก seo-system เดิม) ไม่มีคู่แข่ง/AI Overview */
+  detailed: boolean
+}
+
+export interface TargetKeyword {
+  id: string
+  keyword: string
+  groupName: string
+  searchVolume: number | null
+  targetPath: string | null
+  priority: number
+  isTracked: boolean
+  /** ใหม่ → เก่า */
+  snapshots: RankSnapshot[]
+  pending: boolean
+}
+
+export interface SeoSettings {
+  monthlyBudgetUsd: number
+  rankDevice: 'mobile' | 'desktop'
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]> {
+  const { data: kws, error } = await sb()
+    .from('seo_keywords')
+    .select('id, keyword, group_name, search_volume, priority, is_tracked, seo_pages(path)')
+    .eq('site_id', siteId)
+    .order('priority')
+    .order('search_volume', { ascending: false, nullsFirst: false })
+  if (error) throw new Error(error.message)
+  const ids = (kws ?? []).map((k) => k.id)
+  if (!ids.length) return []
+
+  const since = new Date(Date.now() - 180 * 24 * 3600_000).toISOString().slice(0, 10)
+  const [{ data: snaps }, { data: pending }] = await Promise.all([
+    sb()
+      .from('seo_rank_snapshots')
+      .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors')
+      .in('keyword_id', ids)
+      .gte('checked_on', since)
+      .order('checked_on', { ascending: false })
+      .limit(1000),
+    sb().from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
+  ])
+  const byKw = new Map<string, RankSnapshot[]>()
+  for (const s of snaps ?? []) {
+    const list = byKw.get(s.keyword_id) ?? []
+    list.push({
+      checkedOn: s.checked_on,
+      position: s.position,
+      rankedUrl: s.ranked_url,
+      hasAiOverview: s.has_ai_overview,
+      aiOverviewCitesUs: s.ai_overview_cites_us,
+      aiOverviewRefs: (s.ai_overview_refs as any) ?? [],
+      topCompetitors: (s.top_competitors as any) ?? [],
+      detailed: s.top_competitors != null,
+    })
+    byKw.set(s.keyword_id, list)
+  }
+  const pend = new Set((pending ?? []).map((p) => p.keyword_id))
+  return (kws ?? []).map((k: any) => ({
+    id: k.id,
+    keyword: k.keyword,
+    groupName: k.group_name ?? '',
+    searchVolume: k.search_volume,
+    targetPath: k.seo_pages?.path ?? null,
+    priority: k.priority,
+    isTracked: k.is_tracked,
+    snapshots: byKw.get(k.id) ?? [],
+    pending: pend.has(k.id),
+  }))
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** หา/สร้างหน้าเป้าหมายจาก path — คืน id (path ว่าง = null) */
+async function ensurePage(siteId: string, path: string): Promise<string | null> {
+  const clean = path.trim()
+  if (!clean) return null
+  const normalized = clean.startsWith('/') ? clean : `/${clean}`
+  const { data, error } = await sb()
+    .from('seo_pages')
+    .upsert({ site_id: siteId, path: normalized }, { onConflict: 'site_id,path' })
+    .select('id')
+    .single()
+  if (error) throw new Error(error.message)
+  return data.id
+}
+
+/**
+ * เพิ่มคำทีละหลายคำ — 1 บรรทัด 1 คำ · ใส่ยอดค้นหาท้ายบรรทัดได้ "รวมแชท, 210"
+ * คำที่มีอยู่แล้วจะอัปเดตกลุ่ม/หน้า/ยอดค้นหาแทนการเพิ่มซ้ำ
+ */
+export async function addTargetKeywords(
+  siteId: string,
+  input: { lines: string; groupName: string; targetPath: string; priority: number }
+): Promise<number> {
+  const pageId = await ensurePage(siteId, input.targetPath)
+  const rows = input.lines
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const m = l.match(/^(.*?)[,\t]\s*([\d,]+)\s*$/)
+      const keyword = (m ? m[1] : l).trim().toLowerCase()
+      const vol = m ? Number(m[2].replace(/,/g, '')) : null
+      return {
+        site_id: siteId,
+        keyword,
+        group_name: input.groupName.trim() || null,
+        target_page_id: pageId,
+        priority: input.priority,
+        ...(vol != null ? { search_volume: vol } : {}),
+      }
+    })
+  if (!rows.length) return 0
+  const { error } = await sb().from('seo_keywords').upsert(rows, { onConflict: 'site_id,keyword' })
+  if (error) throw new Error(error.message)
+  return rows.length
+}
+
+export async function setKeywordTracked(id: string, isTracked: boolean) {
+  const { error } = await sb().from('seo_keywords').update({ is_tracked: isTracked }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteTargetKeyword(id: string) {
+  const { error } = await sb().from('seo_keywords').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function getSeoSettings(): Promise<SeoSettings> {
+  const { data } = await sb().from('seo_settings').select('monthly_budget_usd, rank_device').maybeSingle()
+  return {
+    monthlyBudgetUsd: Number(data?.monthly_budget_usd ?? 10),
+    rankDevice: (data?.rank_device ?? 'mobile') as 'mobile' | 'desktop',
+  }
+}
+
+export async function saveSeoSettings(s: SeoSettings) {
+  const { error } = await sb()
+    .from('seo_settings')
+    .update({ monthly_budget_usd: s.monthlyBudgetUsd, rank_device: s.rankDevice, updated_at: new Date().toISOString() })
+    .eq('id', true)
+  if (error) throw new Error(error.message)
+}
+
+/** ค่า API เดือนนี้ (เวลาไทย) */
+export async function getMonthApiSpend(): Promise<number> {
+  const now = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' }).format(new Date())
+  const start = new Date(`${now}-01T00:00:00+07:00`).toISOString()
+  const { data } = await sb().from('seo_api_costs').select('cost_usd').gte('created_at', start)
+  return (data ?? []).reduce((s, r) => s + Number(r.cost_usd), 0)
+}
+
+/** อันดับเป็นข้อความ — null = ไม่ติด 100 */
+export const fmtRank = (p: number | null | undefined) => (p == null ? 'ไม่ติด' : `#${p}`)

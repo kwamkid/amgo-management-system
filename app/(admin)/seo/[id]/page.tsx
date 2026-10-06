@@ -12,6 +12,7 @@ import { Eye, MousePointerClick, Percent, RefreshCw, TrendingUp } from 'lucide-r
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Input, TabBar, TabItem } from '@/components/aoo'
+import TargetKeywords from './TargetKeywords'
 import {
   DataTable,
   PageHeader,
@@ -98,7 +99,9 @@ export default function SeoSitePage() {
   const [range, setRange] = useState('28')
   const [mode, setMode] = useState<CompareMode>('prev')
   const [metric, setMetric] = useState('clicks')
-  const [dim, setDim] = useState<'query' | 'page'>('query')
+  // แท็บแรก = คำเป้าหมาย เพราะเว็บใหม่ยังไม่มีข้อมูล GSC ให้ดู
+  const [tab, setTab] = useState<'target' | 'query' | 'page'>('target')
+  const dim: 'query' | 'page' = tab === 'page' ? 'page' : 'query'
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [rows, setRows] = useState<CompareRow[] | null>(null)
@@ -388,58 +391,71 @@ export default function SeoSitePage() {
             />
           </SectionCard>
 
-          <TabBar ariaLabel="มุมมอง" className="mb-3">
-            <TabItem active={dim === 'query'} onClick={() => setDim('query')} label="คำค้นที่ Google เจอเรา" />
-            <TabItem active={dim === 'page'} onClick={() => setDim('page')} label="หน้า" />
-          </TabBar>
+        </>
+      )}
 
-          {!canCompare && (
-            <Alert tone="info" compact className="mb-3">
-              ตารางนี้แสดงแค่ {tableDays} วันล่าสุด ไม่มีตัวเลขเทียบ — ระบบเก็บคำค้นย้อนหลังแค่ {DETAIL_DAYS} วัน
-              จึงเทียบได้เฉพาะ &quot;เทียบช่วงก่อน&quot; แบบ 7 หรือ 28 วัน (การ์ดกับกราฟด้านบนเทียบได้ทุกแบบ)
-            </Alert>
-          )}
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            {canCompare && (
-            <Segmented
-              value={filter}
-              onChange={(v) => {
-                setFilter(v)
-                setShown(PAGE_SIZE)
-              }}
-              options={FILTERS.map((f) => ({ ...f, label: `${f.label} ${rows ? counts[f.value] : ''}`.trim() }))}
-            />
-            )}
-            <div className="sm:w-64">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={dim === 'query' ? 'ค้นคำ…' : 'ค้นหน้า…'}
-              />
-            </div>
-          </div>
+      <TabBar ariaLabel="มุมมอง" className="mb-3 mt-2">
+        <TabItem active={tab === 'target'} onClick={() => setTab('target')} label="คำเป้าหมาย (อันดับ)" />
+        <TabItem active={tab === 'query'} onClick={() => setTab('query')} label="คำค้นที่ Google เจอเรา" />
+        <TabItem active={tab === 'page'} onClick={() => setTab('page')} label="หน้า" />
+      </TabBar>
 
-          <DataTable
-            columns={columns}
-            rows={filtered.slice(0, shown)}
-            rowKey={(r) => r.key}
-            loading={rows === null}
-            emptyTitle="ไม่มีรายการในตัวกรองนี้"
-            footer={
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
-                <span>
-                  แสดง {Math.min(shown, filtered.length)} จาก {filtered.length} รายการ · ไม่รวมคำค้นที่ Google
-                  ซ่อนไว้ (ค้นน้อยมาก) ยอดรวมด้านบนจึงสูงกว่าผลรวมในตาราง
-                  {rows && rows.length >= 1000 ? ' · แสดง 1,000 อันดับแรกตามคลิก' : ''}
-                </span>
-                {shown < filtered.length && (
-                  <Button size="sm" variant="secondary" onClick={() => setShown(shown + PAGE_SIZE)}>
-                    แสดงเพิ่ม
-                  </Button>
-                )}
-              </div>
-            }
+      {tab === 'target' ? (
+        <TargetKeywords site={site} />
+      ) : !per || !stats ? (
+        <SectionCard>
+          <p className="text-sm text-gray-500">ยังไม่มีข้อมูลจาก Search Console — Google ยังไม่เคยแสดงเว็บนี้ หรือยังไม่ได้ดึงข้อมูล</p>
+        </SectionCard>
+      ) : (
+        <>
+
+      {!canCompare && (
+        <Alert tone="info" compact className="mb-3">
+          ตารางนี้แสดงแค่ {tableDays} วันล่าสุด ไม่มีตัวเลขเทียบ — ระบบเก็บคำค้นย้อนหลังแค่ {DETAIL_DAYS} วัน
+          จึงเทียบได้เฉพาะ &quot;เทียบช่วงก่อน&quot; แบบ 7 หรือ 28 วัน (การ์ดกับกราฟด้านบนเทียบได้ทุกแบบ)
+        </Alert>
+      )}
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        {canCompare && (
+        <Segmented
+          value={filter}
+          onChange={(v) => {
+            setFilter(v)
+            setShown(PAGE_SIZE)
+          }}
+          options={FILTERS.map((f) => ({ ...f, label: `${f.label} ${rows ? counts[f.value] : ''}`.trim() }))}
+        />
+        )}
+        <div className="sm:w-64">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={dim === 'query' ? 'ค้นคำ…' : 'ค้นหน้า…'}
           />
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns}
+        rows={filtered.slice(0, shown)}
+        rowKey={(r) => r.key}
+        loading={rows === null}
+        emptyTitle="ไม่มีรายการในตัวกรองนี้"
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+            <span>
+              แสดง {Math.min(shown, filtered.length)} จาก {filtered.length} รายการ · ไม่รวมคำค้นที่ Google
+              ซ่อนไว้ (ค้นน้อยมาก) ยอดรวมด้านบนจึงสูงกว่าผลรวมในตาราง
+              {rows && rows.length >= 1000 ? ' · แสดง 1,000 อันดับแรกตามคลิก' : ''}
+            </span>
+            {shown < filtered.length && (
+              <Button size="sm" variant="secondary" onClick={() => setShown(shown + PAGE_SIZE)}>
+                แสดงเพิ่ม
+              </Button>
+            )}
+          </div>
+        }
+      />
         </>
       )}
     </div>

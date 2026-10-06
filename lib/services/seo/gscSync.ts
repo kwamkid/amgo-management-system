@@ -169,9 +169,13 @@ async function claim(sb: SupabaseClient, siteId: string): Promise<boolean> {
  * ดึงข้อมูลของเว็บที่ส่งมา (หรือทุกเว็บที่เปิดใช้) — คืนผลทุกเว็บพร้อมเหตุผล
  * sb ต้องเป็น service role (เขียนตาราง seo_gsc_* ได้เฉพาะ service role)
  */
-export async function syncGsc(sb: SupabaseClient, opts: { siteId?: string } = {}): Promise<SyncResult[]> {
+export async function syncGsc(
+  sb: SupabaseClient,
+  opts: { siteId?: string; budgetMs?: number } = {}
+): Promise<SyncResult[]> {
   const startedAt = Date.now()
-  const timeLeft = () => RUN_BUDGET_MS - (Date.now() - startedAt)
+  const budget = opts.budgetMs ?? RUN_BUDGET_MS
+  const timeLeft = () => budget - (Date.now() - startedAt)
 
   let q = sb
     .from('seo_sites')

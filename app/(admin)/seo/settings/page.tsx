@@ -16,8 +16,12 @@ import { DataTable, PageHeader, SectionCard, SiteFavicon, TechLoader, type Colum
 import {
   deleteSeoSite,
   fmtGscDate,
+  getMonthApiSpend,
+  getSeoSettings,
   getSeoSites,
+  saveSeoSettings,
   saveSeoSite,
+  type SeoSettings,
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
@@ -36,6 +40,9 @@ export default function SeoSettingsPage() {
   const [checking, setChecking] = useState(false)
   const [editing, setEditing] = useState<(typeof EMPTY & { id?: string }) | null>(null)
   const [saving, setSaving] = useState(false)
+  const [budget, setBudget] = useState<SeoSettings | null>(null)
+  const [spend, setSpend] = useState(0)
+  const [savingBudget, setSavingBudget] = useState(false)
 
   const canSee = !!userData?.hasWebAccess
 
@@ -64,6 +71,25 @@ export default function SeoSettingsPage() {
       showToast((e as Error).message, 'error')
     } finally {
       setChecking(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!canSee) return
+    getSeoSettings().then(setBudget).catch(() => {})
+    getMonthApiSpend().then(setSpend).catch(() => {})
+  }, [canSee])
+
+  const saveBudget = async () => {
+    if (!budget) return
+    setSavingBudget(true)
+    try {
+      await saveSeoSettings(budget)
+      showToast('บันทึกแล้ว')
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setSavingBudget(false)
     }
   }
 
@@ -268,6 +294,45 @@ export default function SeoSettingsPage() {
                 <p className="mt-1 text-gray-400">ยังไม่เห็นสักเว็บ — เพิ่มอีเมลด้านบนใน GSC ก่อน</p>
               )}
             </div>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard
+        className="mb-6"
+        title="งบค่าเช็คอันดับ (DataForSEO)"
+        description="ทุกครั้งที่เช็คอันดับเสียเงิน · ถึงเพดานแล้วระบบหยุดเช็คจนถึงต้นเดือนหน้า และแจ้ง Discord"
+      >
+        {budget && (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="sm:w-48">
+              <Field label="เพดานต่อเดือน (USD)">
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={budget.monthlyBudgetUsd}
+                  onChange={(e) => setBudget({ ...budget, monthlyBudgetUsd: Number(e.target.value) })}
+                />
+              </Field>
+            </div>
+            <div className="sm:w-48">
+              <Field label="เช็คอันดับแบบ">
+                <Select
+                  value={budget.rankDevice}
+                  onChange={(e) => setBudget({ ...budget, rankDevice: e.target.value as SeoSettings['rankDevice'] })}
+                >
+                  <option value="mobile">มือถือ (คนไทยค้นจากมือถือเป็นหลัก)</option>
+                  <option value="desktop">คอมพิวเตอร์</option>
+                </Select>
+              </Field>
+            </div>
+            <Button loading={savingBudget} onClick={saveBudget}>
+              บันทึก
+            </Button>
+            <p className="text-sm text-gray-500 sm:ml-auto">
+              เดือนนี้ใช้ไป <b>${spend.toFixed(3)}</b> จาก ${budget.monthlyBudgetUsd.toFixed(2)}
+            </p>
           </div>
         )}
       </SectionCard>

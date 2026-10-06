@@ -324,6 +324,38 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+/** รอบเช็คล่าสุดของเว็บ — ไว้โชว์แผงคิว (กี่คำได้ผลแล้ว / ส่งเมื่อไหร่) */
+export interface RankQueue {
+  postedAt: string
+  total: number
+  done: number
+  failed: number
+  pending: number
+}
+
+export async function getRankQueue(siteId: string): Promise<RankQueue | null> {
+  const since = new Date(Date.now() - 2 * 24 * 3600_000).toISOString()
+  const { data, error } = await sb()
+    .from('seo_rank_tasks')
+    .select('status, posted_at, seo_keywords!inner(site_id)')
+    .eq('seo_keywords.site_id', siteId)
+    .gte('posted_at', since)
+    .order('posted_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  if (!data?.length) return null
+  // งานที่ส่งห่างจากงานล่าสุดไม่เกิน 10 นาที = รอบเดียวกัน
+  const newest = new Date(data[0].posted_at).getTime()
+  const batch = data.filter((t) => newest - new Date(t.posted_at).getTime() < 10 * 60_000)
+  const pending = batch.filter((t) => t.status === 'pending').length
+  return {
+    postedAt: data[0].posted_at,
+    total: batch.length,
+    done: batch.filter((t) => t.status === 'done').length,
+    failed: batch.filter((t) => t.status === 'failed').length,
+    pending,
+  }
+}
+
 /** หา/สร้างหน้าเป้าหมายจาก path — คืน id (path ว่าง = null) */
 async function ensurePage(siteId: string, path: string): Promise<string | null> {
   const clean = path.trim()

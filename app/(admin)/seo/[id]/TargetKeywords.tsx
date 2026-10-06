@@ -7,9 +7,9 @@
 // · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
+import { Bot, CheckCircle2, Loader2, Plus, Radar, Sparkles, Target, Trash2, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, Field, IconButton, Input, Modal, Pill, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
+import { Alert, Button, Field, IconButton, Input, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   addTargetKeywords,
@@ -17,8 +17,10 @@ import {
   fmtGscDate,
   fmtNum,
   fmtRank,
+  getRankQueue,
   getTargetKeywords,
   setKeywordTracked,
+  type RankQueue,
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
@@ -51,6 +53,14 @@ function delta(k: TargetKeyword): number | null {
   return (prev.position ?? 101) - (cur.position ?? 101)
 }
 
+/** ถามผลทุกกี่วิ ตอนมีงานรอ */
+const POLL_MS = 30_000
+/** รอบที่เสร็จแล้วยังโชว์แผงค้างไว้กี่นาที — ให้เห็นว่าจบแล้ว */
+const SHOW_DONE_MIN = 60
+
+const clock = (iso: string | number) =>
+  new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+
 const wrongPage = (k: TargetKeyword) => {
   const cur = k.snapshots[0]
   return !!(k.targetPath && cur?.rankedUrl && pathOf(cur.rankedUrl) !== k.targetPath)
@@ -66,14 +76,23 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [form, setForm] = useState({ lines: '', groupName: '', targetPath: '', priority: '2' })
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<TargetKeyword | null>(null)
+  const [queue, setQueue] = useState<RankQueue | null>(null)
+  const [lastPoll, setLastPoll] = useState<number | null>(null)
+  const [polling, setPolling] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  const loadQueue = () => getRankQueue(site.id).then(setQueue).catch(() => {})
 
   const load = () =>
-    getTargetKeywords(site.id)
-      .then(setRows)
-      .catch((e) => {
-        showToast(e.message, 'error')
-        setRows([])
-      })
+    Promise.all([
+      getTargetKeywords(site.id)
+        .then(setRows)
+        .catch((e) => {
+          showToast(e.message, 'error')
+          setRows([])
+        }),
+      loadQueue(),
+    ])
 
   useEffect(() => {
     load()
@@ -94,10 +113,8 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       const c = json.collected
       const p = json.posted
       if (silent) {
-        if (c.done || c.failed) {
-          showToast(`ได้ผลอันดับแล้ว ${c.done} คำ${c.failed ? ` · ล้มเหลว ${c.failed}` : ''}`, c.failed ? 'error' : 'success')
-          await load()
-        }
+        // ได้ผลบางคำ = โหลดตารางใหม่ · ยังไม่ได้ = อัปเดตแค่แผงคิว
+        await (c.done || c.failed ? load() : loadQueue())
         return
       }
       const parts = [
@@ -113,16 +130,29 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       if (!silent) showToast((e as Error).message, 'error')
     } finally {
       if (!silent) setBusy(null)
+      setLastPoll(Date.now())
     }
+  }
+
+  const pollNow = async () => {
+    setPolling(true)
+    await call('collect', true)
+    setPolling(false)
   }
 
   // มีคำรอผล = ดึงผลให้เองทุก 30 วิ เหมือนหน้าคิวงานปลั๊กอิน (ถามผลไม่เสียเงิน)
   // หยุดเองเมื่อไม่มีงานค้าง หรือออกจากหน้า
-  const pendingCount = rows?.filter((k) => k.pending).length ?? 0
+  const pendingCount = queue?.pending ?? 0
   useEffect(() => {
     if (!pendingCount) return
-    const t = setInterval(() => call('collect', true), 30_000)
-    return () => clearInterval(t)
+    setLastPoll(Date.now())
+    const t = setInterval(pollNow, POLL_MS)
+    // นาฬิกาสำหรับนับถอยหลัง "ถามผลอีกกี่วิ"
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    return () => {
+      clearInterval(t)
+      clearInterval(tick)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCount, site.id])
 
@@ -224,7 +254,14 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => {
         const cur = k.snapshots[0]
         const d = delta(k)
-        if (!cur) return <span className="text-gray-400">{k.pending ? 'รอผล…' : 'ยังไม่เช็ค'}</span>
+        if (k.pending)
+          return (
+            <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-gray-400">
+              <Loader2 size={14} className="animate-spin" />
+              กำลังเช็ค
+            </span>
+          )
+        if (!cur) return <span className="text-gray-400">ยังไม่เช็ค</span>
         const tone = d == null || d === 0 ? undefined : d > 0 ? 'success' : 'danger'
         return (
           <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -311,6 +348,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((k) => k.isTracked).length
+  const showQueue =
+    !!queue && (queue.pending > 0 || now - new Date(queue.postedAt).getTime() < SHOW_DONE_MIN * 60_000)
+  const nextIn = lastPoll ? Math.max(0, Math.ceil((lastPoll + POLL_MS - now) / 1000)) : null
 
   return (
     <div>
@@ -319,7 +359,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <p className="text-xs text-gray-400">
           เช็คอัตโนมัติสัปดาห์ละครั้ง (Google ประเทศไทย) · ติดตาม {tracked} คำ
           {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
-          {stats.pending ? ` · ⏳ กำลังรอผล ${stats.pending} คำ (ดึงให้เองทุก 30 วิ)` : ''}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" icon={Plus} onClick={() => setAdding(true)}>
@@ -330,6 +369,45 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
           </Button>
         </div>
       </div>
+
+      {showQueue && queue && (
+        <Alert
+          className="mb-3"
+          tone={queue.pending ? 'info' : queue.failed ? 'warning' : 'success'}
+          hideIcon
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {queue.pending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+              {queue.pending
+                ? `กำลังเช็คอันดับ — ได้ผลแล้ว ${queue.done + queue.failed}/${queue.total} คำ`
+                : `เช็คเสร็จแล้ว ${queue.done}/${queue.total} คำ${queue.failed ? ` · ล้มเหลว ${queue.failed}` : ''}`}
+            </span>
+          }
+          action={
+            queue.pending ? (
+              <Button size="sm" variant="secondary" loading={polling} onClick={pollNow}>
+                ถามผลตอนนี้
+              </Button>
+            ) : undefined
+          }
+        >
+          <Progress
+            className="my-2"
+            value={queue.done + queue.failed}
+            max={queue.total}
+            tone={queue.pending ? 'info' : 'success'}
+            aria-label="ความคืบหน้าการเช็คอันดับ"
+          />
+          <div className="text-xs">
+            ส่งเข้าคิวเมื่อ {clock(queue.postedAt)}
+            {queue.pending
+              ? ` · Google ค้นในคิว ปกติ 5–30 นาที · ถามผลให้เองทุก 30 วิ${
+                  lastPoll ? ` (ล่าสุด ${clock(lastPoll)} · อีก ${nextIn} วิ)` : ''
+                } · ปิดหน้านี้ได้ ผลไม่หาย`
+              : ''}
+          </div>
+        </Alert>
+      )}
 
       {rows && rows.length > 0 && (
         <StatGrid cols={4}>

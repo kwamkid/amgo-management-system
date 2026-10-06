@@ -14,7 +14,7 @@ import { Eye, MousePointerClick, Percent, RefreshCw, Search, Settings, TrendingU
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, EmptyState, Pill } from '@/components/aoo'
-import { PageHeader, SectionCard, Segmented, Sparkline, StatCard, StatGrid, TechLoader } from '@/components/shared'
+import { PageHeader, SectionCard, Segmented, SiteFavicon, Sparkline, StatCard, StatGrid, TechLoader } from '@/components/shared'
 import {
   addDays,
   COMPARE_OPTIONS,
@@ -156,6 +156,7 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
     <SectionCard
       title={
         <div className="flex flex-wrap items-center gap-2">
+          <SiteFavicon domain={site.domain} />
           <Link href={`/seo/${site.id}`} className="text-base font-bold text-gray-900 hover:underline">
             {site.displayName}
           </Link>
@@ -167,7 +168,7 @@ function SiteCard({ site, rows, days, mode }: { site: SeoSite; rows: DailyTotal[
       description={
         site.syncedThrough
           ? `ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (วันตามเวลา US — Google ช้า 2–3 วัน) · ${mode === 'yoy' ? 'เทียบช่วงเดียวกันปีที่แล้ว' : `เทียบ ${days} วันก่อนหน้า`}`
-          : 'ยังไม่มีข้อมูล — กด "ดึงข้อมูลตอนนี้" หรือรอรอบ 05:00'
+          : 'ยังไม่มีข้อมูล — กด "ดึงข้อมูลตอนนี้" หรือรอรอบ 04:00'
       }
     >
       {site.lastError && (

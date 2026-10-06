@@ -56,7 +56,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nigh
 | 7 | เช็คเว็บล่ม | ทุกชั่วโมง | เว็บ |
 | 8 | อวยพรวันเกิดพนักงาน | 09:30 | คน |
 | 9 | เตือนให้เช็คเอาท์ (push) — **ต้องเพิ่มเอง** (30 ก.ย. 69) | ทุก 15 นาที | คน |
-| 10 | ดึงผล Google Search Console (เมนู SEO / AEO) — **ต้องเพิ่มเอง** (6 ต.ค. 69) | 05:00 | SEO |
+| 10 | ดึงผล Google Search Console (เมนู SEO / AEO) — ตั้งแล้ว 6 ต.ค. 69 | 04:00 | SEO |
 
 ### งานที่ 9 · เตือนให้เช็คเอาท์ (push)
 
@@ -82,7 +82,7 @@ PC ที่อยู่ทำ OT ถึงห้างปิดเป็นป�
 |---|---|
 | Title | `AMGO — SEO ดึง GSC รายวัน` |
 | URL | `https://app.amgovenger.com/api/cron/seo/gsc-daily` |
-| Schedule | Every day at 05:00 |
+| Schedule | Every day at 04:00 |
 | Timezone | `Asia/Bangkok` |
 | Request method | `GET` |
 | Header | `Authorization: Bearer <CRON_SECRET>` |

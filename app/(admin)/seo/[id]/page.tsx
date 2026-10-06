@@ -17,6 +17,7 @@ import {
   PageHeader,
   SectionCard,
   Segmented,
+  SiteFavicon,
   StatCard,
   StatGrid,
   TechLoader,
@@ -316,7 +317,12 @@ export default function SeoSitePage() {
   return (
     <div>
       <PageHeader
-        title={site.displayName}
+        title={
+          <span className="flex items-center gap-2">
+            <SiteFavicon domain={site.domain} size={24} />
+            {site.displayName}
+          </span>
+        }
         description={`${site.domain} · ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (เวลา US)`}
         icon={TrendingUp}
         backHref="/seo"

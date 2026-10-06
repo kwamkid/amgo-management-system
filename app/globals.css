@@ -842,6 +842,7 @@ button.aoo-stat:active { filter: brightness(0.88); }
 /* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
 .aoo-delta { font-size: 12px; color: var(--tone-ink); }
 .aoo-delta[data-tone="muted"] { color: var(--fg-3); }
+.aoo-favicon { display: inline-block; flex-shrink: 0; border-radius: 4px; vertical-align: middle; }
 .aoo-spark { display: block; width: 100%; height: 36px; }
 .aoo-spark polyline { fill: none; stroke: var(--tone); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 

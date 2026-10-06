@@ -2,7 +2,7 @@
 //
 // ดึงข้อมูล Google Search Console ของทุกเว็บในเมนู SEO / AEO
 //
-//   GET  — cron-job.org ทุกวัน 05:00 ส่ง Authorization: Bearer <CRON_SECRET>
+//   GET  — cron-job.org ทุกวัน 04:00 ส่ง Authorization: Bearer <CRON_SECRET>
 //   POST — เจ้าของกดดึงเองจากหน้าเว็บ (ต้องอยู่ใน web_owners) · body { siteId? }
 //
 // รอบเดียวอาจ backfill 16 เดือนไม่จบ — จดความคืบหน้าไว้ รอบถัดไปทำต่อเอง

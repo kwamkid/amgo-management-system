@@ -12,7 +12,7 @@ import { Copy, Pencil, Plus, ShieldCheck, Trash2, TrendingUp } from 'lucide-reac
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Field, IconButton, Input, Modal, Pill, Select, Toggle, useConfirm } from '@/components/aoo'
-import { DataTable, PageHeader, SectionCard, TechLoader, type Column } from '@/components/shared'
+import { DataTable, PageHeader, SectionCard, SiteFavicon, TechLoader, type Column } from '@/components/shared'
 import {
   deleteSeoSite,
   fmtGscDate,
@@ -118,9 +118,12 @@ export default function SeoSettingsPage() {
       header: 'เว็บ',
       mobilePrimary: true,
       cell: (s) => (
-        <div>
-          <div className="font-medium text-gray-900">{s.displayName}</div>
-          <div className="text-xs text-gray-400">{s.domain}</div>
+        <div className="flex items-center gap-2">
+          <SiteFavicon domain={s.domain} />
+          <div>
+            <div className="font-medium text-gray-900">{s.displayName}</div>
+            <div className="text-xs text-gray-400">{s.domain}</div>
+          </div>
         </div>
       ),
     },

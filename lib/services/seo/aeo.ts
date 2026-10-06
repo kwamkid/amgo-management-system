@@ -14,11 +14,13 @@ const API = 'https://api.dataforseo.com/v3/ai_optimization'
 
 export type AeoEngine = 'chatgpt' | 'perplexity' | 'gemini'
 
-export const AEO_ENGINES: { key: AeoEngine; label: string; path: string; model: string; estCost: number }[] = [
+/** models = ลองตามลำดับ — ตัวแรกติด rate limit / ล่ม (ฝั่งผู้ให้บริการ) ใช้ตัวถัดไป */
+export const AEO_ENGINES: { key: AeoEngine; label: string; path: string; models: string[]; estCost: number }[] = [
   // gpt-5-mini: ถูกกว่าและตอบด้วยเว็บจริง — gpt-4o-mini ชอบตอบชื่อร้านลอย ๆ + ลิงก์ Google Maps (ทดสอบ 6 ต.ค. 69)
-  { key: 'chatgpt', label: 'ChatGPT', path: 'chat_gpt', model: 'gpt-5-mini', estCost: 0.02 },
-  { key: 'perplexity', label: 'Perplexity', path: 'perplexity', model: 'sonar', estCost: 0.01 },
-  { key: 'gemini', label: 'Gemini', path: 'gemini', model: 'gemini-2.5-flash', estCost: 0.04 },
+  { key: 'chatgpt', label: 'ChatGPT', path: 'chat_gpt', models: ['gpt-5-mini', 'gpt-5.4-mini'], estCost: 0.02 },
+  { key: 'perplexity', label: 'Perplexity', path: 'perplexity', models: ['sonar'], estCost: 0.01 },
+  // gemini-2.5-flash ติด rate_limit_exceeded ทั้งวัน 7 ต.ค. 69 → ใช้ 3.5-flash-lite เป็นหลัก
+  { key: 'gemini', label: 'Gemini', path: 'gemini', models: ['gemini-3.5-flash-lite', 'gemini-2.5-flash'], estCost: 0.04 },
 ]
 
 /** เก็บคำตอบไว้ไม่เกินเท่านี้ — พอให้อ่านว่า AI พูดถึงใครบ้าง */
@@ -49,10 +51,24 @@ function sourceDomain(url: string, title: string) {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function askAi(engine: AeoEngine, prompt: string): Promise<AeoAnswer> {
   const cfg = AEO_ENGINES.find((e) => e.key === engine)!
+  let lastErr: Error | null = null
+  for (const model of cfg.models) {
+    try {
+      return await askModel(cfg, model, prompt)
+    } catch (e) {
+      lastErr = e as Error
+      // ลองรุ่นถัดไปเฉพาะตอนฝั่งผู้ให้บริการไม่พร้อม (5xxxx) — คำถามผิด/เงินหมด ไม่ต้องลองต่อ
+      if (!/\b5\d{4}\b|rate_limit|unavailable/i.test(lastErr.message)) throw lastErr
+    }
+  }
+  throw lastErr ?? new Error(`${cfg.label}: ไม่มีรุ่นให้ใช้`)
+}
+
+async function askModel(cfg: (typeof AEO_ENGINES)[number], model: string, prompt: string): Promise<AeoAnswer> {
   const res = await fetch(`${API}/${cfg.path}/llm_responses/live`, {
     method: 'POST',
     headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify([{ user_prompt: prompt, model_name: cfg.model, web_search: true }]),
+    body: JSON.stringify([{ user_prompt: prompt, model_name: model, web_search: true }]),
     // ปกติ 5–15 วิ · ตัดที่ 18 วิ ไม่ให้งาน cron เกิน 60 วิ ของ Vercel (ครั้งที่หลุดถามใหม่รอบหน้า)
     signal: AbortSignal.timeout(18_000),
   })
@@ -81,7 +97,7 @@ export async function askAi(engine: AeoEngine, prompt: string): Promise<AeoAnswe
     text: texts.join('\n\n').slice(0, MAX_ANSWER),
     sources: unique.slice(0, 30),
     cost: Number(t.cost ?? 0),
-    model: r.model_name ?? cfg.model,
+    model: r.model_name ?? model,
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

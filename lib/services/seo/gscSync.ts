@@ -36,6 +36,8 @@ const BACKFILL_CHUNK_DAYS = 14
 export const RUN_BUDGET_MS = 40_000
 /** เหลือเวลาไม่ถึงนี้ ไม่เริ่มก้อน backfill ใหม่ — ก้อนของ adayfresh (ยอดรวม + คำค้น 14 วัน ~25,000 แถว) ใช้ ~12–15 วิ */
 const MIN_CHUNK_MS = 20_000
+/** ช่วงล่าสุดต่อเว็บใช้ ~5–8 วิ — เหลือน้อยกว่านี้ไม่เริ่มเว็บใหม่ ปล่อยให้รอบต่อไป */
+const MIN_RECENT_MS = 10_000
 /** ล็อกเก่ากว่านี้ = รอบก่อนโดนตัดกลางคัน ถือว่าว่าง */
 const LOCK_STALE_MS = 2 * 60_000
 const INSERT_BATCH = 1000
@@ -180,7 +182,8 @@ export async function syncGsc(
   let q = sb
     .from('seo_sites')
     .select('id, domain, display_name, gsc_property, is_active, synced_through, backfill_from, backfill_done, last_error')
-    .order('created_at')
+    // ดึงนานสุดก่อน — รอบไหนเวลาไม่พอ เว็บที่ค้างได้คิวแรกรอบถัดไป (7 เว็บใช้เกิน 60 วิ เมื่อ 7 ต.ค. 69)
+    .order('last_synced_at', { ascending: true, nullsFirst: true })
   q = opts.siteId ? q.eq('id', opts.siteId) : q.eq('is_active', true)
   const { data: sites, error } = await q
   if (error) throw new Error(error.message)
@@ -229,8 +232,13 @@ export async function syncGsc(
     }
   }
 
-  // 1) ช่วงล่าสุด — ทุกเว็บก่อน backfill เสมอ
+  // 1) ช่วงล่าสุด — ทุกเว็บก่อน backfill เสมอ · เวลาไม่พอ = เลื่อนเว็บที่เหลือไปรอบต่อไป
+  const deferred = new Set<string>()
   for (const site of working) {
+    if (timeLeft() < MIN_RECENT_MS) {
+      deferred.add(site.id)
+      continue
+    }
     try {
       let from = addDays(today, -RECENT_DAYS)
       if (site.synced_through) from = minDate(from, addDays(site.synced_through, -RECENT_DAYS + 1))
@@ -264,7 +272,7 @@ export async function syncGsc(
   while (progressed && timeLeft() > MIN_CHUNK_MS) {
     progressed = false
     for (const site of working) {
-      if (failed.has(site.id) || site.backfill_done || timeLeft() <= MIN_CHUNK_MS) continue
+      if (failed.has(site.id) || deferred.has(site.id) || site.backfill_done || timeLeft() <= MIN_CHUNK_MS) continue
       try {
         if (!totalsDone.has(site.id)) {
           await pullTotals(sb, site, earliest, addDays(site.backfill_from!, -1))
@@ -297,6 +305,10 @@ export async function syncGsc(
   for (const site of working) {
     if (failed.has(site.id)) continue
     await sb.from('seo_sites').update({ sync_locked_at: null }).eq('id', site.id)
+    if (deferred.has(site.id)) {
+      results.push({ site: site.domain, status: 'skipped', detail: 'เวลาไม่พอ — ดึงต่อรอบถัดไป' })
+      continue
+    }
     const n = notes.get(site.id) ?? []
     n.push(
       site.backfill_done

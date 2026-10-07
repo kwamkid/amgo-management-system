@@ -859,6 +859,17 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-rank { font-size: 16px; font-weight: 700; color: var(--fg-1); }
 .aoo-rank[data-tone="success"] { color: var(--trend-up); }
 .aoo-rank[data-tone="danger"]  { color: var(--trend-down); }
+/* ยังไม่ติดจริง (โผล่บางครั้ง / ไม่ติด) — สีจาง ให้รู้ว่าเลขนี้ยังเชื่อไม่ได้ */
+.aoo-rank[data-tone="muted"], .aoo-delta[data-tone="muted"] { color: var(--fg-3); font-weight: 600; }
+/* เนื้อหา popover ของป้าย AI / หลักฐานอันดับ */
+.aoo-pop { font-size: 13px; line-height: 1.55; color: var(--fg-2); }
+.aoo-pop__title { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--fg-1); margin-bottom: 4px; }
+.aoo-pop__row { display: flex; gap: 6px; }
+.aoo-pop__label { flex-shrink: 0; width: 64px; color: var(--fg-3); }
+.aoo-pop__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.aoo-pop__chip { padding: 1px 6px; border-radius: 6px; background: var(--warm-100); font-size: 12px; }
+.aoo-pop__chip[data-ours] { background: var(--leaf-100); color: var(--leaf-700); font-weight: 700; }
+
 /* คิวงานลอยมุมขวาล่าง (เช็คอันดับ SEO) — พื้นเข้มแบบ toast ไม่ใช้เงา · ปิดแล้วย่อเป็นปุ่มกลม */
 .aoo-queue {
   position: fixed; right: 24px; bottom: 24px; z-index: 900;

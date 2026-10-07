@@ -262,6 +262,17 @@ export interface RankSnapshot {
   features: { type: string; rank: number }[] | null
 }
 
+/** ผล AI 1 ตัวของคำนี้ — ไว้โชว์ใน popover (ถามว่าอะไร · เมื่อไหร่ · อ้างเว็บไหน) */
+export interface AiOnKeyword {
+  cited: boolean
+  mentioned: boolean
+  checkedOn: string
+  prompt: string
+  model: string | null
+  /** โดเมนที่ AI อ้าง (ไม่ซ้ำ ตามลำดับ) */
+  sources: string[]
+}
+
 export interface TargetKeyword {
   id: string
   keyword: string
@@ -288,7 +299,7 @@ export interface TargetKeyword {
    * AI แชทตอบถึงเราไหม — จากคำถามในแท็บ AI ตอบที่ผูกกับคำนี้ (ผลล่าสุดต่อ AI)
    * ผูกหลายคำถาม = อ้างในข้อไหนก็นับว่าอ้าง · ไม่มีคำถามผูก = ว่าง
    */
-  ai: Partial<Record<AeoEngineKey, { cited: boolean; mentioned: boolean }>>
+  ai: Partial<Record<AeoEngineKey, AiOnKeyword>>
 }
 
 
@@ -336,7 +347,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .limit(5000),
     sb()
       .from('seo_aeo_results')
-      .select('prompt_id, engine, checked_on, cited, mentioned, seo_aeo_prompts!inner(keyword_id)')
+      .select('prompt_id, engine, checked_on, cited, mentioned, model, sources, seo_aeo_prompts!inner(keyword_id, prompt)')
       .in('seo_aeo_prompts.keyword_id', ids)
       .order('checked_on', { ascending: false })
       .limit(2000),
@@ -389,10 +400,17 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     const kwId = r.seo_aeo_prompts.keyword_id as string
     const m = aiByKw.get(kwId) ?? {}
     const cur = m[r.engine as AeoEngineKey]
-    m[r.engine as AeoEngineKey] = {
-      cited: !!cur?.cited || r.cited,
-      mentioned: !!cur?.mentioned || r.mentioned || r.cited,
+    // หลายคำถามผูกคำเดียว: เก็บข้อที่ดีสุด (อ้าง > พูดถึง > ไม่) ไว้โชว์รายละเอียด
+    const score = (x: { cited: boolean; mentioned: boolean }) => (x.cited ? 2 : x.mentioned ? 1 : 0)
+    const next: AiOnKeyword = {
+      cited: r.cited,
+      mentioned: r.mentioned || r.cited,
+      checkedOn: r.checked_on,
+      prompt: r.seo_aeo_prompts.prompt,
+      model: r.model,
+      sources: Array.from(new Set(((r.sources as { domain: string }[]) ?? []).map((x) => x.domain).filter(Boolean))),
     }
+    if (!cur || score(next) > score(cur)) m[r.engine as AeoEngineKey] = next
     aiByKw.set(kwId, m)
   }
 

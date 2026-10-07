@@ -64,6 +64,11 @@ export function rankConfidence(
   for (const s of recent) for (const f of s.features ?? []) if (!featureMap.has(f.type)) featureMap.set(f.type, f.rank)
   const features = [...featureMap.entries()].map(([type, rank]) => ({ type, rank }))
   const organicSeen = recent.find((s) => s.organicSeen)?.organicSeen ?? null
+  // อันดับ "ปกติ" = ค่ากลางของวันที่เจอ (ไม่ใช่ครั้งล่าสุดครั้งเดียว) — ช่องอันดับใช้ตัวนี้ จะได้ไม่ขัดกับสถานะ
+  const found = recent.map((s) => s.position).filter((p): p is number => p != null).sort((a, b) => a - b)
+  const typical = found.length ? found[Math.floor((found.length - 1) / 2)] : null
+  const best = found[0] ?? null
+  const latest = snaps[0] ? { position: snaps[0].position, checkedOn: snaps[0].checkedOn } : null
 
   let status: RankStatus = 'unknown'
   if ((samples >= 2 && rate! >= 0.5) || (share != null && share >= 0.5)) status = 'solid'
@@ -71,7 +76,7 @@ export function rankConfidence(
   else if (samples >= MIN_SAMPLES_TO_SAY_NONE && days >= 2) status = 'none'
   else if (samples > 0 || share != null) status = 'checking'
 
-  return { status, hits, samples, days, rounds: recent.length, share, features, organicSeen }
+  return { status, hits, samples, days, rounds: recent.length, share, features, organicSeen, typical, best, latest }
 }
 
 /** ชื่อไทยของส่วนต่าง ๆ บนหน้าผลค้นหา */

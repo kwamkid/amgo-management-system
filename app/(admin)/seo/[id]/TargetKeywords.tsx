@@ -6,7 +6,7 @@
 // เห็นอันดับ (หรือ "ไม่ติด") · ขึ้นลงจากรอบก่อน · หน้าที่ติดตรงกับหน้าเป้าหมายไหม
 // · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   CircleCheck,
   CircleDashed,
@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/useToast'
 import {
   Alert,
   Button,
+  HelpTooltip,
   Field,
   IconButton,
   Input,
@@ -77,6 +78,35 @@ const FILTERS = [
 ]
 
 const PAGE_SIZE = 20
+
+/** ล้างสไตล์ default ของ HelpTooltip (เส้นประ + cursor: help) — ป้ายเป็นตัวชี้อยู่แล้ว */
+const PLAIN_TRIGGER = { textDecoration: 'none', cursor: 'default' }
+
+function PopRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="aoo-pop__row">
+      <span className="aoo-pop__label">{label}</span>
+      <span>{children}</span>
+    </div>
+  )
+}
+
+/** โดเมนที่ AI อ้าง — ของเราเน้นสีเขียว */
+function SourceChips({ domains, ours }: { domains: string[]; ours: string }) {
+  const list = Array.from(new Set(domains.filter(Boolean))).slice(0, 10)
+  if (!list.length) return <PopRow label="อ้างเว็บ">ไม่มีลิงก์ที่มา</PopRow>
+  return (
+    <PopRow label="อ้างเว็บ">
+      <span className="aoo-pop__chips">
+        {list.map((d) => (
+          <span key={d} className="aoo-pop__chip" data-ours={d === ours || d.endsWith(`.${ours}`) ? '' : undefined}>
+            {d}
+          </span>
+        ))}
+      </span>
+    </PopRow>
+  )
+}
 
 /** ไอคอน + สีของสถานะ "ติดจริงไหม" — ใช้ทั้งในตารางและคำอธิบาย */
 const STATUS_ICON: Record<RankStatus, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'info' | 'neutral' }> = {
@@ -330,14 +360,14 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => (k.searchVolume != null ? fmtNum(k.searchVolume) : '—'),
     },
     {
-      // อันดับ + แนวโน้มในช่องเดียว (เจ้าของขอ) — ขึ้น = เขียวสด · ลง = แดง
+      // อันดับ "ปกติ" จากประวัติ (ค่ากลางของวันที่เจอ) — ไม่ใช่ครั้งล่าสุดครั้งเดียว จะได้อ่านไปทางเดียวกับ
+      // ช่องติดจริงไหม (8 ต.ค. 69: เดิมโชว์ "#2 เพิ่งติด" คู่ "โผล่บางครั้ง" / "ไม่ติด" คู่ "ติดจริง" งง)
       key: 'rank',
       header: 'อันดับ',
       align: 'right',
-      sortValue: (k) => (k.snapshots[0] ? (k.snapshots[0].position ?? 101) : null),
+      sortValue: (k) => k.confidence.typical ?? (k.snapshots[0] ? 101 : null),
       cell: (k) => {
-        const cur = k.snapshots[0]
-        const d = delta(k)
+        const c = k.confidence
         if (k.pending)
           return (
             <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-gray-400">
@@ -345,34 +375,44 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
               กำลังเช็ค
             </span>
           )
-        if (!cur) return <span className="text-gray-400">ยังไม่เช็ค</span>
-        // ร่วงหนักรอบเดียว = ยังไม่เชื่อ (SERP แกว่ง) — โชว์สีปกติ + "รอเช็คซ้ำ" แทนแดง "หลุด"
-        const tone = k.dropUnconfirmed || d == null || d === 0 ? undefined : d > 0 ? 'success' : 'danger'
+        if (!c.latest) return <span className="text-gray-400">ยังไม่เช็ค</span>
+        const latestTxt = c.latest.position != null ? `#${c.latest.position}` : 'ไม่เจอ'
+        // ขึ้น/ลง: เทียบ 2 ครั้งล่าสุดที่เจอ เฉพาะคำที่ติดจริง (คำโผล่บางครั้งขึ้นลงเพราะ Google สลับชุดผล ไม่มีความหมาย)
+        const found = k.snapshots.filter((x) => x.position != null)
+        const d = c.status === 'solid' && found.length >= 2 ? found[1].position! - found[0].position! : 0
+        const tone = c.status !== 'solid' ? 'muted' : d > 0 ? 'success' : d < 0 ? 'danger' : undefined
         return (
           <div className="whitespace-nowrap text-right">
-            <div className="inline-flex items-center justify-end gap-1.5">
-              <span className="aoo-rank" data-tone={tone}>
-                {fmtRank(cur.position)}
-              </span>
-              {k.dropUnconfirmed ? (
-                <span
-                  className="aoo-delta"
-                  data-tone="warning"
-                  title="รอบนี้ร่วงหนักผิดปกติ ระบบจะเช็คซ้ำให้พรุ่งนี้ก่อนสรุป"
-                >
-                  รอเช็คซ้ำ
-                </span>
-              ) : (
-                d != null &&
-                d !== 0 && (
+            {c.typical != null ? (
+              <div className="inline-flex items-center justify-end gap-1.5">
+                {d !== 0 && (
                   <span className="aoo-delta inline-flex items-center gap-0.5" data-tone={tone}>
                     {d > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    {Math.abs(d) > 90 ? (d > 0 ? 'เพิ่งติด' : 'หลุด') : Math.abs(d)}
+                    {Math.abs(d)}
                   </span>
-                )
-              )}
+                )}
+                <span className="aoo-rank" data-tone={tone}>
+                  {c.status === 'solid' ? `#${c.typical}` : `~#${c.best}`}
+                </span>
+              </div>
+            ) : (
+              <span className="aoo-rank" data-tone="muted">
+                ไม่ติด
+              </span>
+            )}
+            <div className="text-xs text-gray-400">
+              {c.status === 'solid'
+                ? `ปกติอยู่ #${c.typical} · ล่าสุด ${latestTxt}`
+                : c.typical != null
+                  ? `เคยเจอดีสุด #${c.best} · ล่าสุด ${latestTxt}`
+                  : `ล่าสุด ${latestTxt}`}
             </div>
-            <div className="text-xs text-gray-400">เช็ค {fmtGscDate(cur.checkedOn)}</div>
+            <div className="text-xs text-gray-400">เช็ค {fmtGscDate(c.latest.checkedOn)}</div>
+            {k.dropUnconfirmed && c.status !== 'solid' && (
+              <div className="aoo-delta" data-tone="warning">
+                ร่วงหนัก — รอเช็คซ้ำพรุ่งนี้
+              </div>
+            )}
           </div>
         )
       },
@@ -385,47 +425,122 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => {
         const c = k.confidence
         const { Icon, tone } = STATUS_ICON[c.status]
-        return (
-          <div className="whitespace-nowrap">
-            <span className="aoo-status" data-tone={tone}>
-              <Icon size={16} />
-              {RANK_STATUS_LABEL[c.status]}
+        // เหตุผลที่ได้สถานะนี้ — โชว์ใน popover ของหัวสถานะ
+        const why =
+          c.status === 'solid'
+            ? (c.samples >= 2 && c.hits / c.samples >= 0.5
+                ? `เจอเว็บเรา ${c.hits} จาก ${c.samples} ครั้ง (ตั้งแต่ครึ่งหนึ่งขึ้นไป)`
+                : '') +
+              (c.share != null && c.share >= 0.5 ? ` คนค้นจริงเห็นเรา ${Math.round(c.share * 100)}% (ตั้งแต่ 50%)` : '')
+            : c.status === 'sometimes'
+              ? 'มีหลักฐานว่าโผล่ แต่ยังไม่สม่ำเสมอ: ' +
+                [
+                  c.hits ? `เจอ ${c.hits} จาก ${c.samples} ครั้ง` : null,
+                  c.share != null && c.share >= 0.1 ? `คนค้นเห็นเรา ${Math.round(c.share * 100)}%` : null,
+                  c.features.length ? `โผล่ใน${c.features.map((f) => SERP_FEATURE_LABEL[f.type] ?? f.type).join('/')}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : c.status === 'checking'
+                ? `ยังไม่เจอเลย แต่เพิ่งเช็ค ${c.samples} ครั้ง — ต้องครบ ${MIN_SAMPLES_TO_SAY_NONE} ครั้งใน 2 วันขึ้นไปก่อนสรุป ระบบเช็คเพิ่มให้วันละครั้ง`
+                : c.status === 'none'
+                  ? `ไม่เจอเลย ${c.samples} ครั้งใน ${c.days} วัน และคนค้นเห็นเราไม่ถึง 10%`
+                  : 'ยังไม่เคยเช็คคำนี้'
+        const line = (icon: ReactNode, text: ReactNode, help: ReactNode) => (
+          <HelpTooltip delay={150} width={320} triggerStyle={PLAIN_TRIGGER} content={<div className="aoo-pop">{help}</div>}>
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              {icon}
+              {text}
             </span>
-            {c.samples > 0 && (
-              <div
-                className="flex items-center gap-1 text-xs text-gray-500"
-                title={`Google ไทย (ค้นจากเครื่องกลาง) ${c.days} วันล่าสุดใน 35 วัน — เจอลิงก์เว็บเรากี่ครั้ง${
-                  c.organicSeen ? ` · Google ให้ดูลิงก์ปกติแค่ ${c.organicSeen} อันดับ` : ''
-                }`}
-              >
-                <Search size={12} /> เจอ {c.hits}/{c.samples} ครั้ง ({c.days} วัน)
-                {!c.hits && c.organicSeen ? ` · ไม่อยู่ใน ${c.organicSeen} ลิงก์แรก` : ''}
-              </div>
-            )}
-            {c.features.length > 0 && (
-              <div
-                className="flex items-center gap-1 text-xs text-gray-500"
-                title="เราโผล่ในส่วนอื่นของหน้า Google — Search Console นับตำแหน่งนี้เป็นอันดับด้วย"
-              >
-                <ImageIcon size={12} />
-                {c.features.map((f) => `โผล่ใน${SERP_FEATURE_LABEL[f.type] ?? f.type} ตำแหน่ง ${f.rank}`).join(' · ')}
-              </div>
-            )}
-            {c.status === 'checking' && (
-              <div className="text-xs text-gray-400">
-                ข้อมูลยังน้อย ({c.samples}/{MIN_SAMPLES_TO_SAY_NONE} ครั้ง) — ระบบเช็คเพิ่มให้วันละครั้ง
-              </div>
-            )}
-            {(k.gscPosition != null || c.share != null) && (
-              <div
-                className="flex items-center gap-1 text-xs text-gray-500"
-                title="Search Console 10 วันล่าสุด: อันดับเฉลี่ยคิดเฉพาะครั้งที่โผล่ · % = การแสดงผล ÷ ยอดค้นหาโดยประมาณ (เห็นเรา 1% แต่อันดับ 7 = Google แค่ลองแสดง)"
-              >
-                <Users size={12} />
-                คนจริง {k.gscPosition != null ? `~${k.gscPosition.toFixed(1)}` : 'ไม่เห็นเรา'}
-                {c.share != null && ` · เห็นเรา ${Math.round(c.share * 100)}%`}
-              </div>
-            )}
+          </HelpTooltip>
+        )
+        return (
+          <div className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+            <HelpTooltip
+              delay={150}
+              width={340}
+              triggerStyle={PLAIN_TRIGGER}
+              content={
+                <div className="aoo-pop">
+                  <div className="aoo-pop__title">
+                    <Icon size={14} /> {RANK_STATUS_LABEL[c.status]}
+                  </div>
+                  <div>{why}</div>
+                  <div className="mt-1 text-xs">
+                    เกณฑ์: ติดจริง = เจอ ≥ ครึ่งหนึ่ง (ประวัติ 4 รอบ / 35 วัน) หรือคนค้นเห็นเรา ≥ 50% · โผล่บางครั้ง = เคยเจอ /
+                    เห็นเรา 10–50% / โผล่ในกล่องรูปหรือแผนที่ · ยังไม่ติด = ไม่เจอ ≥ 3 ครั้งใน 2 วัน
+                  </div>
+                </div>
+              }
+            >
+              <span className="aoo-status" data-tone={tone}>
+                <Icon size={16} />
+                {RANK_STATUS_LABEL[c.status]}
+              </span>
+            </HelpTooltip>
+            {c.samples > 0 &&
+              line(
+                <Search size={12} />,
+                <>
+                  เจอ {c.hits}/{c.samples} ครั้ง ({c.days} วัน)
+                  {!c.hits && c.organicSeen ? ` · ไม่อยู่ใน ${c.organicSeen} ลิงก์แรก` : ''}
+                </>,
+                <>
+                  <div className="aoo-pop__title">
+                    <Search size={14} /> Google ไทย ค้นจากเครื่องกลาง
+                  </div>
+                  <PopRow label="หลักฐาน">
+                    ค้น {c.samples} ครั้งใน {c.days} วัน (35 วันล่าสุด) เจอลิงก์เว็บเรา {c.hits} ครั้ง
+                  </PopRow>
+                  {c.organicSeen != null && (
+                    <PopRow label="ความลึก">Google ให้ดูลิงก์ปกติ {c.organicSeen} อันดับ (ไม่ใช่ 100 เสมอ)</PopRow>
+                  )}
+                  {c.best != null && <PopRow label="อันดับ">ดีสุด #{c.best} · ค่ากลาง #{c.typical}</PopRow>}
+                  <PopRow label="ข้อควรรู้">ไม่ล็อกอิน ไม่มีประวัติ — Google สลับชุดผลได้ จึงดูหลายครั้งประกอบกัน</PopRow>
+                </>
+              )}
+            {c.features.length > 0 &&
+              line(
+                <ImageIcon size={12} />,
+                c.features.map((f) => `${SERP_FEATURE_LABEL[f.type] ?? f.type} #${f.rank}`).join(' · '),
+                <>
+                  <div className="aoo-pop__title">
+                    <ImageIcon size={14} /> โผล่ในส่วนอื่นของหน้า Google
+                  </div>
+                  {c.features.map((f) => (
+                    <PopRow key={f.type} label={SERP_FEATURE_LABEL[f.type] ?? f.type}>
+                      ตำแหน่งที่ {f.rank} บนหน้า (นับรวมทุกกล่อง)
+                    </PopRow>
+                  ))}
+                  <div className="mt-1 text-xs">
+                    Search Console นับตำแหน่งพวกนี้เป็นอันดับด้วย — จึงเห็นอันดับใน GSC ทั้งที่ลิงก์ปกติไม่เจอ
+                  </div>
+                </>
+              )}
+            {(k.gscPosition != null || c.share != null) &&
+              line(
+                <Users size={12} />,
+                <>
+                  คนจริง {k.gscPosition != null ? `~${k.gscPosition.toFixed(1)}` : 'ไม่เห็นเรา'}
+                  {c.share != null && ` · เห็นเรา ${Math.round(c.share * 100)}%`}
+                </>,
+                <>
+                  <div className="aoo-pop__title">
+                    <Users size={14} /> คนค้นจริง (Search Console 10 วัน)
+                  </div>
+                  <PopRow label="อันดับ">
+                    {k.gscPosition != null ? `เฉลี่ย ~${k.gscPosition.toFixed(1)} — คิดเฉพาะครั้งที่เว็บเราโผล่` : 'ไม่มีคนเห็นเราเลย'}
+                  </PopRow>
+                  <PopRow label="แสดงผล">{fmtNum(k.gscImpressions)} ครั้ง</PopRow>
+                  {c.share != null && k.searchVolume != null && (
+                    <PopRow label="เห็นเรา">
+                      {Math.round(c.share * 100)}% ของคนค้น (ยอดค้นหา ~{fmtNum(Math.round((k.searchVolume * 10) / 30))} ครั้ง/10 วัน
+                      ประมาณจากยอดต่อเดือน)
+                    </PopRow>
+                  )}
+                  <div className="mt-1 text-xs">เห็นเราน้อยแต่อันดับดี = Google แค่ลองแสดงเราบางครั้ง ยังไม่ใช่ติดจริง</div>
+                </>
+              )}
           </div>
         )
       },
@@ -451,29 +566,76 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       },
     },
     {
-      // แยกทีละ AI ที่เราเน้น (เจ้าของขอ 7–8 ต.ค. 69) — โชว์ครบทุกตัวเสมอ ไม่มีข้อมูลก็บอกว่ายังไม่ถาม
-      // Google = กล่อง AI บนหน้าผลค้นหา · ที่เหลือ = คำถามในแท็บ AI ตอบที่ผูกคำนี้
+      // แยกทีละ AI ที่เราเน้น (เจ้าของขอ 7–8 ต.ค. 69) — โชว์ครบทุกตัวเสมอ · ชี้ที่ป้ายเพื่อดูรายละเอียด
+      // (popover กลาง HelpTooltip ไม่ใช่ title ของ html) Google = กล่อง AI บนหน้าผลค้นหา · ที่เหลือ = คำถามที่ผูกคำนี้
       key: 'aio',
       header: 'AI อ้างเราไหม',
       cell: (k) => {
         const cur = k.snapshots[0]
-        const chips: { label: string; state: AiState }[] = []
-        // ประวัติที่นำเข้ามีแค่อันดับ — ไม่รู้ว่ามี AI Overview ไหม อย่าเดาว่า "ไม่มี"
-        if (cur?.detailed)
-          chips.push({ label: 'Google', state: !cur.hasAiOverview ? 'nobox' : cur.aiOverviewCitesUs ? 'cited' : 'no' })
+        const rows: { label: string; state: AiState; detail: ReactNode }[] = []
+        if (cur?.detailed) {
+          const st: AiState = !cur.hasAiOverview ? 'nobox' : cur.aiOverviewCitesUs ? 'cited' : 'no'
+          rows.push({
+            label: 'Google',
+            state: st,
+            detail: (
+              <>
+                <PopRow label="ที่มา">กล่องคำตอบ AI บนหน้าผลค้นหา Google ของคำนี้</PopRow>
+                <PopRow label="เช็คเมื่อ">{fmtGscDate(cur.checkedOn)}</PopRow>
+                {cur.hasAiOverview && <SourceChips domains={cur.aiOverviewRefs.map((r) => r.domain)} ours={site.domain} />}
+              </>
+            ),
+          })
+        }
         for (const e of AEO_ENGINE_LABELS.filter((x) => engines.includes(x.key))) {
           const r = k.ai[e.key]
-          chips.push({ label: e.label, state: !r ? 'unasked' : r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no' })
+          rows.push({
+            label: e.label,
+            state: !r ? 'unasked' : r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no',
+            detail: r ? (
+              <>
+                <PopRow label="ถามว่า">&quot;{r.prompt}&quot;</PopRow>
+                <PopRow label="ถามเมื่อ">
+                  {fmtGscDate(r.checkedOn)}
+                  {r.model ? ` · ${r.model}` : ''}
+                </PopRow>
+                <SourceChips domains={r.sources} ours={site.domain} />
+              </>
+            ) : (
+              <PopRow label="วิธีเช็ค">
+                ยังไม่มีคำถามผูกคำนี้ — เพิ่มคำถามแล้วเลือก &quot;ผูกกับคำเป้าหมาย&quot; ในแท็บ AI ตอบ
+              </PopRow>
+            ),
+          })
         }
         return (
-          <div className="flex flex-col gap-0.5">
-            {chips.map((c) => {
+          <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+            {rows.map((c) => {
               const st = AI_STATE[c.state]
               return (
-                <span key={c.label} className="aoo-status aoo-status--sm" data-tone={st.tone} title={`${c.label}: ${st.text}`}>
-                  <st.Icon size={14} />
-                  {c.label}
-                </span>
+                <HelpTooltip
+                  key={c.label}
+                  delay={150}
+                  width={320}
+                  triggerStyle={PLAIN_TRIGGER}
+                  content={
+                    <div className="aoo-pop">
+                      <div className="aoo-pop__title">
+                        <span className="aoo-status aoo-status--sm" data-tone={st.tone}>
+                          <st.Icon size={14} />
+                          {c.label}
+                        </span>
+                        · {st.text}
+                      </div>
+                      {c.detail}
+                    </div>
+                  }
+                >
+                  <span className="aoo-status aoo-status--sm" data-tone={st.tone}>
+                    <st.Icon size={14} />
+                    {c.label}
+                  </span>
+                </HelpTooltip>
               )
             })}
           </div>

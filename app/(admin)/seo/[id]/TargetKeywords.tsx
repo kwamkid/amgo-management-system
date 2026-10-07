@@ -8,16 +8,23 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Bot,
+  CircleCheck,
+  CircleDashed,
+  CircleHelp,
+  CircleMinus,
+  CircleOff,
+  CircleX,
   Loader2,
+  MessageCircle,
   Plus,
   Radar,
+  Search,
   Sparkles,
-  Target,
   Trash2,
   TrendingDown,
   TrendingUp,
   Trophy,
+  Users,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -33,7 +40,7 @@ import {
   Toggle,
   useConfirm,
 } from '@/components/aoo'
-import { DataTable, QueueFloat, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
+import { DataTable, QueueFloat, Segmented, StatCard, StatGrid, TableFooter, type Column } from '@/components/shared'
 import {
   addTargetKeywords,
   deleteTargetKeyword,
@@ -42,22 +49,45 @@ import {
   fmtRank,
   AEO_ENGINE_LABELS,
   getRankQueue,
+  getSeoSettings,
   getTargetKeywords,
   setKeywordTracked,
   type RankQueue,
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
+import { RANK_STATUS_LABEL, type RankStatus } from '@/lib/services/seo/rankRules'
 
-type Filter = 'all' | 'top10' | 'ranked' | 'none' | 'wrong'
+type Filter = 'all' | 'solid' | 'sometimes' | 'none' | 'top10' | 'wrong'
 
 const FILTERS = [
   { value: 'all', label: 'ทั้งหมด' },
-  { value: 'top10', label: 'หน้าแรก' },
-  { value: 'ranked', label: 'ติด 100' },
+  { value: 'solid', label: 'ติดจริง' },
+  { value: 'sometimes', label: 'โผล่บางครั้ง' },
   { value: 'none', label: 'ยังไม่ติด' },
+  { value: 'top10', label: 'หน้าแรก (ติดจริง)' },
   { value: 'wrong', label: 'ติดผิดหน้า' },
 ]
+
+const PAGE_SIZE = 20
+
+/** ไอคอน + สีของสถานะ "ติดจริงไหม" — ใช้ทั้งในตารางและคำอธิบาย */
+const STATUS_ICON: Record<RankStatus, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'neutral' }> = {
+  solid: { Icon: CircleCheck, tone: 'success' },
+  sometimes: { Icon: CircleDashed, tone: 'warning' },
+  none: { Icon: CircleOff, tone: 'neutral' },
+  unknown: { Icon: CircleHelp, tone: 'neutral' },
+}
+
+/** ป้าย AI 1 ตัว: อ้างลิงก์เรา · พูดถึงชื่อ · อ้างคนอื่น · ไม่มีกล่อง AI / ยังไม่ถาม */
+type AiState = 'cited' | 'mentioned' | 'no' | 'nobox' | 'unasked'
+const AI_STATE: Record<AiState, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'danger' | 'neutral'; text: string }> = {
+  cited: { Icon: CircleCheck, tone: 'success', text: 'อ้างลิงก์เรา' },
+  mentioned: { Icon: MessageCircle, tone: 'warning', text: 'พูดถึงชื่อเรา แต่ไม่ใส่ลิงก์' },
+  no: { Icon: CircleX, tone: 'danger', text: 'แนะนำเว็บอื่น ไม่พูดถึงเรา' },
+  nobox: { Icon: CircleMinus, tone: 'neutral', text: 'คำนี้ Google ไม่ขึ้นกล่อง AI' },
+  unasked: { Icon: CircleMinus, tone: 'neutral', text: 'ยังไม่มีคำถามผูกคำนี้ (เพิ่มได้ในแท็บ AI ตอบ)' },
+}
 
 const pathOf = (url: string | null) => {
   if (!url) return null
@@ -100,6 +130,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const { confirm, dialog } = useConfirm()
   const [rows, setRows] = useState<TargetKeyword[] | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [page, setPage] = useState(1)
+  /** AI ที่เปิดใช้ในตั้งค่า — คอลัมน์ AI โชว์ครบทุกตัวนี้เสมอ */
+  const [engines, setEngines] = useState<string[]>(AEO_ENGINE_LABELS.map((e) => e.key))
   const [busy, setBusy] = useState<'check' | null>(null)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({
@@ -137,6 +170,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
 
   useEffect(() => {
     load()
+    getSeoSettings()
+      .then((st) => setEngines(st.aeoEngines))
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site.id])
 
@@ -218,10 +254,14 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const stats = useMemo(() => {
     const list = rows ?? []
     const checked = list.filter((k) => k.snapshots[0])
+    const solid = list.filter((k) => k.confidence.status === 'solid')
     const detailed = checked.filter((k) => k.snapshots[0].detailed)
     return {
       checked: checked.length,
-      top10: checked.filter((k) => (k.snapshots[0].position ?? 999) <= 10).length,
+      solid: solid.length,
+      sometimes: list.filter((k) => k.confidence.status === 'sometimes').length,
+      // หน้าแรกนับเฉพาะคำที่ติดจริง — อันดับครั้งเดียวที่ Google สลับมาให้ไม่นับ
+      top10: solid.filter((k) => (k.snapshots[0]?.position ?? k.gscPosition ?? 999) <= 10).length,
       ranked: checked.filter((k) => k.snapshots[0].position != null).length,
       aio: detailed.filter((k) => k.snapshots[0].hasAiOverview).length,
       aioUs: detailed.filter((k) => k.snapshots[0].aiOverviewCitesUs).length,
@@ -238,15 +278,18 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const filtered = useMemo(
     () =>
       (rows ?? []).filter((k) => {
-        const p = k.snapshots[0]?.position
-        if (filter === 'top10') return p != null && p <= 10
-        if (filter === 'ranked') return p != null
-        if (filter === 'none') return !!k.snapshots[0] && p == null
+        const st = k.confidence.status
+        if (filter === 'solid' || filter === 'sometimes') return st === filter
+        if (filter === 'none') return st === 'none'
+        if (filter === 'top10') return st === 'solid' && (k.snapshots[0]?.position ?? k.gscPosition ?? 999) <= 10
         if (filter === 'wrong') return wrongPage(k)
         return true
       }),
     [rows, filter],
   )
+  // เปลี่ยนตัวกรอง = กลับหน้า 1
+  useEffect(() => setPage(1), [filter, site.id])
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const columns: Column<TargetKeyword>[] = [
     {
@@ -321,20 +364,41 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 )
               )}
             </div>
-            {cur.samples > 1 && cur.position != null && cur.hits < cur.samples && (
+            <div className="text-xs text-gray-400">เช็ค {fmtGscDate(cur.checkedOn)}</div>
+          </div>
+        )
+      },
+    },
+    {
+      // ติดจริงไหม — รวมประวัติ 4 รอบ + GSC (เจ้าของขอ 8 ต.ค. 69: อันดับครั้งเดียวแกว่ง อ่านแล้วไม่ต่อกัน)
+      key: 'status',
+      header: 'ติดจริงไหม',
+      sortValue: (k) => ({ solid: 0, sometimes: 1, none: 2, unknown: 3 })[k.confidence.status],
+      cell: (k) => {
+        const c = k.confidence
+        const { Icon, tone } = STATUS_ICON[c.status]
+        return (
+          <div className="whitespace-nowrap">
+            <span className="aoo-status" data-tone={tone}>
+              <Icon size={16} />
+              {RANK_STATUS_LABEL[c.status]}
+            </span>
+            {c.samples > 0 && (
               <div
-                className="text-xs text-gray-400"
-                title="Google เสิร์ฟผลหลายชุดสลับกัน — ค้นหลายครั้ง เจอเราไม่ทุกครั้ง"
+                className="flex items-center gap-1 text-xs text-gray-500"
+                title={`Google ไทย (ค้นจากเครื่องกลาง) ${c.rounds} รอบล่าสุดใน 35 วัน — เจอเว็บเรากี่ครั้ง`}
               >
-                เจอ {cur.hits}/{cur.samples} ครั้ง
+                <Search size={12} /> เจอ {c.hits}/{c.samples} ครั้ง ({c.rounds} รอบ)
               </div>
             )}
-            {k.gscPosition != null && (
+            {(k.gscPosition != null || c.share != null) && (
               <div
-                className="text-xs text-gray-400"
-                title="อันดับเฉลี่ยที่คนค้นจริงเห็น 7 วันล่าสุด (Google Search Console)"
+                className="flex items-center gap-1 text-xs text-gray-500"
+                title="Search Console 10 วันล่าสุด: อันดับเฉลี่ยคิดเฉพาะครั้งที่โผล่ · % = การแสดงผล ÷ ยอดค้นหาโดยประมาณ (เห็นเรา 1% แต่อันดับ 7 = Google แค่ลองแสดง)"
               >
-                คนค้นจริงเห็น ~{k.gscPosition.toFixed(1)}
+                <Users size={12} />
+                คนจริง {k.gscPosition != null ? `~${k.gscPosition.toFixed(1)}` : 'ไม่เห็นเรา'}
+                {c.share != null && ` · เห็นเรา ${Math.round(c.share * 100)}%`}
               </div>
             )}
           </div>
@@ -362,35 +426,31 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       },
     },
     {
-      // แยกทีละ AI (เจ้าของขอ 7 ต.ค. 69): Google = กล่อง AI บนหน้าผลค้นหา · ที่เหลือ = คำถามในแท็บ AI ตอบที่ผูกคำนี้
+      // แยกทีละ AI ที่เราเน้น (เจ้าของขอ 7–8 ต.ค. 69) — โชว์ครบทุกตัวเสมอ ไม่มีข้อมูลก็บอกว่ายังไม่ถาม
+      // Google = กล่อง AI บนหน้าผลค้นหา · ที่เหลือ = คำถามในแท็บ AI ตอบที่ผูกคำนี้
       key: 'aio',
       header: 'AI อ้างเราไหม',
       cell: (k) => {
         const cur = k.snapshots[0]
-        const chips: { label: string; state: 'cited' | 'mentioned' | 'no' | 'none' }[] = []
+        const chips: { label: string; state: AiState }[] = []
         // ประวัติที่นำเข้ามีแค่อันดับ — ไม่รู้ว่ามี AI Overview ไหม อย่าเดาว่า "ไม่มี"
         if (cur?.detailed)
-          chips.push({
-            label: 'Google',
-            state: !cur.hasAiOverview ? 'none' : cur.aiOverviewCitesUs ? 'cited' : 'no',
-          })
-        for (const e of AEO_ENGINE_LABELS) {
+          chips.push({ label: 'Google', state: !cur.hasAiOverview ? 'nobox' : cur.aiOverviewCitesUs ? 'cited' : 'no' })
+        for (const e of AEO_ENGINE_LABELS.filter((x) => engines.includes(x.key))) {
           const r = k.ai[e.key]
-          if (r) chips.push({ label: e.label, state: r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no' })
+          chips.push({ label: e.label, state: !r ? 'unasked' : r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no' })
         }
-        if (!chips.length) return <span className="text-gray-400">—</span>
         return (
-          <div className="flex flex-wrap gap-1">
-            {chips.map((c) => (
-              <Pill
-                key={c.label}
-                tone={c.state === 'cited' ? 'success' : c.state === 'mentioned' ? 'warning' : 'neutral'}
-                className={c.state === 'none' || c.state === 'no' ? 'opacity-60' : undefined}
-              >
-                {c.state === 'cited' ? '✓' : c.state === 'mentioned' ? '~' : '✗'} {c.label}
-                {c.state === 'none' ? ' ไม่มีกล่อง AI' : ''}
-              </Pill>
-            ))}
+          <div className="flex flex-col gap-0.5">
+            {chips.map((c) => {
+              const st = AI_STATE[c.state]
+              return (
+                <span key={c.label} className="aoo-status aoo-status--sm" data-tone={st.tone} title={`${c.label}: ${st.text}`}>
+                  <st.Icon size={14} />
+                  {c.label}
+                </span>
+              )
+            })}
           </div>
         )
       },
@@ -479,32 +539,32 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       {rows && rows.length > 0 && (
         <StatGrid cols={4}>
           <StatCard
-            label="ติดหน้าแรก"
-            value={`${stats.top10}/${stats.checked}`}
+            label="ติดจริง"
+            value={`${stats.solid}/${rows.length}`}
+            icon={CircleCheck}
+            tone="success"
+            hint="เจอบ่อยในประวัติ 4 รอบ หรือคนค้นเห็นเรา ≥ 50%"
+          />
+          <StatCard
+            label="ติดหน้าแรก (จริง)"
+            value={`${stats.top10}/${rows.length}`}
             icon={Trophy}
             tone="accent"
-            hint="อันดับ 1–10"
+            hint="ติดจริง + อันดับ 1–10"
           />
           <StatCard
-            label="ติด 100 อันดับ"
-            value={`${stats.ranked}/${stats.checked}`}
-            icon={Target}
-            tone="grape"
-            hint="ที่เหลือยังไม่ติดเลย"
+            label="โผล่บางครั้ง"
+            value={`${stats.sometimes}/${rows.length}`}
+            icon={CircleDashed}
+            tone="warning"
+            hint="Google ลองแสดงเราบ้าง ยังไม่ติดจริง"
           />
           <StatCard
-            label="Google มี AI ตอบ"
-            value={stats.aioChecked ? `${stats.aio}/${stats.aioChecked}` : '—'}
-            icon={Bot}
-            tone="success"
-            hint={stats.aioChecked ? 'คำที่ Google ขึ้นกล่องคำตอบ AI ด้านบน' : 'รู้หลังเช็คผ่าน amgo รอบแรก'}
-          />
-          <StatCard
-            label="AI อ้างเรา"
+            label="Google AI อ้างเรา"
             value={stats.aioChecked ? `${stats.aioUs}/${stats.aio}` : '—'}
             icon={Sparkles}
-            tone="warning"
-            hint="กล่อง AI ใส่ลิงก์เว็บเราเป็นที่มา"
+            tone="grape"
+            hint={stats.aioChecked ? `จากคำที่มีกล่อง AI ${stats.aio} คำ` : 'รู้หลังเช็คผ่าน amgo รอบแรก'}
           />
         </StatGrid>
       )}
@@ -513,30 +573,50 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <div className="mb-3">
           <Segmented value={filter} onChange={(v) => setFilter(v as Filter)} options={FILTERS} />
           {/* อธิบายแต่ละช่อง — เจ้าของงงว่า "มี · ไม่อ้างเรา" คืออะไร (6 ต.ค. 69) */}
-          <ul className="mt-2 space-y-0.5 text-xs text-gray-500">
-            <li>
-              <b>อันดับ</b> — Google ไทย ค้นจากเครื่องกลาง (ไม่ล็อกอิน ไม่มีประวัติ) ผลแกว่งได้วันต่อวัน · บรรทัดเล็ก
-              &quot;คนค้นจริงเห็น&quot; = อันดับเฉลี่ย 7 วันจาก Search Console ใช้เทียบ · ร่วงหนักผิดปกติจะขึ้น
-              &quot;รอเช็คซ้ำ&quot; แล้วระบบเช็คให้อีกรอบวันถัดไป
-            </li>
-            <li>
-              <b>AI อ้างเราไหม</b> — แยกทีละ AI: <b>✓</b> ใส่ลิงก์เว็บเรา · <b>~</b> เอ่ยชื่อเราแต่ไม่ใส่ลิงก์ · <b>✗</b>{' '}
-              อ้างเว็บอื่น (โอกาสงาน AEO) · Google = กล่อง AI บนหน้าผลค้นหา · ChatGPT / Perplexity / Gemini มาจากคำถามที่ผูกคำนี้ในแท็บ
-              &quot;AI ตอบ (AEO)&quot; (คำที่ยังไม่มีคำถามผูก จะเห็นแค่ Google)
-            </li>
-          </ul>
+          <div className="aoo-legend">
+            <span><b>ติดจริงไหม</b> (รวมประวัติ 4 รอบ + คนค้นจริง ไม่ดูอันดับครั้งเดียว):</span>
+            {(['solid', 'sometimes', 'none'] as RankStatus[]).map((st) => {
+              const { Icon, tone } = STATUS_ICON[st]
+              return (
+                <span key={st} className="aoo-status aoo-status--sm" data-tone={tone}>
+                  <Icon size={14} />
+                  {RANK_STATUS_LABEL[st]}
+                </span>
+              )
+            })}
+            <span className="inline-flex items-center gap-1">
+              <Search size={12} /> เจอกี่ครั้งตอน Google ไทยค้นจากเครื่องกลาง
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Users size={12} /> คนค้นจริง (Search Console) — อันดับเฉลี่ยตอนโผล่ · เห็นเรากี่ % ของคนค้น
+            </span>
+          </div>
+          <div className="aoo-legend">
+            <span><b>AI อ้างเราไหม</b> (แยกทีละตัว):</span>
+            {(['cited', 'mentioned', 'no', 'unasked'] as AiState[]).map((st) => {
+              const a = AI_STATE[st]
+              return (
+                <span key={st} className="aoo-status aoo-status--sm" data-tone={a.tone}>
+                  <a.Icon size={14} />
+                  {st === 'cited' ? 'อ้างลิงก์เรา' : st === 'mentioned' ? 'พูดถึงชื่อ' : st === 'no' ? 'ไม่พูดถึงเรา' : 'ยังไม่ถาม / ไม่มีกล่อง AI'}
+                </span>
+              )
+            })}
+            <span>· ChatGPT / Perplexity / Gemini มาจากคำถามที่ผูกคำนี้ในแท็บ AI ตอบ</span>
+          </div>
         </div>
       )}
 
       <DataTable
         columns={columns}
-        rows={filtered}
+        rows={paged}
         rowKey={(k) => k.id}
         loading={rows === null}
         onRowClick={(k) => k.snapshots[0] && setDetail(k)}
         emptyTitle={rows?.length ? 'ไม่มีคำในตัวกรองนี้' : 'ยังไม่มีคำเป้าหมาย'}
         emptyBody={rows?.length ? undefined : 'กด "เพิ่มคำ" แล้ววางรายการคำ บรรทัดละคำ'}
       />
+      <TableFooter page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} unit="คำ" />
 
       <Modal
         open={adding}

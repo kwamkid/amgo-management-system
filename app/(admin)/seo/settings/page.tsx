@@ -327,7 +327,7 @@ export default function SeoSettingsPage() {
               </Field>
               <Field
                 label="ค้นคำละกี่ครั้งต่อรอบ"
-                help="Google เสิร์ฟผลหลายชุดสลับกัน ค้นหลายครั้งแล้วเอาอันดับดีสุด · ครั้งละ ~$0.006"
+                help="ปกติ 1 ครั้งพอ — ระบบดูประวัติ 4 รอบล่าสุด + GSC ช่วยตัดสินว่าติดจริงไหม · ครั้งละ ~$0.006"
               >
                 <Select
                   value={String(budget.rankSamples)}
@@ -335,7 +335,7 @@ export default function SeoSettingsPage() {
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
-                      {n} ครั้ง{n === 3 ? ' (แนะนำ)' : ''}
+                      {n} ครั้ง{n === 1 ? ' (แนะนำ)' : ''}
                     </option>
                   ))}
                 </Select>

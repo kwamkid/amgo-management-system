@@ -4,7 +4,7 @@
 // ตาราง seo_gsc_* อ่านได้อย่างเดียว · เขียนเฉพาะ cron ฝั่งเซิร์ฟเวอร์
 
 import { createClient } from '@/lib/supabase/client'
-import { isSuspiciousDrop } from './rankRules'
+import { isSuspiciousDrop, rankConfidence } from './rankRules'
 import { getAiSummaries } from './aiSummary'
 
 const sb = () => createClient()
@@ -274,6 +274,10 @@ export interface TargetKeyword {
    * ไว้เทียบกับ DataForSEO ที่ค้นครั้งเดียวจากเครื่องกลาง ผลแกว่งได้
    */
   gscPosition: number | null
+  /** การแสดงผลจาก GSC 10 วันล่าสุด (หน้าที่ดีสุดต่อวัน) — ใช้คิด "คนค้นเห็นเรากี่ %" */
+  gscImpressions: number
+  /** ติดจริงไหม — รวมประวัติ 4 รอบ + GSC (rankRules.rankConfidence) */
+  confidence: ReturnType<typeof rankConfidence>
   /** อันดับรอบล่าสุดร่วงหนัก/หลุด และยังไม่ได้เช็คซ้ำยืนยัน — cron จะเช็คซ้ำให้วันถัดไป */
   dropUnconfirmed: boolean
   /**
@@ -316,7 +320,8 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .in('keyword_id', ids)
       .gte('checked_on', since)
       .order('checked_on', { ascending: false })
-      .limit(1000),
+      // คำละ ~1 แถว/สัปดาห์ (+ เช็คซ้ำ) × 26 สัปดาห์ × ~50 คำ — เผื่อไว้ ไม่ให้ประวัติเก่าโดนตัด
+      .limit(5000),
     sb().from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
     sb()
       .from('seo_gsc_daily')
@@ -358,12 +363,13 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     const cur = best.get(key)
     if (!cur || g.position < cur.position) best.set(key, { position: g.position, impressions: g.impressions })
   }
-  const gscAvg = new Map<string, { sum: number; w: number }>()
+  const gscAvg = new Map<string, { sum: number; w: number; imp: number }>()
   for (const [key, v] of best) {
     const q = key.slice(0, key.lastIndexOf('|'))
-    const a = gscAvg.get(q) ?? { sum: 0, w: 0 }
+    const a = gscAvg.get(q) ?? { sum: 0, w: 0, imp: 0 }
     a.sum += v.position * v.impressions
     a.w += v.impressions
+    a.imp += v.impressions
     gscAvg.set(q, a)
   }
 
@@ -403,6 +409,11 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       return !!cur && !!prev && isSuspiciousDrop(cur.position, prev.position)
     })(),
     ai: aiByKw.get(k.id) ?? {},
+    gscImpressions: gscAvg.get(k.keyword)?.imp ?? 0,
+    confidence: rankConfidence(byKw.get(k.id) ?? [], {
+      impressions10d: gscAvg.get(k.keyword)?.imp ?? 0,
+      monthlyVolume: k.search_volume,
+    }),
   }))
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -510,7 +521,7 @@ export async function getSeoSettings(): Promise<SeoSettings> {
   return {
     monthlyBudgetUsd: Number(data?.monthly_budget_usd ?? 10),
     rankDevice: (data?.rank_device ?? 'mobile') as 'mobile' | 'desktop',
-    rankSamples: data?.rank_samples ?? 3,
+    rankSamples: data?.rank_samples ?? 1,
     aeoEngines: (data?.aeo_engines ?? ['chatgpt', 'perplexity', 'gemini']) as AeoEngineKey[],
     aeoRecheckDays: data?.aeo_recheck_days ?? 7,
     alertsEnabled: data?.alerts_enabled ?? true,

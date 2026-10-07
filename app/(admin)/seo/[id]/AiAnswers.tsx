@@ -7,7 +7,17 @@
 // เช็คอัตโนมัติสัปดาห์ละครั้ง (cron ตี 4) · ปุ่ม "ถาม AI ตอนนี้" ถามทันทีทีละชุด จนครบ
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, CheckCircle2, Loader2, MessageSquarePlus, Send, Trash2, X } from 'lucide-react'
+import {
+  Bot,
+  CheckCircle2,
+  CircleCheck,
+  CircleMinus,
+  CircleX,
+  MessageCircle,
+  MessageSquarePlus,
+  Send,
+  Trash2,
+} from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { getQueueGroup, type QueueGroupStatus } from '@/lib/services/queueService'
 import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
@@ -30,11 +40,21 @@ import {
 /** ชุดที่จบแล้วยังโชว์แผงค้างไว้กี่นาที — ให้เห็นว่าจบแล้ว */
 const SHOW_DONE_MS = 30 * 60_000
 
+/** ไอคอนเดียวกับคอลัมน์ "AI อ้างเราไหม" ในแท็บคำเป้าหมาย */
 function ResultPill({ r }: { r?: AeoResult }) {
-  if (!r) return <span className="text-gray-400">—</span>
-  if (r.cited) return <Pill tone="success">อ้างลิงก์เรา</Pill>
-  if (r.mentioned) return <Pill tone="warning">พูดถึงเรา</Pill>
-  return <span className="text-xs text-gray-400">ไม่พูดถึง</span>
+  const [Icon, tone, text] = !r
+    ? [CircleMinus, 'neutral', 'ยังไม่ถาม']
+    : r.cited
+      ? [CircleCheck, 'success', 'อ้างลิงก์เรา']
+      : r.mentioned
+        ? [MessageCircle, 'warning', 'พูดถึงชื่อเรา']
+        : [CircleX, 'danger', 'ไม่พูดถึงเรา']
+  return (
+    <span className="aoo-status aoo-status--sm" data-tone={tone}>
+      <Icon size={14} />
+      {text}
+    </span>
+  )
 }
 
 export default function AiAnswers({ site }: { site: SeoSite }) {

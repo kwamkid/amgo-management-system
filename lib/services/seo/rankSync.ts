@@ -49,7 +49,7 @@ async function settings(sb: SupabaseClient) {
   return {
     budget: Number(data?.monthly_budget_usd ?? 10),
     device: (data?.rank_device ?? 'mobile') as Device,
-    samples: Math.max(1, Math.min(5, data?.rank_samples ?? 3)),
+    samples: Math.max(1, Math.min(5, data?.rank_samples ?? 1)),
   }
 }
 

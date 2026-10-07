@@ -14,6 +14,7 @@ import {
   CircleMinus,
   CircleOff,
   CircleX,
+  ImageIcon,
   Loader2,
   MessageCircle,
   Plus,
@@ -56,14 +57,20 @@ import {
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
-import { RANK_STATUS_LABEL, type RankStatus } from '@/lib/services/seo/rankRules'
+import {
+  MIN_SAMPLES_TO_SAY_NONE,
+  RANK_STATUS_LABEL,
+  SERP_FEATURE_LABEL,
+  type RankStatus,
+} from '@/lib/services/seo/rankRules'
 
-type Filter = 'all' | 'solid' | 'sometimes' | 'none' | 'top10' | 'wrong'
+type Filter = 'all' | 'solid' | 'sometimes' | 'checking' | 'none' | 'top10' | 'wrong'
 
 const FILTERS = [
   { value: 'all', label: 'ทั้งหมด' },
   { value: 'solid', label: 'ติดจริง' },
   { value: 'sometimes', label: 'โผล่บางครั้ง' },
+  { value: 'checking', label: 'ยังไม่แน่ใจ' },
   { value: 'none', label: 'ยังไม่ติด' },
   { value: 'top10', label: 'หน้าแรก (ติดจริง)' },
   { value: 'wrong', label: 'ติดผิดหน้า' },
@@ -72,9 +79,10 @@ const FILTERS = [
 const PAGE_SIZE = 20
 
 /** ไอคอน + สีของสถานะ "ติดจริงไหม" — ใช้ทั้งในตารางและคำอธิบาย */
-const STATUS_ICON: Record<RankStatus, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'neutral' }> = {
+const STATUS_ICON: Record<RankStatus, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'info' | 'neutral' }> = {
   solid: { Icon: CircleCheck, tone: 'success' },
   sometimes: { Icon: CircleDashed, tone: 'warning' },
+  checking: { Icon: CircleHelp, tone: 'info' },
   none: { Icon: CircleOff, tone: 'neutral' },
   unknown: { Icon: CircleHelp, tone: 'neutral' },
 }
@@ -279,7 +287,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
     () =>
       (rows ?? []).filter((k) => {
         const st = k.confidence.status
-        if (filter === 'solid' || filter === 'sometimes') return st === filter
+        if (filter === 'solid' || filter === 'sometimes' || filter === 'checking') return st === filter
         if (filter === 'none') return st === 'none'
         if (filter === 'top10') return st === 'solid' && (k.snapshots[0]?.position ?? k.gscPosition ?? 999) <= 10
         if (filter === 'wrong') return wrongPage(k)
@@ -373,7 +381,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       // ติดจริงไหม — รวมประวัติ 4 รอบ + GSC (เจ้าของขอ 8 ต.ค. 69: อันดับครั้งเดียวแกว่ง อ่านแล้วไม่ต่อกัน)
       key: 'status',
       header: 'ติดจริงไหม',
-      sortValue: (k) => ({ solid: 0, sometimes: 1, none: 2, unknown: 3 })[k.confidence.status],
+      sortValue: (k) => ({ solid: 0, sometimes: 1, checking: 2, none: 3, unknown: 4 })[k.confidence.status],
       cell: (k) => {
         const c = k.confidence
         const { Icon, tone } = STATUS_ICON[c.status]
@@ -386,9 +394,26 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             {c.samples > 0 && (
               <div
                 className="flex items-center gap-1 text-xs text-gray-500"
-                title={`Google ไทย (ค้นจากเครื่องกลาง) ${c.rounds} รอบล่าสุดใน 35 วัน — เจอเว็บเรากี่ครั้ง`}
+                title={`Google ไทย (ค้นจากเครื่องกลาง) ${c.days} วันล่าสุดใน 35 วัน — เจอลิงก์เว็บเรากี่ครั้ง${
+                  c.organicSeen ? ` · Google ให้ดูลิงก์ปกติแค่ ${c.organicSeen} อันดับ` : ''
+                }`}
               >
-                <Search size={12} /> เจอ {c.hits}/{c.samples} ครั้ง ({c.rounds} รอบ)
+                <Search size={12} /> เจอ {c.hits}/{c.samples} ครั้ง ({c.days} วัน)
+                {!c.hits && c.organicSeen ? ` · ไม่อยู่ใน ${c.organicSeen} ลิงก์แรก` : ''}
+              </div>
+            )}
+            {c.features.length > 0 && (
+              <div
+                className="flex items-center gap-1 text-xs text-gray-500"
+                title="เราโผล่ในส่วนอื่นของหน้า Google — Search Console นับตำแหน่งนี้เป็นอันดับด้วย"
+              >
+                <ImageIcon size={12} />
+                {c.features.map((f) => `โผล่ใน${SERP_FEATURE_LABEL[f.type] ?? f.type} ตำแหน่ง ${f.rank}`).join(' · ')}
+              </div>
+            )}
+            {c.status === 'checking' && (
+              <div className="text-xs text-gray-400">
+                ข้อมูลยังน้อย ({c.samples}/{MIN_SAMPLES_TO_SAY_NONE} ครั้ง) — ระบบเช็คเพิ่มให้วันละครั้ง
               </div>
             )}
             {(k.gscPosition != null || c.share != null) && (
@@ -575,7 +600,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
           {/* อธิบายแต่ละช่อง — เจ้าของงงว่า "มี · ไม่อ้างเรา" คืออะไร (6 ต.ค. 69) */}
           <div className="aoo-legend">
             <span><b>ติดจริงไหม</b> (รวมประวัติ 4 รอบ + คนค้นจริง ไม่ดูอันดับครั้งเดียว):</span>
-            {(['solid', 'sometimes', 'none'] as RankStatus[]).map((st) => {
+            {(['solid', 'sometimes', 'checking', 'none'] as RankStatus[]).map((st) => {
               const { Icon, tone } = STATUS_ICON[st]
               return (
                 <span key={st} className="aoo-status aoo-status--sm" data-tone={tone}>
@@ -589,6 +614,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             </span>
             <span className="inline-flex items-center gap-1">
               <Users size={12} /> คนค้นจริง (Search Console) — อันดับเฉลี่ยตอนโผล่ · เห็นเรากี่ % ของคนค้น
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <ImageIcon size={12} /> โผล่ในกล่องรูป/แผนที่ (GSC นับเป็นอันดับด้วย)
             </span>
           </div>
           <div className="aoo-legend">

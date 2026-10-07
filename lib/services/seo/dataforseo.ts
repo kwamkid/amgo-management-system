@@ -114,6 +114,28 @@ export type ParsedSerp = {
   aiOverviewCitesUs: boolean
   aiOverviewRefs: { domain: string; url: string }[]
   topCompetitors: { rank: number; domain: string; url: string; title: string }[]
+  /** Google ส่งลิงก์ปกติมาให้ดูกี่อันดับจริง (ไม่ใช่ 100 เสมอ) */
+  organicSeen: number
+  /** เราโผล่ในส่วนอื่นของหน้า (กล่องรูป · แผนที่ · วิดีโอ …) — GSC นับเป็นอันดับด้วย */
+  features: { type: string; rank: number }[]
+}
+
+/** มีโดเมนเราอยู่ในก้อนนี้ไหม (ลิงก์/โดเมนในทุกชั้น) — ไม่นับ facebook.com/<ชื่อเรา> */
+function mentionsDomain(node: any, ours: string): boolean {
+  if (!node || typeof node !== 'object') return false
+  for (const [k, v] of Object.entries(node)) {
+    if (typeof v === 'string') {
+      if ((k === 'domain' || k === 'source_domain') && isOurDomain(v.replace(/^www\./, ''), ours)) return true
+      if (k === 'url' || k === 'source_url' || k === 'link') {
+        try {
+          if (isOurDomain(new URL(v).hostname.replace(/^www\./, ''), ours)) return true
+        } catch {
+          /* ไม่ใช่ url */
+        }
+      }
+    } else if (typeof v === 'object' && mentionsDomain(v, ours)) return true
+  }
+  return false
 }
 
 /** แปลงผล SERP เป็นสิ่งที่เก็บ — อันดับ = rank_group ของผลแบบ organic */
@@ -130,7 +152,14 @@ export function parseSerp(items: any[], ourDomain: string): ParsedSerp {
   aio.forEach(collect)
   const uniqueRefs = Array.from(new Map(refs.map((r) => [r.url, r])).values())
 
+  // ส่วนอื่นของหน้าที่มีลิงก์/โดเมนเรา (ไม่นับ AI Overview — แยกช่องไว้แล้ว)
+  const features = items
+    .filter((i) => i.type !== 'organic' && i.type !== 'ai_overview' && mentionsDomain(i, ourDomain))
+    .map((i) => ({ type: String(i.type), rank: Number(i.rank_absolute ?? 0) }))
+
   return {
+    organicSeen: organic.length,
+    features,
     position: mine?.rank_group ?? null,
     rankedUrl: mine?.url ?? null,
     hasAiOverview: aio.length > 0,

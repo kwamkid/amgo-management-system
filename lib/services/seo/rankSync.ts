@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSerpTask, parseSerp, postSerpTasks, type Device } from './dataforseo'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
-import { isSuspiciousDrop } from './rankRules'
+import { isSuspiciousDrop, MIN_SAMPLES_TO_SAY_NONE } from './rankRules'
 
 /** เช็คซ้ำเมื่อผลล่าสุดเก่ากว่ากี่วัน */
 const RECHECK_DAYS = 7
@@ -124,6 +124,8 @@ async function collectTask(
     p_aio_cites: p.aiOverviewCitesUs,
     p_aio_refs: p.aiOverviewRefs,
     p_top: p.topCompetitors,
+    p_organic_seen: p.organicSeen,
+    p_features: p.features,
   })
   if (error) throw new Error(`บันทึกอันดับไม่ได้: ${error.message}`)
 
@@ -254,7 +256,7 @@ export async function postDueRanks(
     sb.from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
     sb
       .from('seo_rank_snapshots')
-      .select('keyword_id, checked_on, position')
+      .select('keyword_id, checked_on, position, samples, hits')
       .eq('device', device)
       .in('keyword_id', ids)
       .order('checked_on', { ascending: false }),
@@ -263,6 +265,14 @@ export async function postDueRanks(
   const lastChecked = new Map<string, string>()
   // 2 รอบล่าสุดต่อคำ — ไว้ดูว่ารอบล่าสุดร่วงหนักจนต้องเช็คซ้ำไหม
   const lastTwo = new Map<string, (number | null)[]>()
+  // หลักฐาน 35 วันล่าสุด — ยังไม่เคยเจอเลยแต่เช็คไม่ถึง 3 ครั้ง = "ยังไม่แน่ใจ" → เช็คเพิ่มวันละครั้ง
+  const evidenceSince = bangkokDate(new Date(Date.now() - 35 * 864e5))
+  const evidence = new Map<string, { samples: number; hits: number }>()
+  for (const s of latest ?? []) {
+    if (s.checked_on < evidenceSince) continue
+    const e = evidence.get(s.keyword_id) ?? { samples: 0, hits: 0 }
+    evidence.set(s.keyword_id, { samples: e.samples + s.samples, hits: e.hits + s.hits })
+  }
   for (const s of latest ?? []) {
     if (!lastChecked.has(s.keyword_id)) lastChecked.set(s.keyword_id, s.checked_on)
     const two = lastTwo.get(s.keyword_id) ?? []
@@ -275,6 +285,7 @@ export async function postDueRanks(
   let nToday = 0
   let nFresh = 0
   let nRecheck = 0
+  let nConfirm = 0
   const due = keywords.filter((k) => {
     if (hasPending.has(k.id)) return nPending++, false
     const last = lastChecked.get(k.id)
@@ -282,6 +293,8 @@ export async function postDueRanks(
     // รอบล่าสุดร่วงหนัก = เช็คซ้ำวันถัดไปเลย ไม่รอครบ 7 วัน (ผล SERP แกว่ง อย่าเพิ่งเชื่อรอบเดียว)
     const [cur, prev] = lastTwo.get(k.id) ?? []
     if (prev !== undefined && isSuspiciousDrop(cur ?? null, prev)) return nRecheck++, true
+    const ev = evidence.get(k.id)
+    if (ev && !ev.hits && ev.samples < MIN_SAMPLES_TO_SAY_NONE) return nConfirm++, true
     if (!opts.force && last && last > cutoff) return nFresh++, false
     return true
   })
@@ -289,6 +302,7 @@ export async function postDueRanks(
   if (nToday) skipped.push(`${nToday} คำเช็คไปแล้ววันนี้`)
   if (nFresh) skipped.push(`${nFresh} คำเช็คไปไม่ถึง ${RECHECK_DAYS} วัน`)
   if (nRecheck) skipped.push(`${nRecheck} คำร่วงหนักรอบก่อน — เช็คซ้ำยืนยัน`)
+  if (nConfirm) skipped.push(`${nConfirm} คำยังไม่แน่ใจ (ไม่เจอแต่เช็คไม่ถึง ${MIN_SAMPLES_TO_SAY_NONE} ครั้ง) — เช็คเพิ่ม`)
   if (!due.length) return { posted: 0, costUsd: 0, skipped }
 
   const spent = await monthSpend(sb)

@@ -3201,10 +3201,12 @@ export type Database = {
           cost_usd: number | null
           created_at: string
           device: string
+          features: Json | null
           has_ai_overview: boolean
           hits: number
           id: number
           keyword_id: string
+          organic_seen: number | null
           position: number | null
           ranked_url: string | null
           samples: number
@@ -3217,10 +3219,12 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           device?: string
+          features?: Json | null
           has_ai_overview?: boolean
           hits?: number
           id?: never
           keyword_id: string
+          organic_seen?: number | null
           position?: number | null
           ranked_url?: string | null
           samples?: number
@@ -3233,10 +3237,12 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           device?: string
+          features?: Json | null
           has_ai_overview?: boolean
           hits?: number
           id?: never
           keyword_id?: string
+          organic_seen?: number | null
           position?: number | null
           ranked_url?: string | null
           samples?: number
@@ -5356,8 +5362,10 @@ export type Database = {
           p_aio_refs: Json
           p_checked_on: string
           p_device: string
+          p_features?: Json
           p_has_aio: boolean
           p_keyword: string
+          p_organic_seen?: number
           p_position: number
           p_ranked_url: string
           p_top: Json

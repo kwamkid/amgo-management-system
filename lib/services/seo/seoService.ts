@@ -256,6 +256,10 @@ export interface RankSnapshot {
   /** ค้นกี่ครั้ง / เจอเรากี่ครั้ง — Google เสิร์ฟผลหลายชุดสลับกัน */
   samples: number
   hits: number
+  /** Google ส่งลิงก์ปกติมาให้ดูกี่อันดับ (null = ข้อมูลเก่าก่อนเก็บ) */
+  organicSeen: number | null
+  /** เราโผล่ในส่วนอื่นของหน้า (กล่องรูป · แผนที่ …) */
+  features: { type: string; rank: number }[] | null
 }
 
 export interface TargetKeyword {
@@ -316,7 +320,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   const [{ data: snaps }, { data: pending }, { data: gsc }, { data: aiRows }] = await Promise.all([
     sb()
       .from('seo_rank_snapshots')
-      .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits')
+      .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits, organic_seen, features')
       .in('keyword_id', ids)
       .gte('checked_on', since)
       .order('checked_on', { ascending: false })
@@ -351,6 +355,8 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       detailed: s.top_competitors != null,
       samples: s.samples,
       hits: s.hits,
+      organicSeen: s.organic_seen,
+      features: (s.features as any) ?? null,
     })
     byKw.set(s.keyword_id, list)
   }

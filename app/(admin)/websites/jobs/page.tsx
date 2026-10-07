@@ -41,6 +41,7 @@ import {
   DataTable,
   InfoPanel,
   PageHeader,
+  QueueFloat,
   SectionCard,
   Segmented,
   StatCard,
@@ -50,6 +51,7 @@ import {
 } from '@/components/shared'
 import {
   enqueueJobs,
+  getBatches,
   getHosts,
   getJobs,
   getQueueStatus,
@@ -57,6 +59,7 @@ import {
   getSites,
   runQueueNow,
   type ActiveJob,
+  type WebBatch,
   type WebHost,
   type WebJob,
   type WebSite,
@@ -359,6 +362,9 @@ export default function WebJobsPage() {
   /** กางคิวเต็มไว้ไหม — ปิดไว้ก่อน เพราะปกติดูแค่ "ตอนนี้ทำอะไร" ก็พอ
       จะกางก็ต่อเมื่ออยากรู้ว่าเว็บของตัวเองอยู่ตรงไหนของคิว 98 ใบ */
   const [queueOpen, setQueueOpen] = useState(false)
+  /** ชุดงานที่ยังไม่จบ — ป้อนแผงคิวลอยมุมขวาล่าง (แบบเดียวกับหน้า SEO) */
+  const [openBatches, setOpenBatches] = useState<WebBatch[]>([])
+  const [floatOpen, setFloatOpen] = useState(true)
   const [detail, setDetail] = useState<WebJob | null>(null)
   const { confirm, dialog: confirmDialog } = useConfirm()
 
@@ -374,6 +380,9 @@ export default function WebJobsPage() {
     getHosts().then(setHosts).catch(() => {})
     getJobs({ limit: 40 }).then(setJobs).catch(() => {})
     getQueueStatus().then(setQueue).catch(() => {})
+    getBatches(10)
+      .then((b) => setOpenBatches(b.filter((x) => !x.finishedAt)))
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -381,9 +390,10 @@ export default function WebJobsPage() {
   // เฉพาะตอนมีงานเพิ่งเสร็จ · ของเดิมยิงทั้ง 4 ก้อนทุก 15 วิ ตลอดเวลาที่เปิดแท็บทิ้งไว้
   const lastFinished = useRef('')
   const tick = useCallback(async () => {
-    const [q, j] = await Promise.all([getQueueStatus(), getJobs({ limit: 40 })])
+    const [q, j, b] = await Promise.all([getQueueStatus(), getJobs({ limit: 40 }), getBatches(10).catch(() => null)])
     setQueue(q)
     setJobs(j)
+    if (b) setOpenBatches(b.filter((x) => !x.finishedAt))
     const newest = j.reduce((m, x) => (x.finishedAt && x.finishedAt > m ? x.finishedAt : m), '')
     if (newest !== lastFinished.current) {
       lastFinished.current = newest
@@ -1345,13 +1355,13 @@ export default function WebJobsPage() {
               // ไม่งั้น spinner หมุนทั้งที่ไม่มีงานทำ อ่านแล้วเข้าใจผิดหนักกว่าเดิม
               <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
                 <Clock size={18} />
-                ยังไม่มีงานที่กำลังทำ — รอระบบหยิบคิวรอบถัดไป (ทุก 1–2 นาที)
+                ยังไม่มีงานที่กำลังทำ — ระบบหยิบงานถัดไปต่อเองทันที (ถ้าค้างนาน กด &quot;เร่งคิวเดี๋ยวนี้&quot;)
               </p>
             )}
             {queue.queued > 0 && (
               <p className="mt-2 text-base text-gray-700">
                 รอคิวอีก {queue.queued} งาน — {queuedByType.map(([t, n]) => `${TYPE_LABEL[t]} ${n}`).join(' · ')}{' '}
-                · โฮสต์หนึ่งทำทีละงาน กด &quot;เร่งคิวเดี๋ยวนี้&quot; ข้างบนได้ถ้าไม่อยากรอรอบ cron
+                · โฮสต์หนึ่งทำทีละงาน ระบบเดินคิวต่อเองจนหมด ปิดหน้านี้ได้
               </p>
             )}
 
@@ -1494,6 +1504,29 @@ export default function WebJobsPage() {
 
       {/* คิวเต็ม — แยกตามโฮสต์เพราะแต่ละโฮสต์เดินคิวของตัวเองขนานกัน (ทีละงานต่อโฮสต์)
           กองรวมเป็นลิสต์เดียวจะอ่านเหมือนทุกใบต้องรอต่อคิวกันหมด ซึ่งไม่จริง */}
+      {/* แผงคิวลอย — ตัวเดียวกับหน้า SEO · งานเดินฝั่งเซิร์ฟเวอร์ ปิดหน้าได้ */}
+      {openBatches.length > 0 && (
+        <QueueFloat
+          title="สั่งงานทั้งฟลีต"
+          done={openBatches.reduce((n, b) => n + b.doneJobs + b.failedJobs, 0)}
+          total={openBatches.reduce((n, b) => n + b.totalJobs, 0)}
+          failed={openBatches.reduce((n, b) => n + b.failedJobs, 0)}
+          active={queue.queued + queue.running > 0}
+          open={floatOpen}
+          onOpenChange={setFloatOpen}
+          meta={
+            queue.running
+              ? `กำลังทำ ${queue.running} · รอ ${queue.queued} · โฮสต์ละงาน ระบบเดินต่อเองจนหมด ปิดหน้านี้ได้`
+              : `รอ ${queue.queued} งาน · ระบบหยิบต่อเองทันที`
+          }
+          action={
+            <button type="button" className="aoo-queue__link" onClick={() => setQueueOpen(true)}>
+              ดูคิวทั้งหมด
+            </button>
+          }
+        />
+      )}
+
       {queueOpen && (
         <Modal
           open
@@ -1503,7 +1536,7 @@ export default function WebJobsPage() {
           description={
             slotSecs === null
               ? 'ยังประมาณเวลาไม่ได้ — ต้องมีประวัติงานที่เดินติดกันก่อน'
-              : `คิวเดินจริงประมาณ ${Math.round(slotSecs)} วินาทีต่อ 1 งาน ต่อโฮสต์ — ความเร็วมาจากรอบ cron ไม่ใช่ความเร็วของงาน กด "เร่งคิวเดี๋ยวนี้" แล้วจะเร็วกว่านี้`
+              : `คิวเดินจริงประมาณ ${Math.round(slotSecs)} วินาทีต่อ 1 งาน ต่อโฮสต์ (ประมาณจากงานที่ผ่านมา)`
           }
         >
           <div className="max-h-[65vh] space-y-6 overflow-y-auto">

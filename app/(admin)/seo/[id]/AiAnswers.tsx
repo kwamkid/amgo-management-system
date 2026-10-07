@@ -9,9 +9,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, CheckCircle2, Loader2, MessageSquarePlus, Send, Trash2, X } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { useToastOffset } from '@/hooks/useToastOffset'
+import { getQueueGroup, type QueueGroupStatus } from '@/lib/services/queueService'
 import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
-import { DataTable, StatCard, StatGrid, type Column } from '@/components/shared'
+import { DataTable, QueueFloat, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   AEO_ENGINE_LABELS,
   addAeoPrompts,
@@ -27,11 +27,8 @@ import {
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
-/** ดูความคืบหน้าหลังสั่งถามได้นานเท่านี้ — เกินแล้วถือว่าจบ (ที่ไม่ได้คำตอบจะถามซ้ำรอบ cron) */
-const ASK_WATCH_MS = 20 * 60_000
-
-const todayBangkok = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+/** ชุดที่จบแล้วยังโชว์แผงค้างไว้กี่นาที — ให้เห็นว่าจบแล้ว */
+const SHOW_DONE_MS = 30 * 60_000
 
 function ResultPill({ r }: { r?: AeoResult }) {
   if (!r) return <span className="text-gray-400">—</span>
@@ -52,23 +49,21 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   const [keywords, setKeywords] = useState<{ id: string; keyword: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<AeoPrompt | null>(null)
-  const askKey = `seo-aeo-asked:${site.id}`
-  /** เวลาที่สั่งถาม (จำไว้ในเครื่อง) — null = ไม่ได้สั่ง */
-  const [askedAt, setAskedAt] = useState<number | null>(null)
+  const askKey = `seo-aeo-group:${site.id}`
+  /** ชุดงานถาม AI ล่าสุดที่สั่งจากหน้านี้ (จำไว้ในเครื่อง) — แผงคิวอ่านความคืบหน้าจากคิวกลาง */
+  const [group, setGroup] = useState<{ key: string; at: number } | null>(null)
+  const [progress, setProgress] = useState<QueueGroupStatus | null>(null)
   // อ่านหลัง mount (ฝั่งเซิร์ฟเวอร์ไม่มี localStorage — อ่านตอน render จะ hydrate ไม่ตรง)
   useEffect(() => {
     try {
-      const v = Number(localStorage.getItem(`seo-aeo-asked:${site.id}`))
-      setAskedAt(v && Date.now() - v < ASK_WATCH_MS ? v : null)
+      const v = JSON.parse(localStorage.getItem(askKey) ?? 'null')
+      setGroup(v?.key ? v : null)
     } catch {
-      setAskedAt(null)
+      setGroup(null)
     }
-  }, [site.id])
+  }, [askKey])
   const [starting, setStarting] = useState(false)
   const [queueOpen, setQueueOpen] = useState(true)
-  const [engineCount, setEngineCount] = useState(AEO_ENGINE_LABELS.length)
-  const [now, setNow] = useState(() => Date.now())
-  const floatRef = useToastOffset()
 
   const load = () =>
     Promise.all([
@@ -90,17 +85,10 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
 
   useEffect(() => {
     load()
-    getSeoSettings()
-      .then((st) => setEngineCount(st.aeoEngines.length))
-      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site.id])
 
-  /**
-   * สั่งถามแล้วจบ — เซิร์ฟเวอร์ถามต่อเองเป็นช่วง ๆ จนครบ (ปิดหน้าได้)
-   * หน้าเว็บแค่ดูความคืบหน้าจากคำตอบของวันนี้ (โหลดใหม่ทุก 15 วิ) · จำเวลาที่สั่งไว้ในเครื่อง
-   * เปิดหน้ากลับมาก็ยังเห็นแผงคิว
-   */
+  /** สั่งถามแล้วจบ — ลงคิวกลาง งานเดินฝั่งเซิร์ฟเวอร์จนครบ (ปิดหน้าได้) · หน้าเว็บแค่ดูความคืบหน้า */
   const askNow = async () => {
     setStarting(true)
     try {
@@ -111,21 +99,50 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'ถาม AI ไม่สำเร็จ')
-      const now = Date.now()
-      setAskedAt(now)
+      if (!json.groupKey) {
+        showToast(json.message ?? 'ไม่มีอะไรต้องถาม')
+        return
+      }
+      const g = { key: json.groupKey as string, at: Date.now() }
+      setGroup(g)
+      setProgress(null)
       try {
-        localStorage.setItem(askKey, String(now))
+        localStorage.setItem(askKey, JSON.stringify(g))
       } catch {
         /* ไม่มี localStorage ก็แค่จำไม่ได้ตอนเปิดหน้าใหม่ */
       }
       setQueueOpen(true)
-      showToast('เริ่มถาม AI แล้ว — ปิดหน้านี้ได้ ระบบถามต่อเองจนครบ')
+      showToast(`ลงคิวถาม AI ${json.queued} ครั้งแล้ว — ปิดหน้านี้ได้ ระบบถามต่อเองจนครบ`)
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
       setStarting(false)
     }
   }
+
+  // ติดตามชุดงาน: ทุก 10 วิ ระหว่างยังไม่จบ · ได้คำตอบเพิ่ม = โหลดตารางใหม่
+  useEffect(() => {
+    if (!group) return
+    let stop = false
+    let lastDone = -1
+    const tick = async () => {
+      const st = await getQueueGroup(group.key).catch(() => null)
+      if (stop || !st) return
+      setProgress(st)
+      if (st.done !== lastDone) {
+        lastDone = st.done
+        load()
+      }
+      if (!st.active) stop = true
+    }
+    tick()
+    const t = setInterval(() => !stop && tick(), 10_000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group?.key])
 
   const add = async () => {
     setSaving(true)
@@ -232,24 +249,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((p) => p.isTracked).length
-  const today = todayBangkok()
-  const answeredToday = (rows ?? [])
-    .filter((p) => p.isTracked)
-    .reduce((n, p) => n + Object.values(p.latest).filter((r) => r?.checkedOn === today).length, 0)
-  const expected = tracked * engineCount
-  const watching = !!askedAt && now - askedAt < ASK_WATCH_MS
-  const finished = watching && answeredToday >= expected
-
-  // ระหว่างรอ: โหลดตารางใหม่ทุก 15 วิ · ครบแล้วหยุด
-  useEffect(() => {
-    if (!watching || finished) return
-    const t = setInterval(() => {
-      setNow(Date.now())
-      load()
-    }, 15_000)
-    return () => clearInterval(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watching, finished, site.id])
+  const showPanel = !!group && !!progress && progress.total > 0 && (progress.active || Date.now() - group.at < SHOW_DONE_MS)
 
   return (
     <div>
@@ -260,7 +260,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
           <Button size="sm" variant="secondary" icon={MessageSquarePlus} onClick={() => setAdding(true)}>
             เพิ่มคำถาม
           </Button>
-          <Button size="sm" icon={Send} loading={starting} onClick={askNow} disabled={!tracked || (watching && !finished)}>
+          <Button size="sm" icon={Send} loading={starting} onClick={askNow} disabled={!tracked || !!progress?.active}>
             ถาม AI ตอนนี้
           </Button>
         </div>
@@ -304,41 +304,24 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
         emptyBody='กด "เพิ่มคำถาม" แล้ววางคำถามบรรทัดละข้อ'
       />
 
-      {watching && !queueOpen && (
-        <button
-          ref={floatRef}
-          type="button"
-          className="aoo-queue-fab"
-          onClick={() => setQueueOpen(true)}
-          aria-label="เปิดคิวถาม AI"
-        >
-          {finished ? <CheckCircle2 size={22} /> : <Loader2 size={22} className="animate-spin" />}
-        </button>
-      )}
-      {watching && queueOpen && (
-        <div ref={floatRef} className="aoo-queue" role="status">
-          <div className="aoo-queue__head">
-            {finished ? <CheckCircle2 size={16} /> : <Loader2 size={16} className="animate-spin" />}
-            <span>
-              {finished ? 'ถาม AI ครบแล้ว' : 'กำลังถาม AI'} — ได้คำตอบวันนี้ {Math.min(answeredToday, expected)}/{expected}
-            </span>
-            <button type="button" className="aoo-queue__close" onClick={() => setQueueOpen(false)} aria-label="ย่อคิว">
-              <X size={16} />
-            </button>
-          </div>
-          <Progress
-            className="mt-2"
-            value={Math.min(answeredToday, expected)}
-            max={expected || 1}
-            tone={finished ? 'success' : 'grape'}
-            aria-label="ความคืบหน้าการถาม AI"
-          />
-          <div className="aoo-queue__meta">
-            {finished
-              ? 'ผลอยู่ในตารางแล้ว'
-              : 'เซิร์ฟเวอร์ถามต่อเองทีละชุด (~40 วิ ต่อชุด) · ปิดหน้านี้ได้ ผลไม่หาย · ข้อที่ไม่ได้คำตอบจะถามซ้ำรอบ cron'}
-          </div>
-        </div>
+      {showPanel && progress && (
+        <QueueFloat
+          title="ถาม AI"
+          unit="ข้อ"
+          done={progress.done}
+          total={progress.total}
+          failed={progress.failed}
+          active={progress.active}
+          open={queueOpen}
+          onOpenChange={setQueueOpen}
+          meta={
+            progress.active
+              ? `${progress.running.length ? `กำลังถาม: ${progress.running.slice(0, 2).join(' · ')} · ` : ''}เซิร์ฟเวอร์ถามต่อเองทีละข้อ · ปิดหน้านี้ได้ ผลไม่หาย`
+              : progress.failed
+                ? 'ข้อที่ล้มเหลวระบบลองใหม่ให้แล้ว 3 ครั้ง — จะถามอีกรอบ cron'
+                : 'ผลอยู่ในตารางแล้ว'
+          }
+        />
       )}
 
       <Modal

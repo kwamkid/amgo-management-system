@@ -10,7 +10,8 @@
 // คิวถูกกินโดย /api/web/jobs/next ที่ cron เรียกทุก 1–2 นาที — ทำทีละเว็บ
 // ต่อโฮสต์เสมอ เพราะยิงพร้อมกันทั้งโฮสต์เคยทำ load พุ่งจนเว็บลูกค้าช้า
 
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { kickQueue } from '@/lib/queue/queue'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 
@@ -168,6 +169,10 @@ export async function POST(request: NextRequest) {
     }))
   )
   if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 })
+
+  // เริ่มทำทันที ไม่ต้องรอ cron รอบ 2 นาที (8 ต.ค. 69 — คิวจริง)
+  const origin = request.nextUrl.origin
+  after(() => kickQueue(origin, '/api/web/jobs/next'))
 
   return NextResponse.json({
     success: true,

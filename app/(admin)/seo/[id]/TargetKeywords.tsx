@@ -9,8 +9,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Bot,
-  CheckCircle2,
-  ListChecks,
   Loader2,
   Plus,
   Radar,
@@ -20,10 +18,8 @@ import {
   TrendingDown,
   TrendingUp,
   Trophy,
-  X,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { useToastOffset } from '@/hooks/useToastOffset'
 import {
   Alert,
   Button,
@@ -32,13 +28,12 @@ import {
   Input,
   Modal,
   Pill,
-  Progress,
   Select,
   Textarea,
   Toggle,
   useConfirm,
 } from '@/components/aoo'
-import { DataTable, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
+import { DataTable, QueueFloat, Segmented, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   addTargetKeywords,
   deleteTargetKeyword,
@@ -105,7 +100,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const { confirm, dialog } = useConfirm()
   const [rows, setRows] = useState<TargetKeyword[] | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  const [busy, setBusy] = useState<'check' | 'collect' | null>(null)
+  const [busy, setBusy] = useState<'check' | null>(null)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({
     lines: '',
@@ -118,12 +113,11 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const [moreOpts, setMoreOpts] = useState(false)
   const [detail, setDetail] = useState<TargetKeyword | null>(null)
   const [queue, setQueue] = useState<RankQueue | null>(null)
-  const [lastPoll, setLastPoll] = useState<number | null>(null)
-  const [polling, setPolling] = useState(false)
+  /** เวลาที่กดเช็ค — ใช้โชว์ "กำลังส่งเข้าคิว" จนกว่างานจะโผล่ */
+  const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   /** แผงคิวเปิดอยู่ไหม — ปิดแล้วเหลือปุ่มกลมมุมขวาล่าง */
   const [queueOpen, setQueueOpen] = useState(true)
-  const floatRef = useToastOffset()
 
   const loadQueue = () =>
     getRankQueue(site.id)
@@ -146,61 +140,45 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site.id])
 
-  /** silent = ดึงผลเองเบื้องหลัง ไม่เด้งข้อความ (บอกเฉพาะตอนได้ผล) */
-  const call = async (action: 'check' | 'collect', silent = false) => {
-    if (!silent) setBusy(action)
+  /**
+   * ลงคิวเช็คอันดับแล้วจบ — งานเดินฝั่งเซิร์ฟเวอร์ ผลกลับมาเองทาง pingback ปิดหน้าได้
+   * หน้าเว็บแค่โหลดสถานะใหม่เป็นระยะ (อ่านอย่างเดียว ไม่ได้ไปถามผลเอง)
+   */
+  const check = async () => {
+    setBusy('check')
     try {
       const res = await fetch('/api/cron/seo/rank', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId: site.id, action }),
+        body: JSON.stringify({ siteId: site.id }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'ไม่สำเร็จ')
-      const c = json.collected
-      const p = json.posted
-      if (silent) {
-        // ได้ผลบางคำ = โหลดตารางใหม่ · ยังไม่ได้ = อัปเดตแค่แผงคิว
-        await (c.done || c.failed ? load() : loadQueue())
-        return
-      }
-      const parts = [
-        c.failed ? `ล้มเหลว ${c.failed} งาน` : null,
-        p?.posted ? `ส่งเช็ค ${p.posted} คำ ($${p.costUsd.toFixed(3)}) — ผลมาในไม่กี่นาที หน้านี้ดึงให้เอง` : null,
-        ...(p?.skipped ?? []),
-      ].filter(Boolean)
-      showToast(parts.join(' · ') || 'ไม่มีงานค้าง', 'success')
-      if (p?.posted) setQueueOpen(true)
-      await load()
+      setStartedAt(Date.now())
+      setQueueOpen(true)
+      showToast('ลงคิวเช็คอันดับแล้ว — ปิดหน้านี้ได้ ผลกลับมาเอง')
     } catch (e) {
-      if (!silent) showToast((e as Error).message, 'error')
+      showToast((e as Error).message, 'error')
     } finally {
-      if (!silent) setBusy(null)
-      setLastPoll(Date.now())
+      setBusy(null)
     }
   }
 
-  const pollNow = async () => {
-    setPolling(true)
-    await call('collect', true)
-    setPolling(false)
-  }
-
-  // มีคำรอผล = ดึงผลให้เองทุก 30 วิ เหมือนหน้าคิวงานปลั๊กอิน (ถามผลไม่เสียเงิน)
-  // หยุดเองเมื่อไม่มีงานค้าง หรือออกจากหน้า
+  // เพิ่งกดเช็ค (รองานส่งออก ~ไม่กี่วิ) หรือยังมีคำรอผล = โหลดสถานะใหม่เป็นระยะ · หยุดเองเมื่อจบ
   const pendingCount = queue?.pending ?? 0
+  const starting = !!startedAt && Date.now() - startedAt < 2 * 60_000 && !(queue && new Date(queue.postedAt).getTime() >= startedAt - 5_000)
   useEffect(() => {
-    if (!pendingCount) return
-    setLastPoll(Date.now())
-    const t = setInterval(pollNow, POLL_MS)
-    // นาฬิกาสำหรับนับถอยหลัง "ถามผลอีกกี่วิ"
-    const tick = setInterval(() => setNow(Date.now()), 1000)
-    return () => {
-      clearInterval(t)
-      clearInterval(tick)
-    }
+    if (!pendingCount && !starting) return
+    const t = setInterval(
+      () => {
+        setNow(Date.now())
+        load()
+      },
+      starting ? 5_000 : POLL_MS
+    )
+    return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCount, site.id])
+  }, [pendingCount, starting, site.id])
 
   const add = async () => {
     setSaving(true)
@@ -457,7 +435,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
 
   const tracked = (rows ?? []).filter((k) => k.isTracked).length
   const showQueue = !!queue && (queue.pending > 0 || now - new Date(queue.postedAt).getTime() < SHOW_DONE_MIN * 60_000)
-  const nextIn = lastPoll ? Math.max(0, Math.ceil((lastPoll + POLL_MS - now) / 1000)) : null
 
   return (
     <div>
@@ -471,58 +448,32 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
           <Button size="sm" variant="secondary" icon={Plus} onClick={() => setAdding(true)}>
             เพิ่มคำ
           </Button>
-          <Button size="sm" icon={Radar} loading={busy === 'check'} onClick={() => call('check')} disabled={!tracked}>
+          <Button size="sm" icon={Radar} loading={busy === 'check'} onClick={check} disabled={!tracked}>
             เช็คอันดับตอนนี้
           </Button>
         </div>
       </div>
 
-      {showQueue && queue && !queueOpen && (
-        <button
-          ref={floatRef}
-          type="button"
-          className="aoo-queue-fab"
-          onClick={() => setQueueOpen(true)}
-          aria-label="เปิดคิวเช็คอันดับ"
-        >
-          {queue.pending ? <Loader2 size={22} className="animate-spin" /> : <ListChecks size={22} />}
-          {queue.pending > 0 && <span className="aoo-queue-fab__badge">{queue.pending}</span>}
-        </button>
-      )}
-      {showQueue && queue && queueOpen && (
-        <div ref={floatRef} className="aoo-queue" role="status">
-          <div className="aoo-queue__head">
-            {queue.pending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-            <span>
-              {queue.pending
-                ? `กำลังเช็คอันดับ — ได้ผลแล้ว ${queue.done + queue.failed}/${queue.total} คำ`
-                : `เช็คเสร็จแล้ว ${queue.done}/${queue.total} คำ${queue.failed ? ` · ล้มเหลว ${queue.failed}` : ''}`}
-            </span>
-            <button type="button" className="aoo-queue__close" onClick={() => setQueueOpen(false)} aria-label="ย่อคิว">
-              <X size={16} />
-            </button>
-          </div>
-          <Progress
-            className="mt-2"
-            value={queue.done + queue.failed}
-            max={queue.total}
-            tone={queue.pending ? 'grape' : 'success'}
-            aria-label="ความคืบหน้าการเช็คอันดับ"
-          />
-          <div className="aoo-queue__meta">
-            ส่งเข้าคิว {clock(queue.postedAt)}
-            {queue.pending
-              ? ` · ปกติ 5–30 นาที · ถามผลเองทุก 30 วิ${lastPoll ? ` (อีก ${nextIn} วิ)` : ''} · ปิดหน้านี้ได้ ผลไม่หาย`
-              : ''}
-          </div>
-          {queue.pending > 0 && (
-            <div className="aoo-queue__foot">
-              <button type="button" className="aoo-queue__link" onClick={pollNow} disabled={polling}>
-                {polling ? 'กำลังถาม…' : 'ถามผลตอนนี้'}
-              </button>
-            </div>
-          )}
-        </div>
+      {(starting || (showQueue && queue)) && (
+        <QueueFloat
+          title={starting ? 'กำลังส่งเข้าคิวเช็คอันดับ' : 'เช็คอันดับ'}
+          unit="คำ"
+          done={queue && !starting ? queue.done + queue.failed : 0}
+          total={queue && !starting ? queue.total : 0}
+          failed={queue && !starting ? queue.failed : 0}
+          active={starting || pendingCount > 0}
+          open={queueOpen}
+          onOpenChange={setQueueOpen}
+          meta={
+            starting
+              ? 'รอเซิร์ฟเวอร์ส่งคำไป DataForSEO ไม่กี่วินาที'
+              : `ส่งเข้าคิว ${clock(queue!.postedAt)}${
+                  pendingCount
+                    ? ' · ผลแต่ละคำกลับมาเองเมื่อเสร็จ (ปกติ 5–30 นาที) · ปิดหน้านี้ได้ ผลไม่หาย'
+                    : ''
+                }`
+          }
+        />
       )}
 
       {rows && rows.length > 0 && (

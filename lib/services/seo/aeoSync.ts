@@ -1,43 +1,33 @@
 // lib/services/seo/aeoSync.ts
 //
-// AEO — ถามคำถามที่ถึงรอบกับ AI แต่ละตัว แล้วบันทึกว่าคำตอบพูดถึง/อ้างเราไหม
+// AEO — ถาม AI ด้วยคำถามที่ถึงรอบ แล้วบันทึกว่าคำตอบพูดถึง/อ้างเราไหม
 //
-// ── จังหวะ ─────────────────────────────────────────────────────────────
-// งาน SEO รายวัน (cron ตี 4): ถามคู่ (คำถาม × AI) ที่คำตอบล่าสุดเก่ากว่า aeo_recheck_days (7 วัน)
-//   ทำเท่าที่เวลาเหลือ — ที่ค้างไว้ทำต่อพรุ่งนี้ (ปกติสัปดาห์ละ ~45 คู่ ใช้ไม่กี่วันก็ครบ)
-// ปุ่มบนหน้าเว็บ: ถามทุกคู่ของเว็บนั้นที่ยังไม่ได้ถามวันนี้ · หน้าเว็บเรียกซ้ำจนครบ (remaining = 0)
-//
-// ── เงิน ──────────────────────────────────────────────────────────────
-// เพดานเดือนเดียวกับอันดับ (seo_settings.monthly_budget_usd) · เช็คก่อนเริ่มทุกรอบ
-// บันทึกค่าใช้จ่ายรวมต่อ AI ต่อรอบใน seo_api_costs (endpoint 'aeo/<engine>')
+// ทำผ่านคิวกลาง (lib/queue): planAeo หาคู่ (คำถาม × AI) ที่ถึงรอบ + เช็คงบ แล้วลงคิว
+// งานละ 1 ข้อ (kind 'seo.aeo.ask') → askOne ถาม ~5–15 วิ บันทึกผล + ค่าใช้จ่าย
+//   · cron ตี 4: คู่ที่คำตอบล่าสุดเก่ากว่า aeo_recheck_days (7 วัน)
+//   · ปุ่มบนหน้าเว็บ: ทุกคู่ของเว็บนั้นที่ยังไม่ได้ถามวันนี้ (ปิดหน้าได้ คิวเดินเอง)
+// เพดานงบเดือนเดียวกับอันดับ (seo_settings.monthly_budget_usd) — เช็คทั้งชุดก่อนลงคิว
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { AEO_ENGINES, analyzeAnswer, askAi, type AeoEngine } from './aeo'
 import { monthSpend } from './rankSync'
-
-const CONCURRENCY = 6
 
 const bangkokDate = (d = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
 export type AeoEvent = { site: string; prompt: string; engine: AeoEngine; kind: 'cited' | 'lost' }
 
-export type AeoSummary = {
-  done: number
-  failed: number
-  /** คู่ที่ถึงรอบแต่ยังไม่ได้ถาม (เวลาหมด) */
-  remaining: number
-  costUsd: number
-  skipped: string[]
-  events: AeoEvent[]
-}
+/** คู่ (คำถาม × AI) ที่ถึงรอบถาม — ใช้ตอนลงคิว */
+export type AeoDue = { promptId: string; prompt: string; engine: AeoEngine; site: string }
 
-export async function runDueAeo(
+/**
+ * หาคู่ที่ถึงรอบ + เช็คงบทั้งชุดก่อน (ไม่พอ = ไม่ลงคิวเลย ไม่ถามครึ่ง ๆ กลาง ๆ)
+ * force = กดจากหน้าเว็บ (ไม่สนรอบ 7 วัน แต่ข้ามคู่ที่ถามไปแล้ววันนี้)
+ */
+export async function planAeo(
   sb: SupabaseClient,
-  opts: { siteId?: string; force?: boolean; deadline: number }
-): Promise<AeoSummary> {
-  const out: AeoSummary = { done: 0, failed: 0, remaining: 0, costUsd: 0, skipped: [], events: [] }
-
+  opts: { siteId?: string; force?: boolean } = {}
+): Promise<{ due: AeoDue[]; skipped: string[] }> {
   const { data: cfg } = await sb
     .from('seo_settings')
     .select('monthly_budget_usd, aeo_engines, aeo_recheck_days')
@@ -45,103 +35,110 @@ export async function runDueAeo(
   const engines = AEO_ENGINES.filter((e) => (cfg?.aeo_engines ?? ['chatgpt', 'perplexity', 'gemini']).includes(e.key))
   const recheckDays = cfg?.aeo_recheck_days ?? 7
   const budget = Number(cfg?.monthly_budget_usd ?? 10)
-  if (!engines.length) return { ...out, skipped: ['ปิด AI ทุกตัวไว้ในตั้งค่า'] }
+  if (!engines.length) return { due: [], skipped: ['ปิด AI ทุกตัวไว้ในตั้งค่า'] }
 
   let q = sb
     .from('seo_aeo_prompts')
-    .select('id, prompt, site_id, seo_sites!inner(domain, display_name, is_active)')
+    .select('id, prompt, site_id, seo_sites!inner(display_name, is_active)')
     .eq('is_tracked', true)
   q = opts.siteId ? q.eq('site_id', opts.siteId) : q.eq('seo_sites.is_active', true)
   const { data: prompts, error } = await q
   if (error) throw new Error(error.message)
-  if (!prompts?.length) return { ...out, skipped: ['ยังไม่มีคำถามที่เปิดติดตาม'] }
+  if (!prompts?.length) return { due: [], skipped: ['ยังไม่มีคำถามที่เปิดติดตาม'] }
 
   const { data: last } = await sb
     .from('seo_aeo_results')
-    .select('prompt_id, engine, checked_on, cited')
+    .select('prompt_id, engine, checked_on')
     .in(
       'prompt_id',
       prompts.map((p) => p.id)
     )
     .order('checked_on', { ascending: false })
-  const latest = new Map<string, { checked_on: string; cited: boolean }>()
+  const latest = new Map<string, string>()
   for (const r of last ?? []) {
     const key = `${r.prompt_id}|${r.engine}`
-    if (!latest.has(key)) latest.set(key, r)
+    if (!latest.has(key)) latest.set(key, r.checked_on)
   }
 
   const today = bangkokDate()
   const cutoff = bangkokDate(new Date(Date.now() - (recheckDays - 1) * 24 * 3600_000))
-  type Job = { prompt: (typeof prompts)[number]; engine: (typeof engines)[number] }
-  const due: Job[] = []
+  const due: AeoDue[] = []
+  let estimate = 0
   for (const p of prompts)
     for (const e of engines) {
       const l = latest.get(`${p.id}|${e.key}`)
-      if (l?.checked_on === today) continue
-      if (!opts.force && l && l.checked_on > cutoff) continue
-      due.push({ prompt: p, engine: e })
+      if (l === today) continue
+      if (!opts.force && l && l > cutoff) continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      due.push({ promptId: p.id, prompt: p.prompt, engine: e.key, site: (p.seo_sites as any).display_name })
+      estimate += e.estCost
     }
-  if (!due.length) return out
+  if (!due.length) return { due, skipped: [] }
 
-  // ประมาณการทั้งรอบด้วยราคาเผื่อ — ไม่พอ = ไม่ถามเลย (ไม่ถามครึ่ง ๆ กลาง ๆ)
   const spent = await monthSpend(sb)
-  const estimate = due.reduce((s, j) => s + j.engine.estCost, 0)
   if (spent + estimate > budget) {
-    out.remaining = due.length
-    out.skipped.push(
-      `ไม่ถาม AI ${due.length} ครั้ง — ใช้ไปแล้ว $${spent.toFixed(2)} + รอบนี้ ~$${estimate.toFixed(2)} เกินเพดาน $${budget.toFixed(2)}/เดือน`
-    )
-    return out
-  }
-
-  const costByEngine = new Map<AeoEngine, { cost: number; n: number }>()
-  const run = async (j: Job) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const site = j.prompt.seo_sites as any as { domain: string; display_name: string }
-    try {
-      const a = await askAi(j.engine.key, j.prompt.prompt)
-      const { mentioned, cited } = analyzeAnswer(a, { domain: site.domain, displayName: site.display_name })
-      const { error: insErr } = await sb.from('seo_aeo_results').upsert(
-        {
-          prompt_id: j.prompt.id,
-          engine: j.engine.key,
-          checked_on: today,
-          mentioned,
-          cited,
-          sources: a.sources,
-          answer: a.text,
-          model: a.model,
-          cost_usd: a.cost,
-        },
-        { onConflict: 'prompt_id,engine,checked_on' }
-      )
-      if (insErr) throw new Error(insErr.message)
-      const c = costByEngine.get(j.engine.key) ?? { cost: 0, n: 0 }
-      costByEngine.set(j.engine.key, { cost: c.cost + a.cost, n: c.n + 1 })
-      out.done++
-      const prev = latest.get(`${j.prompt.id}|${j.engine.key}`)
-      if (prev && prev.cited !== cited)
-        out.events.push({ site: site.display_name, prompt: j.prompt.prompt, engine: j.engine.key, kind: cited ? 'cited' : 'lost' })
-    } catch (e) {
-      out.failed++
-      if (out.failed <= 2) out.skipped.push((e as Error).message)
+    return {
+      due: [],
+      skipped: [
+        `ไม่ถาม AI ${due.length} ครั้ง — ใช้ไปแล้ว $${spent.toFixed(2)} + รอบนี้ ~$${estimate.toFixed(2)} เกินเพดาน $${budget.toFixed(2)}/เดือน`,
+      ],
     }
   }
+  return { due, skipped: [] }
+}
 
-  let i = 0
-  for (; i < due.length && Date.now() < opts.deadline; i += CONCURRENCY) {
-    await Promise.all(due.slice(i, i + CONCURRENCY).map(run))
-  }
-  out.remaining = Math.max(0, due.length - i)
+/** ถาม AI 1 ข้อ (งานในคิว) — บันทึกคำตอบ + ค่าใช้จ่าย · คืน event ถ้าการอ้างเราเปลี่ยนจากรอบก่อน */
+export async function askOne(
+  sb: SupabaseClient,
+  promptId: string,
+  engine: AeoEngine
+): Promise<{ cited: boolean; mentioned: boolean; cost: number; event: AeoEvent | null }> {
+  const { data: p, error } = await sb
+    .from('seo_aeo_prompts')
+    .select('id, prompt, seo_sites(domain, display_name)')
+    .eq('id', promptId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!p) return { cited: false, mentioned: false, cost: 0, event: null } // คำถามถูกลบไปแล้ว
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const site = p.seo_sites as any as { domain: string; display_name: string }
+  const today = bangkokDate()
 
-  const rows = [...costByEngine.entries()].map(([engine, c]) => ({
+  const { data: prev } = await sb
+    .from('seo_aeo_results')
+    .select('cited')
+    .eq('prompt_id', promptId)
+    .eq('engine', engine)
+    .lt('checked_on', today)
+    .order('checked_on', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const a = await askAi(engine, p.prompt)
+  const { mentioned, cited } = analyzeAnswer(a, { domain: site.domain, displayName: site.display_name })
+  const { error: insErr } = await sb.from('seo_aeo_results').upsert(
+    {
+      prompt_id: promptId,
+      engine,
+      checked_on: today,
+      mentioned,
+      cited,
+      sources: a.sources,
+      answer: a.text,
+      model: a.model,
+      cost_usd: a.cost,
+    },
+    { onConflict: 'prompt_id,engine,checked_on' }
+  )
+  if (insErr) throw new Error(insErr.message)
+  await sb.from('seo_api_costs').insert({
     provider: 'dataforseo',
     endpoint: `aeo/${engine}`,
-    units: c.n,
-    cost_usd: c.cost,
-    note: `ถาม AI ${c.n} คำถาม`,
-  }))
-  if (rows.length) await sb.from('seo_api_costs').insert(rows)
-  out.costUsd = rows.reduce((s, r) => s + r.cost_usd, 0)
-  return out
+    units: 1,
+    cost_usd: a.cost,
+    note: `ถาม AI: ${p.prompt.slice(0, 60)}`,
+  })
+  const event: AeoEvent | null =
+    prev && prev.cited !== cited ? { site: site.display_name, prompt: p.prompt, engine, kind: cited ? 'cited' : 'lost' } : null
+  return { cited, mentioned, cost: a.cost, event }
 }

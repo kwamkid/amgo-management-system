@@ -7,7 +7,8 @@
 // ทั้งโฮสต์แล้ว load พุ่ง 12+ จนเว็บลูกค้าช้า · ตัวหยิบงาน (web_claim_jobs)
 // บังคับข้อนี้ที่ระดับ SQL แล้ว ตรงนี้แค่รันงานที่หยิบมาได้แบบขนานข้ามโฮสต์
 
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { kickQueue } from '@/lib/queue/queue'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 import { isAuthorizedCron } from '@/lib/cron-auth'
@@ -704,13 +705,37 @@ async function drain(limit: number) {
   return { ran: claimed.length }
 }
 
+/**
+ * หลังทำรอบนี้: ยังมีงานฟลีตรอ = เรียกตัวเองต่อทันที (ไม่ต้องรอ cron 2 นาที — 8 ต.ค. 69 เจ้าของขอให้เป็นคิวจริง)
+ * และปลุกตัวรันคิวกลางทุกครั้ง (cron 2 นาทีนี้เป็นตัวสำรองของคิวกลางด้วย — งานที่ตั้งเวลารอไว้ถึงเวลาแล้ว)
+ */
+async function continueAfter(origin: string, ran: number) {
+  await kickQueue(origin)
+  if (!ran) return
+  const { count } = await createAdminClient()
+    .from('web_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'queued')
+  if (count) await kickQueue(origin, '/api/web/jobs/next')
+}
+
+/**
+ * cron / ตัวรันเรียก — ตอบ 202 ทันที แล้วทำงานใน after()
+ * (งานหนึ่งยาวได้ถึง ~59 วิ แต่ cron-job.org รอได้แค่ 30 วิ · ตัวที่ปลุกต่อก็ไม่ต้องรอ)
+ */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCron(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  try {
-    return NextResponse.json({ success: true, ...(await drain(2)) })
-  } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
-  }
+  const origin = request.nextUrl.origin
+  after(async () => {
+    let ran = 0
+    try {
+      ran = (await drain(2)).ran
+    } catch (e) {
+      console.error('[web-jobs] drain', (e as Error).message)
+    }
+    await continueAfter(origin, ran)
+  })
+  return NextResponse.json({ accepted: true }, { status: 202 })
 }
 
 export async function POST(request: NextRequest) {
@@ -725,7 +750,10 @@ export async function POST(request: NextRequest) {
   if (!owner) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
-    return NextResponse.json({ success: true, ...(await drain(2)) })
+    const r = await drain(2)
+    const origin = request.nextUrl.origin
+    after(() => continueAfter(origin, r.ran))
+    return NextResponse.json({ success: true, ...r })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }

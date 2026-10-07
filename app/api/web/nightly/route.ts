@@ -23,7 +23,8 @@
 //
 // ตั้งตอนดึกเพราะเป็นช่วงที่เว็บลูกค้าคนน้อยที่สุด — ต่อให้ช้าไปบ้างก็ไม่มีใครเจอ
 
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { kickQueue } from '@/lib/queue/queue'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 
@@ -115,6 +116,12 @@ export async function GET(request: NextRequest) {
 
   const failed = batches.filter((b) => b.error)
   const jobs = batches.reduce((n, b) => n + b.jobs, 0)
+
+  // เริ่มทำทันที (คิวจริง — ตัวรันต่อเองจนหมด ไม่ต้องรอ cron ทุก 2 นาที)
+  if (jobs) {
+    const origin = request.nextUrl.origin
+    after(() => kickQueue(origin, '/api/web/jobs/next'))
+  }
 
   // ล้มแค่ชนิดเดียวก็ยังตอบ 500 — cron ต้องเตือน ไม่ใช่เงียบแล้วปล่อยให้
   // งานอีกชนิดหายไปทั้งคืนโดยไม่มีใครรู้ (อีกชนิดที่สำเร็จยังอยู่ในคิวตามปกติ)

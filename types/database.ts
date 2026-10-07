@@ -2911,6 +2911,78 @@ export type Database = {
           },
         ]
       }
+      queue_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          group_key: string | null
+          id: number
+          kind: string
+          label: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          group_key?: string | null
+          id?: never
+          kind: string
+          label?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          group_key?: string | null
+          id?: never
+          kind?: string
+          label?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_aeo_prompts: {
         Row: {
           created_at: string
@@ -5278,6 +5350,48 @@ export type Database = {
       }
     }
     Functions: {
+      seo_merge_rank_sample: {
+        Args: {
+          p_aio_cites: boolean
+          p_aio_refs: Json
+          p_checked_on: string
+          p_device: string
+          p_has_aio: boolean
+          p_keyword: string
+          p_position: number
+          p_ranked_url: string
+          p_top: Json
+        }
+        Returns: boolean
+      }
+      queue_prune: { Args: never; Returns: undefined }
+      queue_claim: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          group_key: string | null
+          id: number
+          kind: string
+          label: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "queue_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       attendance_period_summary: {
         Args: { p_from: string; p_to: string }
         Returns: {

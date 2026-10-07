@@ -1,81 +1,71 @@
 // lib/services/seo/seoDaily.ts
 //
-// งาน SEO รายวัน — cron ตัวเดียว (cron-job.org ตี 4 → /api/cron/seo/gsc-daily)
-// เจ้าของขอ 6 ต.ค. 69: ไม่ต้องแยก cron ต่องาน · งาน SEO รายวันใหม่ต่อท้ายที่นี่
+// งาน SEO รายวัน — cron-job.org ตี 4 → /api/cron/seo/gsc-daily → ลงคิวกลางแล้วจบ (ตอบใน ~2 วิ)
+// เจ้าของขอ 6 ต.ค. 69: cron ตัวเดียวพอ · 8 ต.ค. 69: ทุกงานใช้คิวจริง (lib/queue)
 //
-// แบ่งเป็นช่วง ช่วงละไม่เกิน 60 วิ ของ Vercel (route ต่อช่วงถัดไปเอง — ดู route.ts):
-//   ช่วง gsc  — ดึง GSC ทุกเว็บ งบ 48 วิ · ไม่ทันครบ = ต่ออีกช่วง gsc (สูงสุด 3 ช่วง)
-//               (7 ต.ค. 69: 7 เว็บใช้ ~50 วิ เดิมรวมทุกอย่างช่วงเดียว อันดับ/AI เลยไม่เคยได้รัน)
-//   ช่วง work — 1) อันดับ: เก็บผลเมื่อวาน + ส่งคำที่ถึงรอบ/ต้องเช็คซ้ำ
-//               2) Bing ยอดรายวัน (ข้ามถ้าไม่มี key)
-//               3) AEO ถาม AI ที่ถึงรอบ เริ่มชุดใหม่ได้ถึงวิที่ 36 (ชุดละ ≤ 18 วิ)
-//               4) สรุปความเปลี่ยนแปลงเข้า Discord ข้อความเดียว
-//   ช่วง aeo  — ถาม AI ที่ยังค้างจากช่วง work ต่อ (ช่วงละ ~40 วิ สูงสุด 4 ช่วง) ที่เหลือจริง ๆ ทำต่อพรุ่งนี้
-// งานที่ใช้ DataForSEO ข้ามเงียบ ๆ ถ้ายังไม่ตั้งรหัส · แต่ละขั้นพังไม่ลามขั้นอื่น
+// ชุดงานของวัน (group 'seo-daily:<วันที่>') — ตัวรันคิวทำต่อเองทีละชิ้น ไม่ติดเพดาน 60 วิ อีก:
+//   seo.gsc        เว็บละงาน
+//   seo.rank.post  ส่งคำที่ถึงรอบ/ต้องเช็คซ้ำ (ผลกลับมาเองทาง pingback + งานเก็บผลสำรอง)
+//   seo.bing       ยอด Bing (ข้ามถ้าไม่มี key)
+//   seo.aeo.ask    ถาม AI ข้อละงาน (เฉพาะคู่ที่ถึงรอบ · เช็คงบทั้งชุดก่อน)
+//   seo.digest     สรุปเข้า Discord หลังชุดนี้จบ
+//   queue.prune    ล้างประวัติคิวเก่า
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { syncGsc } from './gscSync'
+import { enqueue, type QueueJobInput } from '@/lib/queue/queue'
 import { hasDataForSeoCredentials } from './dataforseo'
-import { collectRanks, postDueRanks, type RankEvent } from './rankSync'
-import { runDueAeo, type AeoEvent } from './aeoSync'
-import { syncBing } from './bing'
-import { sendSeoDigest } from './seoAlerts'
+import { planAeo } from './aeoSync'
+import { AEO_ENGINES } from './aeo'
 
-const GSC_BUDGET_MS = 48_000
-/** อันดับ: เก็บผลได้ถึงวิที่เท่านี้ */
-const RANK_UNTIL_MS = 25_000
-/** AEO: เริ่มถามชุดใหม่ได้ถึงวิที่เท่านี้ (ชุดหนึ่งไม่เกิน 18 วิ — askAi ตัดเอง) */
-const AEO_UNTIL_MS = 36_000
+const bangkokDate = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+    new Date()
+  )
 
-const step = async <T,>(fn: () => Promise<T>): Promise<T | { error: string }> => {
-  try {
-    return await fn()
-  } catch (e) {
-    return { error: (e as Error).message }
-  }
-}
+const engineLabel = (k: string) => AEO_ENGINES.find((e) => e.key === k)?.label ?? k
 
-/** ช่วง gsc — คืนจำนวนเว็บที่เวลาไม่พอ (route ใช้ตัดสินว่าจะต่อช่วง gsc อีกไหม) */
-export async function runSeoDailyGsc(sb: SupabaseClient) {
-  const gsc = await syncGsc(sb, { budgetMs: GSC_BUDGET_MS })
-  const deferred = gsc.filter((r) => r.status === 'skipped' && r.detail.startsWith('เวลาไม่พอ')).length
-  return { gsc, deferred }
-}
+export async function enqueueSeoDaily(sb: SupabaseClient) {
+  const groupKey = `seo-daily:${bangkokDate()}`
 
-/** ช่วง work — อันดับ · Bing · AEO · แจ้งเตือน */
-export async function runSeoDailyWork(sb: SupabaseClient) {
-  const startedAt = Date.now()
-  const skip = 'ข้าม — ยังไม่ได้ตั้ง DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD'
-  let rank: unknown = skip
-  let aeo: unknown = skip
-  const rankEvents: RankEvent[] = []
-  const aeoEvents: AeoEvent[] = []
+  // กันลงซ้ำ (cron-job.org ยิงซ้ำ / กดรันเอง) — ชุดของวันนี้มีแล้วก็จบ
+  const { count } = await sb.from('queue_jobs').select('id', { count: 'exact', head: true }).eq('group_key', groupKey)
+  if (count) return { groupKey, queued: 0, note: 'ลงคิวของวันนี้ไปแล้ว' }
 
+  const { data: sites } = await sb.from('seo_sites').select('id, display_name').eq('is_active', true)
+  const jobs: QueueJobInput[] = (sites ?? []).map((s) => ({
+    kind: 'seo.gsc',
+    payload: { siteId: s.id },
+    groupKey,
+    label: `ดึง GSC · ${s.display_name}`,
+    priority: 3,
+  }))
+
+  const skipped: string[] = []
   if (hasDataForSeoCredentials()) {
-    rank = await step(async () => {
-      const collected = await collectRanks(sb, startedAt + RANK_UNTIL_MS)
-      rankEvents.push(...collected.events)
-      const posted = await postDueRanks(sb)
-      return { collected: { ...collected, events: collected.events.length }, posted }
-    })
+    jobs.push({ kind: 'seo.rank.post', groupKey, label: 'ส่งเช็คอันดับคำที่ถึงรอบ', priority: 4 })
+    const aeo = await planAeo(sb)
+    skipped.push(...aeo.skipped)
+    jobs.push(
+      ...aeo.due.map((d) => ({
+        kind: 'seo.aeo.ask',
+        payload: { promptId: d.promptId, engine: d.engine },
+        groupKey,
+        label: `${engineLabel(d.engine)} · ${d.prompt}`,
+        priority: 6,
+      }))
+    )
   }
-  const bing = await step(() => syncBing(sb))
-  if (hasDataForSeoCredentials()) {
-    aeo = await step(async () => {
-      const r = await runDueAeo(sb, { deadline: startedAt + AEO_UNTIL_MS })
-      aeoEvents.push(...r.events)
-      return { ...r, events: r.events.length }
-    })
-  }
-  const alerts = await step(() => sendSeoDigest(sb, rankEvents, aeoEvents))
-  const aeoRemaining = typeof aeo === 'object' && aeo && 'remaining' in aeo ? Number(aeo.remaining) : 0
-  return { rank, bing, aeo, alerts, aeoRemaining }
-}
+  jobs.push({ kind: 'seo.bing', groupKey, label: 'ดึงยอด Bing', priority: 5 })
+  jobs.push({
+    kind: 'seo.digest',
+    groupKey,
+    label: 'สรุปเข้า Discord',
+    priority: 9,
+    maxAttempts: 2,
+    runAfter: new Date(Date.now() + 20 * 60_000),
+  })
+  jobs.push({ kind: 'queue.prune', groupKey, label: 'ล้างประวัติคิวเก่า', priority: 9 })
 
-/** ช่วง aeo — ถาม AI ต่อจากที่ค้าง · แจ้งเตือนเฉพาะความเปลี่ยนแปลงของช่วงนี้ */
-export async function runSeoDailyAeo(sb: SupabaseClient) {
-  if (!hasDataForSeoCredentials()) return { aeoRemaining: 0 }
-  const r = await runDueAeo(sb, { deadline: Date.now() + 40_000 })
-  if (r.events.length) await sendSeoDigest(sb, [], r.events).catch(() => {})
-  return { ...r, events: r.events.length, aeoRemaining: r.remaining }
+  await enqueue(sb, jobs)
+  return { groupKey, queued: jobs.length, skipped }
 }

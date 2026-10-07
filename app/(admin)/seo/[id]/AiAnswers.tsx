@@ -7,7 +7,7 @@
 // เช็คอัตโนมัติสัปดาห์ละครั้ง (cron ตี 4) · ปุ่ม "ถาม AI ตอนนี้" ถามทันทีทีละชุด จนครบ
 
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, CheckCircle2, Loader2, MessageSquarePlus, Send, Trash2 } from 'lucide-react'
+import { Bot, CheckCircle2, Loader2, MessageSquarePlus, Send, Trash2, X } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { useToastOffset } from '@/hooks/useToastOffset'
 import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
@@ -18,6 +18,7 @@ import {
   deleteAeoPrompt,
   fmtGscDate,
   getAeoPrompts,
+  getSeoSettings,
   getTargetKeywords,
   setAeoPromptKeyword,
   setAeoPromptTracked,
@@ -25,6 +26,12 @@ import {
   type AeoResult,
   type SeoSite,
 } from '@/lib/services/seo/seoService'
+
+/** ดูความคืบหน้าหลังสั่งถามได้นานเท่านี้ — เกินแล้วถือว่าจบ (ที่ไม่ได้คำตอบจะถามซ้ำรอบ cron) */
+const ASK_WATCH_MS = 20 * 60_000
+
+const todayBangkok = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 function ResultPill({ r }: { r?: AeoResult }) {
   if (!r) return <span className="text-gray-400">—</span>
@@ -45,8 +52,22 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   const [keywords, setKeywords] = useState<{ id: string; keyword: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<AeoPrompt | null>(null)
-  /** ความคืบหน้าตอนกดถาม — null = ไม่ได้ถามอยู่ */
-  const [asking, setAsking] = useState<{ done: number; remaining: number; cost: number } | null>(null)
+  const askKey = `seo-aeo-asked:${site.id}`
+  /** เวลาที่สั่งถาม (จำไว้ในเครื่อง) — null = ไม่ได้สั่ง */
+  const [askedAt, setAskedAt] = useState<number | null>(null)
+  // อ่านหลัง mount (ฝั่งเซิร์ฟเวอร์ไม่มี localStorage — อ่านตอน render จะ hydrate ไม่ตรง)
+  useEffect(() => {
+    try {
+      const v = Number(localStorage.getItem(`seo-aeo-asked:${site.id}`))
+      setAskedAt(v && Date.now() - v < ASK_WATCH_MS ? v : null)
+    } catch {
+      setAskedAt(null)
+    }
+  }, [site.id])
+  const [starting, setStarting] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(true)
+  const [engineCount, setEngineCount] = useState(AEO_ENGINE_LABELS.length)
+  const [now, setNow] = useState(() => Date.now())
   const floatRef = useToastOffset()
 
   const load = () =>
@@ -69,35 +90,40 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
 
   useEffect(() => {
     load()
+    getSeoSettings()
+      .then((st) => setEngineCount(st.aeoEngines.length))
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site.id])
 
-  /** ถามทีละชุด (~40 วิ ต่อครั้ง) จนเซิร์ฟเวอร์บอกว่าไม่เหลือ */
+  /**
+   * สั่งถามแล้วจบ — เซิร์ฟเวอร์ถามต่อเองเป็นช่วง ๆ จนครบ (ปิดหน้าได้)
+   * หน้าเว็บแค่ดูความคืบหน้าจากคำตอบของวันนี้ (โหลดใหม่ทุก 15 วิ) · จำเวลาที่สั่งไว้ในเครื่อง
+   * เปิดหน้ากลับมาก็ยังเห็นแผงคิว
+   */
   const askNow = async () => {
-    let done = 0
-    let cost = 0
-    setAsking({ done: 0, remaining: 0, cost: 0 })
+    setStarting(true)
     try {
-      for (let round = 0; round < 10; round++) {
-        const res = await fetch('/api/seo/aeo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ siteId: site.id }),
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'ถาม AI ไม่สำเร็จ')
-        done += json.done
-        cost += json.costUsd
-        setAsking({ done, remaining: json.remaining, cost })
-        await load()
-        if (json.skipped?.length) showToast(json.skipped.join(' · '), json.failed ? 'error' : 'success')
-        if (!json.remaining || (!json.done && !json.failed)) break
+      const res = await fetch('/api/seo/aeo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId: site.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'ถาม AI ไม่สำเร็จ')
+      const now = Date.now()
+      setAskedAt(now)
+      try {
+        localStorage.setItem(askKey, String(now))
+      } catch {
+        /* ไม่มี localStorage ก็แค่จำไม่ได้ตอนเปิดหน้าใหม่ */
       }
-      showToast(done ? `ถาม AI แล้ว ${done} ครั้ง ($${cost.toFixed(3)})` : 'ถามครบแล้ววันนี้ — ไม่มีอะไรต้องถามเพิ่ม')
+      setQueueOpen(true)
+      showToast('เริ่มถาม AI แล้ว — ปิดหน้านี้ได้ ระบบถามต่อเองจนครบ')
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
-      setAsking(null)
+      setStarting(false)
     }
   }
 
@@ -206,6 +232,24 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((p) => p.isTracked).length
+  const today = todayBangkok()
+  const answeredToday = (rows ?? [])
+    .filter((p) => p.isTracked)
+    .reduce((n, p) => n + Object.values(p.latest).filter((r) => r?.checkedOn === today).length, 0)
+  const expected = tracked * engineCount
+  const watching = !!askedAt && now - askedAt < ASK_WATCH_MS
+  const finished = watching && answeredToday >= expected
+
+  // ระหว่างรอ: โหลดตารางใหม่ทุก 15 วิ · ครบแล้วหยุด
+  useEffect(() => {
+    if (!watching || finished) return
+    const t = setInterval(() => {
+      setNow(Date.now())
+      load()
+    }, 15_000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watching, finished, site.id])
 
   return (
     <div>
@@ -216,7 +260,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
           <Button size="sm" variant="secondary" icon={MessageSquarePlus} onClick={() => setAdding(true)}>
             เพิ่มคำถาม
           </Button>
-          <Button size="sm" icon={Send} loading={!!asking} onClick={askNow} disabled={!tracked}>
+          <Button size="sm" icon={Send} loading={starting} onClick={askNow} disabled={!tracked || (watching && !finished)}>
             ถาม AI ตอนนี้
           </Button>
         </div>
@@ -260,22 +304,39 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
         emptyBody='กด "เพิ่มคำถาม" แล้ววางคำถามบรรทัดละข้อ'
       />
 
-      {asking && (
+      {watching && !queueOpen && (
+        <button
+          ref={floatRef}
+          type="button"
+          className="aoo-queue-fab"
+          onClick={() => setQueueOpen(true)}
+          aria-label="เปิดคิวถาม AI"
+        >
+          {finished ? <CheckCircle2 size={22} /> : <Loader2 size={22} className="animate-spin" />}
+        </button>
+      )}
+      {watching && queueOpen && (
         <div ref={floatRef} className="aoo-queue" role="status">
           <div className="aoo-queue__head">
-            <Loader2 size={16} className="animate-spin" />
-            <span>กำลังถาม AI — ได้คำตอบแล้ว {asking.done} ครั้ง</span>
+            {finished ? <CheckCircle2 size={16} /> : <Loader2 size={16} className="animate-spin" />}
+            <span>
+              {finished ? 'ถาม AI ครบแล้ว' : 'กำลังถาม AI'} — ได้คำตอบวันนี้ {Math.min(answeredToday, expected)}/{expected}
+            </span>
+            <button type="button" className="aoo-queue__close" onClick={() => setQueueOpen(false)} aria-label="ย่อคิว">
+              <X size={16} />
+            </button>
           </div>
           <Progress
             className="mt-2"
-            value={asking.done}
-            max={asking.done + asking.remaining || 1}
-            tone="grape"
+            value={Math.min(answeredToday, expected)}
+            max={expected || 1}
+            tone={finished ? 'success' : 'grape'}
             aria-label="ความคืบหน้าการถาม AI"
           />
           <div className="aoo-queue__meta">
-            {asking.remaining ? `เหลืออีก ${asking.remaining} ครั้ง · ` : ''}ถามพร้อมกันทีละ 6 · ครั้งละ ~5–10 วิ · ค่าใช้จ่าย $
-            {asking.cost.toFixed(3)}
+            {finished
+              ? 'ผลอยู่ในตารางแล้ว'
+              : 'เซิร์ฟเวอร์ถามต่อเองทีละชุด (~40 วิ ต่อชุด) · ปิดหน้านี้ได้ ผลไม่หาย · ข้อที่ไม่ได้คำตอบจะถามซ้ำรอบ cron'}
           </div>
         </div>
       )}

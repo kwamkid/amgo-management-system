@@ -13,6 +13,7 @@
 // เกิน = ไม่ส่งเลยทั้งรอบ + แจ้ง Discord ครั้งเดียวต่อเดือน
 // ประมาณการใช้ราคาจริงล่าสุดที่จ่ายไป (ไม่มีประวัติ = ใช้ค่าเผื่อสูงไว้ก่อน)
 
+import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSerpTask, parseSerp, postSerpTasks, type Device } from './dataforseo'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
@@ -73,139 +74,154 @@ export type RankEvent = {
   to: number | null
 }
 
-/** ผลของงานเดียวที่ได้มาแล้ว — รอรวมกับงานอื่นของคำเดียวกันวันเดียวกัน */
-type Sample = { taskId: string; keywordId: string; device: string; checkedOn: string; site: string; keyword: string; p: ReturnType<typeof parseSerp> }
+type PendingTask = {
+  task_id: string
+  keyword_id: string
+  device: string
+  posted_at: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seo_keywords: any
+}
+
+const TASK_SELECT = 'task_id, keyword_id, device, posted_at, seo_keywords(keyword, seo_sites(domain, display_name))'
 
 /**
- * เก็บผลงานที่ค้าง · คำหนึ่งส่งหลายตัวอย่าง (rank_samples) → รวมเป็นแถวเดียวต่อวัน:
- * อันดับ = ดีสุดที่เจอ · hits = เจอเรากี่ครั้ง · AI Overview = มีในตัวอย่างไหนก็นับ
+ * เก็บผลงานเดียว — รวมเข้าแถวของวันนั้นด้วย seo_merge_rank_sample (atomic: ตัวอย่างของคำเดียวกัน
+ * มาพร้อมกันได้จาก pingback ไม่ทับกัน) · คืน 'done' | 'waiting' | 'failed' + event ถ้าเป็นตัวอย่างสุดท้ายของคำ
+ */
+async function collectTask(
+  sb: SupabaseClient,
+  t: PendingTask
+): Promise<{ state: 'done' | 'waiting' | 'failed'; events: RankEvent[] }> {
+  const domain = t.seo_keywords?.seo_sites?.domain as string | undefined
+  const r = await getSerpTask(t.task_id)
+  if (r.state === 'pending') {
+    if (Date.now() - new Date(t.posted_at).getTime() > TASK_EXPIRE_MS) {
+      await sb.from('seo_rank_tasks').update({ status: 'failed', error: 'รอเกิน 3 วัน' }).eq('task_id', t.task_id)
+      return { state: 'failed', events: [] }
+    }
+    return { state: 'waiting', events: [] }
+  }
+  if (r.state === 'failed' || !domain) {
+    await sb
+      .from('seo_rank_tasks')
+      .update({ status: 'failed', error: r.state === 'failed' ? r.error : 'ไม่พบโดเมนของเว็บ' })
+      .eq('task_id', t.task_id)
+    return { state: 'failed', events: [] }
+  }
+
+  const p = parseSerp(r.items, domain)
+  // วันที่ส่งงาน ไม่ใช่วันที่มาเก็บ — DataForSEO ค้นให้ภายในไม่กี่นาทีหลังส่ง
+  // ส่วน cron มาเก็บผลวันถัดไป ถ้าใช้วันเก็บ อันดับจะเลื่อนไปผิดวันหนึ่งวัน
+  const checkedOn = bangkokDate(new Date(t.posted_at))
+  const { error } = await sb.rpc('seo_merge_rank_sample', {
+    p_keyword: t.keyword_id,
+    p_checked_on: checkedOn,
+    p_device: t.device,
+    p_position: p.position,
+    p_ranked_url: p.rankedUrl,
+    p_has_aio: p.hasAiOverview,
+    p_aio_cites: p.aiOverviewCitesUs,
+    p_aio_refs: p.aiOverviewRefs,
+    p_top: p.topCompetitors,
+  })
+  if (error) throw new Error(`บันทึกอันดับไม่ได้: ${error.message}`)
+
+  // ปิดงานแบบมีเงื่อนไข — ถ้ามีอีกรอบเก็บงานนี้ไปแล้ว (pingback + หน้าเว็บพร้อมกัน) ไม่นับซ้ำ
+  const { data: closed } = await sb
+    .from('seo_rank_tasks')
+    .update({ status: 'done' })
+    .eq('task_id', t.task_id)
+    .eq('status', 'pending')
+    .select('task_id')
+  if (!closed?.length) return { state: 'done', events: [] }
+
+  // แจ้งเตือนเมื่อตัวอย่างสุดท้ายของคำนี้มาครบ — เทียบอันดับดีสุดของวันกับรอบก่อน
+  const { count } = await sb
+    .from('seo_rank_tasks')
+    .select('task_id', { count: 'exact', head: true })
+    .eq('keyword_id', t.keyword_id)
+    .eq('status', 'pending')
+  if (count) return { state: 'done', events: [] }
+  return { state: 'done', events: await rankEvents(sb, t, checkedOn) }
+}
+
+/** เทียบแถววันนี้ (รวมทุกตัวอย่างแล้ว) กับ 2 รอบก่อน */
+async function rankEvents(sb: SupabaseClient, t: PendingTask, checkedOn: string): Promise<RankEvent[]> {
+  const site = t.seo_keywords?.seo_sites?.display_name ?? t.seo_keywords?.seo_sites?.domain ?? ''
+  const keyword = t.seo_keywords?.keyword ?? ''
+  const { data: rows } = await sb
+    .from('seo_rank_snapshots')
+    .select('checked_on, position, ai_overview_cites_us, top_competitors')
+    .eq('keyword_id', t.keyword_id)
+    .eq('device', t.device)
+    .lte('checked_on', checkedOn)
+    .order('checked_on', { ascending: false })
+    .limit(3)
+  const [cur, prevRow, prev2] = rows ?? []
+  if (!cur || cur.checked_on !== checkedOn || !prevRow) return []
+  const events: RankEvent[] = []
+  const from = prevRow.position
+  const to = cur.position
+  if (to != null && to <= 10 && (from == null || from > 10)) events.push({ site, keyword, kind: 'top10', from, to })
+  const bad = to == null || to > 20
+  // หลุดหน้าแรก — ร่วงหนักรอบแรกยังไม่แจ้ง (อาจแค่ Google สลับชุดผล) รอรอบเช็คซ้ำยืนยันก่อน
+  const prevWasSuspect = !!prev2 && isSuspiciousDrop(from, prev2.position)
+  if (prevWasSuspect && bad && prev2.position != null && prev2.position <= 10)
+    events.push({ site, keyword, kind: 'dropped', from: prev2.position, to })
+  else if (from != null && from <= 10 && bad && !isSuspiciousDrop(to, from))
+    events.push({ site, keyword, kind: 'dropped', from, to })
+  // ประวัติที่นำเข้าไม่มีข้อมูล AI → ไม่เทียบ AI
+  if (prevRow.top_competitors != null) {
+    if (cur.ai_overview_cites_us && !prevRow.ai_overview_cites_us) events.push({ site, keyword, kind: 'aio_cited', from, to })
+    if (!cur.ai_overview_cites_us && prevRow.ai_overview_cites_us) events.push({ site, keyword, kind: 'aio_lost', from, to })
+  }
+  return events
+}
+
+/**
+ * เก็บผลงานที่ค้าง (cron / หน้าเว็บ) · taskIds = เฉพาะงานที่ DataForSEO แจ้งว่าเสร็จ (pingback)
  * คืน events (ติดหน้าแรก/หลุดจริง/AI เริ่ม-เลิกอ้าง) ไว้แจ้ง Discord
  */
-export async function collectRanks(sb: SupabaseClient, deadline: number) {
-  const { data: tasks } = await sb
-    .from('seo_rank_tasks')
-    .select('task_id, keyword_id, device, posted_at, seo_keywords(keyword, seo_sites(domain, display_name))')
-    .eq('status', 'pending')
-    .order('posted_at')
-    .limit(COLLECT_LIMIT)
+export async function collectRanks(sb: SupabaseClient, deadline: number, opts: { taskIds?: string[] } = {}) {
+  let q = sb.from('seo_rank_tasks').select(TASK_SELECT).eq('status', 'pending')
+  if (opts.taskIds) q = q.in('task_id', opts.taskIds)
+  const { data: tasks } = await q.order('posted_at').limit(COLLECT_LIMIT)
 
+  let done = 0
   let waiting = 0
   let failed = 0
-  const samples: Sample[] = []
-
-  type Task = NonNullable<typeof tasks>[number]
-  const handle = async (t: Task) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kw = t.seo_keywords as any
-    const domain = kw?.seo_sites?.domain as string | undefined
-    const r = await getSerpTask(t.task_id)
-    if (r.state === 'pending') {
-      if (Date.now() - new Date(t.posted_at).getTime() > TASK_EXPIRE_MS) {
-        await sb.from('seo_rank_tasks').update({ status: 'failed', error: 'รอเกิน 3 วัน' }).eq('task_id', t.task_id)
-        failed++
-      } else waiting++
-      return
-    }
-    if (r.state === 'failed' || !domain) {
-      await sb
-        .from('seo_rank_tasks')
-        .update({ status: 'failed', error: r.state === 'failed' ? r.error : 'ไม่พบโดเมนของเว็บ' })
-        .eq('task_id', t.task_id)
-      failed++
-      return
-    }
-    samples.push({
-      taskId: t.task_id,
-      keywordId: t.keyword_id,
-      device: t.device,
-      // วันที่ส่งงาน ไม่ใช่วันที่มาเก็บ — DataForSEO ค้นให้ภายในไม่กี่นาทีหลังส่ง
-      // ส่วน cron มาเก็บผลวันถัดไป ถ้าใช้วันเก็บ อันดับจะเลื่อนไปผิดวันหนึ่งวัน
-      checkedOn: bangkokDate(new Date(t.posted_at)),
-      site: kw?.seo_sites?.display_name ?? domain,
-      keyword: kw?.keyword ?? '',
-      p: parseSerp(r.items, domain),
-    })
+  const events: RankEvent[] = []
+  const handle = async (t: PendingTask) => {
+    const r = await collectTask(sb, t)
+    if (r.state === 'done') done++
+    else if (r.state === 'waiting') waiting++
+    else failed++
+    events.push(...r.events)
   }
 
   // ถามผลพร้อมกันทีละ 8 งาน — ทีละงานใช้ ~1 วิ ไม่ทันเวลาที่เหลือหลังดึง GSC
-  const list = tasks ?? []
+  const list = (tasks ?? []) as PendingTask[]
   for (let i = 0; i < list.length && Date.now() < deadline; i += COLLECT_CONCURRENCY) {
     await Promise.all(list.slice(i, i + COLLECT_CONCURRENCY).map(handle))
   }
+  return { done, waiting, failed, events }
+}
 
-  // รวมตัวอย่างของคำเดียวกันวันเดียวกัน (รวมกับที่บันทึกไว้แล้วจากรอบก่อน ถ้ามี)
-  const groups = new Map<string, Sample[]>()
-  for (const x of samples) {
-    const key = `${x.keywordId}|${x.checkedOn}|${x.device}`
-    groups.set(key, [...(groups.get(key) ?? []), x])
-  }
-  const events: RankEvent[] = []
-  for (const group of groups.values()) {
-    const { keywordId, checkedOn, device, site, keyword } = group[0]
-    const [{ data: existing }, { data: prevRows }] = await Promise.all([
-      sb
-        .from('seo_rank_snapshots')
-        .select('position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits')
-        .eq('keyword_id', keywordId)
-        .eq('checked_on', checkedOn)
-        .eq('device', device)
-        .maybeSingle(),
-      sb
-        .from('seo_rank_snapshots')
-        .select('position, ai_overview_cites_us, has_ai_overview, top_competitors')
-        .eq('keyword_id', keywordId)
-        .eq('device', device)
-        .lt('checked_on', checkedOn)
-        .order('checked_on', { ascending: false })
-        .limit(2),
-    ])
-    const [prevRow, prev2] = prevRows ?? []
-    // ตัวอย่างที่เจอเราอันดับดีสุดเป็นตัวหลัก (คู่แข่ง/AI Overview เอาจากตัวนั้น)
-    const sorted = [...group].sort((a, b) => (a.p.position ?? 999) - (b.p.position ?? 999))
-    const best = sorted[0].p
-    const prevSamples = existing?.samples ?? 0
-    const keepExisting = existing && (existing.position ?? 999) <= (best.position ?? 999)
-    const merged = {
-      keyword_id: keywordId,
-      checked_on: checkedOn,
-      device,
-      position: keepExisting ? existing!.position : best.position,
-      ranked_url: keepExisting ? existing!.ranked_url : best.rankedUrl,
-      has_ai_overview: !!existing?.has_ai_overview || group.some((g) => g.p.hasAiOverview),
-      ai_overview_cites_us: !!existing?.ai_overview_cites_us || group.some((g) => g.p.aiOverviewCitesUs),
-      ai_overview_refs: keepExisting ? existing!.ai_overview_refs : best.aiOverviewRefs,
-      top_competitors: keepExisting ? existing!.top_competitors : best.topCompetitors,
-      samples: prevSamples + group.length,
-      hits: (existing?.hits ?? 0) + group.filter((g) => g.p.position != null).length,
-    }
-    const { error } = await sb.from('seo_rank_snapshots').upsert(merged, { onConflict: 'keyword_id,checked_on,device' })
-    if (error) throw new Error(`บันทึกอันดับไม่ได้: ${error.message}`)
-    await sb
-      .from('seo_rank_tasks')
-      .update({ status: 'done' })
-      .in('task_id', group.map((g) => g.taskId))
+/** URL ที่ DataForSEO เรียกกลับเมื่องานเสร็จ — null = ไม่มีโดเมนแอป/secret (เช่นตอน dev) ใช้การถามผลแทน */
+export function rankPingbackUrl() {
+  const app = process.env.NEXT_PUBLIC_APP_URL
+  const secret = process.env.CRON_SECRET
+  if (!app || !secret || app.includes('localhost')) return null
+  // $id / $tag DataForSEO แทนค่าให้เอง · token แยกจาก CRON_SECRET (ไม่ส่ง secret จริงออกไปนอกระบบ)
+  return `${app}/api/seo/dataforseo-ping?id=$id&t=${pingToken()}`
+}
 
-    // แจ้งเตือนเฉพาะรอบแรกของวันนั้น (กันแจ้งซ้ำตอนตัวอย่างทยอยมา) · ประวัติที่นำเข้าไม่มีข้อมูล AI → ไม่เทียบ AI
-    if (!existing && prevRow) {
-      const from = prevRow.position
-      const to = merged.position
-      if (to != null && to <= 10 && (from == null || from > 10)) events.push({ site, keyword, kind: 'top10', from, to })
-      const bad = to == null || to > 20
-      // หลุดหน้าแรก — ร่วงหนักรอบแรกยังไม่แจ้ง (อาจแค่ Google สลับชุดผล) รอรอบเช็คซ้ำยืนยันก่อน
-      const prevWasSuspect = !!prev2 && isSuspiciousDrop(from, prev2.position)
-      if (prevWasSuspect && bad && prev2.position != null && prev2.position <= 10)
-        events.push({ site, keyword, kind: 'dropped', from: prev2.position, to })
-      else if (from != null && from <= 10 && bad && !isSuspiciousDrop(to, from))
-        events.push({ site, keyword, kind: 'dropped', from, to })
-      if (prevRow.top_competitors != null) {
-        if (merged.ai_overview_cites_us && !prevRow.ai_overview_cites_us)
-          events.push({ site, keyword, kind: 'aio_cited', from, to })
-        if (!merged.ai_overview_cites_us && prevRow.ai_overview_cites_us)
-          events.push({ site, keyword, kind: 'aio_lost', from, to })
-      }
-    }
-  }
-  return { done: samples.length, waiting, failed, events }
+export function pingToken() {
+  return createHash('sha256')
+    .update(`${process.env.CRON_SECRET ?? ''}:dataforseo-ping`)
+    .digest('hex')
+    .slice(0, 32)
 }
 
 // ── ส่งงาน ─────────────────────────────────────────────────────────────
@@ -288,7 +304,8 @@ export async function postDueRanks(
   // คำละหลายตัวอย่าง — Google เสิร์ฟผลหลายชุดสลับกัน ค้นครั้งเดียวอาจได้ชุดที่ไม่มีเรา
   const { posted, failed } = await postSerpTasks(
     due.flatMap((k) => Array.from({ length: samples }, () => ({ keyword: k.keyword, tag: k.id }))),
-    device
+    device,
+    rankPingbackUrl()
   )
   const cost = posted.reduce((s, p) => s + p.cost, 0)
   if (posted.length) {

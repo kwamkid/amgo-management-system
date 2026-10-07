@@ -44,7 +44,12 @@ async function call(path: string, init?: RequestInit): Promise<any> {
 export type PostedTask = { taskId: string; tag: string; cost: number }
 
 /** ส่งคำไปคิว — ครั้งละไม่เกิน 100 คำ · tag = keyword_id ไว้จับคู่ตอนได้ผล */
-export async function postSerpTasks(items: { keyword: string; tag: string }[], device: Device): Promise<{
+export async function postSerpTasks(
+  items: { keyword: string; tag: string }[],
+  device: Device,
+  /** DataForSEO เรียก URL นี้เมื่องานเสร็จ (แทน $id ให้) — ไม่ต้องรอเปิดหน้าเว็บ/cron มาถาม */
+  pingbackUrl?: string | null
+): Promise<{
   posted: PostedTask[]
   failed: { tag: string; error: string }[]
 }> {
@@ -63,6 +68,7 @@ export async function postSerpTasks(items: { keyword: string; tag: string }[], d
           device,
           os: device === 'mobile' ? 'android' : 'windows',
           depth: DEPTH,
+          ...(pingbackUrl ? { pingback_url: pingbackUrl } : {}),
         }))
       ),
     })

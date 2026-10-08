@@ -17,10 +17,11 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSerpTask, parseSerp, postSerpTasks, type Device } from './dataforseo'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
-import { DROP_CONFIRM_ROUNDS, missStreak, needsDropRecheck, MIN_SAMPLES_TO_SAY_NONE } from './rankRules'
+import { bigMove, displayRank, isStable, needsRecheck } from './rankRules'
 
-/** เช็คซ้ำเมื่อผลล่าสุดเก่ากว่ากี่วัน */
+/** เช็คซ้ำเมื่อผลล่าสุดเก่ากว่ากี่วัน · คำที่อันดับนิ่ง 4 รอบติด ห่างได้เป็น 14 วัน (ประหยัด) */
 const RECHECK_DAYS = 7
+const STABLE_RECHECK_DAYS = 14
 /** ยังไม่มีประวัติราคา — เผื่อไว้สูงกว่าราคาจริง (~$0.0006–0.002) */
 const FALLBACK_COST_PER_TASK = 0.003
 /** งานที่ค้างนานกว่านี้ถือว่าหาย ไม่ต้องถามต่อ */
@@ -70,7 +71,8 @@ export type RankEvent = {
   siteId: string
   site: string
   keyword: string
-  kind: 'top10' | 'dropped' | 'aio_cited' | 'aio_lost'
+  /** up / down = อันดับที่โชว์ (ค่ากลาง 5 ครั้ง) ขยับเยอะ — rankRules.bigMove */
+  kind: 'up' | 'down' | 'aio_cited' | 'aio_lost'
   from: number | null
   to: number | null
 }
@@ -149,39 +151,30 @@ async function collectTask(
   return { state: 'done', events: await rankEvents(sb, t, checkedOn) }
 }
 
-/** แถว 35 วันก่อนหน้า — ไว้ตัดสินว่า "ติดหน้าแรกใหม่" / "หลุดจริง" ไม่ใช่แค่ผลแกว่ง */
-const EVENT_HISTORY_DAYS = 35
-
-/** เทียบแถววันนี้ (รวมทุกตัวอย่างแล้ว) กับประวัติก่อนหน้า */
+/** เทียบอันดับที่โชว์ (ค่ากลาง 5 ครั้งล่าสุด) ก่อน/หลังรอบนี้ — ครั้งเดียวเพี้ยนไม่แจ้ง */
 async function rankEvents(sb: SupabaseClient, t: PendingTask, checkedOn: string): Promise<RankEvent[]> {
   const siteId = t.seo_keywords?.site_id ?? ''
   const site = t.seo_keywords?.seo_sites?.display_name ?? t.seo_keywords?.seo_sites?.domain ?? ''
   const keyword = t.seo_keywords?.keyword ?? ''
-  const since = bangkokDate(new Date(new Date(`${checkedOn}T00:00:00+07:00`).getTime() - EVENT_HISTORY_DAYS * 864e5))
   const { data: rows } = await sb
     .from('seo_rank_snapshots')
     .select('checked_on, position, ai_overview_cites_us, top_competitors')
     .eq('keyword_id', t.keyword_id)
     .eq('device', t.device)
     .lte('checked_on', checkedOn)
-    .gte('checked_on', since)
     .order('checked_on', { ascending: false })
+    .limit(6)
   const [cur, prevRow] = rows ?? []
   if (!cur || cur.checked_on !== checkedOn || !prevRow) return []
   const events: RankEvent[] = []
   const base = { siteId, site, keyword }
   const positions = (rows ?? []).map((r) => r.position as number | null)
-  const to = cur.position
-  // ติดหน้าแรกใหม่ = 35 วันก่อนหน้าไม่เคยติดหน้าแรกเลย (เคยติดแล้วแค่หายไปรอบเดียวแล้วกลับมา = ผลแกว่ง ไม่แจ้ง)
-  const wasTop10 = positions.slice(1).some((p) => p != null && p <= 10)
-  if (to != null && to <= 10 && !wasTop10) events.push({ ...base, kind: 'top10', from: prevRow.position, to })
-  // หลุดหน้าแรก = ไม่เจอครบ DROP_CONFIRM_ROUNDS รอบติดพอดีรอบนี้ (แจ้งครั้งเดียว) และก่อนนั้นติดหน้าแรก
-  const { misses, before } = missStreak(positions)
-  if (misses === DROP_CONFIRM_ROUNDS && before != null && before <= 10)
-    events.push({ ...base, kind: 'dropped', from: before, to })
+  const from = displayRank(positions.slice(1))
+  const to = displayRank(positions)
+  const move = bigMove(from, to)
+  if (move) events.push({ ...base, kind: move, from, to })
   // ประวัติที่นำเข้าไม่มีข้อมูล AI → ไม่เทียบ AI
   if (prevRow.top_competitors != null) {
-    const from = prevRow.position
     if (cur.ai_overview_cites_us && !prevRow.ai_overview_cites_us) events.push({ ...base, kind: 'aio_cited', from, to })
     if (!cur.ai_overview_cites_us && prevRow.ai_overview_cites_us) events.push({ ...base, kind: 'aio_lost', from, to })
   }
@@ -269,46 +262,35 @@ export async function postDueRanks(
       .order('checked_on', { ascending: false }),
   ])
   const hasPending = new Set((pending ?? []).map((p) => p.keyword_id))
-  const lastChecked = new Map<string, string>()
-  // รอบล่าสุดต่อคำ — ไว้ดูว่ากำลังไม่เจอแต่ยังไม่ครบรอบยืนยัน (ต้องเช็คซ้ำ) ไหม
-  const lastRounds = new Map<string, (number | null)[]>()
-  // หลักฐาน 35 วันล่าสุด — ยังไม่เคยเจอเลยแต่เช็คไม่ถึง 3 ครั้ง = "ยังไม่แน่ใจ" → เช็คเพิ่มวันละครั้ง
-  const evidenceSince = bangkokDate(new Date(Date.now() - 35 * 864e5))
-  const evidence = new Map<string, { samples: number; hits: number }>()
+  // รอบล่าสุดต่อคำ (ใหม่ → เก่า) — ไว้ดูว่าผลล่าสุดต่างจากอันดับที่โชว์เยอะไหม / นิ่งไหม
+  const history = new Map<string, { checkedOn: string; position: number | null }[]>()
   for (const s of latest ?? []) {
-    if (s.checked_on < evidenceSince) continue
-    const e = evidence.get(s.keyword_id) ?? { samples: 0, hits: 0 }
-    evidence.set(s.keyword_id, { samples: e.samples + s.samples, hits: e.hits + s.hits })
-  }
-  for (const s of latest ?? []) {
-    if (!lastChecked.has(s.keyword_id)) lastChecked.set(s.keyword_id, s.checked_on)
-    const rounds = lastRounds.get(s.keyword_id) ?? []
-    if (rounds.length <= DROP_CONFIRM_ROUNDS) lastRounds.set(s.keyword_id, [...rounds, s.position])
+    const list = history.get(s.keyword_id) ?? []
+    if (list.length < 6) list.push({ checkedOn: s.checked_on, position: s.position })
+    history.set(s.keyword_id, list)
   }
 
   const today = bangkokDate()
-  const cutoff = bangkokDate(new Date(Date.now() - (RECHECK_DAYS - 1) * 24 * 3600_000))
+  const daysAgo = (n: number) => bangkokDate(new Date(Date.now() - (n - 1) * 24 * 3600_000))
   let nPending = 0
   let nToday = 0
   let nFresh = 0
   let nRecheck = 0
-  let nConfirm = 0
   const due = keywords.filter((k) => {
     if (hasPending.has(k.id)) return nPending++, false
-    const last = lastChecked.get(k.id)
+    const h = history.get(k.id) ?? []
+    const last = h[0]?.checkedOn
     if (last === today) return nToday++, false
-    // ไม่เจอแต่ยังไม่ครบรอบยืนยัน = เช็คซ้ำวันถัดไปเลย ไม่รอครบ 7 วัน (ผล SERP แกว่ง อย่าเพิ่งเชื่อรอบเดียว)
-    if (needsDropRecheck(lastRounds.get(k.id) ?? [])) return nRecheck++, true
-    const ev = evidence.get(k.id)
-    if (ev && !ev.hits && ev.samples < MIN_SAMPLES_TO_SAY_NONE) return nConfirm++, true
+    // ผลล่าสุดต่างจากอันดับที่โชว์อยู่เยอะ = เช็คซ้ำวันถัดไปเลย (ให้ค่ากลางตามทันเร็ว)
+    if (needsRecheck(h, today)) return nRecheck++, true
+    const cutoff = daysAgo(isStable(h.map((x) => x.position)) ? STABLE_RECHECK_DAYS : RECHECK_DAYS)
     if (!opts.force && last && last > cutoff) return nFresh++, false
     return true
   })
   if (nPending) skipped.push(`${nPending} คำมีงานรอผลอยู่แล้ว`)
   if (nToday) skipped.push(`${nToday} คำเช็คไปแล้ววันนี้`)
-  if (nFresh) skipped.push(`${nFresh} คำเช็คไปไม่ถึง ${RECHECK_DAYS} วัน`)
-  if (nRecheck) skipped.push(`${nRecheck} คำรอบก่อนไม่เจอ — เช็คซ้ำให้ครบ ${DROP_CONFIRM_ROUNDS} รอบก่อนสรุปว่าหลุด`)
-  if (nConfirm) skipped.push(`${nConfirm} คำยังไม่แน่ใจ (ไม่เจอแต่เช็คไม่ถึง ${MIN_SAMPLES_TO_SAY_NONE} ครั้ง) — เช็คเพิ่ม`)
+  if (nFresh) skipped.push(`${nFresh} คำยังไม่ถึงรอบ (7 วัน · คำที่อันดับนิ่ง 14 วัน)`)
+  if (nRecheck) skipped.push(`${nRecheck} คำผลรอบก่อนต่างจากเดิมเยอะ — เช็คซ้ำ`)
   if (!due.length) return { posted: 0, costUsd: 0, skipped }
 
   const spent = await monthSpend(sb)

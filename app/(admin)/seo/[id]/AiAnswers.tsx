@@ -222,7 +222,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       cell: (p) => (
         <div className="min-w-0">
           <div className="break-words font-medium text-gray-900">{p.prompt}</div>
-          <div className="text-xs text-gray-400">{p.keyword ? `คำเป้าหมาย: ${p.keyword}` : 'ยังไม่ผูกคำเป้าหมาย'}</div>
+          <div className="text-xs text-gray-400">{p.keyword ? `คำเป้าหมาย: ${p.keyword}` : 'ยังไม่ได้เลือกคำเป้าหมาย'}</div>
         </div>
       ),
     },
@@ -374,7 +374,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
           />
         </Field>
         <Field
-          label="ผูกกับคำเป้าหมาย"
+          label="เกี่ยวกับคำเป้าหมาย"
           help="ไม่บังคับ · ผลของ AI แต่ละตัวจะไปโชว์ในตารางคำเป้าหมายของคำนั้นด้วย"
           className="mt-4"
         >
@@ -398,7 +398,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       >
         {detail && (
           <div className="space-y-5 text-sm">
-            <Field label="ผูกกับคำเป้าหมาย">
+            <Field label="เกี่ยวกับคำเป้าหมาย">
               <Select
                 value={detail.keywordId ?? ''}
                 onChange={async (e) => {

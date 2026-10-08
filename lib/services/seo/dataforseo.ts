@@ -14,8 +14,10 @@ const API = 'https://api.dataforseo.com/v3'
 /** ประเทศไทย · ภาษาไทย */
 const LOCATION_CODE = 2764
 const LANGUAGE_CODE = 'th'
-/** ดูลึก 100 อันดับ — ไม่ติดในนี้ = position null */
-const DEPTH = 100
+import { RANK_DEPTH } from './rankRules'
+
+/** ดูลึกเท่าไหร่ — คิดเงินตามความลึก (หน้าละ 10) · ไม่ติดในนี้ = position null */
+const DEPTH = RANK_DEPTH
 
 export type Device = 'mobile' | 'desktop'
 

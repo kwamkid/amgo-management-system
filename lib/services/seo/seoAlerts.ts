@@ -7,7 +7,7 @@
 //         เดิมส่งทันทีที่ผลคำนั้นกลับมา = 1 คำ 1 ข้อความ ไหลเป็นสิบข้อความ อ่านไม่ออก
 //
 // แจ้งเมื่อ:
-//   · คำเป้าหมายติดหน้าแรกใหม่ (35 วันก่อนไม่เคยติด) / หลุดหน้าแรก (ไม่เจอ 3 รอบติด — ดู rankRules)
+//   · อันดับที่โชว์ (ค่ากลาง 5 ครั้งล่าสุด) ขยับเยอะ: ข้ามเส้นหน้าแรก · ติด/หลุด 30 อันดับ · ขยับ ≥ 5 (rankRules.bigMove)
 //   · กล่อง AI ของ Google / ChatGPT / Perplexity / Gemini เริ่มอ้าง หรือเลิกอ้างเว็บเรา
 //   · วันจันทร์: คลิกจาก Google 7 วันล่าสุดลด ≥ 30% จาก 7 วันก่อน (เว็บที่มีคลิก ≥ 50)
 //   · สรุป AI อ้างเรา แยกทีละ AI — ทุกวันจันทร์ และเว็บที่ AI มีความเปลี่ยนแปลง
@@ -19,6 +19,7 @@ import type { RankEvent } from './rankSync'
 import type { AeoEvent } from './aeoSync'
 import { AEO_ENGINES } from './aeo'
 import { fmtAiSummary, getAiSummaries } from './aiSummary'
+import { fmtDisplayRank } from './rankRules'
 
 const DROP_PCT = 0.3
 const MIN_CLICKS = 50
@@ -96,7 +97,6 @@ async function gscWeeklyDrops(sb: SupabaseClient, siteIds: string[]) {
   return out
 }
 
-const pos = (n: number | null) => (n == null ? 'ไม่เจอใน 100 อันดับ' : `#${n}`)
 const engineLabel = (k: string) => AEO_ENGINES.find((e) => e.key === k)?.label ?? k
 
 function section(title: string, lines: string[]) {
@@ -152,8 +152,14 @@ export async function flushSeoAlerts(
   for (const s of targets) {
     const rows = bySite.get(s.id) ?? []
     const of = (kind: string) => rows.filter((e) => e.kind === kind)
-    const top10 = of('top10')
-    const dropped = of('dropped')
+    // top10 / dropped = ชนิดเก่าก่อน 9 ต.ค. 69 ที่อาจค้างในตาราง
+    const up = [...of('up'), ...of('top10')]
+    const down = [...of('down'), ...of('dropped')]
+    const move = (e: EventRow) => {
+      const page1 = (p: number | null) => p != null && p <= 10
+      const note = !page1(e.from_pos) && page1(e.to_pos) ? ' (ติดหน้าแรก)' : page1(e.from_pos) && !page1(e.to_pos) ? ' (หลุดหน้าแรก)' : ''
+      return `${e.label}  ${fmtDisplayRank(e.from_pos)} → **${fmtDisplayRank(e.to_pos)}**${note}`
+    }
     const aiCited = [
       ...of('aio_cited').map((e) => `Google AI · ${e.label}`),
       ...of('ai_cited').map((e) => `${engineLabel(e.engine ?? '')} · ${e.label}`),
@@ -166,11 +172,8 @@ export async function flushSeoAlerts(
     const drop = drops.get(s.id)
 
     const parts = [
-      section(`🏆 ติดหน้าแรกใหม่ (${top10.length})`, top10.map((e) => `${e.label} → **${pos(e.to_pos)}**`)),
-      section(
-        `📉 หลุดหน้าแรก — ไม่เจอ 3 รอบติด (${dropped.length})`,
-        dropped.map((e) => `${e.label} · เคย #${e.from_pos} → ${pos(e.to_pos)}`)
-      ),
+      section(`📈 อันดับขึ้น (${up.length})`, up.map(move)),
+      section(`📉 อันดับลง (${down.length})`, down.map(move)),
       section(`✨ AI เริ่มอ้างเรา (${aiCited.length})`, aiCited),
       section(`⚠️ AI เลิกอ้างเรา (${aiLost.length})`, aiLost),
       aiSum ? `**🤖 AI อ้างลิงก์เรา** (อ้าง/ทั้งหมด)\n${aiSum}` : null,
@@ -181,7 +184,7 @@ export async function flushSeoAlerts(
       continue
     }
 
-    const color: AlertColor = dropped.length ? 'red' : aiLost.length || drop ? 'amber' : 'green'
+    const color: AlertColor = down.length ? 'red' : aiLost.length || drop ? 'amber' : 'green'
     const ok = await sendWebAlert({
       title: opts.weekly && !rows.length ? '📊 สรุป SEO / AEO ประจำสัปดาห์' : '📊 สรุป SEO / AEO',
       url: `${APP_URL}/seo/${s.id}`,

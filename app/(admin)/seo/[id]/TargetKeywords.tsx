@@ -3,33 +3,29 @@
 // แท็บ "คำเป้าหมาย" — อันดับรายสัปดาห์จาก DataForSEO (เฟส 2)
 //
 // ต่างจากแท็บคำค้น (GSC) ตรงที่: คำพวกนี้เราเลือกเองว่าอยากติด แม้ยังไม่เคยโผล่เลย
-// เห็นอันดับ (หรือ "ไม่ติด") · ขึ้นลงจากรอบก่อน · หน้าที่ติดตรงกับหน้าเป้าหมายไหม
-// · หน้าผลลัพธ์มี AI Overview ไหม อ้างเราไหม · กดแถวเพื่อดูคู่แข่ง 10 อันดับแรก
+// อันดับ = ตัวเลขเดียว (ค่ากลาง 5 ครั้งล่าสุด — เจ้าของ 9 ต.ค. 69 "บอกไปว่าติดอันดับ xx ไปเลย")
+// · กดชื่อคำ = เปิด Google ค้นเองในแท็บใหม่ · กดอันดับ/แถว = ประวัติรายวัน + คู่แข่ง 10 อันดับแรก
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   CircleCheck,
-  CircleDashed,
-  CircleHelp,
   CircleMinus,
   CircleOff,
   CircleX,
-  ImageIcon,
+  ExternalLink,
+  ListOrdered,
   Loader2,
   MessageCircle,
   Plus,
   Radar,
-  Search,
   Sparkles,
   Trash2,
   TrendingDown,
   TrendingUp,
   Trophy,
-  Users,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import {
-  Alert,
   Button,
   HelpTooltip,
   Field,
@@ -48,7 +44,6 @@ import {
   deleteTargetKeyword,
   fmtGscDate,
   fmtNum,
-  fmtRank,
   AEO_ENGINE_LABELS,
   getRankQueue,
   getSeoSettings,
@@ -58,24 +53,20 @@ import {
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
-import {
-  MIN_SAMPLES_TO_SAY_NONE,
-  RANK_STATUS_LABEL,
-  SERP_FEATURE_LABEL,
-  type RankStatus,
-} from '@/lib/services/seo/rankRules'
+import { DISPLAY_ROUNDS, fmtDisplayRank, RANK_DEPTH } from '@/lib/services/seo/rankRules'
 
-type Filter = 'all' | 'solid' | 'sometimes' | 'checking' | 'none' | 'top10' | 'wrong'
+type Filter = 'all' | 'top10' | 'top30' | 'none' | 'wrong'
 
 const FILTERS = [
   { value: 'all', label: 'ทั้งหมด' },
-  { value: 'solid', label: 'ติดจริง' },
-  { value: 'sometimes', label: 'โผล่บางครั้ง' },
-  { value: 'checking', label: 'ยังไม่แน่ใจ' },
-  { value: 'none', label: 'ยังไม่ติด' },
-  { value: 'top10', label: 'หน้าแรก (ติดจริง)' },
+  { value: 'top10', label: 'หน้าแรก (1–10)' },
+  { value: 'top30', label: `อันดับ 11–${RANK_DEPTH}` },
+  { value: 'none', label: `ไม่ติด ${RANK_DEPTH} อันดับแรก` },
   { value: 'wrong', label: 'ติดผิดหน้า' },
 ]
+
+/** เปิด Google ไทยค้นคำนี้เอง (แท็บใหม่) — ผลจะต่างจากเครื่องกลางได้ เพราะ Google ปรับตามคนค้น */
+const googleUrl = (q: string) => `https://www.google.co.th/search?q=${encodeURIComponent(q)}&hl=th&gl=th`
 
 const PAGE_SIZE = 20
 
@@ -108,15 +99,6 @@ function SourceChips({ domains, ours }: { domains: string[]; ours: string }) {
   )
 }
 
-/** ไอคอน + สีของสถานะ "ติดจริงไหม" — ใช้ทั้งในตารางและคำอธิบาย */
-const STATUS_ICON: Record<RankStatus, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'info' | 'neutral' }> = {
-  solid: { Icon: CircleCheck, tone: 'success' },
-  sometimes: { Icon: CircleDashed, tone: 'warning' },
-  checking: { Icon: CircleHelp, tone: 'info' },
-  none: { Icon: CircleOff, tone: 'neutral' },
-  unknown: { Icon: CircleHelp, tone: 'neutral' },
-}
-
 /** ป้าย AI 1 ตัว: อ้างลิงก์เรา · พูดถึงชื่อ · อ้างคนอื่น · ไม่มีกล่อง AI / ยังไม่ถาม */
 type AiState = 'cited' | 'mentioned' | 'no' | 'nobox' | 'unasked'
 const AI_STATE: Record<AiState, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'danger' | 'neutral'; text: string }> = {
@@ -124,7 +106,7 @@ const AI_STATE: Record<AiState, { Icon: typeof CircleCheck; tone: 'success' | 'w
   mentioned: { Icon: MessageCircle, tone: 'warning', text: 'พูดถึงชื่อเรา แต่ไม่ใส่ลิงก์' },
   no: { Icon: CircleX, tone: 'danger', text: 'แนะนำเว็บอื่น ไม่พูดถึงเรา' },
   nobox: { Icon: CircleMinus, tone: 'neutral', text: 'คำนี้ Google ไม่ขึ้นกล่อง AI' },
-  unasked: { Icon: CircleMinus, tone: 'neutral', text: 'ยังไม่มีคำถามผูกคำนี้ (เพิ่มได้ในแท็บ AI ตอบ)' },
+  unasked: { Icon: CircleMinus, tone: 'neutral', text: 'ยังไม่ได้ถาม AI ตัวนี้เรื่องคำนี้' },
 }
 
 const pathOf = (url: string | null) => {
@@ -134,15 +116,6 @@ const pathOf = (url: string | null) => {
   } catch {
     return url
   }
-}
-
-/** ขยับกี่อันดับจากรอบก่อน — บวก = ดีขึ้น · null = เทียบไม่ได้ */
-function delta(k: TargetKeyword): number | null {
-  const [cur, prev] = k.snapshots
-  if (!cur || !prev) return null
-  if (cur.position == null && prev.position == null) return null
-  // ไม่ติด = 101 ไว้คิดระยะ (เพิ่งติด / เพิ่งหลุด ก็ยังเห็นว่าขยับเยอะ)
-  return (prev.position ?? 101) - (cur.position ?? 101)
 }
 
 /** ถามผลทุกกี่วิ ตอนมีงานรอ */
@@ -292,15 +265,12 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const stats = useMemo(() => {
     const list = rows ?? []
     const checked = list.filter((k) => k.snapshots[0])
-    const solid = list.filter((k) => k.confidence.status === 'solid')
     const detailed = checked.filter((k) => k.snapshots[0].detailed)
     return {
       checked: checked.length,
-      solid: solid.length,
-      sometimes: list.filter((k) => k.confidence.status === 'sometimes').length,
-      // หน้าแรกนับเฉพาะคำที่ติดจริง — อันดับครั้งเดียวที่ Google สลับมาให้ไม่นับ
-      top10: solid.filter((k) => (k.snapshots[0]?.position ?? k.gscPosition ?? 999) <= 10).length,
-      ranked: checked.filter((k) => k.snapshots[0].position != null).length,
+      top10: checked.filter((k) => k.rank != null && k.rank <= 10).length,
+      top30: checked.filter((k) => k.rank != null).length,
+      none: checked.filter((k) => k.rank == null).length,
       aio: detailed.filter((k) => k.snapshots[0].hasAiOverview).length,
       aioUs: detailed.filter((k) => k.snapshots[0].aiOverviewCitesUs).length,
       aioChecked: detailed.length,
@@ -316,10 +286,10 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const filtered = useMemo(
     () =>
       (rows ?? []).filter((k) => {
-        const st = k.confidence.status
-        if (filter === 'solid' || filter === 'sometimes' || filter === 'checking') return st === filter
-        if (filter === 'none') return st === 'none'
-        if (filter === 'top10') return st === 'solid' && (k.snapshots[0]?.position ?? k.gscPosition ?? 999) <= 10
+        const checked = !!k.snapshots[0]
+        if (filter === 'top10') return k.rank != null && k.rank <= 10
+        if (filter === 'top30') return k.rank != null && k.rank > 10
+        if (filter === 'none') return checked && k.rank == null
         if (filter === 'wrong') return wrongPage(k)
         return true
       }),
@@ -340,7 +310,18 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => (
         <div className="min-w-0">
           <div className="break-words font-medium text-gray-900">
-            {k.keyword}
+            {/* เปิด Google ค้นเองในแท็บใหม่ — เช็คด้วยตาได้ (เจ้าของขอ 9 ต.ค. 69) */}
+            <a
+              href={googleUrl(k.keyword)}
+              target="_blank"
+              rel="noreferrer"
+              title="เปิด Google ค้นคำนี้ในแท็บใหม่"
+              className="hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {k.keyword}
+              <ExternalLink size={12} className="ml-1 inline-block align-baseline text-gray-400" />
+            </a>
             {k.priority === 1 && (
               <Pill tone="accent" className="ml-1.5">
                 หลัก
@@ -360,188 +341,51 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => (k.searchVolume != null ? fmtNum(k.searchVolume) : '—'),
     },
     {
-      // อันดับ "ปกติ" จากประวัติ (ค่ากลางของวันที่เจอ) — ไม่ใช่ครั้งล่าสุดครั้งเดียว จะได้อ่านไปทางเดียวกับ
-      // ช่องติดจริงไหม (8 ต.ค. 69: เดิมโชว์ "#2 เพิ่งติด" คู่ "โผล่บางครั้ง" / "ไม่ติด" คู่ "ติดจริง" งง)
+      // ตัวเลขเดียว = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · กดดูประวัติรายวัน
       key: 'rank',
       header: 'อันดับ',
       align: 'right',
-      sortValue: (k) => k.confidence.typical ?? (k.snapshots[0] ? 101 : null),
+      sortValue: (k) => (k.snapshots[0] ? (k.rank ?? RANK_DEPTH + 1) : null),
       cell: (k) => {
-        const c = k.confidence
-        if (k.pending)
-          return (
+        const cur = k.snapshots[0]
+        if (!cur)
+          return k.pending ? (
             <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-gray-400">
               <Loader2 size={14} className="animate-spin" />
               กำลังเช็ค
             </span>
+          ) : (
+            <span className="text-gray-400">ยังไม่เช็ค</span>
           )
-        if (!c.latest) return <span className="text-gray-400">ยังไม่เช็ค</span>
-        const latestTxt = c.latest.position != null ? `#${c.latest.position}` : 'ไม่เจอ'
-        // ขึ้น/ลง: เทียบ 2 ครั้งล่าสุดที่เจอ เฉพาะคำที่ติดจริง (คำโผล่บางครั้งขึ้นลงเพราะ Google สลับชุดผล ไม่มีความหมาย)
-        const found = k.snapshots.filter((x) => x.position != null)
-        const d = c.status === 'solid' && found.length >= 2 ? found[1].position! - found[0].position! : 0
-        const tone = c.status !== 'solid' ? 'muted' : d > 0 ? 'success' : d < 0 ? 'danger' : undefined
+        // ขึ้น/ลง เทียบอันดับที่โชว์ก่อนรอบล่าสุด (ไม่ใช่ผลดิบครั้งเดียว)
+        const d = k.rank != null && k.rankBefore != null ? k.rankBefore - k.rank : 0
+        const tone = k.rank == null ? 'muted' : d > 0 ? 'success' : d < 0 ? 'danger' : undefined
         return (
-          <div className="whitespace-nowrap text-right">
-            {c.typical != null ? (
-              <div className="inline-flex items-center justify-end gap-1.5">
-                {d !== 0 && (
-                  <span className="aoo-delta inline-flex items-center gap-0.5" data-tone={tone}>
-                    {d > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    {Math.abs(d)}
-                  </span>
-                )}
-                <span className="aoo-rank" data-tone={tone}>
-                  {c.status === 'solid' ? `#${c.typical}` : `~#${c.best}`}
+          <button
+            type="button"
+            className="whitespace-nowrap text-right hover:underline"
+            title="ดูประวัติอันดับรายวัน"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDetail(k)
+            }}
+          >
+            <div className="inline-flex items-center justify-end gap-1.5">
+              {d !== 0 && (
+                <span className="aoo-delta inline-flex items-center gap-0.5" data-tone={tone}>
+                  {d > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  {Math.abs(d)}
                 </span>
-              </div>
-            ) : (
-              <span className="aoo-rank" data-tone="muted">
-                ไม่ติด
+              )}
+              <span className="aoo-rank" data-tone={tone}>
+                {k.rank != null ? `#${k.rank}` : 'ไม่ติด'}
               </span>
-            )}
-            <div className="text-xs text-gray-400">
-              {c.status === 'solid'
-                ? `ปกติอยู่ #${c.typical} · ล่าสุด ${latestTxt}`
-                : c.typical != null
-                  ? `เคยเจอดีสุด #${c.best} · ล่าสุด ${latestTxt}`
-                  : `ล่าสุด ${latestTxt}`}
             </div>
-            <div className="text-xs text-gray-400">เช็ค {fmtGscDate(c.latest.checkedOn)}</div>
-            {k.dropUnconfirmed && c.status !== 'solid' && (
-              <div className="aoo-delta" data-tone="warning">
-                ร่วงหนัก — รอเช็คซ้ำพรุ่งนี้
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      // ติดจริงไหม — รวมประวัติ 4 รอบ + GSC (เจ้าของขอ 8 ต.ค. 69: อันดับครั้งเดียวแกว่ง อ่านแล้วไม่ต่อกัน)
-      key: 'status',
-      header: 'ติดจริงไหม',
-      sortValue: (k) => ({ solid: 0, sometimes: 1, checking: 2, none: 3, unknown: 4 })[k.confidence.status],
-      cell: (k) => {
-        const c = k.confidence
-        const { Icon, tone } = STATUS_ICON[c.status]
-        // เหตุผลที่ได้สถานะนี้ — โชว์ใน popover ของหัวสถานะ
-        const why =
-          c.status === 'solid'
-            ? (c.samples >= 2 && c.hits / c.samples >= 0.5
-                ? `เจอเว็บเรา ${c.hits} จาก ${c.samples} ครั้ง (ตั้งแต่ครึ่งหนึ่งขึ้นไป)`
-                : '') +
-              (c.share != null && c.share >= 0.5 ? ` คนค้นจริงเห็นเรา ${Math.round(c.share * 100)}% (ตั้งแต่ 50%)` : '')
-            : c.status === 'sometimes'
-              ? 'มีหลักฐานว่าโผล่ แต่ยังไม่สม่ำเสมอ: ' +
-                [
-                  c.hits ? `เจอ ${c.hits} จาก ${c.samples} ครั้ง` : null,
-                  c.share != null && c.share >= 0.1 ? `คนค้นเห็นเรา ${Math.round(c.share * 100)}%` : null,
-                  c.features.length ? `โผล่ใน${c.features.map((f) => SERP_FEATURE_LABEL[f.type] ?? f.type).join('/')}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-              : c.status === 'checking'
-                ? `ยังไม่เจอเลย แต่เพิ่งเช็ค ${c.samples} ครั้ง — ต้องครบ ${MIN_SAMPLES_TO_SAY_NONE} ครั้งใน 2 วันขึ้นไปก่อนสรุป ระบบเช็คเพิ่มให้วันละครั้ง`
-                : c.status === 'none'
-                  ? `ไม่เจอเลย ${c.samples} ครั้งใน ${c.days} วัน และคนค้นเห็นเราไม่ถึง 10%`
-                  : 'ยังไม่เคยเช็คคำนี้'
-        const line = (icon: ReactNode, text: ReactNode, help: ReactNode) => (
-          <HelpTooltip delay={150} width={320} triggerStyle={PLAIN_TRIGGER} content={<div className="aoo-pop">{help}</div>}>
-            <span className="flex items-center gap-1 text-xs text-gray-500">
-              {icon}
-              {text}
-            </span>
-          </HelpTooltip>
-        )
-        return (
-          <div className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-            <HelpTooltip
-              delay={150}
-              width={340}
-              triggerStyle={PLAIN_TRIGGER}
-              content={
-                <div className="aoo-pop">
-                  <div className="aoo-pop__title">
-                    <Icon size={14} /> {RANK_STATUS_LABEL[c.status]}
-                  </div>
-                  <div>{why}</div>
-                  <div className="mt-1 text-xs">
-                    เกณฑ์: ติดจริง = เจอ ≥ ครึ่งหนึ่ง (ประวัติ 4 รอบ / 35 วัน) หรือคนค้นเห็นเรา ≥ 50% · โผล่บางครั้ง = เคยเจอ /
-                    เห็นเรา 10–50% / โผล่ในกล่องรูปหรือแผนที่ · ยังไม่ติด = ไม่เจอ ≥ 3 ครั้งใน 2 วัน
-                  </div>
-                </div>
-              }
-            >
-              <span className="aoo-status" data-tone={tone}>
-                <Icon size={16} />
-                {RANK_STATUS_LABEL[c.status]}
-              </span>
-            </HelpTooltip>
-            {c.samples > 0 &&
-              line(
-                <Search size={12} />,
-                <>
-                  เจอ {c.hits}/{c.samples} ครั้ง ({c.days} วัน)
-                  {!c.hits && c.organicSeen ? ` · ไม่อยู่ใน ${c.organicSeen} ลิงก์แรก` : ''}
-                </>,
-                <>
-                  <div className="aoo-pop__title">
-                    <Search size={14} /> Google ไทย ค้นจากเครื่องกลาง
-                  </div>
-                  <PopRow label="หลักฐาน">
-                    ค้น {c.samples} ครั้งใน {c.days} วัน (35 วันล่าสุด) เจอลิงก์เว็บเรา {c.hits} ครั้ง
-                  </PopRow>
-                  {c.organicSeen != null && (
-                    <PopRow label="ความลึก">Google ให้ดูลิงก์ปกติ {c.organicSeen} อันดับ (ไม่ใช่ 100 เสมอ)</PopRow>
-                  )}
-                  {c.best != null && <PopRow label="อันดับ">ดีสุด #{c.best} · ค่ากลาง #{c.typical}</PopRow>}
-                  <PopRow label="ข้อควรรู้">ไม่ล็อกอิน ไม่มีประวัติ — Google สลับชุดผลได้ จึงดูหลายครั้งประกอบกัน</PopRow>
-                </>
-              )}
-            {c.features.length > 0 &&
-              line(
-                <ImageIcon size={12} />,
-                c.features.map((f) => `${SERP_FEATURE_LABEL[f.type] ?? f.type} #${f.rank}`).join(' · '),
-                <>
-                  <div className="aoo-pop__title">
-                    <ImageIcon size={14} /> โผล่ในส่วนอื่นของหน้า Google
-                  </div>
-                  {c.features.map((f) => (
-                    <PopRow key={f.type} label={SERP_FEATURE_LABEL[f.type] ?? f.type}>
-                      ตำแหน่งที่ {f.rank} บนหน้า (นับรวมทุกกล่อง)
-                    </PopRow>
-                  ))}
-                  <div className="mt-1 text-xs">
-                    Search Console นับตำแหน่งพวกนี้เป็นอันดับด้วย — จึงเห็นอันดับใน GSC ทั้งที่ลิงก์ปกติไม่เจอ
-                  </div>
-                </>
-              )}
-            {(k.gscPosition != null || c.share != null) &&
-              line(
-                <Users size={12} />,
-                <>
-                  คนจริง {k.gscPosition != null ? `~${k.gscPosition.toFixed(1)}` : 'ไม่เห็นเรา'}
-                  {c.share != null && ` · เห็นเรา ${Math.round(c.share * 100)}%`}
-                </>,
-                <>
-                  <div className="aoo-pop__title">
-                    <Users size={14} /> คนค้นจริง (Search Console 10 วัน)
-                  </div>
-                  <PopRow label="อันดับ">
-                    {k.gscPosition != null ? `เฉลี่ย ~${k.gscPosition.toFixed(1)} — คิดเฉพาะครั้งที่เว็บเราโผล่` : 'ไม่มีคนเห็นเราเลย'}
-                  </PopRow>
-                  <PopRow label="แสดงผล">{fmtNum(k.gscImpressions)} ครั้ง</PopRow>
-                  {c.share != null && k.searchVolume != null && (
-                    <PopRow label="เห็นเรา">
-                      {Math.round(c.share * 100)}% ของคนค้น (ยอดค้นหา ~{fmtNum(Math.round((k.searchVolume * 10) / 30))} ครั้ง/10 วัน
-                      ประมาณจากยอดต่อเดือน)
-                    </PopRow>
-                  )}
-                  <div className="mt-1 text-xs">เห็นเราน้อยแต่อันดับดี = Google แค่ลองแสดงเราบางครั้ง ยังไม่ใช่ติดจริง</div>
-                </>
-              )}
-          </div>
+            <div className="text-xs text-gray-400">
+              {k.rank == null ? `${RANK_DEPTH} อันดับแรก · ` : ''}เช็ค {fmtGscDate(cur.checkedOn)}
+              {k.pending ? ' · รอผลรอบใหม่' : ''}
+            </div>
+          </button>
         )
       },
     },
@@ -602,8 +446,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 <SourceChips domains={r.sources} ours={site.domain} />
               </>
             ) : (
-              <PopRow label="วิธีเช็ค">
-                ยังไม่มีคำถามผูกคำนี้ — เพิ่มคำถามแล้วเลือก &quot;ผูกกับคำเป้าหมาย&quot; ในแท็บ AI ตอบ
+              <PopRow label="หมายความว่า">
+                ระบบยังไม่เคยถาม {e.label} เรื่องคำนี้ เลยยังไม่รู้ว่า {e.label} แนะนำเว็บเราไหม · ถ้าอยากรู้ ไปแท็บ
+                &quot;AI ตอบ&quot; เพิ่มคำถาม แล้วเลือกคำนี้ในช่อง &quot;เกี่ยวกับคำเป้าหมาย&quot;
               </PopRow>
             ),
           })
@@ -690,7 +535,8 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <div>
           <h2 className="aoo-section-title">คำเป้าหมาย — สถานะ ณ วันนี้</h2>
           <p className="text-xs text-gray-500">
-            เฉพาะ {tracked} คำที่เราเลือกติดตาม · ไม่ขึ้นกับช่วงวันที่ข้างบน · เช็คซ้ำทุก 7 วัน (คำที่ยังไม่แน่ใจเช็คทุกวัน)
+            เฉพาะ {tracked} คำที่เราเลือกติดตาม · อันดับ = ค่ากลางของ {DISPLAY_ROUNDS} ครั้งล่าสุด (ครั้งเดียวเพี้ยนไม่นับ)
+            · ดู {RANK_DEPTH} อันดับแรก · เช็คทุก 7 วัน (คำที่อันดับนิ่งทุก 14 วัน · ผลเปลี่ยนเยอะเช็คซ้ำวันถัดไป)
             {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
           </p>
         </div>
@@ -729,25 +575,25 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       {rows && rows.length > 0 && (
         <StatGrid cols={4}>
           <StatCard
-            label="ติดจริง"
-            value={`${stats.solid}/${rows.length}`}
-            icon={CircleCheck}
-            tone="success"
-            hint="เจอบ่อย หรือคนเห็นเรา ≥ 50%"
-          />
-          <StatCard
-            label="ติดหน้าแรก (จริง)"
+            label="ติดหน้าแรก (1–10)"
             value={`${stats.top10}/${rows.length}`}
             icon={Trophy}
             tone="accent"
-            hint="ติดจริง + อันดับ 1–10"
+            hint="อันดับ 1–10"
           />
           <StatCard
-            label="โผล่บางครั้ง"
-            value={`${stats.sometimes}/${rows.length}`}
-            icon={CircleDashed}
+            label={`ติด ${RANK_DEPTH} อันดับแรก`}
+            value={`${stats.top30}/${rows.length}`}
+            icon={CircleCheck}
+            tone="success"
+            hint={`อันดับ 1–${RANK_DEPTH} (หน้า 1–3)`}
+          />
+          <StatCard
+            label="ยังไม่ติด"
+            value={`${stats.none}/${rows.length}`}
+            icon={CircleOff}
             tone="warning"
-            hint="Google ลองแสดงเราบ้าง ยังไม่ติดจริง"
+            hint={`ไม่อยู่ใน ${RANK_DEPTH} อันดับแรก`}
           />
           <StatCard
             label="Google AI อ้างเรา"
@@ -764,38 +610,17 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
           <Segmented value={filter} onChange={(v) => setFilter(v as Filter)} options={FILTERS} />
           {/* อธิบายแต่ละช่อง — เจ้าของงงว่า "มี · ไม่อ้างเรา" คืออะไร (6 ต.ค. 69) */}
           <div className="aoo-legend">
-            <span><b>ติดจริงไหม</b> (รวมประวัติ 4 รอบ + คนค้นจริง ไม่ดูอันดับครั้งเดียว):</span>
-            {(['solid', 'sometimes', 'checking', 'none'] as RankStatus[]).map((st) => {
-              const { Icon, tone } = STATUS_ICON[st]
-              return (
-                <span key={st} className="aoo-status aoo-status--sm" data-tone={tone}>
-                  <Icon size={14} />
-                  {RANK_STATUS_LABEL[st]}
-                </span>
-              )
-            })}
-            <span className="inline-flex items-center gap-1">
-              <Search size={12} /> เจอกี่ครั้งตอน Google ไทยค้นจากเครื่องกลาง
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Users size={12} /> คนค้นจริง (Search Console) — อันดับเฉลี่ยตอนโผล่ · เห็นเรากี่ % ของคนค้น
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <ImageIcon size={12} /> โผล่ในกล่องรูป/แผนที่ (GSC นับเป็นอันดับด้วย)
-            </span>
-          </div>
-          <div className="aoo-legend">
             <span><b>AI อ้างเราไหม</b> (แยกทีละตัว):</span>
             {(['cited', 'mentioned', 'no', 'unasked'] as AiState[]).map((st) => {
               const a = AI_STATE[st]
               return (
                 <span key={st} className="aoo-status aoo-status--sm" data-tone={a.tone}>
                   <a.Icon size={14} />
-                  {st === 'cited' ? 'อ้างลิงก์เรา' : st === 'mentioned' ? 'พูดถึงชื่อ' : st === 'no' ? 'ไม่พูดถึงเรา' : 'ยังไม่ถาม / ไม่มีกล่อง AI'}
+                  {st === 'cited' ? 'อ้างลิงก์เรา' : st === 'mentioned' ? 'พูดถึงชื่อ' : st === 'no' ? 'ไม่พูดถึงเรา' : 'ยังไม่ได้ถาม / ไม่มีกล่อง AI'}
                 </span>
               )
             })}
-            <span>· ChatGPT / Perplexity / Gemini มาจากคำถามที่ผูกคำนี้ในแท็บ AI ตอบ</span>
+            <span>· Google = กล่องคำตอบ AI บนหน้าค้นหา · ChatGPT / Perplexity / Gemini = ถามตามคำถามในแท็บ AI ตอบ</span>
           </div>
         </div>
       )}
@@ -882,21 +707,70 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       <Modal
         open={!!detail}
         onClose={() => setDetail(null)}
-        title={detail ? `"${detail.keyword}" · ${fmtRank(detail.snapshots[0]?.position)}` : ''}
+        title={detail ? `"${detail.keyword}" · ${fmtDisplayRank(detail.rank)}` : ''}
         description={
-          detail?.snapshots[0] ? `เช็คเมื่อ ${fmtGscDate(detail.snapshots[0].checkedOn)} · Google ประเทศไทย` : undefined
+          detail?.snapshots[0]
+            ? `อันดับ = ค่ากลางของ ${DISPLAY_ROUNDS} ครั้งล่าสุด · Google ประเทศไทย · ดู ${RANK_DEPTH} อันดับแรก`
+            : undefined
         }
         maxWidth={640}
       >
         {detail?.snapshots[0] && (
           <div className="space-y-4 text-sm">
+            {/* ประวัติรายวัน (เจ้าของขอ 9 ต.ค. 69) — ผลดิบแต่ละครั้ง ใหม่ → เก่า */}
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 font-semibold text-gray-700">
+                <ListOrdered size={16} /> ประวัติอันดับ
+              </p>
+              <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">วันที่เช็ค</th>
+                      <th className="px-3 py-2 text-right font-medium">อันดับ</th>
+                      <th className="px-3 py-2 text-left font-medium">หน้าที่ติด</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.snapshots.map((x, i) => {
+                      const older = detail.snapshots[i + 1]
+                      const cur = x.position != null && x.position <= RANK_DEPTH ? x.position : null
+                      const prev = older ? (older.position != null && older.position <= RANK_DEPTH ? older.position : null) : undefined
+                      const d = cur != null && prev != null ? prev - cur : 0
+                      return (
+                        <tr key={x.checkedOn} className="border-t border-gray-100">
+                          <td className="whitespace-nowrap px-3 py-1.5">{fmtGscDate(x.checkedOn)}</td>
+                          <td className="whitespace-nowrap px-3 py-1.5 text-right">
+                            {d !== 0 && (
+                              <span className="aoo-delta mr-1.5 inline-flex items-center gap-0.5" data-tone={d > 0 ? 'success' : 'danger'}>
+                                {d > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                {Math.abs(d)}
+                              </span>
+                            )}
+                            <span className={cur != null ? 'font-semibold' : 'text-gray-400'}>
+                              {cur != null ? `#${cur}` : 'ไม่ติด'}
+                            </span>
+                          </td>
+                          <td className="break-all px-3 py-1.5 text-gray-500">{pathOf(x.rankedUrl) ?? '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {detail.gscPosition != null && (
+                <p className="mt-2 text-xs text-gray-500">
+                  คนค้นจริง (Search Console 7 วันล่าสุด) เห็นเราอันดับเฉลี่ย ~{detail.gscPosition.toFixed(1)}
+                </p>
+              )}
+            </div>
             {!detail.snapshots[0].detailed && (
               <p className="text-gray-500">
-                ผลรอบนี้นำเข้าจากระบบแผน SEO เดิม มีแค่อันดับ — คู่แข่งและ AI Overview จะเห็นหลังเช็คผ่าน amgo
+                ผลรอบล่าสุดนำเข้าจากระบบแผน SEO เดิม มีแค่อันดับ — คู่แข่งและ AI Overview จะเห็นหลังเช็คผ่าน amgo
               </p>
             )}
             <div>
-              <p className="mb-2 font-semibold text-gray-700">10 อันดับแรก</p>
+              <p className="mb-2 font-semibold text-gray-700">10 อันดับแรก (รอบล่าสุด {fmtGscDate(detail.snapshots[0].checkedOn)})</p>
               <ol className="space-y-1">
                 {detail.snapshots[0].topCompetitors.map((c) => (
                   <li key={`${c.rank}-${c.url}`} className="flex gap-2">
@@ -924,15 +798,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                   <p className="text-gray-400">ไม่มีลิงก์อ้างอิง</p>
                 )}
               </div>
-            )}
-            {detail.snapshots.length > 1 && (
-              <Alert tone="info" compact>
-                ประวัติ:{' '}
-                {detail.snapshots
-                  .slice(0, 8)
-                  .map((s) => `${fmtGscDate(s.checkedOn)} ${fmtRank(s.position)}`)
-                  .join(' · ')}
-              </Alert>
             )}
           </div>
         )}

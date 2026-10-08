@@ -6,7 +6,7 @@
 //
 // ฝั่งหน้าเว็บ · อ่านอย่างเดียว (RLS เจ้าของ) · ไม่เรียก API ภายนอก ไม่เสียเงิน
 
-import { RANK_STATUS_LABEL, SERP_FEATURE_LABEL } from './rankRules'
+import { fmtDisplayRank, RANK_DEPTH } from './rankRules'
 import {
   AEO_ENGINE_LABELS,
   compareGsc,
@@ -31,16 +31,11 @@ const pathOf = (url: string) => {
 }
 
 function kwLine(k: TargetKeyword, ours: string) {
-  const c = k.confidence
   const bits = [
     `**${k.keyword}**`,
     k.searchVolume != null ? `ค้น ${k.searchVolume.toLocaleString()}/ด.` : null,
-    RANK_STATUS_LABEL[c.status],
-    c.typical != null ? `อันดับปกติ #${c.typical}` : c.best != null ? `เคยเจอดีสุด #${c.best}` : null,
-    c.samples ? `เจอ ${c.hits}/${c.samples} ครั้ง` : null,
-    k.gscPosition != null ? `คนจริงเห็น ~${k.gscPosition.toFixed(1)}` : null,
-    c.share != null ? `เห็นเรา ${Math.round(c.share * 100)}%` : null,
-    ...c.features.map((f) => `โผล่ใน${SERP_FEATURE_LABEL[f.type] ?? f.type} #${f.rank}`),
+    `อันดับ ${fmtDisplayRank(k.rank)}`,
+    k.gscPosition != null ? `คนค้นจริงเห็นเฉลี่ย ~${k.gscPosition.toFixed(1)}` : null,
   ].filter(Boolean)
   const cur = k.snapshots[0]
   const ranked = cur?.rankedUrl ? pathOf(cur.rankedUrl) : null
@@ -119,19 +114,21 @@ export async function buildSeoBrief(site: SeoSite, days = 28): Promise<string> {
   // ── 2) คำเป้าหมาย ─────────────────────────────────────────────────────
   const kws = (await getTargetKeywords(site.id)).filter((k) => k.isTracked)
   if (kws.length) {
-    const group = (st: string) => kws.filter((k) => k.confidence.status === st)
+    const groups = {
+      top10: kws.filter((k) => k.rank != null && k.rank <= 10),
+      top30: kws.filter((k) => k.rank != null && k.rank > 10),
+      none: kws.filter((k) => k.rank == null && k.snapshots.length),
+    }
     lines.push(
-      '## 2. คำเป้าหมาย (Google ไทย ค้นจากเครื่องกลาง + ประวัติ 4 รอบ + คนค้นจริง)',
-      'เกณฑ์: ติดจริง = เจอ ≥ ครึ่งหนึ่งหรือคนค้นเห็นเรา ≥ 50% · โผล่บางครั้ง = เคยเจอ/เห็นเรา 10–50%/โผล่ในกล่องรูป-แผนที่ · ยังไม่ติด = ไม่เจอ ≥ 3 ครั้งใน 2 วัน',
+      `## 2. คำเป้าหมาย (Google ไทย · อันดับ = ค่ากลางของ 5 ครั้งล่าสุด · ดู ${RANK_DEPTH} อันดับแรก)`,
       ''
     )
     for (const [st, title] of [
-      ['solid', '### ✅ ติดจริง — รักษาไว้ / ดันขึ้น top 3'],
-      ['sometimes', '### ◌ โผล่บางครั้ง — ใกล้ติดแล้ว ควรทำต่อก่อน'],
-      ['checking', '### ? ยังไม่แน่ใจ — ระบบกำลังเช็คเพิ่ม'],
-      ['none', '### ⊘ ยังไม่ติด — ต้องมีหน้า/เนื้อหาที่ตรงคำนี้'],
+      ['top10', '### ✅ ติดหน้าแรก (1–10) — รักษาไว้ / ดันขึ้น top 3'],
+      ['top30', `### ◌ ติดอันดับ 11–${RANK_DEPTH} — ใกล้หน้าแรกแล้ว ควรทำต่อก่อน`],
+      ['none', `### ⊘ ไม่ติด ${RANK_DEPTH} อันดับแรก — ต้องมีหน้า/เนื้อหาที่ตรงคำนี้`],
     ] as const) {
-      const g = group(st)
+      const g = groups[st]
       if (g.length) lines.push(title, ...g.map((k) => kwLine(k, site.domain)), '')
     }
   }

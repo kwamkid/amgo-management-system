@@ -4,7 +4,7 @@
 // ตาราง seo_gsc_* อ่านได้อย่างเดียว · เขียนเฉพาะ cron ฝั่งเซิร์ฟเวอร์
 
 import { createClient } from '@/lib/supabase/client'
-import { isSuspiciousDrop, rankConfidence } from './rankRules'
+import { displayRank } from './rankRules'
 import { getAiSummaries } from './aiSummary'
 
 const sb = () => createClient()
@@ -300,12 +300,12 @@ export interface TargetKeyword {
    * ไว้เทียบกับ DataForSEO ที่ค้นครั้งเดียวจากเครื่องกลาง ผลแกว่งได้
    */
   gscPosition: number | null
-  /** การแสดงผลจาก GSC 10 วันล่าสุด (หน้าที่ดีสุดต่อวัน) — ใช้คิด "คนค้นเห็นเรากี่ %" */
+  /** การแสดงผลจาก GSC 10 วันล่าสุด (หน้าที่ดีสุดต่อวัน) */
   gscImpressions: number
-  /** ติดจริงไหม — รวมประวัติ 4 รอบ + GSC (rankRules.rankConfidence) */
-  confidence: ReturnType<typeof rankConfidence>
-  /** อันดับรอบล่าสุดร่วงหนัก/หลุด และยังไม่ได้เช็คซ้ำยืนยัน — cron จะเช็คซ้ำให้วันถัดไป */
-  dropUnconfirmed: boolean
+  /** อันดับที่โชว์ = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · null = ไม่ติด 30 อันดับแรก */
+  rank: number | null
+  /** อันดับที่โชว์ก่อนรอบล่าสุด — ไว้คิดขึ้น/ลง */
+  rankBefore: number | null
   /**
    * AI แชทตอบถึงเราไหม — จากคำถามในแท็บ AI ตอบที่ผูกกับคำนี้ (ผลล่าสุดต่อ AI)
    * ผูกหลายคำถาม = อ้างในข้อไหนก็นับว่าอ้าง · ไม่มีคำถามผูก = ว่าง
@@ -439,16 +439,10 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       const a = gscAvg.get(k.keyword)
       return a && a.w ? a.sum / a.w : null
     })(),
-    dropUnconfirmed: (() => {
-      const [cur, prev] = byKw.get(k.id) ?? []
-      return !!cur && !!prev && isSuspiciousDrop(cur.position, prev.position)
-    })(),
+    rank: displayRank((byKw.get(k.id) ?? []).map((x) => x.position)),
+    rankBefore: displayRank((byKw.get(k.id) ?? []).slice(1).map((x) => x.position)),
     ai: aiByKw.get(k.id) ?? {},
     gscImpressions: gscAvg.get(k.keyword)?.imp ?? 0,
-    confidence: rankConfidence(byKw.get(k.id) ?? [], {
-      impressions10d: gscAvg.get(k.keyword)?.imp ?? 0,
-      monthlyVolume: k.search_volume,
-    }),
   }))
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

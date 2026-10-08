@@ -1,118 +1,57 @@
 // lib/services/seo/rankRules.ts
 //
 // กติกาอันดับที่ทั้งหน้าเว็บ (seoService) และงานเบื้องหลัง (rankSync) ใช้ร่วมกัน
+//
+// เจ้าของ 9 ต.ค. 69: "เราควรบอกไปว่า ติดอยู่อันดับที่ xx ไปเลย" — เลิกสถานะ รอ/แกว่ง/โผล่บางครั้ง
+// ผลค้นครั้งเดียวเชื่อไม่ได้ (เคส "กระเช้าผลไม้ พรีเมี่ยม": #1 → Google เสิร์ฟอีกชุด ไม่เจอ 2 วัน → กลับมา #1
+// ขณะที่เจ้าของค้นเองเห็น #4) → อันดับที่โชว์ = ค่ากลางของ 5 ครั้งล่าสุด ครั้งเดียวเพี้ยนตัวเลขไม่ขยับ
+
+/** ดูลึกกี่อันดับ — DataForSEO คิดเงินตามความลึก (หน้าละ 10) · 30 = หน้า 1–3 พอ (เจ้าของ 9 ต.ค. 69) */
+export const RANK_DEPTH = 30
+/** อันดับที่โชว์ = ค่ากลางของกี่ครั้งล่าสุด */
+export const DISPLAY_ROUNDS = 5
+/** ขยับเท่านี้ขึ้นไปถือว่า "เปลี่ยนเยอะ" (เช็คซ้ำ / แจ้ง Discord) */
+export const BIG_MOVE = 5
+
+/** ไม่ติด (หรือลึกกว่าที่ดู) = RANK_DEPTH + 1 ไว้คิดระยะ */
+const asNum = (p: number | null) => (p == null || p > RANK_DEPTH ? RANK_DEPTH + 1 : p)
+
+/** positions ใหม่ → เก่า (แถวละวัน) · คืนอันดับที่โชว์ หรือ null = ไม่ติด 30 อันดับแรก */
+export function displayRank(positions: (number | null)[]): number | null {
+  const recent = positions.slice(0, DISPLAY_ROUNDS).map(asNum).sort((a, b) => a - b)
+  if (!recent.length) return null
+  // จำนวนคู่ = เอาตัวกลางที่ดีกว่า
+  const mid = recent[Math.floor((recent.length - 1) / 2)]
+  return mid > RANK_DEPTH ? null : mid
+}
+
+/** อันดับเปลี่ยนเยอะไหม — ข้ามเส้นหน้าแรก · ติด/หลุด 30 อันดับ · ขยับ ≥ BIG_MOVE · คืน up / down / null */
+export function bigMove(from: number | null, to: number | null): 'up' | 'down' | null {
+  const a = asNum(from)
+  const b = asNum(to)
+  if (a === b) return null
+  const crossed = (a <= 10) !== (b <= 10) || (a > RANK_DEPTH) !== (b > RANK_DEPTH)
+  if (!crossed && Math.abs(a - b) < BIG_MOVE) return null
+  return b < a ? 'up' : 'down'
+}
 
 /**
- * ร่วงหนักจนน่าสงสัย = เคยติด 30 อันดับแรก แล้วรอบนี้หลุด 100 หรือร่วง 20 อันดับขึ้นไป
- * ผล SERP จากเครื่องกลางแกว่งได้ (เคสจริง "กระเช้าผลไม้" 6 ต.ค. 69: GSC อันดับ 3–5 แต่ DataForSEO ไม่เจอ)
- * จึงยังไม่ฟันธงว่าหลุด จนกว่าจะเช็คซ้ำอีกรอบ — หน้าเว็บโชว์ "รอเช็คซ้ำ" · rankSync ส่งเช็คซ้ำวันถัดไป
+ * ผลรอบล่าสุดต่างจากอันดับที่โชว์อยู่เยอะ = เช็คซ้ำวันถัดไป (ให้ค่ากลางตามทันเร็ว)
+ * จำกัด: 4 วันล่าสุดเช็คไปแล้ว 3 ครั้ง = พอ รอรอบปกติ (กันกรณี Google สลับชุดไปมาทุกวัน)
  */
-export function isSuspiciousDrop(cur: number | null, prev: number | null) {
-  if (prev == null || prev > 30) return false
-  return cur == null || cur - prev >= 20
+export function needsRecheck(snaps: { checkedOn: string; position: number | null }[], today: string) {
+  if (snaps.length < 2) return false
+  const before = displayRank(snaps.slice(1).map((s) => s.position))
+  if (!bigMove(before, snaps[0].position)) return false
+  const since = new Date(new Date(`${today}T00:00:00+07:00`).getTime() - 3 * 864e5).toISOString().slice(0, 10)
+  return snaps.filter((s) => s.checkedOn >= since).length < 3
 }
 
-// ── หลุดจริงหรือแค่แกว่ง (เจ้าของ 9 ต.ค. 69: Discord บอก "#1 → ไม่ติด" แต่หน้าเว็บยังติดจริง) ──
-//
-// เคสจริง "กระเช้าผลไม้ พรีเมี่ยม": 6 ต.ค. #1 · 8–9 ต.ค. Google เสิร์ฟผลอีกชุด (บทความร้านใกล้ฉัน
-// + Shopee + IG) ไม่มีเราใน 99 อันดับ — GSC ช่วงเดียวกันยังอันดับ 2–5 ปกติ
-// เช็ควันละครั้ง ไม่เจอ 2 รอบติดยังเป็นแค่การสลับชุดผลได้ → ต้องไม่เจอ 3 รอบติด (คนละวัน) ถึงแจ้งหลุด
-
-/** ไม่เจอ = ไม่ติด 20 อันดับแรก */
-const isMiss = (p: number | null) => p == null || p > 20
-export const DROP_CONFIRM_ROUNDS = 3
-
-/** positions ใหม่ → เก่า (แถวละวัน) · misses = ไม่เจอติดกันกี่รอบล่าสุด · before = อันดับรอบก่อนหน้านั้น */
-export function missStreak(positions: (number | null)[]) {
-  let misses = 0
-  while (misses < positions.length && isMiss(positions[misses])) misses++
-  return { misses, before: positions[misses] ?? null }
+/** 4 รอบล่าสุดห่างกันไม่เกิน 2 อันดับ (หรือไม่ติดทุกรอบ) = นิ่ง → เช็คห่างขึ้นได้ */
+export function isStable(positions: (number | null)[]) {
+  const last = positions.slice(0, 4).map(asNum)
+  return last.length === 4 && Math.max(...last) - Math.min(...last) <= 2
 }
 
-/** ไม่เจอมาแล้วแต่ยังไม่ครบรอบยืนยัน และก่อนหน้านั้นเคยติด 30 อันดับแรก = เช็คซ้ำวันถัดไป */
-export function needsDropRecheck(positions: (number | null)[]) {
-  const { misses, before } = missStreak(positions)
-  return misses >= 1 && misses < DROP_CONFIRM_ROUNDS && before != null && before <= 30
-}
-
-// ── ความมั่นใจว่า "ติดจริง" (เจ้าของขอ 8 ต.ค. 69) ───────────────────────────
-//
-// อันดับครั้งเดียวเชื่อไม่ได้ (Google สลับชุดผล) แต่ค้นถี่ก็เปลือง → ใช้ประวัติช่วยแทน:
-//   · DataForSEO: รวม "เจอเรากี่ครั้ง" จาก 4 รอบล่าสุดใน 35 วัน (รอบละ 1 ตัวอย่างก็พอ)
-//   · GSC: คนค้นเห็นเรากี่ % = การแสดงผล 10 วัน ÷ ยอดค้นหาโดยประมาณ (ยอด/เดือน × 10/30)
-//     อันดับเฉลี่ยของ GSC คิดเฉพาะครั้งที่โผล่ — เห็นเรา 1% แต่อันดับ 7 = Google แค่ลองแสดง ไม่ใช่ติดจริง
-
-export type RankStatus = 'solid' | 'sometimes' | 'checking' | 'none' | 'unknown'
-
-export const RANK_STATUS_LABEL: Record<RankStatus, string> = {
-  solid: 'ติดจริง',
-  sometimes: 'โผล่บางครั้ง',
-  checking: 'ยังไม่แน่ใจ',
-  none: 'ยังไม่ติด',
-  unknown: 'ยังไม่เช็ค',
-}
-
-const HISTORY_ROUNDS = 4
-const HISTORY_DAYS = 35
-/**
- * จะบอกว่า "ยังไม่ติด" ได้ต้องไม่เจอเลยอย่างน้อยเท่านี้ครั้ง และข้ามอย่างน้อย 2 วัน (เจ้าของ 8 ต.ค. 69:
- * "ควร double check ก่อนตอบ") — ไม่ถึง = "ยังไม่แน่ใจ" แล้ว cron เช็คเพิ่มวันละครั้งจนครบ
- */
-export const MIN_SAMPLES_TO_SAY_NONE = 3
-
-export type RankEvidenceSnap = {
-  checkedOn: string
-  position: number | null
-  samples: number
-  hits: number
-  organicSeen?: number | null
-  features?: { type: string; rank: number }[] | null
-}
-
-export function rankConfidence(
-  /** ใหม่ → เก่า */
-  snaps: RankEvidenceSnap[],
-  gsc: { impressions10d: number; monthlyVolume: number | null }
-) {
-  const cutoff = new Date(Date.now() - HISTORY_DAYS * 864e5).toISOString().slice(0, 10)
-  const recent = snaps.filter((s) => s.checkedOn >= cutoff).slice(0, HISTORY_ROUNDS)
-  const samples = recent.reduce((n, s) => n + s.samples, 0)
-  const hits = recent.reduce((n, s) => n + s.hits, 0)
-  const days = recent.filter((s) => s.samples > 0).length
-  const rate = samples ? hits / samples : null
-  const expected = gsc.monthlyVolume ? (gsc.monthlyVolume * 10) / 30 : null
-  const share = expected ? Math.min(1, gsc.impressions10d / expected) : null
-  // ส่วนอื่นของหน้าที่เราโผล่ (กล่องรูป · แผนที่ …) จากรอบล่าสุดที่มีข้อมูล — ไม่ซ้ำชนิด
-  const featureMap = new Map<string, number>()
-  for (const s of recent) for (const f of s.features ?? []) if (!featureMap.has(f.type)) featureMap.set(f.type, f.rank)
-  const features = [...featureMap.entries()].map(([type, rank]) => ({ type, rank }))
-  const organicSeen = recent.find((s) => s.organicSeen)?.organicSeen ?? null
-  // อันดับ "ปกติ" = ค่ากลางของวันที่เจอ (ไม่ใช่ครั้งล่าสุดครั้งเดียว) — ช่องอันดับใช้ตัวนี้ จะได้ไม่ขัดกับสถานะ
-  const found = recent.map((s) => s.position).filter((p): p is number => p != null).sort((a, b) => a - b)
-  const typical = found.length ? found[Math.floor((found.length - 1) / 2)] : null
-  const best = found[0] ?? null
-  const latest = snaps[0] ? { position: snaps[0].position, checkedOn: snaps[0].checkedOn } : null
-
-  let status: RankStatus = 'unknown'
-  if ((samples >= 2 && rate! >= 0.5) || (share != null && share >= 0.5)) status = 'solid'
-  else if (hits > 0 || features.length || (share != null && share >= 0.1)) status = 'sometimes'
-  else if (samples >= MIN_SAMPLES_TO_SAY_NONE && days >= 2) status = 'none'
-  else if (samples > 0 || share != null) status = 'checking'
-
-  return { status, hits, samples, days, rounds: recent.length, share, features, organicSeen, typical, best, latest }
-}
-
-/** ชื่อไทยของส่วนต่าง ๆ บนหน้าผลค้นหา */
-export const SERP_FEATURE_LABEL: Record<string, string> = {
-  images: 'กล่องรูป',
-  local_pack: 'แผนที่ร้านใกล้',
-  map: 'แผนที่',
-  video: 'วิดีโอ',
-  short_videos: 'คลิปสั้น',
-  people_also_ask: 'คำถามที่เกี่ยวข้อง',
-  featured_snippet: 'กล่องคำตอบ',
-  knowledge_graph: 'กล่องข้อมูลแบรนด์',
-  popular_products: 'สินค้ายอดนิยม',
-  shopping: 'ช็อปปิ้ง',
-  top_stories: 'ข่าว',
-}
+/** "#4" / "ไม่ติด 30 อันดับแรก" */
+export const fmtDisplayRank = (p: number | null) => (p == null ? `ไม่ติด ${RANK_DEPTH} อันดับแรก` : `#${p}`)

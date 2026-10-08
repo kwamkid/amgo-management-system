@@ -527,8 +527,21 @@ export async function addTargetKeywords(
       }
     })
   if (!rows.length) return 0
-  const { error } = await sb().from('seo_keywords').upsert(rows, { onConflict: 'site_id,keyword' })
+  const { data: saved, error } = await sb()
+    .from('seo_keywords')
+    .upsert(rows, { onConflict: 'site_id,keyword' })
+    .select('id, keyword, seo_aeo_prompts(id)')
   if (error) throw new Error(error.message)
+  // คำใหม่ได้คำถาม AI อัตโนมัติ — ไม่งั้นช่อง "AI อ้างเราไหม" ว่างตลอด (เจ้าของ 9 ต.ค. 69) · แก้คำได้ในแท็บ AI ตอบ
+  const noPrompt = (saved ?? []).filter((k: { seo_aeo_prompts: unknown[] | null }) => !k.seo_aeo_prompts?.length)
+  if (noPrompt.length) {
+    await sb()
+      .from('seo_aeo_prompts')
+      .upsert(
+        noPrompt.map((k: { id: string; keyword: string }) => ({ site_id: siteId, keyword_id: k.id, prompt: `${k.keyword} ที่ไหนดี แนะนำหน่อย` })),
+        { onConflict: 'site_id,prompt', ignoreDuplicates: true }
+      )
+  }
   return rows.length
 }
 

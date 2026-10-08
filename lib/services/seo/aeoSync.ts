@@ -4,13 +4,18 @@
 //
 // ทำผ่านคิวกลาง (lib/queue): planAeo หาคู่ (คำถาม × AI) ที่ถึงรอบ + เช็คงบ แล้วลงคิว
 // งานละ 1 ข้อ (kind 'seo.aeo.ask') → askOne ถาม ~5–15 วิ บันทึกผล + ค่าใช้จ่าย
-//   · cron ตี 4: คู่ที่คำตอบล่าสุดเก่ากว่า aeo_recheck_days (7 วัน)
+//   · cron ตี 4: คู่ที่คำตอบล่าสุดเก่ากว่ารอบของมัน — คำถามของคำหลัก (priority 1) ทุก 7 วัน · คำรอง 30 วัน
+//     (เจ้าของเลือก 9 ต.ค. 69 ให้อยู่ในงบ) · คำถามที่ไม่ได้ผูกคำ = aeo_recheck_days
 //   · ปุ่มบนหน้าเว็บ: ทุกคู่ของเว็บนั้นที่ยังไม่ได้ถามวันนี้ (ปิดหน้าได้ คิวเดินเอง)
 // เพดานงบเดือนเดียวกับอันดับ (seo_settings.monthly_budget_usd) — เช็คทั้งชุดก่อนลงคิว
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { AEO_ENGINES, analyzeAnswer, askAi, type AeoEngine } from './aeo'
 import { monthSpend } from './rankSync'
+
+/** รอบถามซ้ำ (วัน) — คำถามของคำหลัก / คำรอง */
+const MAIN_RECHECK_DAYS = 7
+const MINOR_RECHECK_DAYS = 30
 
 const bangkokDate = (d = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
@@ -39,7 +44,7 @@ export async function planAeo(
 
   let q = sb
     .from('seo_aeo_prompts')
-    .select('id, prompt, site_id, seo_sites!inner(display_name, is_active)')
+    .select('id, prompt, site_id, seo_sites!inner(display_name, is_active), seo_keywords(priority)')
     .eq('is_tracked', true)
   q = opts.siteId ? q.eq('site_id', opts.siteId) : q.eq('seo_sites.is_active', true)
   const { data: prompts, error } = await q
@@ -61,10 +66,13 @@ export async function planAeo(
   }
 
   const today = bangkokDate()
-  const cutoff = bangkokDate(new Date(Date.now() - (recheckDays - 1) * 24 * 3600_000))
+  const cutoffFor = (days: number) => bangkokDate(new Date(Date.now() - (days - 1) * 24 * 3600_000))
   const due: AeoDue[] = []
   let estimate = 0
-  for (const p of prompts)
+  for (const p of prompts) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const priority = (p.seo_keywords as any)?.priority as number | undefined
+    const cutoff = cutoffFor(priority == null ? recheckDays : priority === 1 ? MAIN_RECHECK_DAYS : MINOR_RECHECK_DAYS)
     for (const e of engines) {
       const l = latest.get(`${p.id}|${e.key}`)
       if (l === today) continue
@@ -73,6 +81,7 @@ export async function planAeo(
       due.push({ promptId: p.id, prompt: p.prompt, engine: e.key, site: (p.seo_sites as any).display_name })
       estimate += e.estCost
     }
+  }
   if (!due.length) return { due, skipped: [] }
 
   const spent = await monthSpend(sb)

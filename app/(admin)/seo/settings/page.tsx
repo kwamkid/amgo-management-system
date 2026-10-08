@@ -362,7 +362,10 @@ export default function SeoSettingsPage() {
                   ))}
                 </div>
               </Field>
-              <Field label="ถาม AI ซ้ำทุกกี่วัน" help="ต่อคำถาม 3 AI ~$0.08 ต่อรอบ">
+              <Field
+                label="ถาม AI ซ้ำทุกกี่วัน (คำถามที่ไม่ได้ผูกคำ)"
+                help="คำถามของคำหลักถามทุก 7 วัน · คำรองทุก 30 วัน (ตั้งอัตโนมัติ) · ต่อคำถาม 3 AI ~$0.043 ต่อรอบ"
+              >
                 <Input
                   type="number"
                   min={1}
@@ -371,7 +374,7 @@ export default function SeoSettingsPage() {
                   onChange={(e) => setBudget({ ...budget, aeoRecheckDays: Number(e.target.value) })}
                 />
               </Field>
-              <Field label="แจ้งเตือน Discord" help="ติดหน้าแรก/หลุด · AI เริ่ม/เลิกอ้างเรา · คลิกลดหนัก (วันจันทร์)">
+              <Field label="แจ้งเตือน Discord" help="อันดับขึ้น/ลงเยอะ · AI เริ่ม/เลิกอ้างเรา · คลิกลดหนัก (วันจันทร์)">
                 <div className="pt-1">
                   <Toggle
                     checked={budget.alertsEnabled}

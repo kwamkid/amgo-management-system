@@ -12,8 +12,8 @@ import type { StatTone } from './StatCard'
  * invert = ค่ายิ่งน้อยยิ่งดี (อันดับเฉลี่ย) — กลับแกนให้ "ขึ้น" = ดีขึ้นเสมอ
  * และใช้เส้นแทนแท่ง (แท่งของอันดับไม่มีความหมาย)
  *
- * compare = ช่วงเทียบ (ช่วงก่อน / ปีก่อน) วันต่อวันเท่าความยาว points — วาดเป็นเส้นเฉลี่ย 7 วันสีเทาประ
- *   (เจ้าของขอ 8 ต.ค. 69: กดเทียบปีก่อนแล้วต้องเห็นกราฟปีก่อนซ้อน จะได้รู้ว่าตกตามฤดูหรือตกจริง)
+ * compare = ช่วงเทียบ (ช่วงก่อน / ปีก่อน) วันต่อวันเท่าความยาว points — วาดเป็นแท่งคู่ (ช่วงเทียบสีเทาซ้าย
+ *   ช่วงนี้สีของเรื่องขวา) · เส้นเฉลี่ยเหลือเส้นเดียวของช่วงนี้ (เจ้าของ 8 ต.ค. 69: เส้นซ้อนกันดูไม่ออก ขอแท่งแยกสี)
  *
  * <TrendChart points={[{ date: '2026-10-01', value: 12 }]} tone="sky" format={(v) => v.toFixed(0)} />
  * สีอยู่ที่ .aoo-trend + [data-tone] ใน globals.css
@@ -95,7 +95,24 @@ export function TrendChart({
       <div className="aoo-trend__plot" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
           {invert ? (
-            <path className="aoo-trend__raw" d={linePath(points.map((p) => p.value), x, y)} />
+            <>
+              {cmpAvg && <path className="aoo-trend__cmp" fill="none" d={linePath(cmpAvg, x, y)} />}
+              <path className="aoo-trend__raw" fill="none" d={linePath(points.map((p) => p.value), x, y)} />
+            </>
+          ) : compare ? (
+            points.map((p, i) => {
+              const c = compare.values[i]
+              return (
+                <g key={p.date} data-hover={hover === i || undefined}>
+                  {c != null && (
+                    <rect className="aoo-trend__bar aoo-trend__bar--cmp" x={i * 10 + 1} width={4} y={y(c)} height={H - y(c)} />
+                  )}
+                  {p.value != null && (
+                    <rect className="aoo-trend__bar aoo-trend__bar--cur" x={i * 10 + 5} width={4} y={y(p.value)} height={H - y(p.value)} />
+                  )}
+                </g>
+              )
+            })
           ) : (
             points.map((p, i) =>
               p.value == null ? null : (
@@ -111,8 +128,7 @@ export function TrendChart({
               )
             )
           )}
-          {cmpAvg && <path className="aoo-trend__cmp" d={linePath(cmpAvg, x, y)} />}
-          <path className="aoo-trend__line" d={linePath(avg, x, y)} />
+          <path className="aoo-trend__line" fill="none" d={linePath(avg, x, y)} />
           {hover != null && <line className="aoo-trend__guide" x1={x(hover)} x2={x(hover)} y1={0} y2={H} />}
         </svg>
         <span className="aoo-trend__ymax">{invert ? `อันดับ ${format(min)}` : format(max)}</span>
@@ -121,11 +137,11 @@ export function TrendChart({
           <div className="aoo-trend__tip" style={{ left: `${((hover! + 0.5) / n) * 100}%` }}>
             {fmtDay(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
             {avg[hover!] != null && <> · เฉลี่ย 7 วัน {format(avg[hover!]!)}</>}
-            {cmpAvg && cmpAvg[hover!] != null && (
+            {compare && compare.values[hover!] != null && (
               <>
                 {' '}
-                · {compare!.label}
-                {compare!.dates?.[hover!] ? ` (${fmtDay(compare!.dates[hover!])})` : ''} เฉลี่ย {format(cmpAvg[hover!]!)}
+                · {compare.label}
+                {compare.dates?.[hover!] ? ` (${fmtDay(compare.dates[hover!])})` : ''} {format(compare.values[hover!]!)}
               </>
             )}
           </div>
@@ -138,8 +154,9 @@ export function TrendChart({
       </div>
       <div className="aoo-trend__legend">
         <span>
-          <span className="aoo-trend__swatch" data-kind="raw" />
+          <span className="aoo-trend__swatch" data-kind={compare && !invert ? 'cur' : 'raw'} />
           {label ?? 'รายวัน'}
+          {compare ? ' ช่วงนี้' : ''}
         </span>
         <span>
           <span className="aoo-trend__swatch" />
@@ -148,7 +165,7 @@ export function TrendChart({
         {compare && (
           <span>
             <span className="aoo-trend__swatch" data-kind="cmp" />
-            {compare.label} (เฉลี่ย 7 วัน)
+            {label ?? 'รายวัน'} {compare.label}
           </span>
         )}
       </div>

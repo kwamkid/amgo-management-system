@@ -67,18 +67,24 @@ export function TrendChart({
   label?: ReactNode
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  // ปุ่มเปิด/ปิด แท่ง กับ เส้นเฉลี่ย (เจ้าของ 8 ต.ค. 69) — สีบอกช่วง (สีเรื่อง = ช่วงนี้ · เทา = ช่วงเทียบ)
+  // ไอคอนบอกรูปแบบ · ปิดได้ทีละอย่าง ต้องเหลืออย่างน้อยหนึ่ง
+  const [showBars, setShowBars] = useState(true)
+  const [showLine, setShowLine] = useState(true)
   const n = points.length
 
   const { avg, cmpAvg, max, min } = useMemo(() => {
     const cmp = compare?.values ?? []
     const vals = [...points.map((p) => p.value), ...cmp].filter((v): v is number => v != null)
+    // รายสัปดาห์เรียบอยู่แล้ว — เส้น = ค่ารายสัปดาห์ตรง ๆ · รายวัน = เฉลี่ย 7 วัน
+    const smooth = (v: (number | null)[]) => (bucket === 'week' ? v : movingAvg(v))
     return {
-      avg: movingAvg(points.map((p) => p.value)),
-      cmpAvg: compare ? movingAvg(cmp) : null,
+      avg: smooth(points.map((p) => p.value)),
+      cmpAvg: compare ? smooth(cmp) : null,
       max: vals.length ? Math.max(...vals) : 0,
       min: vals.length ? Math.min(...vals) : 0,
     }
-  }, [points, compare])
+  }, [points, compare, bucket])
 
   if (!n) return null
 
@@ -96,62 +102,56 @@ export function TrendChart({
   }
 
   const hp = hover != null ? points[hover] : null
-  const showAvg = bucket === 'day'
   const when = (d: string) => (bucket === 'week' ? `สัปดาห์ ${fmtDay(d)}` : fmtDay(d))
+  const lineName = bucket === 'week' ? 'เส้นรายสัปดาห์' : 'เส้นเฉลี่ย 7 วัน'
+  // อันดับไม่มีแท่ง (แท่งของอันดับไม่มีความหมาย) — เส้นเสมอ
+  const bars = showBars && !invert
+  const line = showLine || invert
 
   return (
     <div className="aoo-trend" data-tone={tone}>
       <div className="aoo-trend__plot" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
-          {invert ? (
-            <>
-              {cmpAvg && <path className="aoo-trend__cmp" fill="none" d={linePath(cmpAvg, x, y)} />}
-              <path className="aoo-trend__raw" fill="none" d={linePath(points.map((p) => p.value), x, y)} />
-            </>
-          ) : compare ? (
+          {bars &&
             points.map((p, i) => {
-              const c = compare.values[i]
+              const c = compare?.values[i]
               return (
                 <g key={p.date} data-hover={hover === i || undefined}>
-                  {c != null && (
+                  {compare && c != null && (
                     <rect className="aoo-trend__bar aoo-trend__bar--cmp" x={i * 10 + 1} width={4} y={y(c)} height={H - y(c)} />
                   )}
                   {p.value != null && (
-                    <rect className="aoo-trend__bar aoo-trend__bar--cur" x={i * 10 + 5} width={4} y={y(p.value)} height={H - y(p.value)} />
+                    <rect
+                      className={compare ? 'aoo-trend__bar aoo-trend__bar--cur' : 'aoo-trend__bar'}
+                      x={compare ? i * 10 + 5 : i * 10 + 1}
+                      width={compare ? 4 : 8}
+                      y={y(p.value)}
+                      height={H - y(p.value)}
+                    />
                   )}
                 </g>
               )
-            })
-          ) : (
-            points.map((p, i) =>
-              p.value == null ? null : (
-                <rect
-                  key={p.date}
-                  className="aoo-trend__bar"
-                  data-hover={hover === i || undefined}
-                  x={i * 10 + 1}
-                  width={8}
-                  y={y(p.value)}
-                  height={H - y(p.value)}
-                />
-              )
-            )
-          )}
-          {showAvg && <path className="aoo-trend__line" fill="none" d={linePath(avg, x, y)} />}
+            })}
+          {line && cmpAvg && <path className="aoo-trend__cmp" fill="none" d={linePath(cmpAvg, x, y)} />}
+          {line && <path className="aoo-trend__line" fill="none" d={linePath(invert ? points.map((p) => p.value) : avg, x, y)} />}
           {hover != null && <line className="aoo-trend__guide" x1={x(hover)} x2={x(hover)} y1={0} y2={H} />}
         </svg>
         <span className="aoo-trend__ymax">{invert ? `อันดับ ${format(min)}` : format(max)}</span>
         {hp && (
           // ตำแหน่งตามเมาส์ — ค่าคำนวณสด จึงต้องเป็น inline style
           <div className="aoo-trend__tip" style={{ left: `${((hover! + 0.5) / n) * 100}%` }}>
-            {when(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
-            {showAvg && avg[hover!] != null && <> · เฉลี่ย 7 วัน {format(avg[hover!]!)}</>}
-            {compare && compare.values[hover!] != null && (
-              <>
-                {' '}
-                · {compare.label}
-                {compare.dates?.[hover!] ? ` (${when(compare.dates[hover!])})` : ''} {format(compare.values[hover!]!)}
-              </>
+            <div>
+              {periodLabel ? 'ช่วงนี้ ' : ''}
+              {when(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
+              {bucket === 'day' && avg[hover!] != null && <> (เฉลี่ย 7 วัน {format(avg[hover!]!)})</>}
+            </div>
+            {compare && (
+              <div>
+                {compare.label}
+                {compare.dates?.[hover!] ? ` ${when(compare.dates[hover!])}` : ''} ·{' '}
+                {compare.values[hover!] == null ? 'ไม่มีข้อมูล' : format(compare.values[hover!]!)}
+                {bucket === 'day' && cmpAvg?.[hover!] != null && <> (เฉลี่ย 7 วัน {format(cmpAvg[hover!]!)})</>}
+              </div>
             )}
           </div>
         )}
@@ -161,34 +161,36 @@ export function TrendChart({
         {n > 2 && <span>{fmtDay(points[Math.floor(n / 2)].date)}</span>}
         <span>{fmtDay(points[n - 1].date)}</span>
       </div>
-      {/* คำอธิบายสี — ไอคอนแท่ง/เส้นแทนคำ · แท่งสองช่วงวางคู่กัน · บอกช่วงวันที่จริง (เจ้าของ 8 ต.ค. 69) */}
+      {/* สี = ช่วง · ปุ่มไอคอน = รูปแบบ (เปิด/ปิด) */}
       <div className="aoo-trend__legend">
-        {invert ? (
-          <span>
-            <Spline size={16} className="aoo-trend__icon" data-kind="raw" />
-            {periodLabel ?? label}
-          </span>
-        ) : (
-          <span>
-            <ChartNoAxesColumn size={16} className="aoo-trend__icon" data-kind="cur" />
-            {periodLabel ?? label}
-          </span>
-        )}
+        <span>
+          <span className="aoo-trend__swatch" data-kind="cur" />
+          {compare ? 'ช่วงนี้' : label} {periodLabel}
+        </span>
         {compare && (
           <span>
-            {invert ? (
-              <Spline size={16} className="aoo-trend__icon" data-kind="cmp" />
-            ) : (
-              <ChartNoAxesColumn size={16} className="aoo-trend__icon" data-kind="cmp" />
-            )}
-            {compare.label}
-            {compare.legend ? ` ${compare.legend}` : ''}
+            <span className="aoo-trend__swatch" data-kind="cmp" />
+            {compare.label} {compare.legend}
           </span>
         )}
-        {showAvg && (
-          <span>
-            <Spline size={16} className="aoo-trend__icon" />
-            เฉลี่ย 7 วัน
+        {!invert && (
+          <span className="aoo-trend__toggles">
+            <button
+              type="button"
+              className="aoo-trend__toggle"
+              aria-pressed={showBars}
+              onClick={() => (showBars && !showLine ? null : setShowBars(!showBars))}
+            >
+              <ChartNoAxesColumn size={15} /> แท่ง
+            </button>
+            <button
+              type="button"
+              className="aoo-trend__toggle"
+              aria-pressed={showLine}
+              onClick={() => (showLine && !showBars ? null : setShowLine(!showLine))}
+            >
+              <Spline size={15} /> {lineName}
+            </button>
           </span>
         )}
       </div>

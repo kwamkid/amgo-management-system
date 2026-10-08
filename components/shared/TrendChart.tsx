@@ -49,10 +49,13 @@ export function TrendChart({
   format = (v) => v.toLocaleString('th-TH'),
   label,
   compare,
+  bucket = 'day',
 }: {
   points: TrendPoint[]
   /** ค่าช่วงเทียบ เรียงตรงกับ points ทีละวัน + ชื่อ เช่น "ปีก่อน" */
   compare?: { values: (number | null)[]; label: string; dates?: string[] }
+  /** แต่ละจุดคือ 1 วัน หรือ 1 สัปดาห์ (date = วันแรกของสัปดาห์) — สัปดาห์ไม่ต้องมีเส้นเฉลี่ย 7 วัน */
+  bucket?: 'day' | 'week'
   tone?: StatTone
   invert?: boolean
   format?: (v: number) => string
@@ -89,6 +92,8 @@ export function TrendChart({
   }
 
   const hp = hover != null ? points[hover] : null
+  const showAvg = bucket === 'day'
+  const when = (d: string) => (bucket === 'week' ? `สัปดาห์ ${fmtDay(d)}` : fmtDay(d))
 
   return (
     <div className="aoo-trend" data-tone={tone}>
@@ -128,20 +133,20 @@ export function TrendChart({
               )
             )
           )}
-          <path className="aoo-trend__line" fill="none" d={linePath(avg, x, y)} />
+          {showAvg && <path className="aoo-trend__line" fill="none" d={linePath(avg, x, y)} />}
           {hover != null && <line className="aoo-trend__guide" x1={x(hover)} x2={x(hover)} y1={0} y2={H} />}
         </svg>
         <span className="aoo-trend__ymax">{invert ? `อันดับ ${format(min)}` : format(max)}</span>
         {hp && (
           // ตำแหน่งตามเมาส์ — ค่าคำนวณสด จึงต้องเป็น inline style
           <div className="aoo-trend__tip" style={{ left: `${((hover! + 0.5) / n) * 100}%` }}>
-            {fmtDay(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
-            {avg[hover!] != null && <> · เฉลี่ย 7 วัน {format(avg[hover!]!)}</>}
+            {when(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
+            {showAvg && avg[hover!] != null && <> · เฉลี่ย 7 วัน {format(avg[hover!]!)}</>}
             {compare && compare.values[hover!] != null && (
               <>
                 {' '}
                 · {compare.label}
-                {compare.dates?.[hover!] ? ` (${fmtDay(compare.dates[hover!])})` : ''} {format(compare.values[hover!]!)}
+                {compare.dates?.[hover!] ? ` (${when(compare.dates[hover!])})` : ''} {format(compare.values[hover!]!)}
               </>
             )}
           </div>
@@ -158,10 +163,12 @@ export function TrendChart({
           {label ?? 'รายวัน'}
           {compare ? ' ช่วงนี้' : ''}
         </span>
-        <span>
-          <span className="aoo-trend__swatch" />
-          เฉลี่ย 7 วัน
-        </span>
+        {showAvg && (
+          <span>
+            <span className="aoo-trend__swatch" />
+            เฉลี่ย 7 วัน
+          </span>
+        )}
         {compare && (
           <span>
             <span className="aoo-trend__swatch" data-kind="cmp" />

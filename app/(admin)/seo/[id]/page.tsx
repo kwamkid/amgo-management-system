@@ -177,52 +177,55 @@ export default function SeoSitePage() {
     [totals, per?.cur.from, per?.cur.to, per?.prev.from] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  const chartPoints = useMemo(() => {
-    if (!per) return []
+  // กราฟ: ≤ 28 วัน = รายวัน · ยาวกว่านั้น = รายสัปดาห์ (1 ปีรายวัน = 365 แท่งคู่ บางจนดูไม่ออก — เจ้าของ 8 ต.ค. 69)
+  // ช่วงเทียบ = ช่วงเดียวกันที่เลื่อนวันด้วยระยะเดียวกับการ์ด (ช่วงก่อน = ถอย N วัน · ปีก่อน = ถอย 364 วัน ตรงวันในสัปดาห์)
+  const bucketDays = days > 28 ? 7 : 1
+  const { chartPoints, chartCompare } = useMemo(() => {
+    if (!per) return { chartPoints: [], chartCompare: undefined }
+    const byDate = new Map(totals.map((t) => [t.date, t]))
     // ช่วงสั้นกว่า 28 วันยังโชว์กราฟ 28 วัน — 7 จุดดูทิศทางไม่ออก
-    const from = addDays(per.cur.to, -(Math.max(days, 28) - 1))
-    const byDate = new Map(totals.map((t) => [t.date, t]))
-    const pts = []
-    for (let d = from; d <= per.cur.to; d = addDays(d, 1)) {
-      const t = byDate.get(d)
-      pts.push({
-        date: d,
-        value: !t
-          ? metric === 'position' || metric === 'ctr'
-            ? null
-            : 0
-          : metric === 'clicks'
-            ? t.clicks
-            : metric === 'impressions'
-              ? t.impressions
-              : metric === 'ctr'
-                ? t.ctr * 100
-                : t.position,
-      })
-    }
-    return pts
-  }, [totals, per?.cur.to, days, metric]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ช่วงเทียบซ้อนบนกราฟ — เลื่อนวันด้วยระยะเดียวกับการ์ด (ช่วงก่อน = ถอย N วัน · ปีก่อน = ถอย 364 วัน ตรงวันในสัปดาห์)
-  const chartCompare = useMemo(() => {
-    if (!per || !chartPoints.length) return undefined
+    const span = Math.max(days, 28)
+    const nBuckets = Math.floor(span / bucketDays)
     const shift = Math.round((Date.parse(per.cur.to) - Date.parse(per.prev.to)) / 864e5)
-    const byDate = new Map(totals.map((t) => [t.date, t]))
-    const dates = chartPoints.map((p) => addDays(p.date, -shift))
-    const values = dates.map((d) => {
-      const t = byDate.get(d)
-      if (!t) return null
-      return metric === 'clicks'
-        ? t.clicks
-        : metric === 'impressions'
-          ? t.impressions
-          : metric === 'ctr'
-            ? t.ctr * 100
-            : t.position
-    })
-    if (values.every((v) => v == null)) return undefined
-    return { values, dates, label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน' }
-  }, [chartPoints, totals, per?.cur.to, per?.prev.to, mode, metric]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** รวมค่าในถังที่จบวันที่ end ย้อนไป bucketDays วัน */
+    const bucket = (end: string) => {
+      let clicks = 0
+      let imp = 0
+      let posW = 0
+      let any = false
+      for (let i = 0; i < bucketDays; i++) {
+        const t = byDate.get(addDays(end, -i))
+        if (!t) continue
+        any = true
+        clicks += t.clicks
+        imp += t.impressions
+        if (t.position != null) posW += t.position * t.impressions
+      }
+      if (!any) return metric === 'position' || metric === 'ctr' ? null : 0
+      if (metric === 'clicks') return clicks
+      if (metric === 'impressions') return imp
+      if (metric === 'ctr') return imp ? (clicks / imp) * 100 : null
+      return imp ? posW / imp : null
+    }
+
+    const ends: string[] = []
+    for (let b = nBuckets - 1; b >= 0; b--) ends.push(addDays(per.cur.to, -b * bucketDays))
+    const pts = ends.map((e) => ({ date: addDays(e, -(bucketDays - 1)), value: bucket(e) }))
+    const cmpDates = ends.map((e) => addDays(e, -shift))
+    const cmpValues = cmpDates.map((e) => bucket(e))
+    const hasCmp = cmpValues.some((v) => v != null && v !== 0)
+    return {
+      chartPoints: pts,
+      chartCompare: hasCmp
+        ? {
+            values: cmpValues,
+            dates: cmpDates.map((e) => addDays(e, -(bucketDays - 1))),
+            label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน',
+          }
+        : undefined,
+    }
+  }, [totals, per?.cur.to, per?.prev.to, days, metric, mode, bucketDays]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const withStatus = useMemo(
     () =>
@@ -383,28 +386,31 @@ export default function SeoSitePage() {
           </div>
 
           <StatGrid cols={4}>
-            <StatCard variant="soft" label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
+            <StatCard variant="soft" onClick={() => setMetric('clicks')} selected={metric === 'clicks'} label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
               hint={fmtPct(stats.cur.clicks, stats.prev.clicks)} />
-            <StatCard variant="soft" label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
+            <StatCard variant="soft" onClick={() => setMetric('impressions')} selected={metric === 'impressions'} label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
               hint={fmtPct(stats.cur.impressions, stats.prev.impressions)} />
-            <StatCard variant="soft" label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
+            <StatCard variant="soft" onClick={() => setMetric('ctr')} selected={metric === 'ctr'} label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
               hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'} />
-            <StatCard variant="soft" label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
+            <StatCard variant="soft" onClick={() => setMetric('position')} selected={metric === 'position'} label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
               hint={fmtPosDelta(stats.cur.position, stats.prev.position)} />
           </StatGrid>
 
           <SectionCard
             className="mb-6"
             title={
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span>แนวโน้มรายวัน</span>
-                <Segmented value={metric} onChange={setMetric} options={METRICS} />
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span>
+                  แนวโน้ม{bucketDays > 1 ? 'รายสัปดาห์' : 'รายวัน'} · {METRICS.find((m) => m.value === metric)?.label}
+                </span>
+                <span className="text-xs font-normal text-gray-400">กดการ์ดข้างบนเพื่อเปลี่ยนตัวเลขที่ดู</span>
               </div>
             }
           >
             <TrendChart
               points={chartPoints}
               compare={chartCompare}
+              bucket={bucketDays > 1 ? 'week' : 'day'}
               tone={metric === 'clicks' ? 'accent' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'success' : 'warning'}
               invert={metric === 'position'}
               label={METRICS.find((m) => m.value === metric)?.label}

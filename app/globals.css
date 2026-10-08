@@ -856,14 +856,14 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-trend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--tone); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
 /* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = เทาอุ่น · ช่วงนี้ = สีของเรื่องเข้มขึ้น */
-.aoo-trend__bar--cmp { fill: var(--warm-300); opacity: 1; }
-.aoo-trend__bar--cur { opacity: 0.75; }
+.aoo-trend__bar--cmp { fill: var(--warm-300); opacity: 0.9; }
+.aoo-trend__bar--cur { opacity: 1; }
 g[data-hover="true"] .aoo-trend__bar--cur { opacity: 1; }
 g[data-hover="true"] .aoo-trend__bar--cmp { fill: var(--fg-3); }
 /* อันดับ (กราฟเส้น) ช่วงเทียบ = เส้นประเทา */
 .aoo-trend__cmp { fill: none; stroke: var(--fg-3); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
 .aoo-trend__swatch[data-kind="cmp"] { background: var(--warm-300); }
-.aoo-trend__swatch[data-kind="cur"] { opacity: 0.75; }
+.aoo-trend__swatch[data-kind="cur"] { opacity: 1; }
 /* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
 .aoo-delta { font-size: 12px; color: var(--tone-ink); }
 .aoo-delta[data-tone="muted"] { color: var(--fg-3); }

@@ -223,7 +223,12 @@ export default function SeoSitePage() {
     const cmpValues = cmpDates.map((e) => bucket(e))
     const hasCmp = cmpValues.some((v) => v != null && v !== 0)
     // ชื่อในคำอธิบายสี = ช่วงวันที่จริงของกราฟ (เจ้าของงง "ช่วงนี้ / 7 วัน / ปีก่อน" 8 ต.ค. 69)
-    const range = (from: string, to: string) => `${fmtGscDate(from)}–${fmtGscDate(to)}`
+    // วันที่แบบตัวเลข 9/9/69 – 6/10/69 (เจ้าของขอ 8 ต.ค. 69 อ่านง่ายกว่า "9 ก.ย. 69")
+    const num = (d: string) => {
+      const [y, m, dd] = d.split('-').map(Number)
+      return `${dd}/${m}/${String((y + 543) % 100).padStart(2, '0')}`
+    }
+    const range = (from: string, to: string) => `${num(from)} – ${num(to)}`
     const cmpFrom = addDays(cmpDates[0], -(bucketDays - 1))
     return {
       chartPoints: pts,
@@ -236,7 +241,7 @@ export default function SeoSitePage() {
             label: mode === 'yoy' ? 'ปีที่แล้ว' : 'ก่อนหน้า',
             legend:
               range(cmpFrom, cmpDates[cmpDates.length - 1]) +
-              (cmpFrom < earliest ? ` (Google เก็บข้อมูลย้อนหลังได้ 16 เดือน — มีตั้งแต่ ${fmtGscDate(earliest)})` : ''),
+              (cmpFrom < earliest ? ` (Google เก็บข้อมูลย้อนหลังได้ 16 เดือน — มีตั้งแต่ ${num(earliest)})` : ''),
           }
         : undefined,
     }

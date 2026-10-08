@@ -857,25 +857,25 @@ button.aoo-stat:active { filter: brightness(0.88); }
 /* ป้ายช่วงใน legend — ชื่อหนา อ่านง่าย · วันที่ตัวเล็กจางต่อท้าย (เจ้าของบอกเดิมดูไม่ออก 8 ต.ค. 69) */
 .aoo-trend__key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--fg-1); }
 .aoo-trend__key b { font-weight: 700; }
-/* ชื่อปีเป็นสีเดียวกับแท่งของปีนั้น — ปีนี้ = สีเรื่อง · ปีที่แล้ว/ก่อนหน้า = น้ำตาล (เจ้าของขอแยกสีปี) */
+/* ชื่อปีเป็นสีเดียวกับแท่งของปีนั้น — ปีนี้ = สีเรื่อง · ปีที่แล้ว/ก่อนหน้า = เทา */
 .aoo-trend__key b[data-kind="cur"] { color: var(--tone-ink); }
-.aoo-trend__key b[data-kind="cmp"] { color: var(--sky-700); }
+.aoo-trend__key b[data-kind="cmp"] { color: var(--warm-600); }
 /* วันที่ก็สีเดียวกับปีของมัน (เจ้าของ: ปีนี้วันที่สีแดงเลย) */
 .aoo-trend__dates[data-kind="cur"] { color: var(--tone-ink); }
-.aoo-trend__dates[data-kind="cmp"] { color: var(--sky-700); }
+.aoo-trend__dates[data-kind="cmp"] { color: var(--warm-600); }
 .aoo-trend__dates { font-size: 12px; color: var(--fg-3); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
-/* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = น้ำตาล (sky) · ช่วงนี้ = สีของเรื่อง */
-.aoo-trend__bar--cmp { fill: var(--sky-500); opacity: 0.45; }
+/* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = เทา (เจ้าของเลือก 8 ต.ค. 69) · ช่วงนี้ = สีของเรื่อง */
+.aoo-trend__bar--cmp { fill: var(--warm-400); opacity: 0.55; }
 .aoo-trend__bar--cur { opacity: 0.5; }
 g[data-hover="true"] .aoo-trend__bar--cur { opacity: 0.5; }
 g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 /* อันดับ (กราฟเส้น) ช่วงเทียบ = เส้นประเทา */
 .aoo-trend__cmp { fill: none; stroke: var(--fg-3); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
-.aoo-trend__swatch[data-kind="cmp"] { background: var(--sky-500); }
+.aoo-trend__swatch[data-kind="cmp"] { background: var(--warm-400); }
 .aoo-trend__swatch[data-kind="cur"] { opacity: 1; }
 /* เส้นของช่วงเทียบ — เทาเข้มประ ทับบนแท่งเทาให้เห็น */
-.aoo-trend__cmp { stroke: var(--sky-700); }
+.aoo-trend__cmp { stroke: var(--warm-600); }
 /* ปุ่มเปิด/ปิด แท่ง · เส้น ในคำอธิบายกราฟ */
 .aoo-trend__toggles { display: inline-flex; gap: 6px; margin-left: auto; }
 .aoo-trend__toggle {

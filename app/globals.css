@@ -860,6 +860,9 @@ button.aoo-stat:active { filter: brightness(0.88); }
 /* ชื่อปีเป็นสีเดียวกับแท่งของปีนั้น — ปีนี้ = สีเรื่อง · ปีที่แล้ว/ก่อนหน้า = น้ำตาล (เจ้าของขอแยกสีปี) */
 .aoo-trend__key b[data-kind="cur"] { color: var(--tone-ink); }
 .aoo-trend__key b[data-kind="cmp"] { color: var(--sky-700); }
+/* วันที่ก็สีเดียวกับปีของมัน (เจ้าของ: ปีนี้วันที่สีแดงเลย) */
+.aoo-trend__dates[data-kind="cur"] { color: var(--tone-ink); }
+.aoo-trend__dates[data-kind="cmp"] { color: var(--sky-700); }
 .aoo-trend__dates { font-size: 12px; color: var(--fg-3); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
 /* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = น้ำตาล (sky) · ช่วงนี้ = สีของเรื่อง */

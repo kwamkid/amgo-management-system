@@ -223,11 +223,8 @@ export default function SeoSitePage() {
     const cmpValues = cmpDates.map((e) => bucket(e))
     const hasCmp = cmpValues.some((v) => v != null && v !== 0)
     // ชื่อในคำอธิบายสี = ช่วงวันที่จริงของกราฟ (เจ้าของงง "ช่วงนี้ / 7 วัน / ปีก่อน" 8 ต.ค. 69)
-    // วันที่แบบตัวเลข 9/9/69 – 6/10/69 (เจ้าของขอ 8 ต.ค. 69 อ่านง่ายกว่า "9 ก.ย. 69")
-    const num = (d: string) => {
-      const [y, m, dd] = d.split('-').map(Number)
-      return `${dd}/${m}/${String((y + 543) % 100).padStart(2, '0')}`
-    }
+    // ชื่อเดือนย่อ 9 ก.ย. 69 – 6 ต.ค. 69 (เจ้าของลองแบบตัวเลขแล้วเลือกแบบนี้ 8 ต.ค. 69)
+    const num = (d: string) => fmtGscDate(d)
     const range = (from: string, to: string) => `${num(from)} – ${num(to)}`
     const cmpFrom = addDays(cmpDates[0], -(bucketDays - 1))
     return {

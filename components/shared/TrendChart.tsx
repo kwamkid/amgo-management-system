@@ -182,13 +182,21 @@ export function TrendChart({
         <span className="aoo-trend__key">
           <span className="aoo-trend__swatch" data-kind="cur" />
           <b data-kind="cur">{compare ? periodName : label}</b>{' '}
-          {periodLabel && <span className="aoo-trend__dates">{periodLabel}</span>}
+          {periodLabel && (
+            <span className="aoo-trend__dates" data-kind="cur">
+              {periodLabel}
+            </span>
+          )}
         </span>
         {compare && (
           <span className="aoo-trend__key">
             <span className="aoo-trend__swatch" data-kind="cmp" />
             <b data-kind="cmp">{compare.label}</b>{' '}
-            {compare.legend && <span className="aoo-trend__dates">{compare.legend}</span>}
+            {compare.legend && (
+              <span className="aoo-trend__dates" data-kind="cmp">
+                {compare.legend}
+              </span>
+            )}
           </span>
         )}
         {!invert && (

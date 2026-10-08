@@ -28,7 +28,7 @@ import {
 } from '@/components/shared'
 import {
   addDays,
-  COMPARE_OPTIONS,
+  compareOptions,
   compareGsc,
   DETAIL_DAYS,
   fmtCtr,
@@ -390,7 +390,7 @@ export default function SeoSitePage() {
           </p>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Segmented value={range} onChange={setRange} options={RANGES} />
-            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={COMPARE_OPTIONS} />
+            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={compareOptions(days)} />
             <span className="text-xs text-gray-400">{periodLabel(per)}</span>
             {bing && (
               <span className="text-xs text-gray-500">

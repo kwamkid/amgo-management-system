@@ -185,6 +185,17 @@ export const COMPARE_OPTIONS = [
   { value: 'yoy', label: 'เทียบปีก่อน' },
 ]
 
+const RANGE_WORD: Record<number, string> = { 7: '7 วัน', 28: '28 วัน', 90: '3 เดือน', 180: '6 เดือน', 365: '1 ปี' }
+
+/**
+ * ปุ่มเทียบแบบบอกเลยว่าเทียบกับอะไร (เจ้าของงง "ช่วงก่อน / ปีก่อน" 8 ต.ค. 69)
+ * prev = ช่วงยาวเท่ากันที่อยู่ติดกันก่อนหน้า · yoy = ช่วงเดียวกันของปีที่แล้ว
+ */
+export const compareOptions = (days: number) => [
+  { value: 'prev', label: `เทียบ ${RANGE_WORD[days] ?? `${days} วัน`}ก่อนหน้า` },
+  { value: 'yoy', label: 'เทียบช่วงเดียวกันปีที่แล้ว' },
+]
+
 /** ข้อความบอกช่วงที่เทียบ เช่น "8 ก.ย.–5 ต.ค. 69 เทียบ 11 ส.ค.–7 ก.ย. 69" */
 export function periodLabel(p: ReturnType<typeof periods>) {
   return `${fmtGscDate(p.cur.from)}–${fmtGscDate(p.cur.to)} เทียบ ${fmtGscDate(p.prev.from)}–${fmtGscDate(p.prev.to)}`

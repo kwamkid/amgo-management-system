@@ -18,7 +18,7 @@ import { AI_ENGINES, type AiSummary } from '@/lib/services/seo/aiSummary'
 import { PageHeader, SectionCard, Segmented, SiteFavicon, Sparkline, StatCard, StatGrid, TechLoader } from '@/components/shared'
 import {
   addDays,
-  COMPARE_OPTIONS,
+  compareOptions,
   fmtCtr,
   fmtGscDate,
   fmtNum,
@@ -108,7 +108,7 @@ export default function SeoOverviewPage() {
         <>
           <div className="mb-4 flex flex-wrap gap-2">
             <Segmented value={range} onChange={setRange} options={RANGES} />
-            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={COMPARE_OPTIONS} />
+            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={compareOptions(Number(range))} />
           </div>
           <div className="space-y-4">
             {sites.map((s) => (

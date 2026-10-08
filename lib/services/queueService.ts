@@ -6,7 +6,7 @@
 import { createClient } from '@/lib/supabase/client'
 
 /** งานเบื้องหลังของชุด (สรุป/ล้างประวัติ) ไม่นับเป็นความคืบหน้าที่คนรอดู */
-const META_KINDS = ['seo.digest', 'queue.prune']
+const META_KINDS = ['seo.digest', 'seo.alerts.flush', 'queue.prune']
 
 export type QueueGroupStatus = {
   total: number

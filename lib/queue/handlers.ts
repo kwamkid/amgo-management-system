@@ -10,7 +10,7 @@ import { collectRanks, postDueRanks } from '@/lib/services/seo/rankSync'
 import { askOne } from '@/lib/services/seo/aeoSync'
 import type { AeoEvent } from '@/lib/services/seo/aeoSync'
 import { syncBing } from '@/lib/services/seo/bing'
-import { sendSeoDigest } from '@/lib/services/seo/seoAlerts'
+import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
 
@@ -48,7 +48,7 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   /** สำรอง pingback — ถามผลที่ยังค้าง · ยังมีค้าง = กลับมาใหม่อีก 5 นาที */
   'seo.rank.collect': async (sb) => {
     const r = await collectRanks(sb, Date.now() + 30_000)
-    if (r.events.length) await sendSeoDigest(sb, r.events, []).catch(() => {})
+    if (r.events.length) await recordSeoEvents(sb, r.events, [])
     const { count } = await sb
       .from('seo_rank_tasks')
       .select('task_id', { count: 'exact', head: true })
@@ -83,8 +83,13 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
       .filter((r) => r.kind === 'seo.aeo.ask' && r.status === 'done')
       .map((r) => (r.result as { event?: AeoEvent | null } | null)?.event)
       .filter((e): e is AeoEvent => !!e)
-    return { result: await sendSeoDigest(sb, [], events) }
+    await recordSeoEvents(sb, [], events)
+    const monday = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Bangkok', weekday: 'short' }).format(new Date()) === 'Mon'
+    return { result: (await flushSeoAlerts(sb, { weekly: monday })).result }
   },
+
+  /** ส่งแจ้งเตือน SEO ที่เก็บไว้ — ข้อความละเว็บ · ยังมีผลอันดับค้าง = รอ 10 นาที (สูงสุด 3 ชม.) */
+  'seo.alerts.flush': async (sb) => flushSeoAlerts(sb, { waitForRanks: true }),
 
   /** ล้างประวัติคิวเก่ากว่า 30 วัน */
   'queue.prune': async (sb) => {

@@ -15,7 +15,7 @@ import { monthSpend } from './rankSync'
 const bangkokDate = (d = new Date()) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
-export type AeoEvent = { site: string; prompt: string; engine: AeoEngine; kind: 'cited' | 'lost' }
+export type AeoEvent = { siteId: string; site: string; prompt: string; engine: AeoEngine; kind: 'cited' | 'lost' }
 
 /** คู่ (คำถาม × AI) ที่ถึงรอบถาม — ใช้ตอนลงคิว */
 export type AeoDue = { promptId: string; prompt: string; engine: AeoEngine; site: string }
@@ -95,7 +95,7 @@ export async function askOne(
 ): Promise<{ cited: boolean; mentioned: boolean; cost: number; event: AeoEvent | null }> {
   const { data: p, error } = await sb
     .from('seo_aeo_prompts')
-    .select('id, prompt, seo_sites(domain, display_name)')
+    .select('id, prompt, site_id, seo_sites(domain, display_name)')
     .eq('id', promptId)
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -139,6 +139,6 @@ export async function askOne(
     note: `ถาม AI: ${p.prompt.slice(0, 60)}`,
   })
   const event: AeoEvent | null =
-    prev && prev.cited !== cited ? { site: site.display_name, prompt: p.prompt, engine, kind: cited ? 'cited' : 'lost' } : null
+    prev && prev.cited !== cited ? { siteId: p.site_id, site: site.display_name, prompt: p.prompt, engine, kind: cited ? 'cited' : 'lost' } : null
   return { cited, mentioned, cost: a.cost, event }
 }

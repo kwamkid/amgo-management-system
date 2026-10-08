@@ -19,6 +19,10 @@ const COLORS: Record<AlertColor, number> = {
 
 export async function sendWebAlert(embed: {
   title: string
+  /** ลิงก์ของหัวข้อ */
+  url?: string
+  /** แถบบนสุด — ชื่อเว็บ + ไอคอน (favicon) */
+  author?: { name: string; url?: string; icon_url?: string }
   description?: string
   color?: AlertColor
   fields?: { name: string; value: string; inline?: boolean }[]
@@ -34,6 +38,8 @@ export async function sendWebAlert(embed: {
       embeds: [
         {
           title: embed.title,
+          url: embed.url,
+          author: embed.author,
           description: embed.description,
           color: COLORS[embed.color ?? 'red'],
           fields: embed.fields,

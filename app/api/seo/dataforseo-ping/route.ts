@@ -11,7 +11,7 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { collectRanks, pingToken } from '@/lib/services/seo/rankSync'
-import { sendSeoDigest } from '@/lib/services/seo/seoAlerts'
+import { recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 
 export const maxDuration = 60
 
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
     try {
       const sb = createAdminClient()
       const r = await collectRanks(sb, Date.now() + 40_000, { taskIds: [id] })
-      if (r.events.length) await sendSeoDigest(sb, r.events, [])
+      // เก็บไว้ส่งรวมทีละเว็บ (seo.alerts.flush) — ไม่ยิง Discord ทีละคำ
+      if (r.events.length) await recordSeoEvents(sb, r.events, [])
     } catch (e) {
       console.error('[dataforseo-ping]', id, (e as Error).message)
     }

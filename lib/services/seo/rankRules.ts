@@ -12,6 +12,29 @@ export function isSuspiciousDrop(cur: number | null, prev: number | null) {
   return cur == null || cur - prev >= 20
 }
 
+// ── หลุดจริงหรือแค่แกว่ง (เจ้าของ 9 ต.ค. 69: Discord บอก "#1 → ไม่ติด" แต่หน้าเว็บยังติดจริง) ──
+//
+// เคสจริง "กระเช้าผลไม้ พรีเมี่ยม": 6 ต.ค. #1 · 8–9 ต.ค. Google เสิร์ฟผลอีกชุด (บทความร้านใกล้ฉัน
+// + Shopee + IG) ไม่มีเราใน 99 อันดับ — GSC ช่วงเดียวกันยังอันดับ 2–5 ปกติ
+// เช็ควันละครั้ง ไม่เจอ 2 รอบติดยังเป็นแค่การสลับชุดผลได้ → ต้องไม่เจอ 3 รอบติด (คนละวัน) ถึงแจ้งหลุด
+
+/** ไม่เจอ = ไม่ติด 20 อันดับแรก */
+const isMiss = (p: number | null) => p == null || p > 20
+export const DROP_CONFIRM_ROUNDS = 3
+
+/** positions ใหม่ → เก่า (แถวละวัน) · misses = ไม่เจอติดกันกี่รอบล่าสุด · before = อันดับรอบก่อนหน้านั้น */
+export function missStreak(positions: (number | null)[]) {
+  let misses = 0
+  while (misses < positions.length && isMiss(positions[misses])) misses++
+  return { misses, before: positions[misses] ?? null }
+}
+
+/** ไม่เจอมาแล้วแต่ยังไม่ครบรอบยืนยัน และก่อนหน้านั้นเคยติด 30 อันดับแรก = เช็คซ้ำวันถัดไป */
+export function needsDropRecheck(positions: (number | null)[]) {
+  const { misses, before } = missStreak(positions)
+  return misses >= 1 && misses < DROP_CONFIRM_ROUNDS && before != null && before <= 30
+}
+
 // ── ความมั่นใจว่า "ติดจริง" (เจ้าของขอ 8 ต.ค. 69) ───────────────────────────
 //
 // อันดับครั้งเดียวเชื่อไม่ได้ (Google สลับชุดผล) แต่ค้นถี่ก็เปลือง → ใช้ประวัติช่วยแทน:

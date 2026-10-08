@@ -855,6 +855,9 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-trend__legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
 .aoo-trend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--tone); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
+/* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — เส้นประสีเทาเข้ม ให้แยกจากเส้นจริงชัด */
+.aoo-trend__cmp { fill: none; stroke: var(--fg-3); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.aoo-trend__swatch[data-kind="cmp"] { background: repeating-linear-gradient(90deg, var(--fg-3) 0 4px, transparent 4px 6px); height: 3px; vertical-align: 2px; }
 /* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
 .aoo-delta { font-size: 12px; color: var(--tone-ink); }
 .aoo-delta[data-tone="muted"] { color: var(--fg-3); }

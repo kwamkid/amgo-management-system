@@ -203,6 +203,27 @@ export default function SeoSitePage() {
     return pts
   }, [totals, per?.cur.to, days, metric]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ช่วงเทียบซ้อนบนกราฟ — เลื่อนวันด้วยระยะเดียวกับการ์ด (ช่วงก่อน = ถอย N วัน · ปีก่อน = ถอย 364 วัน ตรงวันในสัปดาห์)
+  const chartCompare = useMemo(() => {
+    if (!per || !chartPoints.length) return undefined
+    const shift = Math.round((Date.parse(per.cur.to) - Date.parse(per.prev.to)) / 864e5)
+    const byDate = new Map(totals.map((t) => [t.date, t]))
+    const dates = chartPoints.map((p) => addDays(p.date, -shift))
+    const values = dates.map((d) => {
+      const t = byDate.get(d)
+      if (!t) return null
+      return metric === 'clicks'
+        ? t.clicks
+        : metric === 'impressions'
+          ? t.impressions
+          : metric === 'ctr'
+            ? t.ctr * 100
+            : t.position
+    })
+    if (values.every((v) => v == null)) return undefined
+    return { values, dates, label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน' }
+  }, [chartPoints, totals, per?.cur.to, per?.prev.to, mode, metric]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const withStatus = useMemo(
     () =>
       rows && table
@@ -383,6 +404,7 @@ export default function SeoSitePage() {
           >
             <TrendChart
               points={chartPoints}
+              compare={chartCompare}
               tone={metric === 'clicks' ? 'accent' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'success' : 'warning'}
               invert={metric === 'position'}
               label={METRICS.find((m) => m.value === metric)?.label}

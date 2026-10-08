@@ -12,6 +12,9 @@ import type { StatTone } from './StatCard'
  * invert = ค่ายิ่งน้อยยิ่งดี (อันดับเฉลี่ย) — กลับแกนให้ "ขึ้น" = ดีขึ้นเสมอ
  * และใช้เส้นแทนแท่ง (แท่งของอันดับไม่มีความหมาย)
  *
+ * compare = ช่วงเทียบ (ช่วงก่อน / ปีก่อน) วันต่อวันเท่าความยาว points — วาดเป็นเส้นเฉลี่ย 7 วันสีเทาประ
+ *   (เจ้าของขอ 8 ต.ค. 69: กดเทียบปีก่อนแล้วต้องเห็นกราฟปีก่อนซ้อน จะได้รู้ว่าตกตามฤดูหรือตกจริง)
+ *
  * <TrendChart points={[{ date: '2026-10-01', value: 12 }]} tone="sky" format={(v) => v.toFixed(0)} />
  * สีอยู่ที่ .aoo-trend + [data-tone] ใน globals.css
  */
@@ -45,8 +48,11 @@ export function TrendChart({
   invert = false,
   format = (v) => v.toLocaleString('th-TH'),
   label,
+  compare,
 }: {
   points: TrendPoint[]
+  /** ค่าช่วงเทียบ เรียงตรงกับ points ทีละวัน + ชื่อ เช่น "ปีก่อน" */
+  compare?: { values: (number | null)[]; label: string; dates?: string[] }
   tone?: StatTone
   invert?: boolean
   format?: (v: number) => string
@@ -56,14 +62,16 @@ export function TrendChart({
   const [hover, setHover] = useState<number | null>(null)
   const n = points.length
 
-  const { avg, max, min } = useMemo(() => {
-    const vals = points.map((p) => p.value).filter((v): v is number => v != null)
+  const { avg, cmpAvg, max, min } = useMemo(() => {
+    const cmp = compare?.values ?? []
+    const vals = [...points.map((p) => p.value), ...cmp].filter((v): v is number => v != null)
     return {
       avg: movingAvg(points.map((p) => p.value)),
+      cmpAvg: compare ? movingAvg(cmp) : null,
       max: vals.length ? Math.max(...vals) : 0,
       min: vals.length ? Math.min(...vals) : 0,
     }
-  }, [points])
+  }, [points, compare])
 
   if (!n) return null
 
@@ -103,6 +111,7 @@ export function TrendChart({
               )
             )
           )}
+          {cmpAvg && <path className="aoo-trend__cmp" d={linePath(cmpAvg, x, y)} />}
           <path className="aoo-trend__line" d={linePath(avg, x, y)} />
           {hover != null && <line className="aoo-trend__guide" x1={x(hover)} x2={x(hover)} y1={0} y2={H} />}
         </svg>
@@ -112,6 +121,13 @@ export function TrendChart({
           <div className="aoo-trend__tip" style={{ left: `${((hover! + 0.5) / n) * 100}%` }}>
             {fmtDay(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
             {avg[hover!] != null && <> · เฉลี่ย 7 วัน {format(avg[hover!]!)}</>}
+            {cmpAvg && cmpAvg[hover!] != null && (
+              <>
+                {' '}
+                · {compare!.label}
+                {compare!.dates?.[hover!] ? ` (${fmtDay(compare!.dates[hover!])})` : ''} เฉลี่ย {format(cmpAvg[hover!]!)}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -129,6 +145,12 @@ export function TrendChart({
           <span className="aoo-trend__swatch" />
           เฉลี่ย 7 วัน
         </span>
+        {compare && (
+          <span>
+            <span className="aoo-trend__swatch" data-kind="cmp" />
+            {compare.label} (เฉลี่ย 7 วัน)
+          </span>
+        )}
       </div>
     </div>
   )

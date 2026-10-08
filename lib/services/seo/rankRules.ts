@@ -4,7 +4,7 @@
 //
 // เจ้าของ 9 ต.ค. 69: "เราควรบอกไปว่า ติดอยู่อันดับที่ xx ไปเลย" — เลิกสถานะ รอ/แกว่ง/โผล่บางครั้ง
 // ผลค้นครั้งเดียวเชื่อไม่ได้ (เคส "กระเช้าผลไม้ พรีเมี่ยม": #1 → Google เสิร์ฟอีกชุด ไม่เจอ 2 วัน → กลับมา #1
-// ขณะที่เจ้าของค้นเองเห็น #4) → อันดับที่โชว์ = ค่ากลางของ 5 ครั้งล่าสุด ครั้งเดียวเพี้ยนตัวเลขไม่ขยับ
+// ขณะที่เจ้าของค้นเองเห็น #4) → อันดับที่โชว์ = ค่ากลางของครั้งที่เจอใน 5 ครั้งล่าสุด (ได้ #4)
 
 /** ดูลึกกี่อันดับ — DataForSEO คิดเงินตามความลึก (หน้าละ 10) · 30 = หน้า 1–3 พอ (เจ้าของ 9 ต.ค. 69) */
 export const RANK_DEPTH = 30
@@ -16,13 +16,29 @@ export const BIG_MOVE = 5
 /** ไม่ติด (หรือลึกกว่าที่ดู) = RANK_DEPTH + 1 ไว้คิดระยะ */
 const asNum = (p: number | null) => (p == null || p > RANK_DEPTH ? RANK_DEPTH + 1 : p)
 
-/** positions ใหม่ → เก่า (แถวละวัน) · คืนอันดับที่โชว์ หรือ null = ไม่ติด 30 อันดับแรก */
+/** เจออย่างน้อยกี่ครั้งใน DISPLAY_ROUNDS ครั้งล่าสุด ถึงนับว่าติด */
+export const MIN_FOUND = 2
+
+/**
+ * positions ใหม่ → เก่า (แถวละวัน) · คืนอันดับที่โชว์ หรือ null = ไม่ติด 30 อันดับแรก
+ * = ค่ากลางของ "ครั้งที่เจอ" ใน 5 ครั้งล่าสุด — ครั้งที่ไม่เจอไม่นับ (Google เสิร์ฟชุดที่ไม่มีเราเป็นช่วง ๆ
+ * เคส "กระเช้าผลไม้ ส่งด่วน": #2 · ไม่เจอ · #1 · ไม่เจอ · #29 — นับไม่เจอเป็นอันดับท้ายได้ #29
+ * ทั้งที่ GSC คนค้นจริงเห็น 1–3 ทุกวัน · นับเฉพาะที่เจอได้ #2) · เจอไม่ถึง MIN_FOUND ครั้ง = ไม่ติด
+ */
 export function displayRank(positions: (number | null)[]): number | null {
-  const recent = positions.slice(0, DISPLAY_ROUNDS).map(asNum).sort((a, b) => a - b)
-  if (!recent.length) return null
+  const window = positions.slice(0, DISPLAY_ROUNDS)
+  const found = window.filter((p): p is number => p != null && p <= RANK_DEPTH).sort((a, b) => a - b)
+  if (!window.length) return null
+  // ประวัติยังน้อย (1–2 ครั้ง) เจอครั้งเดียวก็นับ · ตั้งแต่ 3 ครั้งต้องเจอ ≥ MIN_FOUND
+  if (found.length < Math.min(MIN_FOUND, Math.ceil(window.length / 2))) return null
   // จำนวนคู่ = เอาตัวกลางที่ดีกว่า
-  const mid = recent[Math.floor((recent.length - 1) / 2)]
-  return mid > RANK_DEPTH ? null : mid
+  return found[Math.floor((found.length - 1) / 2)]
+}
+
+/** เจอกี่ครั้งใน DISPLAY_ROUNDS ครั้งล่าสุด — โชว์ประกอบในหน้าประวัติ */
+export function foundCount(positions: (number | null)[]) {
+  const window = positions.slice(0, DISPLAY_ROUNDS)
+  return { found: window.filter((p) => p != null && p <= RANK_DEPTH).length, total: window.length }
 }
 
 /** อันดับเปลี่ยนเยอะไหม — ข้ามเส้นหน้าแรก · ติด/หลุด 30 อันดับ · ขยับ ≥ BIG_MOVE · คืน up / down / null */

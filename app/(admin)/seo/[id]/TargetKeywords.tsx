@@ -53,7 +53,7 @@ import {
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
-import { DISPLAY_ROUNDS, fmtDisplayRank, RANK_DEPTH } from '@/lib/services/seo/rankRules'
+import { DISPLAY_ROUNDS, fmtDisplayRank, foundCount, RANK_DEPTH } from '@/lib/services/seo/rankRules'
 
 type Filter = 'all' | 'top10' | 'top30' | 'none' | 'wrong'
 
@@ -99,14 +99,13 @@ function SourceChips({ domains, ours }: { domains: string[]; ours: string }) {
   )
 }
 
-/** ป้าย AI 1 ตัว: อ้างลิงก์เรา · พูดถึงชื่อ · อ้างคนอื่น · ไม่มีกล่อง AI / ยังไม่ถาม */
-type AiState = 'cited' | 'mentioned' | 'no' | 'nobox' | 'unasked'
+/** ป้าย AI 1 ตัว: อ้างลิงก์เรา · พูดถึงชื่อ · อ้างคนอื่น · ไม่มีกล่อง AI */
+type AiState = 'cited' | 'mentioned' | 'no' | 'nobox'
 const AI_STATE: Record<AiState, { Icon: typeof CircleCheck; tone: 'success' | 'warning' | 'danger' | 'neutral'; text: string }> = {
   cited: { Icon: CircleCheck, tone: 'success', text: 'อ้างลิงก์เรา' },
   mentioned: { Icon: MessageCircle, tone: 'warning', text: 'พูดถึงชื่อเรา แต่ไม่ใส่ลิงก์' },
   no: { Icon: CircleX, tone: 'danger', text: 'แนะนำเว็บอื่น ไม่พูดถึงเรา' },
   nobox: { Icon: CircleMinus, tone: 'neutral', text: 'คำนี้ Google ไม่ขึ้นกล่อง AI' },
-  unasked: { Icon: CircleMinus, tone: 'neutral', text: 'ยังไม่ได้ถาม AI ตัวนี้เรื่องคำนี้' },
 }
 
 const pathOf = (url: string | null) => {
@@ -141,6 +140,8 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const { confirm, dialog } = useConfirm()
   const [rows, setRows] = useState<TargetKeyword[] | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  /** ค้นหาคำในตาราง */
+  const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   /** AI ที่เปิดใช้ในตั้งค่า — คอลัมน์ AI โชว์ครบทุกตัวนี้เสมอ */
   const [engines, setEngines] = useState<string[]>(AEO_ENGINE_LABELS.map((e) => e.key))
@@ -286,6 +287,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   const filtered = useMemo(
     () =>
       (rows ?? []).filter((k) => {
+        if (q.trim() && !k.keyword.toLowerCase().includes(q.trim().toLowerCase())) return false
         const checked = !!k.snapshots[0]
         if (filter === 'top10') return k.rank != null && k.rank <= 10
         if (filter === 'top30') return k.rank != null && k.rank > 10
@@ -293,10 +295,10 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         if (filter === 'wrong') return wrongPage(k)
         return true
       }),
-    [rows, filter],
+    [rows, filter, q],
   )
   // เปลี่ยนตัวกรอง = กลับหน้า 1
-  useEffect(() => setPage(1), [filter, site.id])
+  useEffect(() => setPage(1), [filter, q, site.id])
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const columns: Column<TargetKeyword>[] = [
@@ -431,12 +433,16 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             ),
           })
         }
-        for (const e of AEO_ENGINE_LABELS.filter((x) => engines.includes(x.key))) {
+        // ChatGPT / Perplexity / Gemini: โชว์เฉพาะตัวที่เช็คคำนี้แล้ว (เจ้าของงง "ยังไม่มีคำถามผูกคำนี้" 9 ต.ค. 69)
+        const chat = AEO_ENGINE_LABELS.filter((x) => engines.includes(x.key))
+        const unchecked = chat.filter((e) => !k.ai[e.key])
+        for (const e of chat) {
           const r = k.ai[e.key]
+          if (!r) continue
           rows.push({
             label: e.label,
-            state: !r ? 'unasked' : r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no',
-            detail: r ? (
+            state: r.cited ? 'cited' : r.mentioned ? 'mentioned' : 'no',
+            detail: (
               <>
                 <PopRow label="ถามว่า">&quot;{r.prompt}&quot;</PopRow>
                 <PopRow label="ถามเมื่อ">
@@ -445,11 +451,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 </PopRow>
                 <SourceChips domains={r.sources} ours={site.domain} />
               </>
-            ) : (
-              <PopRow label="หมายความว่า">
-                ระบบยังไม่เคยถาม {e.label} เรื่องคำนี้ เลยยังไม่รู้ว่า {e.label} แนะนำเว็บเราไหม · ถ้าอยากรู้ ไปแท็บ
-                &quot;AI ตอบ&quot; เพิ่มคำถาม แล้วเลือกคำนี้ในช่อง &quot;เกี่ยวกับคำเป้าหมาย&quot;
-              </PopRow>
             ),
           })
         }
@@ -483,6 +484,24 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                 </HelpTooltip>
               )
             })}
+            {unchecked.length > 0 && (
+              <HelpTooltip
+                delay={150}
+                width={320}
+                triggerStyle={PLAIN_TRIGGER}
+                content={
+                  <div className="aoo-pop">
+                    <div className="aoo-pop__title">{unchecked.map((e) => e.label).join(' · ')} ไม่ได้เช็คคำนี้</div>
+                    <div>
+                      Google เช็คให้ทุกคำอัตโนมัติ (ดูจากหน้าค้นหา) · ส่วน {unchecked.map((e) => e.label).join(' / ')}{' '}
+                      ต้องจ่ายค่าถามทีละคำถาม จึงเช็คเฉพาะคำที่ตั้งคำถามไว้ในแท็บ &quot;AI ตอบ&quot; เท่านั้น
+                    </div>
+                  </div>
+                }
+              >
+                <span className="text-xs text-gray-400">{unchecked.map((e) => e.label).join(' · ')}: ไม่ได้เช็ค</span>
+              </HelpTooltip>
+            )}
           </div>
         )
       },
@@ -535,7 +554,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <div>
           <h2 className="aoo-section-title">คำเป้าหมาย — สถานะ ณ วันนี้</h2>
           <p className="text-xs text-gray-500">
-            เฉพาะ {tracked} คำที่เราเลือกติดตาม · อันดับ = ค่ากลางของ {DISPLAY_ROUNDS} ครั้งล่าสุด (ครั้งเดียวเพี้ยนไม่นับ)
+            เฉพาะ {tracked} คำที่เราเลือกติดตาม · อันดับ = ค่ากลางของครั้งที่เจอใน {DISPLAY_ROUNDS} ครั้งล่าสุด
             · ดู {RANK_DEPTH} อันดับแรก · เช็คทุก 7 วัน (คำที่อันดับนิ่งทุก 14 วัน · ผลเปลี่ยนเยอะเช็คซ้ำวันถัดไป)
             {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
           </p>
@@ -607,20 +626,25 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
 
       {rows && rows.length > 0 && (
         <div className="mb-3">
-          <Segmented value={filter} onChange={(v) => setFilter(v as Filter)} options={FILTERS} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented value={filter} onChange={(v) => setFilter(v as Filter)} options={FILTERS} />
+            <div className="w-full sm:w-64">
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาคำ…" aria-label="ค้นหาคำในตาราง" />
+            </div>
+          </div>
           {/* อธิบายแต่ละช่อง — เจ้าของงงว่า "มี · ไม่อ้างเรา" คืออะไร (6 ต.ค. 69) */}
           <div className="aoo-legend">
             <span><b>AI อ้างเราไหม</b> (แยกทีละตัว):</span>
-            {(['cited', 'mentioned', 'no', 'unasked'] as AiState[]).map((st) => {
+            {(['cited', 'mentioned', 'no', 'nobox'] as AiState[]).map((st) => {
               const a = AI_STATE[st]
               return (
                 <span key={st} className="aoo-status aoo-status--sm" data-tone={a.tone}>
                   <a.Icon size={14} />
-                  {st === 'cited' ? 'อ้างลิงก์เรา' : st === 'mentioned' ? 'พูดถึงชื่อ' : st === 'no' ? 'ไม่พูดถึงเรา' : 'ยังไม่ได้ถาม / ไม่มีกล่อง AI'}
+                  {st === 'cited' ? 'อ้างลิงก์เรา' : st === 'mentioned' ? 'พูดถึงชื่อ' : st === 'no' ? 'ไม่พูดถึงเรา' : 'Google ไม่ขึ้นกล่อง AI'}
                 </span>
               )
             })}
-            <span>· Google = กล่องคำตอบ AI บนหน้าค้นหา · ChatGPT / Perplexity / Gemini = ถามตามคำถามในแท็บ AI ตอบ</span>
+            <span>· Google เช็คทุกคำ · ChatGPT / Perplexity / Gemini เช็คเฉพาะคำที่ตั้งคำถามไว้ในแท็บ AI ตอบ</span>
           </div>
         </div>
       )}
@@ -710,7 +734,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         title={detail ? `"${detail.keyword}" · ${fmtDisplayRank(detail.rank)}` : ''}
         description={
           detail?.snapshots[0]
-            ? `อันดับ = ค่ากลางของ ${DISPLAY_ROUNDS} ครั้งล่าสุด · Google ประเทศไทย · ดู ${RANK_DEPTH} อันดับแรก`
+            ? `อันดับ = ค่ากลางของครั้งที่เจอใน ${DISPLAY_ROUNDS} ครั้งล่าสุด · Google ประเทศไทย · ดู ${RANK_DEPTH} อันดับแรก`
             : undefined
         }
         maxWidth={640}
@@ -721,6 +745,14 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             <div>
               <p className="mb-2 flex items-center gap-1.5 font-semibold text-gray-700">
                 <ListOrdered size={16} /> ประวัติอันดับ
+                {(() => {
+                  const c = foundCount(detail.snapshots.map((x) => x.position))
+                  return (
+                    <span className="text-xs font-normal text-gray-500">
+                      · เจอเว็บเรา {c.found} จาก {c.total} ครั้งล่าสุด
+                    </span>
+                  )
+                })()}
               </p>
               <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200">
                 <table className="w-full text-sm">

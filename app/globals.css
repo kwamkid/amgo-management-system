@@ -853,7 +853,11 @@ button.aoo-stat:active { filter: brightness(0.88); }
   font-size: 12px; line-height: 1.4; box-shadow: var(--shadow-md); z-index: 2;
 }
 .aoo-trend__legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
-.aoo-trend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--tone); }
+.aoo-trend__swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; background: var(--tone); flex-shrink: 0; }
+/* ป้ายช่วงใน legend — ชื่อหนา อ่านง่าย · วันที่ตัวเล็กจางต่อท้าย (เจ้าของบอกเดิมดูไม่ออก 8 ต.ค. 69) */
+.aoo-trend__key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--fg-1); }
+.aoo-trend__key b { font-weight: 700; }
+.aoo-trend__dates { font-size: 12px; color: var(--fg-3); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
 /* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = เทาอุ่น · ช่วงนี้ = สีของเรื่องเข้มขึ้น */
 .aoo-trend__bar--cmp { fill: var(--warm-300); opacity: 0.7; }

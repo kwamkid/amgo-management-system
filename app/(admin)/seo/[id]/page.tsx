@@ -232,7 +232,8 @@ export default function SeoSitePage() {
         ? {
             values: cmpValues,
             dates: cmpDates.map((e) => addDays(e, -(bucketDays - 1))),
-            label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน',
+            // ชื่อสั้น ตรงกับปุ่มเทียบ — วันที่อยู่ใน legend ต่อท้าย
+            label: mode === 'yoy' ? 'ปีที่แล้ว' : 'ก่อนหน้า',
             legend:
               range(cmpFrom, cmpDates[cmpDates.length - 1]) +
               (cmpFrom < earliest ? ` (Google เก็บข้อมูลย้อนหลังได้ 16 เดือน — มีตั้งแต่ ${fmtGscDate(earliest)})` : ''),
@@ -425,6 +426,7 @@ export default function SeoSitePage() {
               points={chartPoints}
               compare={chartCompare}
               periodLabel={chartLabel}
+              periodName={mode === 'yoy' ? 'ปีนี้' : 'ช่วงที่ดู'}
               bucket={bucketDays > 1 ? 'week' : 'day'}
               tone={metric === 'clicks' ? 'accent' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'success' : 'warning'}
               invert={metric === 'position'}

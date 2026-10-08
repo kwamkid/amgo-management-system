@@ -63,12 +63,15 @@ export function TrendChart({
   compare,
   bucket = 'day',
   periodLabel,
+  periodName = 'ช่วงที่ดู',
 }: {
   points: TrendPoint[]
   /** ค่าช่วงเทียบ เรียงตรงกับ points ทีละวัน + ชื่อ เช่น "ปีก่อน" */
   compare?: { values: (number | null)[]; label: string; dates?: string[]; legend?: string }
   /** ช่วงวันที่ของกราฟ เช่น "9 ก.ย. 69–6 ต.ค. 69" — ใช้ในคำอธิบายสี */
   periodLabel?: string
+  /** ชื่อของช่วงที่ดู ใน legend เช่น "ปีนี้" (คู่กับ compare.label "ปีที่แล้ว") */
+  periodName?: string
   /** แต่ละจุดคือ 1 วัน หรือ 1 สัปดาห์ (date = วันแรกของสัปดาห์) — สัปดาห์ไม่ต้องมีเส้นเฉลี่ย 7 วัน */
   bucket?: 'day' | 'week'
   tone?: StatTone
@@ -152,7 +155,7 @@ export function TrendChart({
           // ตำแหน่งตามเมาส์ — ค่าคำนวณสด จึงต้องเป็น inline style
           <div className="aoo-trend__tip" style={{ left: `${((hover! + 0.5) / n) * 100}%` }}>
             <div>
-              {periodLabel ? 'ช่วงนี้ ' : ''}
+              {compare ? `${periodName} ` : ''}
               {when(hp.date)} · {hp.value == null ? 'ไม่มีข้อมูล' : format(hp.value)}
               {bucket === 'day' && avg[hover!] != null && <> (เฉลี่ย 7 วัน {format(avg[hover!]!)})</>}
             </div>
@@ -176,14 +179,16 @@ export function TrendChart({
       </div>
       {/* สี = ช่วง · ปุ่มไอคอน = รูปแบบ (เปิด/ปิด) */}
       <div className="aoo-trend__legend">
-        <span>
+        <span className="aoo-trend__key">
           <span className="aoo-trend__swatch" data-kind="cur" />
-          {compare ? 'ช่วงนี้' : label} {periodLabel}
+          <b>{compare ? periodName : label}</b>
+          {periodLabel && <span className="aoo-trend__dates">{periodLabel}</span>}
         </span>
         {compare && (
-          <span>
+          <span className="aoo-trend__key">
             <span className="aoo-trend__swatch" data-kind="cmp" />
-            {compare.label} {compare.legend}
+            <b>{compare.label}</b>
+            {compare.legend && <span className="aoo-trend__dates">{compare.legend}</span>}
           </span>
         )}
         {!invert && (

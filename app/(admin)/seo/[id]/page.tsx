@@ -8,11 +8,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Eye, MousePointerClick, Percent, Search, TrendingUp } from 'lucide-react'
+import { ClipboardCopy, Eye, MousePointerClick, Percent, Search, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Input, TabBar, TabItem } from '@/components/aoo'
 import TargetKeywords from './TargetKeywords'
+import { buildSeoBrief } from '@/lib/services/seo/seoBrief'
 import AiAnswers from './AiAnswers'
 import {
   DataTable,
@@ -175,6 +176,21 @@ export default function SeoSitePage() {
   // วันแรกที่มีข้อมูล GSC — Google เก็บย้อนหลังได้แค่ 16 เดือน ช่วงเทียบที่เก่ากว่านี้ข้อมูลไม่ครบ
   const earliest = useMemo(() => totals.reduce((m, t) => (!m || t.date < m ? t.date : m), ''), [totals])
   const prevPartial = !!per && !!earliest && per.prev.from < earliest
+  const [copying, setCopying] = useState(false)
+  const copyBrief = async () => {
+    if (!site) return
+    setCopying(true)
+    try {
+      const text = await buildSeoBrief(site, days)
+      await navigator.clipboard.writeText(text)
+      showToast(`คัดลอกสรุปแล้ว (${text.split('\n').length} บรรทัด) — วางในโปรเจกต์เว็บหรือแชทกับ AI ได้เลย`)
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setCopying(false)
+    }
+  }
+
   const stats = useMemo(
     () => (per ? { cur: sumTotals(totals, per.cur.from, per.cur.to), prev: sumTotals(totals, per.prev.from, per.prev.to) } : null),
     [totals, per?.cur.from, per?.cur.to, per?.prev.from] // eslint-disable-line react-hooks/exhaustive-deps
@@ -359,6 +375,12 @@ export default function SeoSitePage() {
         description={`${site.domain} · ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (เวลา US)`}
         icon={TrendingUp}
         backHref="/seo"
+        actions={
+          // สรุปทั้งหมดเป็น Markdown ไว้วางในโปรเจกต์ทำเว็บ / แชทกับ AI (เจ้าของขอ 8 ต.ค. 69)
+          <Button icon={ClipboardCopy} variant="secondary" loading={copying} onClick={copyBrief}>
+            คัดลอกสรุปไปทำเว็บ
+          </Button>
+        }
       />
 
       {site.lastError && (

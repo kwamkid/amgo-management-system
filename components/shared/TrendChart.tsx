@@ -31,6 +31,17 @@ function movingAvg(values: (number | null)[], win = 7) {
   })
 }
 
+const addDaysIso = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
+
+/** วันที่บนแกน — ช่วงยาว (รายสัปดาห์) ใส่ปีด้วย */
+const fmtAxis = (d: string, withYear: boolean) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    ...(withYear ? { year: '2-digit' } : {}),
+    timeZone: 'UTC',
+  })
+
 const fmtDay = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -156,10 +167,12 @@ export function TrendChart({
           </div>
         )}
       </div>
+      {/* แกนล่าง: รายสัปดาห์ = จุดสุดท้ายคือวันจบของสัปดาห์สุดท้าย (เดิมโชว์วันเริ่ม "30 ก.ย." ทั้งที่ข้อมูลถึง 6 ต.ค. — เจ้าของงง)
+          ใส่ปีเมื่อช่วงยาว จะได้รู้ว่า 8 ต.ค. ไหน */}
       <div className="aoo-trend__axis">
-        <span>{fmtDay(points[0].date)}</span>
-        {n > 2 && <span>{fmtDay(points[Math.floor(n / 2)].date)}</span>}
-        <span>{fmtDay(points[n - 1].date)}</span>
+        <span>{fmtAxis(points[0].date, bucket === 'week')}</span>
+        {n > 2 && <span>{fmtAxis(points[Math.floor(n / 2)].date, bucket === 'week')}</span>}
+        <span>{fmtAxis(bucket === 'week' ? addDaysIso(points[n - 1].date, 6) : points[n - 1].date, bucket === 'week')}</span>
       </div>
       {/* สี = ช่วง · ปุ่มไอคอน = รูปแบบ (เปิด/ปิด) */}
       <div className="aoo-trend__legend">

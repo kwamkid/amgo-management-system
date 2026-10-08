@@ -172,10 +172,15 @@ export default function SeoSitePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site?.id, site?.syncedThrough, dim, range, canCompare])
 
+  // วันแรกที่มีข้อมูล GSC — Google เก็บย้อนหลังได้แค่ 16 เดือน ช่วงเทียบที่เก่ากว่านี้ข้อมูลไม่ครบ
+  const earliest = useMemo(() => totals.reduce((m, t) => (!m || t.date < m ? t.date : m), ''), [totals])
+  const prevPartial = !!per && !!earliest && per.prev.from < earliest
   const stats = useMemo(
     () => (per ? { cur: sumTotals(totals, per.cur.from, per.cur.to), prev: sumTotals(totals, per.prev.from, per.prev.to) } : null),
     [totals, per?.cur.from, per?.cur.to, per?.prev.from] // eslint-disable-line react-hooks/exhaustive-deps
   )
+  /** ช่วงเทียบข้อมูลไม่ครบ = ไม่โชว์ % (240% ที่เห็นคือเทียบกับข้อมูลแค่ 4 เดือน เจ้าของงง 8 ต.ค. 69) */
+  const partialHint = `เทียบไม่ได้ — ข้อมูลมีตั้งแต่ ${fmtGscDate(earliest)}`
 
   // กราฟ: ≤ 28 วัน = รายวัน · ยาวกว่านั้น = รายสัปดาห์ (1 ปีรายวัน = 365 แท่งคู่ บางจนดูไม่ออก — เจ้าของ 8 ต.ค. 69)
   // ช่วงเทียบ = ช่วงเดียวกันที่เลื่อนวันด้วยระยะเดียวกับการ์ด (ช่วงก่อน = ถอย N วัน · ปีก่อน = ถอย 364 วัน ตรงวันในสัปดาห์)
@@ -202,6 +207,8 @@ export default function SeoSitePage() {
         imp += t.impressions
         if (t.position != null) posW += t.position * t.impressions
       }
+      // ก่อนวันแรกที่มีข้อมูล = ไม่รู้ (null) ไม่ใช่ 0 — ไม่งั้นช่วงเทียบกลายเป็นเส้นแบนที่ศูนย์
+      if (end < earliest) return null
       if (!any) return metric === 'position' || metric === 'ctr' ? null : 0
       if (metric === 'clicks') return clicks
       if (metric === 'impressions') return imp
@@ -226,11 +233,13 @@ export default function SeoSitePage() {
             values: cmpValues,
             dates: cmpDates.map((e) => addDays(e, -(bucketDays - 1))),
             label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน',
-            legend: range(cmpFrom, cmpDates[cmpDates.length - 1]),
+            legend:
+              range(cmpFrom, cmpDates[cmpDates.length - 1]) +
+              (cmpFrom < earliest ? ` (Google เก็บข้อมูลย้อนหลังได้ 16 เดือน — มีตั้งแต่ ${fmtGscDate(earliest)})` : ''),
           }
         : undefined,
     }
-  }, [totals, per?.cur.to, per?.prev.to, days, metric, mode, bucketDays]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [totals, per?.cur.to, per?.prev.to, days, metric, mode, bucketDays, earliest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const withStatus = useMemo(
     () =>
@@ -392,13 +401,13 @@ export default function SeoSitePage() {
 
           <StatGrid cols={4}>
             <StatCard variant="soft" onClick={() => setMetric('clicks')} selected={metric === 'clicks'} label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
-              hint={fmtPct(stats.cur.clicks, stats.prev.clicks)} />
+              hint={prevPartial ? partialHint : fmtPct(stats.cur.clicks, stats.prev.clicks)} />
             <StatCard variant="soft" onClick={() => setMetric('impressions')} selected={metric === 'impressions'} label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
-              hint={fmtPct(stats.cur.impressions, stats.prev.impressions)} />
+              hint={prevPartial ? partialHint : fmtPct(stats.cur.impressions, stats.prev.impressions)} />
             <StatCard variant="soft" onClick={() => setMetric('ctr')} selected={metric === 'ctr'} label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
-              hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'} />
+              hint={prevPartial ? partialHint : stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'} />
             <StatCard variant="soft" onClick={() => setMetric('position')} selected={metric === 'position'} label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
-              hint={fmtPosDelta(stats.cur.position, stats.prev.position)} />
+              hint={prevPartial ? partialHint : fmtPosDelta(stats.cur.position, stats.prev.position)} />
           </StatGrid>
 
           <SectionCard

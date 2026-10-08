@@ -148,6 +148,10 @@ function SiteCard({
   }, [site.syncedThrough, rows, days, mode])
 
   const spark = rows.filter((r) => stats && r.date >= stats.from).map((r) => r.clicks)
+  // ช่วงเทียบเก่ากว่าข้อมูลที่ Google เก็บไว้ (16 เดือน) = ไม่โชว์ % (จะโตเกินจริง)
+  const earliest = rows.reduce((m, r) => (!m || r.date < m ? r.date : m), '')
+  const prevPartial = !!site.syncedThrough && !!earliest && periods(site.syncedThrough, days, mode).prev.from < earliest
+  const partialHint = `เทียบไม่ได้ — ข้อมูลมีตั้งแต่ ${fmtGscDate(earliest)}`
 
   return (
     <SectionCard
@@ -181,28 +185,28 @@ function SiteCard({
               value={fmtNum(stats.cur.clicks)}
               icon={MousePointerClick}
               tone="accent"
-              hint={fmtPct(stats.cur.clicks, stats.prev.clicks)}
+              hint={prevPartial ? partialHint : fmtPct(stats.cur.clicks, stats.prev.clicks)}
             />
             <StatCard
               label="การแสดงผล"
               value={fmtNum(stats.cur.impressions)}
               icon={Eye}
               tone="grape"
-              hint={fmtPct(stats.cur.impressions, stats.prev.impressions)}
+              hint={prevPartial ? partialHint : fmtPct(stats.cur.impressions, stats.prev.impressions)}
             />
             <StatCard
               label="CTR"
               value={fmtCtr(stats.cur.ctr)}
               icon={Percent}
               tone="success"
-              hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'}
+              hint={prevPartial ? partialHint : stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'}
             />
             <StatCard
               label="อันดับเฉลี่ย"
               value={stats.cur.position?.toFixed(1) ?? '—'}
               icon={TrendingUp}
               tone="warning"
-              hint={fmtPosDelta(stats.cur.position, stats.prev.position)}
+              hint={prevPartial ? partialHint : fmtPosDelta(stats.cur.position, stats.prev.position)}
             />
           </StatGrid>
           {ai && AI_ENGINES.some((e) => ai[e.key].total) && (

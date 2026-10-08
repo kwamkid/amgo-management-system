@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Eye, MousePointerClick, Percent, TrendingUp } from 'lucide-react'
+import { Eye, MousePointerClick, Percent, Search, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Input, TabBar, TabItem } from '@/components/aoo'
@@ -340,7 +340,13 @@ export default function SeoSitePage() {
         <>
           {/* สถิติ 2 ชุดในหน้านี้ (เจ้าของงง 8 ต.ค. 69) — ชุดนี้ = ทั้งเว็บจาก Search Console ตามช่วงวันที่เลือก
               ชุดล่างในแท็บคำเป้าหมาย = สถานะคำที่เราติดตาม ณ วันนี้ ไม่ขึ้นกับช่วงวันที่ */}
-          <h2 className="aoo-section-title">ภาพรวมทั้งเว็บ — คนค้นจริงจาก Google (Search Console)</h2>
+          <h2 className="aoo-section-title">
+            ภาพรวมทั้งเว็บ
+            <span className="aoo-source-badge">
+              <Search size={13} />
+              Google Search Console
+            </span>
+          </h2>
           <p className="mb-3 text-xs text-gray-500">
             นับทุกคำที่คนค้นแล้วเจอเว็บเรา ตามช่วงวันที่ที่เลือก · ข้อมูลช้า 2–3 วัน
           </p>
@@ -356,13 +362,13 @@ export default function SeoSitePage() {
           </div>
 
           <StatGrid cols={4}>
-            <StatCard label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
+            <StatCard variant="soft" label="คลิก" value={fmtNum(stats.cur.clicks)} icon={MousePointerClick} tone="accent"
               hint={fmtPct(stats.cur.clicks, stats.prev.clicks)} />
-            <StatCard label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
+            <StatCard variant="soft" label="การแสดงผล" value={fmtNum(stats.cur.impressions)} icon={Eye} tone="grape"
               hint={fmtPct(stats.cur.impressions, stats.prev.impressions)} />
-            <StatCard label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
+            <StatCard variant="soft" label="CTR" value={fmtCtr(stats.cur.ctr)} icon={Percent} tone="success"
               hint={stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'} />
-            <StatCard label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
+            <StatCard variant="soft" label="อันดับเฉลี่ย" value={stats.cur.position?.toFixed(1) ?? '—'} icon={TrendingUp} tone="warning"
               hint={fmtPosDelta(stats.cur.position, stats.prev.position)} />
           </StatGrid>
 

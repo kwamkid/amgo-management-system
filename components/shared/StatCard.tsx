@@ -26,6 +26,7 @@ export function StatCard({
   hint,
   onClick,
   selected,
+  variant = 'solid',
 }: {
   label: ReactNode
   value: ReactNode
@@ -38,6 +39,8 @@ export function StatCard({
   onClick?: () => void
   /** การ์ดที่กำลังใช้กรองอยู่ — ขึ้นกรอบเข้ม (ใช้คู่กับ onClick) */
   selected?: boolean
+  /** solid = สีเต็ม (ค่าเริ่มต้น) · soft = พื้นอ่อน ใช้กับข้อมูลรอง ให้แยกจากการ์ดหลักออก */
+  variant?: 'solid' | 'soft'
 }) {
   const Tag = onClick ? 'button' : 'div'
 
@@ -47,6 +50,7 @@ export function StatCard({
       className="aoo-stat"
       data-tone={tone}
       data-selected={selected || undefined}
+      data-variant={variant === 'soft' ? 'soft' : undefined}
     >
       <div className="min-w-0">
         <p className="aoo-stat__label truncate">{label}</p>

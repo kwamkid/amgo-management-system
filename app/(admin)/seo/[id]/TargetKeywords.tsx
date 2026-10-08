@@ -687,10 +687,13 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
     <div>
       {dialog}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-gray-400">
-          เช็คอัตโนมัติสัปดาห์ละครั้ง (Google ประเทศไทย) · ติดตาม {tracked} คำ
-          {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
-        </p>
+        <div>
+          <h2 className="aoo-section-title">คำเป้าหมาย — สถานะ ณ วันนี้</h2>
+          <p className="text-xs text-gray-500">
+            เฉพาะ {tracked} คำที่เราเลือกติดตาม · ไม่ขึ้นกับช่วงวันที่ข้างบน · เช็คซ้ำทุก 7 วัน (คำที่ยังไม่แน่ใจเช็คทุกวัน)
+            {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" icon={Plus} onClick={() => setAdding(true)}>
             เพิ่มคำ
@@ -730,7 +733,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             value={`${stats.solid}/${rows.length}`}
             icon={CircleCheck}
             tone="success"
-            hint="เจอบ่อยในประวัติ 4 รอบ หรือคนค้นเห็นเรา ≥ 50%"
+            hint="เจอบ่อย หรือคนเห็นเรา ≥ 50%"
           />
           <StatCard
             label="ติดหน้าแรก (จริง)"

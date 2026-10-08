@@ -338,6 +338,12 @@ export default function SeoSitePage() {
         </SectionCard>
       ) : (
         <>
+          {/* สถิติ 2 ชุดในหน้านี้ (เจ้าของงง 8 ต.ค. 69) — ชุดนี้ = ทั้งเว็บจาก Search Console ตามช่วงวันที่เลือก
+              ชุดล่างในแท็บคำเป้าหมาย = สถานะคำที่เราติดตาม ณ วันนี้ ไม่ขึ้นกับช่วงวันที่ */}
+          <h2 className="aoo-section-title">ภาพรวมทั้งเว็บ — คนค้นจริงจาก Google (Search Console)</h2>
+          <p className="mb-3 text-xs text-gray-500">
+            นับทุกคำที่คนค้นแล้วเจอเว็บเรา ตามช่วงวันที่ที่เลือก · ข้อมูลช้า 2–3 วัน
+          </p>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Segmented value={range} onChange={setRange} options={RANGES} />
             <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={COMPARE_OPTIONS} />

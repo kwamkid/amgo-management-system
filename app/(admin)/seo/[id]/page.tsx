@@ -180,8 +180,8 @@ export default function SeoSitePage() {
   // กราฟ: ≤ 28 วัน = รายวัน · ยาวกว่านั้น = รายสัปดาห์ (1 ปีรายวัน = 365 แท่งคู่ บางจนดูไม่ออก — เจ้าของ 8 ต.ค. 69)
   // ช่วงเทียบ = ช่วงเดียวกันที่เลื่อนวันด้วยระยะเดียวกับการ์ด (ช่วงก่อน = ถอย N วัน · ปีก่อน = ถอย 364 วัน ตรงวันในสัปดาห์)
   const bucketDays = days > 28 ? 7 : 1
-  const { chartPoints, chartCompare } = useMemo(() => {
-    if (!per) return { chartPoints: [], chartCompare: undefined }
+  const { chartPoints, chartCompare, chartLabel } = useMemo(() => {
+    if (!per) return { chartPoints: [], chartCompare: undefined, chartLabel: '' }
     const byDate = new Map(totals.map((t) => [t.date, t]))
     // ช่วงสั้นกว่า 28 วันยังโชว์กราฟ 28 วัน — 7 จุดดูทิศทางไม่ออก
     const span = Math.max(days, 28)
@@ -215,13 +215,18 @@ export default function SeoSitePage() {
     const cmpDates = ends.map((e) => addDays(e, -shift))
     const cmpValues = cmpDates.map((e) => bucket(e))
     const hasCmp = cmpValues.some((v) => v != null && v !== 0)
+    // ชื่อในคำอธิบายสี = ช่วงวันที่จริงของกราฟ (เจ้าของงง "ช่วงนี้ / 7 วัน / ปีก่อน" 8 ต.ค. 69)
+    const range = (from: string, to: string) => `${fmtGscDate(from)}–${fmtGscDate(to)}`
+    const cmpFrom = addDays(cmpDates[0], -(bucketDays - 1))
     return {
       chartPoints: pts,
+      chartLabel: range(pts[0].date, ends[ends.length - 1]),
       chartCompare: hasCmp
         ? {
             values: cmpValues,
             dates: cmpDates.map((e) => addDays(e, -(bucketDays - 1))),
             label: mode === 'yoy' ? 'ปีก่อน' : 'ช่วงก่อน',
+            legend: range(cmpFrom, cmpDates[cmpDates.length - 1]),
           }
         : undefined,
     }
@@ -410,6 +415,7 @@ export default function SeoSitePage() {
             <TrendChart
               points={chartPoints}
               compare={chartCompare}
+              periodLabel={chartLabel}
               bucket={bucketDays > 1 ? 'week' : 'day'}
               tone={metric === 'clicks' ? 'accent' : metric === 'impressions' ? 'grape' : metric === 'ctr' ? 'success' : 'warning'}
               invert={metric === 'position'}

@@ -852,7 +852,7 @@ button.aoo-stat:active { filter: brightness(0.88); }
   padding: 4px 8px; border-radius: var(--r-sm); background: var(--fg-1); color: var(--bg-surface);
   font-size: 12px; line-height: 1.4; box-shadow: var(--shadow-md); z-index: 2;
 }
-.aoo-trend__legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
 .aoo-trend__swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--tone); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
 /* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = เทาอุ่น · ช่วงนี้ = สีของเรื่องเข้มขึ้น */
@@ -864,6 +864,10 @@ g[data-hover="true"] .aoo-trend__bar--cmp { fill: var(--fg-3); }
 .aoo-trend__cmp { fill: none; stroke: var(--fg-3); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
 .aoo-trend__swatch[data-kind="cmp"] { background: var(--warm-300); }
 .aoo-trend__swatch[data-kind="cur"] { opacity: 1; }
+/* ไอคอนในคำอธิบายสี (แท่ง/เส้น) — สีเดียวกับในกราฟ */
+.aoo-trend__icon { display: inline-block; margin-right: 4px; vertical-align: -3px; color: var(--tone); }
+.aoo-trend__icon[data-kind="raw"] { opacity: 0.5; }
+.aoo-trend__icon[data-kind="cmp"] { color: var(--warm-300); }
 /* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
 .aoo-delta { font-size: 12px; color: var(--tone-ink); }
 .aoo-delta[data-tone="muted"] { color: var(--fg-3); }

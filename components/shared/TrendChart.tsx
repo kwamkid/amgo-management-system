@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
+import { ChartNoAxesColumn, Spline } from 'lucide-react'
 import type { StatTone } from './StatCard'
 
 /**
@@ -50,10 +51,13 @@ export function TrendChart({
   label,
   compare,
   bucket = 'day',
+  periodLabel,
 }: {
   points: TrendPoint[]
   /** ค่าช่วงเทียบ เรียงตรงกับ points ทีละวัน + ชื่อ เช่น "ปีก่อน" */
-  compare?: { values: (number | null)[]; label: string; dates?: string[] }
+  compare?: { values: (number | null)[]; label: string; dates?: string[]; legend?: string }
+  /** ช่วงวันที่ของกราฟ เช่น "9 ก.ย. 69–6 ต.ค. 69" — ใช้ในคำอธิบายสี */
+  periodLabel?: string
   /** แต่ละจุดคือ 1 วัน หรือ 1 สัปดาห์ (date = วันแรกของสัปดาห์) — สัปดาห์ไม่ต้องมีเส้นเฉลี่ย 7 วัน */
   bucket?: 'day' | 'week'
   tone?: StatTone
@@ -157,22 +161,34 @@ export function TrendChart({
         {n > 2 && <span>{fmtDay(points[Math.floor(n / 2)].date)}</span>}
         <span>{fmtDay(points[n - 1].date)}</span>
       </div>
+      {/* คำอธิบายสี — ไอคอนแท่ง/เส้นแทนคำ · แท่งสองช่วงวางคู่กัน · บอกช่วงวันที่จริง (เจ้าของ 8 ต.ค. 69) */}
       <div className="aoo-trend__legend">
-        <span>
-          <span className="aoo-trend__swatch" data-kind={compare && !invert ? 'cur' : 'raw'} />
-          {label ?? 'รายวัน'}
-          {compare ? ' ช่วงนี้' : ''}
-        </span>
-        {showAvg && (
+        {invert ? (
           <span>
-            <span className="aoo-trend__swatch" />
-            เฉลี่ย 7 วัน
+            <Spline size={16} className="aoo-trend__icon" data-kind="raw" />
+            {periodLabel ?? label}
+          </span>
+        ) : (
+          <span>
+            <ChartNoAxesColumn size={16} className="aoo-trend__icon" data-kind="cur" />
+            {periodLabel ?? label}
           </span>
         )}
         {compare && (
           <span>
-            <span className="aoo-trend__swatch" data-kind="cmp" />
-            {label ?? 'รายวัน'} {compare.label}
+            {invert ? (
+              <Spline size={16} className="aoo-trend__icon" data-kind="cmp" />
+            ) : (
+              <ChartNoAxesColumn size={16} className="aoo-trend__icon" data-kind="cmp" />
+            )}
+            {compare.label}
+            {compare.legend ? ` ${compare.legend}` : ''}
+          </span>
+        )}
+        {showAvg && (
+          <span>
+            <Spline size={16} className="aoo-trend__icon" />
+            เฉลี่ย 7 วัน
           </span>
         )}
       </div>

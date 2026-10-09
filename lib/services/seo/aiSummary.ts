@@ -18,15 +18,23 @@ export const AI_ENGINES: { key: AiEngineKey; label: string }[] = [
   { key: 'gemini', label: 'Gemini' },
 ]
 
-/** cited = ใส่ลิงก์เรา · mentioned = เอ่ยชื่อเรา (รวมที่ใส่ลิงก์) · total = จำนวนที่ถาม/มีกล่อง AI */
-export type AiCount = { cited: number; mentioned: number; total: number }
+/** cited = ใส่ลิงก์เรา · mentioned = เอ่ยชื่อเรา (รวมที่ใส่ลิงก์) · total = จำนวนที่ถาม/มีกล่อง AI
+ *  items = รายการที่นับ (คำค้นของ Google · คำถามของ AI อื่น) — หน้า SEO กดป้ายแล้วโชว์ว่าอ้างเราคำไหน
+ *  (เจ้าของงง "2/44 คือ 2 คำไหน" 9 ต.ค. 69) */
+export type AiItemState = 'cited' | 'mentioned' | 'none'
+export type AiCount = {
+  cited: number
+  mentioned: number
+  total: number
+  items: { text: string; state: AiItemState }[]
+}
 export type AiSummary = Record<AiEngineKey, AiCount>
 
 const empty = (): AiSummary => ({
-  google: { cited: 0, mentioned: 0, total: 0 },
-  chatgpt: { cited: 0, mentioned: 0, total: 0 },
-  perplexity: { cited: 0, mentioned: 0, total: 0 },
-  gemini: { cited: 0, mentioned: 0, total: 0 },
+  google: { cited: 0, mentioned: 0, total: 0, items: [] },
+  chatgpt: { cited: 0, mentioned: 0, total: 0, items: [] },
+  perplexity: { cited: 0, mentioned: 0, total: 0, items: [] },
+  gemini: { cited: 0, mentioned: 0, total: 0, items: [] },
 })
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -38,7 +46,7 @@ export async function getAiSummaries(sb: SupabaseClient, siteIds: string[]): Pro
   const [{ data: snaps }, { data: answers }] = await Promise.all([
     sb
       .from('seo_rank_snapshots')
-      .select('keyword_id, checked_on, has_ai_overview, ai_overview_cites_us, top_competitors, seo_keywords!inner(site_id)')
+      .select('keyword_id, checked_on, has_ai_overview, ai_overview_cites_us, top_competitors, seo_keywords!inner(site_id, keyword)')
       .in('seo_keywords.site_id', siteIds)
       .gte('checked_on', since)
       .not('top_competitors', 'is', null) // ประวัติที่นำเข้าไม่มีข้อมูล AI
@@ -46,7 +54,7 @@ export async function getAiSummaries(sb: SupabaseClient, siteIds: string[]): Pro
       .limit(5000),
     sb
       .from('seo_aeo_results')
-      .select('prompt_id, engine, checked_on, cited, mentioned, seo_aeo_prompts!inner(site_id, is_tracked)')
+      .select('prompt_id, engine, checked_on, cited, mentioned, seo_aeo_prompts!inner(site_id, is_tracked, prompt)')
       .in('seo_aeo_prompts.site_id', siteIds)
       .eq('seo_aeo_prompts.is_tracked', true)
       .gte('checked_on', since)
@@ -66,6 +74,7 @@ export async function getAiSummaries(sb: SupabaseClient, siteIds: string[]): Pro
       c.cited++
       c.mentioned++
     }
+    c.items.push({ text: s.seo_keywords.keyword, state: s.ai_overview_cites_us ? 'cited' : 'none' })
   }
 
   const seenAns = new Set<string>()
@@ -78,6 +87,7 @@ export async function getAiSummaries(sb: SupabaseClient, siteIds: string[]): Pro
     c.total++
     if (a.cited) c.cited++
     if (a.mentioned || a.cited) c.mentioned++
+    c.items.push({ text: a.seo_aeo_prompts.prompt, state: a.cited ? 'cited' : a.mentioned ? 'mentioned' : 'none' })
   }
   return out
 }

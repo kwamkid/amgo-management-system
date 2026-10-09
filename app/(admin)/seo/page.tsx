@@ -12,13 +12,13 @@
 //
 // เมนูส่วนตัวของเจ้าของ: RLS ปล่อยเฉพาะคนใน web_owners
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bot, MousePointerClick, Search, Settings, Target, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Pill } from '@/components/aoo'
-import { AI_ENGINES, type AiSummary } from '@/lib/services/seo/aiSummary'
+import { Button, EmptyState, Pill, Popover } from '@/components/aoo'
+import { AI_ENGINES, type AiCount, type AiSummary } from '@/lib/services/seo/aiSummary'
 import {
   DataTable,
   PageHeader,
@@ -48,10 +48,14 @@ import {
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
+// 6 เดือน / 1 ปี: เจ้าของอยากดูว่า "ทำ SEO แล้วดีขึ้นหรือยัง" (9 ต.ค. 69) — ช่วงสั้นมองไม่ออก
+// เทียบปีก่อนกับ 1 ปีต้องใช้ข้อมูล ~2 ปี แต่ GSC เก็บ 16 เดือน → ไม่ครบจะขึ้น "เทียบไม่ได้" เอง
 const RANGES = [
   { value: '7', label: '7 วัน' },
   { value: '28', label: '28 วัน' },
-  { value: '90', label: '90 วัน' },
+  { value: '90', label: '3 เดือน' },
+  { value: '180', label: '6 เดือน' },
+  { value: '365', label: '1 ปี' },
 ]
 
 type Row = {
@@ -278,9 +282,7 @@ export default function SeoOverviewPage() {
         return (
           <div className="flex flex-wrap gap-1">
             {list.map((e) => (
-              <Pill key={e.key} tone={r.ai![e.key].cited ? 'success' : 'neutral'}>
-                {e.label.replace(' AI', '')} {r.ai![e.key].cited}/{r.ai![e.key].total}
-              </Pill>
+              <AiPill key={e.key} engine={e.label} count={r.ai![e.key]} />
             ))}
           </div>
         )
@@ -325,7 +327,7 @@ export default function SeoOverviewPage() {
           <StatGrid cols={4}>
             <StatCard
               variant="soft"
-              label={`คลิกจาก Google ${range} วัน`}
+              label={`คลิกจาก Google ${RANGES.find((x) => x.value === range)?.label ?? `${range} วัน`}`}
               value={fmtNum(sum.clicks)}
               icon={MousePointerClick}
               tone="accent"
@@ -368,5 +370,69 @@ export default function SeoOverviewPage() {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * ป้าย "ChatGPT 2/44" กดได้ — เปิดรายการว่า AI ตัวนี้ใส่ลิงก์เรา (อ้างเรา) ในคำไหน
+ * เอ่ยชื่อเราแต่ไม่ใส่ลิงก์ในคำไหน และคำไหนยังไม่พูดถึงเรา (เจ้าของงง "2 คำไหนบ้าง" 9 ต.ค. 69)
+ * ตัวเลข = ใส่ลิงก์เรา / จำนวนคำที่ถาม (Google = คำค้นที่มีกล่อง AI Overview) · ย้อน 30 วัน
+ */
+function AiPill({ engine, count }: { engine: string; count: AiCount }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLButtonElement>(null)
+  const isGoogle = engine.startsWith('Google')
+  const groups: { state: AiCount['items'][number]['state']; title: string; cls: string }[] = [
+    { state: 'cited', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', cls: 'text-green-700' },
+    { state: 'mentioned', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', cls: 'text-amber-700' },
+    { state: 'none', title: 'ยังไม่พูดถึงเรา', cls: 'text-gray-500' },
+  ]
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation() // แถวตารางกดแล้วเปิดหน้าเว็บ — กดป้ายต้องไม่พาออก
+          setOpen((o) => !o)
+        }}
+        className="cursor-pointer"
+        aria-label={`${engine}: อ้างเรา ${count.cited} จาก ${count.total}`}
+      >
+        <Pill tone={count.cited ? 'success' : 'neutral'}>
+          {engine.replace(' AI', '')} {count.cited}/{count.total}
+        </Pill>
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={ref.current} minWidth={300} maxHeight={420} padding={12}>
+        <div onClick={(ev) => ev.stopPropagation()} className="text-sm">
+          <p className="font-semibold text-gray-900">
+            {engine} อ้างเรา {count.cited} จาก {count.total} {isGoogle ? 'คำค้น' : 'คำถาม'}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {isGoogle
+              ? 'นับเฉพาะคำค้นที่ Google ขึ้นกล่อง AI Overview · ผลเช็ครอบล่าสุดใน 30 วัน'
+              : 'คำถามที่ให้ AI ตอบ · คำตอบล่าสุดใน 30 วัน'}
+          </p>
+          {groups.map((g) => {
+            const items = count.items.filter((i) => i.state === g.state)
+            if (!items.length) return null
+            return (
+              <div key={g.state} className="mt-3">
+                <p className={`text-xs font-semibold ${g.cls}`}>
+                  {g.title} · {items.length}
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {items.map((i, n) => (
+                    <li key={n} className="text-gray-700 leading-snug">
+                      {i.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      </Popover>
+    </>
   )
 }

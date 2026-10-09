@@ -12,12 +12,24 @@
 //
 // เมนูส่วนตัวของเจ้าของ: RLS ปล่อยเฉพาะคนใน web_owners
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bot, MousePointerClick, Search, Settings, Target, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
+import {
+  Bot,
+  CircleCheck,
+  CircleX,
+  MessageCircle,
+  MousePointerClick,
+  Search,
+  Settings,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Pill, Popover } from '@/components/aoo'
+import { Button, EmptyState, Modal, Pill } from '@/components/aoo'
 import { AI_ENGINES, type AiCount, type AiSummary } from '@/lib/services/seo/aiSummary'
 import {
   DataTable,
@@ -282,7 +294,7 @@ export default function SeoOverviewPage() {
         return (
           <div className="flex flex-wrap gap-1">
             {list.map((e) => (
-              <AiPill key={e.key} engine={e.label} count={r.ai![e.key]} />
+              <AiPill key={e.key} engine={e.label} count={r.ai![e.key]} site={r.site.displayName} />
             ))}
           </div>
         )
@@ -374,27 +386,26 @@ export default function SeoOverviewPage() {
 }
 
 /**
- * ป้าย "ChatGPT 2/44" กดได้ — เปิดรายการว่า AI ตัวนี้ใส่ลิงก์เรา (อ้างเรา) ในคำไหน
+ * ป้าย "ChatGPT 2/44" กดได้ — เปิด modal รายการว่า AI ตัวนี้ใส่ลิงก์เรา (อ้างเรา) ในคำไหน
  * เอ่ยชื่อเราแต่ไม่ใส่ลิงก์ในคำไหน และคำไหนยังไม่พูดถึงเรา (เจ้าของงง "2 คำไหนบ้าง" 9 ต.ค. 69)
+ * 9 ต.ค. 69: เปลี่ยนจาก popover เป็น Modal กลาง (ปิดง่าย) · แต่ละข้อเป็น bullet · ยังไม่พูดถึงเรา = สีแดง
  * ตัวเลข = ใส่ลิงก์เรา / จำนวนคำที่ถาม (Google = คำค้นที่มีกล่อง AI Overview) · ย้อน 30 วัน
  */
-function AiPill({ engine, count }: { engine: string; count: AiCount }) {
+function AiPill({ engine, count, site }: { engine: string; count: AiCount; site: string }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLButtonElement>(null)
   const isGoogle = engine.startsWith('Google')
-  const groups: { state: AiCount['items'][number]['state']; title: string; cls: string }[] = [
-    { state: 'cited', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', cls: 'text-green-700' },
-    { state: 'mentioned', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', cls: 'text-amber-700' },
-    { state: 'none', title: 'ยังไม่พูดถึงเรา', cls: 'text-gray-500' },
+  const groups: { state: AiCount['items'][number]['state']; title: string; tone: 'success' | 'warning' | 'danger'; Icon: typeof CircleCheck }[] = [
+    { state: 'cited', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', tone: 'success', Icon: CircleCheck },
+    { state: 'mentioned', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', tone: 'warning', Icon: MessageCircle },
+    { state: 'none', title: 'ยังไม่พูดถึงเรา — งานที่ต้องทำ', tone: 'danger', Icon: CircleX },
   ]
   return (
     <>
       <button
-        ref={ref}
         type="button"
         onClick={(ev) => {
           ev.stopPropagation() // แถวตารางกดแล้วเปิดหน้าเว็บ — กดป้ายต้องไม่พาออก
-          setOpen((o) => !o)
+          setOpen(true)
         }}
         className="cursor-pointer"
         aria-label={`${engine}: อ้างเรา ${count.cited} จาก ${count.total}`}
@@ -403,36 +414,40 @@ function AiPill({ engine, count }: { engine: string; count: AiCount }) {
           {engine.replace(' AI', '')} {count.cited}/{count.total}
         </Pill>
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={ref.current} minWidth={300} maxHeight={420} padding={12}>
-        <div onClick={(ev) => ev.stopPropagation()} className="text-sm">
-          <p className="font-semibold text-gray-900">
-            {engine} อ้างเรา {count.cited} จาก {count.total} {isGoogle ? 'คำค้น' : 'คำถาม'}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {isGoogle
+      {/* หยุด event ไม่ให้ทะลุไปถึงแถวตาราง (portal ยังส่ง event ผ่าน React tree) */}
+      <div onClick={(ev) => ev.stopPropagation()}>
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          title={`${engine} อ้าง ${site} ${count.cited} จาก ${count.total} ${isGoogle ? 'คำค้น' : 'คำถาม'}`}
+          description={
+            isGoogle
               ? 'นับเฉพาะคำค้นที่ Google ขึ้นกล่อง AI Overview · ผลเช็ครอบล่าสุดใน 30 วัน'
-              : 'คำถามที่ให้ AI ตอบ · คำตอบล่าสุดใน 30 วัน'}
-          </p>
-          {groups.map((g) => {
-            const items = count.items.filter((i) => i.state === g.state)
-            if (!items.length) return null
-            return (
-              <div key={g.state} className="mt-3">
-                <p className={`text-xs font-semibold ${g.cls}`}>
-                  {g.title} · {items.length}
-                </p>
-                <ul className="mt-1 space-y-0.5">
-                  {items.map((i, n) => (
-                    <li key={n} className="text-gray-700 leading-snug">
-                      {i.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          })}
-        </div>
-      </Popover>
+              : 'คำถามที่ให้ AI ตอบ · คำตอบล่าสุดใน 30 วัน'
+          }
+          maxWidth={640}
+        >
+          <div className="space-y-5">
+            {groups.map((g) => {
+              const items = count.items.filter((i) => i.state === g.state)
+              if (!items.length) return null
+              return (
+                <section key={g.state}>
+                  <h3 className="aoo-status mb-1.5" data-tone={g.tone}>
+                    <g.Icon size={16} />
+                    {g.title} · {items.length}
+                  </h3>
+                  <ul className="aoo-ai-list" data-tone={g.tone}>
+                    {items.map((i, n) => (
+                      <li key={n}>{i.text}</li>
+                    ))}
+                  </ul>
+                </section>
+              )
+            })}
+          </div>
+        </Modal>
+      </div>
     </>
   )
 }

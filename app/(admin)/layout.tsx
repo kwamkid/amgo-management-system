@@ -15,6 +15,7 @@ import ForgotCheckoutPrompt from "@/components/checkin/ForgotCheckoutPrompt";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ToastProvider } from "@/components/aoo";
 import { Toaster } from "react-hot-toast";
+import { GlobalQueue } from "@/components/shared";
 
 export default function AdminLayout({
   children,
@@ -108,6 +109,8 @@ export default function AdminLayout({
             }}
           />
         </div>
+        {/* แผงคิวลอยทั้งแอป — ตามไปทุกหน้าจนกว่าจะกดปิด (ดู components/shared/GlobalQueue) */}
+        <GlobalQueue />
       </ToastProvider>
     </ProtectedRoute>
   );

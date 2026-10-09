@@ -19,9 +19,10 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
+import { trackQueue } from '@/lib/queue/tracker'
 import { getQueueGroup, type QueueGroupStatus } from '@/lib/services/queueService'
 import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
-import { DataTable, QueueFloat, StatCard, StatGrid, type Column } from '@/components/shared'
+import { DataTable, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   AEO_ENGINE_LABELS,
   addAeoPrompts,
@@ -40,8 +41,6 @@ import {
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
-/** ชุดที่จบแล้วยังโชว์แผงค้างไว้กี่นาที — ให้เห็นว่าจบแล้ว */
-const SHOW_DONE_MS = 30 * 60_000
 
 /** ไอคอนเดียวกับคอลัมน์ "AI อ้างเราไหม" ในแท็บคำเป้าหมาย */
 function ResultPill({ r }: { r?: AeoResult }) {
@@ -97,7 +96,6 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
     }
   }, [askKey])
   const [starting, setStarting] = useState(false)
-  const [queueOpen, setQueueOpen] = useState(true)
 
   const load = () =>
     Promise.all([
@@ -148,7 +146,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       } catch {
         /* ไม่มี localStorage ก็แค่จำไม่ได้ตอนเปิดหน้าใหม่ */
       }
-      setQueueOpen(true)
+      trackQueue({ kind: 'group', ref: g.key, title: `ถาม AI · ${site.displayName}`, unit: 'ข้อ', href: `/seo/${site.id}` })
       showToast(`ลงคิวถาม AI ${json.queued} ครั้งแล้ว — ปิดหน้านี้ได้ ระบบถามต่อเองจนครบ`)
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -286,7 +284,6 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((p) => p.isTracked).length
-  const showPanel = !!group && !!progress && progress.total > 0 && (progress.active || Date.now() - group.at < SHOW_DONE_MS)
 
   return (
     <div>
@@ -380,25 +377,7 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
         emptyBody='กด "เพิ่มคำถาม" แล้ววางคำถามบรรทัดละข้อ'
       />
 
-      {showPanel && progress && (
-        <QueueFloat
-          title="ถาม AI"
-          unit="ข้อ"
-          done={progress.done}
-          total={progress.total}
-          failed={progress.failed}
-          active={progress.active}
-          open={queueOpen}
-          onOpenChange={setQueueOpen}
-          meta={
-            progress.active
-              ? `${progress.running.length ? `กำลังถาม: ${progress.running.slice(0, 2).join(' · ')} · ` : ''}เซิร์ฟเวอร์ถามต่อเองทีละข้อ · ปิดหน้านี้ได้ ผลไม่หาย`
-              : progress.failed
-                ? 'ข้อที่ล้มเหลวระบบลองใหม่ให้แล้ว 3 ครั้ง — จะถามอีกรอบ cron'
-                : 'ผลอยู่ในตารางแล้ว'
-          }
-        />
-      )}
+      {/* แผงคิวอยู่ที่ระดับแอป (GlobalQueue) — ที่นี่แค่ trackQueue ตอนกดถาม และโหลดตารางใหม่เมื่อได้คำตอบเพิ่ม */}
 
       <Modal
         open={adding}

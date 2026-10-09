@@ -25,6 +25,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
+import { trackQueue } from '@/lib/queue/tracker'
 import {
   Button,
   HelpTooltip,
@@ -38,7 +39,7 @@ import {
   Toggle,
   useConfirm,
 } from '@/components/aoo'
-import { DataTable, QueueFloat, Segmented, StatCard, StatGrid, TableFooter, type Column } from '@/components/shared'
+import { DataTable, Segmented, StatCard, StatGrid, TableFooter, type Column } from '@/components/shared'
 import {
   addTargetKeywords,
   deleteTargetKeyword,
@@ -119,15 +120,6 @@ const pathOf = (url: string | null) => {
 
 /** ถามผลทุกกี่วิ ตอนมีงานรอ */
 const POLL_MS = 30_000
-/** รอบที่เสร็จแล้วยังโชว์แผงค้างไว้กี่นาที — ให้เห็นว่าจบแล้ว */
-const SHOW_DONE_MIN = 60
-
-const clock = (iso: string | number) =>
-  new Date(iso).toLocaleTimeString('th-TH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Bangkok',
-  })
 
 
 const wrongPage = (k: TargetKeyword) => {
@@ -161,8 +153,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   /** เวลาที่กดเช็ค — ใช้โชว์ "กำลังส่งเข้าคิว" จนกว่างานจะโผล่ */
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
-  /** แผงคิวเปิดอยู่ไหม — ปิดแล้วเหลือปุ่มกลมมุมขวาล่าง */
-  const [queueOpen, setQueueOpen] = useState(true)
 
   const loadQueue = () =>
     getRankQueue(site.id)
@@ -203,7 +193,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'ไม่สำเร็จ')
       setStartedAt(Date.now())
-      setQueueOpen(true)
+      trackQueue({ kind: 'rank', ref: site.id, title: `เช็คอันดับ · ${site.displayName}`, unit: 'คำ', href: `/seo/${site.id}` })
       showToast('ลงคิวเช็คอันดับแล้ว — ปิดหน้านี้ได้ ผลกลับมาเอง')
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -554,7 +544,6 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
   ]
 
   const tracked = (rows ?? []).filter((k) => k.isTracked).length
-  const showQueue = !!queue && (queue.pending > 0 || now - new Date(queue.postedAt).getTime() < SHOW_DONE_MIN * 60_000)
 
   return (
     <div>
@@ -578,27 +567,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         </div>
       </div>
 
-      {(starting || (showQueue && queue)) && (
-        <QueueFloat
-          title={starting ? 'กำลังส่งเข้าคิวเช็คอันดับ' : 'เช็คอันดับ'}
-          unit="คำ"
-          done={queue && !starting ? queue.done + queue.failed : 0}
-          total={queue && !starting ? queue.total : 0}
-          failed={queue && !starting ? queue.failed : 0}
-          active={starting || pendingCount > 0}
-          open={queueOpen}
-          onOpenChange={setQueueOpen}
-          meta={
-            starting
-              ? 'รอเซิร์ฟเวอร์ส่งคำไป DataForSEO ไม่กี่วินาที'
-              : `ส่งเข้าคิว ${clock(queue!.postedAt)}${
-                  pendingCount
-                    ? ' · ผลแต่ละคำกลับมาเองเมื่อเสร็จ (ปกติ 5–30 นาที) · ปิดหน้านี้ได้ ผลไม่หาย'
-                    : ''
-                }`
-          }
-        />
-      )}
+      {/* แผงคิวอยู่ที่ระดับแอป (GlobalQueue) — ตามไปทุกหน้าจนกว่าจะกดปิด · ที่นี่แค่ trackQueue ตอนกดเช็ค */}
 
       {rows && rows.length > 0 && (
         <StatGrid cols={4}>

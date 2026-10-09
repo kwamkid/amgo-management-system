@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Modal, Pill } from '@/components/aoo'
+import { Button, EmptyState, Modal, Pill, TabBar, TabItem } from '@/components/aoo'
 import { AI_ENGINES, type AiCount, type AiSummary } from '@/lib/services/seo/aiSummary'
 import {
   DataTable,
@@ -394,11 +394,19 @@ export default function SeoOverviewPage() {
 function AiPill({ engine, count, site }: { engine: string; count: AiCount; site: string }) {
   const [open, setOpen] = useState(false)
   const isGoogle = engine.startsWith('Google')
-  const groups: { state: AiCount['items'][number]['state']; title: string; tone: 'success' | 'warning' | 'danger'; Icon: typeof CircleCheck }[] = [
-    { state: 'cited', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', tone: 'success', Icon: CircleCheck },
-    { state: 'mentioned', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', tone: 'warning', Icon: MessageCircle },
-    { state: 'none', title: 'ยังไม่พูดถึงเรา — งานที่ต้องทำ', tone: 'danger', Icon: CircleX },
+  const groups: {
+    state: AiCount['items'][number]['state']
+    short: string
+    title: string
+    tone: 'success' | 'warning' | 'danger'
+    Icon: typeof CircleCheck
+  }[] = [
+    { state: 'none', short: 'ยังไม่พูดถึงเรา', title: 'AI แนะนำเว็บอื่น ไม่พูดถึงเรา — งานที่ต้องทำ', tone: 'danger', Icon: CircleX },
+    { state: 'mentioned', short: 'เอ่ยชื่อเรา', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', tone: 'warning', Icon: MessageCircle },
+    { state: 'cited', short: 'อ้างเรา', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', tone: 'success', Icon: CircleCheck },
   ]
+  const firstWithItems = groups.find((g) => count.items.some((i) => i.state === g.state))?.state ?? 'none'
+  const [tab, setTab] = useState<AiCount['items'][number]['state']>(firstWithItems)
   return (
     <>
       <button
@@ -427,32 +435,45 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
           }
           maxWidth={640}
         >
-          <div className="space-y-5">
+          {/* แท็บแยก 3 กลุ่ม (เจ้าของ 9 ต.ค. 69: tab สวยกว่ารายการยาวต่อกัน) · เปิดมาที่ "ยังไม่พูดถึงเรา" = งานที่ต้องทำ */}
+          <TabBar ariaLabel="กลุ่มคำตอบ" className="mb-3">
             {groups.map((g) => {
-              const items = count.items.filter((i) => i.state === g.state)
-              if (!items.length) return null
+              const n = count.items.filter((i) => i.state === g.state).length
               return (
-                <section key={g.state}>
-                  <h3 className="aoo-status mb-1.5" data-tone={g.tone}>
-                    <g.Icon size={16} />
-                    {g.title} · {items.length}
-                  </h3>
-                  {/* bullet ด้วย utility ของ Tailwind (ไม่พึ่ง globals.css — dev server ชอบค้าง CSS เก่า)
-                      สีตาม data-tone ของกลุ่ม: ยังไม่พูดถึงเรา = แดงทั้งจุดและข้อความ */}
-                  <ul
-                    className="aoo-ai-list list-disc space-y-1.5 pl-6 text-[15px] leading-snug marker:text-[var(--tone)]"
-                    data-tone={g.tone}
-                  >
-                    {items.map((i, n) => (
-                      <li key={n} className={g.tone === 'danger' ? 'text-[var(--tone-ink)]' : 'text-gray-800'}>
-                        {i.text}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                <TabItem
+                  key={g.state}
+                  active={tab === g.state}
+                  onClick={() => setTab(g.state)}
+                  disabled={!n}
+                  label={
+                    <>
+                      <g.Icon size={15} />
+                      {g.short} · {n}
+                    </>
+                  }
+                />
               )
             })}
-          </div>
+          </TabBar>
+          {(() => {
+            const g = groups.find((x) => x.state === tab)!
+            const items = count.items.filter((i) => i.state === tab)
+            return (
+              <>
+                <p className="aoo-status aoo-status--sm mb-2" data-tone={g.tone}>
+                  {g.title}
+                </p>
+                {/* bullet ด้วย utility ของ Tailwind (ไม่พึ่ง globals.css — dev server ชอบค้าง CSS เก่า) */}
+                <ul className="list-disc space-y-1.5 pl-6 text-[15px] leading-snug marker:text-[var(--tone)]" data-tone={g.tone}>
+                  {items.map((i, n) => (
+                    <li key={n} className={g.tone === 'danger' ? 'text-[var(--tone-ink)]' : 'text-gray-800'}>
+                      {i.text}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          })()}
         </Modal>
       </div>
     </>

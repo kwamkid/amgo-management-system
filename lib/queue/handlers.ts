@@ -10,6 +10,7 @@ import { collectRanks, postDueRanks } from '@/lib/services/seo/rankSync'
 import { askOne } from '@/lib/services/seo/aeoSync'
 import type { AeoEvent } from '@/lib/services/seo/aeoSync'
 import { syncBing } from '@/lib/services/seo/bing'
+import { fetchLlmMentions } from '@/lib/services/seo/llmMentions'
 import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
@@ -64,6 +65,9 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   },
 
   'seo.bing': async (sb) => ({ result: await syncBing(sb) }),
+
+  /** AI อ้างเราที่ไหนบ้าง + เทียบคู่แข่ง (DataForSEO LLM Mentions · ~$0.6/เว็บ) — เดือนละครั้ง + ปุ่มกดเอง */
+  'seo.llm.mentions': async (sb, job) => ({ result: await fetchLlmMentions(sb, p<string>(job, 'siteId')) }),
 
   /**
    * สรุปเข้า Discord หลังงานในชุดเดียวกันจบ — ยังมีงานในชุดค้าง = รอ 10 นาที (สูงสุด 3 ชม. แล้วส่งเท่าที่มี)

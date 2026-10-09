@@ -50,6 +50,7 @@ import {
   fmtNum,
   getDailyTotals,
   getKeywordSummaries,
+  getLlmSummaries,
   getSiteAiSummaries,
   getSeoSites,
   periods,
@@ -57,6 +58,7 @@ import {
   type CompareMode,
   type DailyTotal,
   type KeywordSummary,
+  type LlmSiteSummary,
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
@@ -102,6 +104,7 @@ export default function SeoOverviewPage() {
   const [totals, setTotals] = useState<Map<string, DailyTotal[]> | null>(null)
   const [kw, setKw] = useState<Map<string, KeywordSummary>>(new Map())
   const [ai, setAi] = useState<Map<string, AiSummary>>(new Map())
+  const [llm, setLlm] = useState<Map<string, LlmSiteSummary>>(new Map())
   const [range, setRange] = useState('28')
   const [mode, setMode] = useState<CompareMode>('prev')
   const days = Number(range)
@@ -122,6 +125,7 @@ export default function SeoOverviewPage() {
         const ids = active.map((s) => s.id)
         getKeywordSummaries(ids).then(setKw).catch(() => {})
         getSiteAiSummaries(ids).then(setAi).catch(() => {})
+        getLlmSummaries(ids).then(setLlm).catch(() => {})
       })
       .catch((e) => {
         showToast((e as Error).message, 'error')
@@ -287,18 +291,59 @@ export default function SeoOverviewPage() {
         )
       },
     },
+  ]
+
+  // ตาราง AEO แยก (เจ้าของ 9 ต.ค. 69 "AI ตอบก็สำคัญ แยกตารางออกมาเลย")
+  // คอลัมน์ละ AI = คำถามที่เราตั้งเองแล้วถาม · คอลัมน์ท้าย = คำตอบ AI Overview จริงจาก DataForSEO (เดือนละครั้ง)
+  const aeoColumns: Column<Row>[] = [
+    columns[0],
+    ...AI_ENGINES.map(
+      (e): Column<Row> => ({
+        key: `ai-${e.key}`,
+        header: e.label.replace(' AI', ''),
+        align: 'center',
+        sortValue: (r) => (r.ai?.[e.key].total ? r.ai[e.key].cited / r.ai[e.key].total : null),
+        cell: (r) => {
+          const c = r.ai?.[e.key]
+          if (!c?.total) return <span className="text-xs text-gray-400">—</span>
+          return (
+            <div className="whitespace-nowrap text-center">
+              <AiPill engine={e.label} count={c} site={r.site.displayName} />
+              {c.mentioned ? <div className="mt-0.5 text-xs text-gray-400">เอ่ยชื่อ {c.mentioned}</div> : null}
+            </div>
+          )
+        },
+      })
+    ),
     {
-      key: 'ai',
-      header: 'AI อ้างเรา',
-      hideOnMobile: true,
+      key: 'llm',
+      header: (
+        <HelpTooltip
+          delay={150}
+          width={300}
+          content="คำตอบ Google AI Overview จริงที่ DataForSEO เก็บไว้ (ไม่ใช่คำถามที่เราตั้งเอง) — AI อ้างเรากี่คำตอบ เทียบคู่แข่งที่ถูกอ้างมากสุด · ดึงเดือนละครั้ง"
+        >
+          AI Overview จริง
+        </HelpTooltip>
+      ),
+      sortValue: (r) => llm.get(r.site.id)?.mentions ?? null,
       cell: (r) => {
-        const list = AI_ENGINES.filter((e) => r.ai?.[e.key].total)
-        if (!list.length) return <span className="text-xs text-gray-400">ยังไม่ได้ถาม</span>
+        const l = llm.get(r.site.id)
+        if (!l) return <span className="text-xs text-gray-400">ยังไม่ได้ดึง</span>
         return (
-          <div className="flex flex-wrap gap-1">
-            {list.map((e) => (
-              <AiPill key={e.key} engine={e.label} count={r.ai![e.key]} site={r.site.displayName} />
-            ))}
+          <div className="whitespace-nowrap text-sm">
+            <div>
+              อ้างเรา <b className="text-gray-900">{fmtNum(l.mentions)}</b> คำตอบ
+              {l.top && (
+                <span className="text-gray-500">
+                  {' '}
+                  · {l.top.domain} {fmtNum(l.top.mentions)}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-gray-400">
+              {l.gap ? <span className="text-[var(--ruby-700)]">โอกาส {l.gap} คำถาม</span> : 'ไม่มีโอกาสค้าง'} · รอบ {fmtGscDate(l.fetchedOn)}
+            </div>
           </div>
         )
       },
@@ -380,6 +425,20 @@ export default function SeoOverviewPage() {
             rowKey={(r) => r.site.id}
             loading={!totals}
             onRowClick={(r) => router.push(`/seo/${r.site.id}`)}
+            emptyTitle="ยังไม่มีเว็บ"
+          />
+
+          <h2 className="aoo-section-title mb-1 mt-8">
+            <Bot size={18} /> AI ตอบ (AEO)
+          </h2>
+          <p className="mb-3 text-sm text-gray-500">
+            ป้าย = AI ใส่ลิงก์เรากี่ข้อ จากที่ถาม (กดดูรายข้อ) · ย้อน 30 วัน · AI Overview จริง = ข้อมูลเดือนละครั้งจาก DataForSEO
+          </p>
+          <DataTable
+            columns={aeoColumns}
+            rows={rows}
+            rowKey={(r) => r.site.id}
+            onRowClick={(r) => router.push(`/seo/${r.site.id}?tab=ai`)}
             emptyTitle="ยังไม่มีเว็บ"
           />
         </>

@@ -7,6 +7,7 @@
 //   seo.gsc        เว็บละงาน
 //   seo.rank.post  ส่งคำที่ถึงรอบ/ต้องเช็คซ้ำ (ผลกลับมาเองทาง pingback + งานเก็บผลสำรอง)
 //   seo.bing       ยอด Bing (ข้ามถ้าไม่มี key)
+//   seo.llm.mentions  AI อ้างเรา + เทียบคู่แข่ง (LLM Mentions) เว็บละครั้งต่อเดือน
 //   seo.aeo.ask    ถาม AI ข้อละงาน (เฉพาะคู่ที่ถึงรอบ · เช็คงบทั้งชุดก่อน)
 //   seo.digest     สรุปเข้า Discord หลังชุดนี้จบ
 //   queue.prune    ล้างประวัติคิวเก่า
@@ -54,6 +55,19 @@ export async function enqueueSeoDaily(sb: SupabaseClient) {
         priority: 6,
       }))
     )
+  }
+  // AI อ้างเรา (LLM Mentions) — เดือนละครั้งต่อเว็บที่มีคำเป้าหมาย (เจ้าของเลือก 9 ต.ค. 69)
+  if (hasDataForSeoCredentials()) {
+    const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
+    const [{ data: recent }, { data: withKw }] = await Promise.all([
+      sb.from('seo_llm_share').select('site_id').gte('fetched_on', monthAgo),
+      sb.from('seo_keywords').select('site_id').eq('is_tracked', true),
+    ])
+    const fresh = new Set((recent ?? []).map((r) => r.site_id))
+    const hasKw = new Set((withKw ?? []).map((r) => r.site_id))
+    for (const s of sites ?? [])
+      if (hasKw.has(s.id) && !fresh.has(s.id))
+        jobs.push({ kind: 'seo.llm.mentions', payload: { siteId: s.id }, groupKey, label: `AI อ้างเรา · ${s.display_name}`, priority: 6 })
   }
   jobs.push({ kind: 'seo.bing', groupKey, label: 'ดึงยอด Bing', priority: 5 })
   jobs.push({

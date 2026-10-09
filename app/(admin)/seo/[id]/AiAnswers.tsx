@@ -19,6 +19,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
+import AiMentions from './AiMentions'
 import { trackQueue } from '@/lib/queue/tracker'
 import { getQueueGroup, type QueueGroupStatus } from '@/lib/services/queueService'
 import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
@@ -288,6 +289,9 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
   return (
     <div>
       {dialog}
+      {/* AI อ้างเราที่ไหนบ้าง (ข้อมูลคำตอบ AI จริงจาก DataForSEO) — อยู่บนสุด เพราะเป็นภาพจริงกว่าคำถามที่เราตั้งเอง */}
+      <AiMentions site={site} />
+      <h2 className="aoo-section-title mb-1">คำถามที่เราตั้งเองแล้วถาม AI</h2>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-gray-400">ถาม AI แบบค้นเว็บ สัปดาห์ละครั้ง · ติดตาม {tracked} คำถาม</p>
         <div className="flex flex-wrap gap-2">

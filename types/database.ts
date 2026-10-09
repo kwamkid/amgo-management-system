@@ -2952,6 +2952,209 @@ export type Database = {
           },
         ]
       }
+      seo_llm_share: {
+        Row: {
+          ai_search_volume: number
+          domain: string
+          fetched_on: string
+          is_us: boolean
+          mentions: number
+          platform: string
+          site_id: string
+        }
+        Insert: {
+          ai_search_volume?: number
+          domain: string
+          fetched_on: string
+          is_us?: boolean
+          mentions?: number
+          platform?: string
+          site_id: string
+        }
+        Update: {
+          ai_search_volume?: number
+          domain?: string
+          fetched_on?: string
+          is_us?: boolean
+          mentions?: number
+          platform?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_llm_share_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_llm_questions: {
+        Row: {
+          ai_search_volume: number | null
+          competitor: string | null
+          fetched_on: string
+          first_seen: string | null
+          id: number
+          kind: string
+          last_seen: string | null
+          platform: string | null
+          question: string
+          site_id: string
+          sources: string[] | null
+        }
+        Insert: {
+          ai_search_volume?: number | null
+          competitor?: string | null
+          fetched_on: string
+          first_seen?: string | null
+          id?: never
+          kind: string
+          last_seen?: string | null
+          platform?: string | null
+          question: string
+          site_id: string
+          sources?: string[] | null
+        }
+        Update: {
+          ai_search_volume?: number | null
+          competitor?: string | null
+          fetched_on?: string
+          first_seen?: string | null
+          id?: never
+          kind?: string
+          last_seen?: string | null
+          platform?: string | null
+          question?: string
+          site_id?: string
+          sources?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_llm_questions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_health_urls: {
+        Row: {
+          cls: number | null
+          created_at: string
+          fetch_state: string | null
+          field_category: string | null
+          google_canonical: string | null
+          id: number
+          index_state: string | null
+          index_verdict: string | null
+          inp_ms: number | null
+          inspected_at: string | null
+          last_crawl_at: string | null
+          lcp_ms: number | null
+          psi_at: string | null
+          psi_score: number | null
+          robots_state: string | null
+          site_id: string
+          source: string
+          tbt_ms: number | null
+          url: string
+          user_canonical: string | null
+        }
+        Insert: {
+          cls?: number | null
+          created_at?: string
+          fetch_state?: string | null
+          field_category?: string | null
+          google_canonical?: string | null
+          id?: never
+          index_state?: string | null
+          index_verdict?: string | null
+          inp_ms?: number | null
+          inspected_at?: string | null
+          last_crawl_at?: string | null
+          lcp_ms?: number | null
+          psi_at?: string | null
+          psi_score?: number | null
+          robots_state?: string | null
+          site_id: string
+          source?: string
+          tbt_ms?: number | null
+          url: string
+          user_canonical?: string | null
+        }
+        Update: {
+          cls?: number | null
+          created_at?: string
+          fetch_state?: string | null
+          field_category?: string | null
+          google_canonical?: string | null
+          id?: never
+          index_state?: string | null
+          index_verdict?: string | null
+          inp_ms?: number | null
+          inspected_at?: string | null
+          last_crawl_at?: string | null
+          lcp_ms?: number | null
+          psi_at?: string | null
+          psi_score?: number | null
+          robots_state?: string | null
+          site_id?: string
+          source?: string
+          tbt_ms?: number | null
+          url?: string
+          user_canonical?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_health_urls_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_psi_history: {
+        Row: {
+          checked_on: string
+          cls: number | null
+          lcp_ms: number | null
+          psi_score: number | null
+          site_id: string
+          tbt_ms: number | null
+          url: string
+        }
+        Insert: {
+          checked_on: string
+          cls?: number | null
+          lcp_ms?: number | null
+          psi_score?: number | null
+          site_id: string
+          tbt_ms?: number | null
+          url: string
+        }
+        Update: {
+          checked_on?: string
+          cls?: number | null
+          lcp_ms?: number | null
+          psi_score?: number | null
+          site_id?: string
+          tbt_ms?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_psi_history_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_aeo_prompts: {
         Row: {
           created_at: string
@@ -3488,6 +3691,7 @@ export type Database = {
           backfill_done: boolean
           backfill_from: string | null
           bing_site_url: string | null
+          competitors: string[] | null
           created_at: string
           display_name: string
           domain: string
@@ -3508,6 +3712,7 @@ export type Database = {
           backfill_done?: boolean
           backfill_from?: string | null
           bing_site_url?: string | null
+          competitors?: string[] | null
           created_at?: string
           display_name: string
           domain: string
@@ -3528,6 +3733,7 @@ export type Database = {
           backfill_done?: boolean
           backfill_from?: string | null
           bing_site_url?: string | null
+          competitors?: string[] | null
           created_at?: string
           display_name?: string
           domain?: string

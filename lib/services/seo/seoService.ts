@@ -848,3 +848,92 @@ export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string
   }
   return out
 }
+
+// ── AI อ้างเราที่ไหนบ้าง (LLM Mentions) — อ่านอย่างเดียว ─────────────────────
+
+export type LlmShare = { domain: string; isUs: boolean; mentions: number; aiSearchVolume: number }
+export type LlmQuestion = {
+  kind: 'ours' | 'gap'
+  question: string
+  platform: string | null
+  aiSearchVolume: number | null
+  sources: string[]
+  competitor: string | null
+  lastSeen: string | null
+}
+
+export async function getLlmMentions(siteId: string): Promise<{ fetchedOn: string | null; share: LlmShare[]; questions: LlmQuestion[] }> {
+  const { data: latest } = await sb()
+    .from('seo_llm_share')
+    .select('fetched_on')
+    .eq('site_id', siteId)
+    .order('fetched_on', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!latest) return { fetchedOn: null, share: [], questions: [] }
+  const [{ data: share }, { data: qs }] = await Promise.all([
+    sb()
+      .from('seo_llm_share')
+      .select('domain, is_us, mentions, ai_search_volume')
+      .eq('site_id', siteId)
+      .eq('fetched_on', latest.fetched_on)
+      .eq('platform', 'all'),
+    sb()
+      .from('seo_llm_questions')
+      .select('kind, question, platform, ai_search_volume, sources, competitor, last_seen')
+      .eq('site_id', siteId)
+      .order('ai_search_volume', { ascending: false, nullsFirst: false })
+      .limit(500),
+  ])
+  return {
+    fetchedOn: latest.fetched_on,
+    share: (share ?? [])
+      .map((r) => ({ domain: r.domain, isUs: r.is_us, mentions: r.mentions, aiSearchVolume: r.ai_search_volume }))
+      .sort((a, b) => b.mentions - a.mentions),
+    questions: (qs ?? []).map((q) => ({
+      kind: q.kind as 'ours' | 'gap',
+      question: q.question,
+      platform: q.platform,
+      aiSearchVolume: q.ai_search_volume,
+      sources: q.sources ?? [],
+      competitor: q.competitor,
+      lastSeen: q.last_seen,
+    })),
+  }
+}
+
+/** ตาราง AEO หน้ารวม: รอบล่าสุดของแต่ละเว็บ — AI Overview อ้างเรากี่คำตอบ · คู่แข่งที่ถูกอ้างมากสุด · โอกาสกี่ข้อ */
+export type LlmSiteSummary = {
+  fetchedOn: string
+  mentions: number
+  top: { domain: string; mentions: number } | null
+  ours: number
+  gap: number
+}
+
+export async function getLlmSummaries(siteIds: string[]): Promise<Map<string, LlmSiteSummary>> {
+  const out = new Map<string, LlmSiteSummary>()
+  if (!siteIds.length) return out
+  const [{ data: share }, { data: qs }] = await Promise.all([
+    sb()
+      .from('seo_llm_share')
+      .select('site_id, fetched_on, domain, is_us, mentions')
+      .in('site_id', siteIds)
+      .eq('platform', 'all')
+      .order('fetched_on', { ascending: false })
+      .limit(1000),
+    sb().from('seo_llm_questions').select('site_id, kind').in('site_id', siteIds).limit(5000),
+  ])
+  for (const r of share ?? []) {
+    let s = out.get(r.site_id)
+    if (!s) out.set(r.site_id, (s = { fetchedOn: r.fetched_on, mentions: 0, top: null, ours: 0, gap: 0 }))
+    if (r.fetched_on !== s.fetchedOn) continue // เอาเฉพาะรอบล่าสุด
+    if (r.is_us) s.mentions = r.mentions
+    else if (!s.top || r.mentions > s.top.mentions) s.top = { domain: r.domain, mentions: r.mentions }
+  }
+  for (const q of qs ?? []) {
+    const s = out.get(q.site_id)
+    if (s) s[q.kind === 'gap' ? 'gap' : 'ours']++
+  }
+  return out
+}

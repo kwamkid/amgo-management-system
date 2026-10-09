@@ -125,3 +125,41 @@ export async function searchAnalytics(
   )
   return json.rows ?? []
 }
+
+// ── URL Inspection — Google เก็บหน้านี้เข้า index หรือยัง (ฟรี · วันละ 2,000 URL ต่อ property) ──
+// ใช้ token เดิม (webmasters.readonly พอ) แต่คนละ host กับ searchAnalytics
+
+export type UrlInspection = {
+  /** PASS = อยู่ใน index · NEUTRAL = ยังไม่ index · FAIL = มีปัญหา */
+  verdict: string | null
+  /** ข้อความจาก Google เช่น "Submitted and indexed" · "Crawled - currently not indexed" */
+  coverageState: string | null
+  lastCrawlTime: string | null
+  googleCanonical: string | null
+  userCanonical: string | null
+  robotsTxtState: string | null
+  indexingState: string | null
+  pageFetchState: string | null
+}
+
+export async function inspectUrl(property: string, url: string): Promise<UrlInspection> {
+  const res = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inspectionUrl: url, siteUrl: property, languageCode: 'th' }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (res.status === 403) throw new GscAccessError(json?.error?.message || 'service account ไม่มีสิทธิ์ property นี้')
+  if (!res.ok) throw new Error(`URL Inspection ${res.status}: ${json?.error?.message || 'ไม่ทราบสาเหตุ'}`)
+  const r = json?.inspectionResult?.indexStatusResult ?? {}
+  return {
+    verdict: r.verdict ?? null,
+    coverageState: r.coverageState ?? null,
+    lastCrawlTime: r.lastCrawlTime ?? null,
+    googleCanonical: r.googleCanonical ?? null,
+    userCanonical: r.userCanonical ?? null,
+    robotsTxtState: r.robotsTxtState ?? null,
+    indexingState: r.indexingState ?? null,
+    pageFetchState: r.pageFetchState ?? null,
+  }
+}

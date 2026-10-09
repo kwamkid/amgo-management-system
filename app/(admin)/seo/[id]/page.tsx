@@ -7,7 +7,7 @@
 // ซึ่งคือสิ่งที่ต้องดูหลังทำ SEO ไปแต่ละรอบ
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ClipboardCopy, Eye, MousePointerClick, Percent, Search, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
@@ -103,7 +103,9 @@ export default function SeoSitePage() {
   const [mode, setMode] = useState<CompareMode>('prev')
   const [metric, setMetric] = useState('clicks')
   // แท็บแรก = คำเป้าหมาย เพราะเว็บใหม่ยังไม่มีข้อมูล GSC ให้ดู
-  const [tab, setTab] = useState<'target' | 'ai' | 'query' | 'page'>('target')
+  // ?tab=ai — มาจากตาราง AEO หน้ารวม เปิดแท็บ AI ตอบเลย
+  const tabParam = useSearchParams().get('tab')
+  const [tab, setTab] = useState<'target' | 'ai' | 'query' | 'page'>(tabParam === 'ai' ? 'ai' : 'target')
   const dim: 'query' | 'page' = tab === 'page' ? 'page' : 'query'
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')

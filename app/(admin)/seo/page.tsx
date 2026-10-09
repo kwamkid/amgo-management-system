@@ -3,34 +3,48 @@
 // SEO / AEO — ภาพรวมทุกเว็บ
 //
 // คำถามเดียวที่หน้านี้ต้องตอบ: "งาน SEO ที่ทำไป ทำให้เว็บดีขึ้นหรือยัง"
-// การ์ดต่อเว็บเทียบช่วงนี้กับช่วงก่อนที่ยาวเท่ากัน นับถอยจากวันล่าสุดที่ GSC มีข้อมูล
+// 9 ต.ค. 69 เจ้าของบอกการ์ดใหญ่ต่อเว็บดูยาก → ตารางแถวละเว็บ: คนเข้าจาก Google (ขึ้น/ลง) · แนวโน้ม
+// · คำเป้าหมายกี่คำ ติดหน้าแรกกี่คำ · AI อ้างเรา — กดแถวเข้าไปดูรายละเอียด
+// การ์ดบนสุดเหลือ 4 ใบเล็ก = รวมทุกเว็บ
+//
+// โหลดเร็ว: รายชื่อเว็บก่อน (โชว์ได้ทันที) แล้วค่อยเติม GSC · คำเป้าหมาย · AI แบบขนาน
+// GSC ดึงเฉพาะช่วงที่ต้องใช้ (ช่วงที่ดู + ช่วงเทียบ) ไม่ใช่ 460 วันทุกครั้ง
 //
 // เมนูส่วนตัวของเจ้าของ: RLS ปล่อยเฉพาะคนใน web_owners
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, MousePointerClick, Percent, Search, Settings, TrendingUp } from 'lucide-react'
+import { Bot, MousePointerClick, Search, Settings, Target, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, EmptyState, Pill } from '@/components/aoo'
+import { Button, EmptyState, Pill } from '@/components/aoo'
 import { AI_ENGINES, type AiSummary } from '@/lib/services/seo/aiSummary'
-import { PageHeader, SectionCard, Segmented, SiteFavicon, Sparkline, StatCard, StatGrid, TechLoader } from '@/components/shared'
+import {
+  DataTable,
+  PageHeader,
+  SectionCard,
+  Segmented,
+  SiteFavicon,
+  Sparkline,
+  StatCard,
+  StatGrid,
+  TechLoader,
+  type Column,
+} from '@/components/shared'
 import {
   addDays,
   compareOptions,
-  fmtCtr,
   fmtGscDate,
   fmtNum,
-  fmtPct,
-  fmtPosDelta,
   getDailyTotals,
+  getKeywordSummaries,
   getSiteAiSummaries,
   getSeoSites,
   periods,
   sumTotals,
   type CompareMode,
   type DailyTotal,
+  type KeywordSummary,
   type SeoSite,
 } from '@/lib/services/seo/seoService'
 
@@ -40,16 +54,38 @@ const RANGES = [
   { value: '90', label: '90 วัน' },
 ]
 
+type Row = {
+  site: SeoSite
+  clicks: number | null
+  prevClicks: number | null
+  impressions: number | null
+  position: number | null
+  prevPosition: number | null
+  /** ช่วงเทียบเก่ากว่าข้อมูลที่ Google เก็บ (16 เดือน) = ไม่โชว์ % */
+  partial: boolean
+  spark: number[]
+  kw?: KeywordSummary
+  ai?: AiSummary
+}
+
+/** +12% / -30% — null = เทียบไม่ได้ */
+function change(cur: number | null, prev: number | null) {
+  if (cur == null || !prev) return null
+  return Math.round(((cur - prev) / prev) * 100)
+}
+
 export default function SeoOverviewPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const { showToast } = useToast()
 
   const [sites, setSites] = useState<SeoSite[] | null>(null)
-  const [totals, setTotals] = useState<Map<string, DailyTotal[]>>(new Map())
+  const [totals, setTotals] = useState<Map<string, DailyTotal[]> | null>(null)
+  const [kw, setKw] = useState<Map<string, KeywordSummary>>(new Map())
   const [ai, setAi] = useState<Map<string, AiSummary>>(new Map())
   const [range, setRange] = useState('28')
   const [mode, setMode] = useState<CompareMode>('prev')
+  const days = Number(range)
 
   const canSee = !!userData?.hasWebAccess
 
@@ -57,35 +93,210 @@ export default function SeoOverviewPage() {
     if (userData && !canSee) router.push('/unauthorized')
   }, [userData, canSee, router])
 
-  const load = async () => {
-    try {
-      const list = (await getSeoSites()).filter((s) => s.isActive)
-      // ดึงพอสำหรับเทียบปีก่อนของช่วงยาวสุด (90 + 364 วัน)
-      const latest = list.map((s) => s.syncedThrough).filter(Boolean).sort().pop()
-      const from = addDays(latest ?? new Date().toISOString().slice(0, 10), -460)
-      const ids = list.map((s) => s.id)
-      const [t, a] = await Promise.all([getDailyTotals(ids, from), getSiteAiSummaries(ids).catch(() => new Map())])
-      setTotals(t)
-      setAi(a)
-      setSites(list)
-    } catch (e) {
-      showToast((e as Error).message, 'error')
-      setSites([])
-    }
-  }
-
+  // รายชื่อเว็บ + คำเป้าหมาย + AI (ไม่ขึ้นกับช่วงวันที่) — โหลดครั้งเดียว
   useEffect(() => {
-    if (canSee) load()
+    if (!canSee) return
+    getSeoSites()
+      .then((list) => {
+        const active = list.filter((s) => s.isActive)
+        setSites(active)
+        const ids = active.map((s) => s.id)
+        getKeywordSummaries(ids).then(setKw).catch(() => {})
+        getSiteAiSummaries(ids).then(setAi).catch(() => {})
+      })
+      .catch((e) => {
+        showToast((e as Error).message, 'error')
+        setSites([])
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSee])
 
+  // GSC เฉพาะช่วงที่ต้องใช้ — เปลี่ยนช่วง/โหมดค่อยดึงใหม่
+  useEffect(() => {
+    if (!sites?.length) return
+    const latest = sites.map((s) => s.syncedThrough).filter(Boolean).sort().pop()
+    if (!latest) return setTotals(new Map())
+    const from = periods(latest, days, mode).prev.from
+    getDailyTotals(
+      sites.map((s) => s.id),
+      addDays(from, -7)
+    )
+      .then(setTotals)
+      .catch((e) => showToast((e as Error).message, 'error'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sites, days, mode])
+
+  const rows: Row[] = useMemo(
+    () =>
+      (sites ?? []).map((site) => {
+        const t = totals?.get(site.id)
+        if (!site.syncedThrough || !t)
+          return { site, clicks: null, prevClicks: null, impressions: null, position: null, prevPosition: null, partial: false, spark: [], kw: kw.get(site.id), ai: ai.get(site.id) }
+        const per = periods(site.syncedThrough, days, mode)
+        const cur = sumTotals(t, per.cur.from, per.cur.to)
+        const prev = sumTotals(t, per.prev.from, per.prev.to)
+        const earliest = t.reduce((m, r) => (!m || r.date < m ? r.date : m), '')
+        return {
+          site,
+          clicks: cur.clicks,
+          prevClicks: prev.clicks,
+          impressions: cur.impressions,
+          position: cur.position,
+          prevPosition: prev.position,
+          partial: !!earliest && per.prev.from < earliest,
+          spark: t.filter((r) => r.date >= per.cur.from && r.date <= per.cur.to).map((r) => r.clicks),
+          kw: kw.get(site.id),
+          ai: ai.get(site.id),
+        }
+      }),
+    [sites, totals, kw, ai, days, mode]
+  )
+
+  // การ์ดรวมทุกเว็บ
+  const sum = useMemo(() => {
+    const c = rows.reduce((a, r) => a + (r.clicks ?? 0), 0)
+    const p = rows.reduce((a, r) => a + (r.partial ? 0 : (r.prevClicks ?? 0)), 0)
+    const k = rows.reduce(
+      (a, r) => ({ total: a.total + (r.kw?.total ?? 0), top10: a.top10 + (r.kw?.top10 ?? 0), top3: a.top3 + (r.kw?.top3 ?? 0) }),
+      { total: 0, top10: 0, top3: 0 }
+    )
+    const aiAll = rows.reduce(
+      (a, r) => {
+        for (const e of AI_ENGINES) {
+          a.cited += r.ai?.[e.key].cited ?? 0
+          a.total += r.ai?.[e.key].total ?? 0
+        }
+        return a
+      },
+      { cited: 0, total: 0 }
+    )
+    return { clicks: c, change: rows.some((r) => r.partial) ? null : change(c, p), ...k, ai: aiAll }
+  }, [rows])
+
+  const columns: Column<Row>[] = [
+    {
+      key: 'site',
+      header: 'เว็บ',
+      mobilePrimary: true,
+      sticky: true,
+      sortValue: (r) => r.site.displayName,
+      cell: (r) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <SiteFavicon domain={r.site.domain} />
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-gray-900">{r.site.displayName}</div>
+            <div className="truncate text-xs text-gray-400">
+              {r.site.domain}
+              {r.site.gscAccess === 'denied' && ' · ⚠️ ไม่มีสิทธิ์ GSC'}
+              {r.site.lastError && ' · ⚠️ ดึงล่าสุดพัง'}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'clicks',
+      header: 'คลิกจาก Google',
+      align: 'right',
+      sortValue: (r) => r.clicks,
+      cell: (r) => {
+        if (r.clicks == null) return <span className="text-gray-400">—</span>
+        const ch = r.partial ? null : change(r.clicks, r.prevClicks)
+        return (
+          <div className="whitespace-nowrap text-right">
+            <div className="text-base font-bold text-gray-900">{fmtNum(r.clicks)}</div>
+            <div
+              className="aoo-delta inline-flex items-center gap-0.5"
+              data-tone={ch == null || ch === 0 ? 'muted' : ch > 0 ? 'success' : 'danger'}
+            >
+              {ch == null ? (
+                r.partial ? 'เทียบไม่ได้' : '—'
+              ) : (
+                <>
+                  {ch > 0 ? <TrendingUp size={13} /> : ch < 0 ? <TrendingDown size={13} /> : null}
+                  {ch > 0 ? '+' : ''}
+                  {ch}%
+                </>
+              )}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'trend',
+      header: 'แนวโน้ม',
+      hideOnMobile: true,
+      width: 140,
+      cell: (r) => (r.spark.length > 1 ? <Sparkline values={r.spark} tone="accent" /> : <span className="text-gray-400">—</span>),
+    },
+    {
+      key: 'position',
+      header: 'อันดับเฉลี่ย',
+      align: 'right',
+      hideOnMobile: true,
+      sortValue: (r) => r.position,
+      cell: (r) =>
+        r.position == null ? (
+          <span className="text-gray-400">—</span>
+        ) : (
+          <div className="whitespace-nowrap text-right">
+            <div className="font-semibold">{r.position.toFixed(1)}</div>
+            <div className="text-xs text-gray-400">แสดง {fmtNum(r.impressions ?? 0)}</div>
+          </div>
+        ),
+    },
+    {
+      // คำเป้าหมายกี่คำ ติดหน้าแรกกี่คำ (เจ้าของขอ 9 ต.ค. 69)
+      key: 'keywords',
+      header: 'คำเป้าหมาย',
+      sortValue: (r) => r.kw?.top10 ?? null,
+      cell: (r) => {
+        const k = r.kw
+        if (!k?.total) return <span className="text-xs text-gray-400">ยังไม่มีคำ</span>
+        return (
+          <div className="whitespace-nowrap">
+            <div className="text-sm">
+              <b className="text-gray-900">{k.total}</b> คำ · หน้าแรก <b className="aoo-kw-top">{k.top10}</b>
+              {k.top3 ? <span className="text-gray-500"> (top 3: {k.top3})</span> : null}
+            </div>
+            <div className="text-xs text-gray-400">
+              อันดับ 11–30: {k.page23} · ไม่ติด: {k.none}
+              {k.unchecked ? ` · รอเช็ค ${k.unchecked}` : ''}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'ai',
+      header: 'AI อ้างเรา',
+      hideOnMobile: true,
+      cell: (r) => {
+        const list = AI_ENGINES.filter((e) => r.ai?.[e.key].total)
+        if (!list.length) return <span className="text-xs text-gray-400">ยังไม่ได้ถาม</span>
+        return (
+          <div className="flex flex-wrap gap-1">
+            {list.map((e) => (
+              <Pill key={e.key} tone={r.ai![e.key].cited ? 'success' : 'neutral'}>
+                {e.label.replace(' AI', '')} {r.ai![e.key].cited}/{r.ai![e.key].total}
+              </Pill>
+            ))}
+          </div>
+        )
+      },
+    },
+  ]
+
   if (!canSee || sites === null) return <TechLoader />
+
+  const latest = sites.map((s) => s.syncedThrough).filter(Boolean).sort().pop()
 
   return (
     <div>
       <PageHeader
         title="SEO / AEO"
-        description="ผลบน Google Search รายวัน — ดูว่างานที่ทำไปได้ผลหรือยัง"
+        description={`คนเข้าจาก Google · อันดับคำเป้าหมาย · AI อ้างเรา — ทุกเว็บ${latest ? ` · ข้อมูล Google ถึง ${fmtGscDate(latest)}` : ''}`}
         icon={TrendingUp}
         actions={
           // ไม่มีปุ่มดึงเอง (เจ้าของสั่งเอาออก 6 ต.ค. 69 — cron ตี 4 ดึงให้ทุกวันอยู่แล้ว กดแล้วงง)
@@ -106,128 +317,56 @@ export default function SeoOverviewPage() {
         </SectionCard>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <Segmented value={range} onChange={setRange} options={RANGES} />
-            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={compareOptions(Number(range))} />
+            <Segmented value={mode} onChange={(v) => setMode(v as CompareMode)} options={compareOptions(days)} />
           </div>
-          <div className="space-y-4">
-            {sites.map((s) => (
-              <SiteCard
-                key={s.id}
-                site={s}
-                rows={totals.get(s.id) ?? []}
-                ai={ai.get(s.id)}
-                days={Number(range)}
-                mode={mode}
-              />
-            ))}
-          </div>
+
+          <StatGrid cols={4}>
+            <StatCard
+              variant="soft"
+              label={`คลิกจาก Google ${range} วัน`}
+              value={fmtNum(sum.clicks)}
+              icon={MousePointerClick}
+              tone="accent"
+              hint={sum.change == null ? 'รวมทุกเว็บ' : `${sum.change > 0 ? '+' : ''}${sum.change}% รวมทุกเว็บ`}
+            />
+            <StatCard
+              variant="soft"
+              label="คำเป้าหมาย"
+              value={fmtNum(sum.total)}
+              icon={Target}
+              tone="grape"
+              hint={`${sites.length} เว็บ`}
+            />
+            <StatCard
+              variant="soft"
+              label="ติดหน้าแรก"
+              value={`${sum.top10}/${sum.total}`}
+              icon={Trophy}
+              tone="success"
+              hint={`top 3 อยู่ ${sum.top3} คำ`}
+            />
+            <StatCard
+              variant="soft"
+              label="AI อ้างเรา"
+              value={sum.ai.total ? `${sum.ai.cited}/${sum.ai.total}` : '—'}
+              icon={Bot}
+              tone="warning"
+              hint="ทุก AI ทุกเว็บ"
+            />
+          </StatGrid>
+
+          <DataTable
+            columns={columns}
+            rows={rows}
+            rowKey={(r) => r.site.id}
+            loading={!totals}
+            onRowClick={(r) => router.push(`/seo/${r.site.id}`)}
+            emptyTitle="ยังไม่มีเว็บ"
+          />
         </>
       )}
     </div>
-  )
-}
-
-function SiteCard({
-  site,
-  rows,
-  ai,
-  days,
-  mode,
-}: {
-  site: SeoSite
-  rows: DailyTotal[]
-  ai?: AiSummary
-  days: number
-  mode: CompareMode
-}) {
-  const stats = useMemo(() => {
-    if (!site.syncedThrough) return null
-    const { cur, prev } = periods(site.syncedThrough, days, mode)
-    return { cur: sumTotals(rows, cur.from, cur.to), prev: sumTotals(rows, prev.from, prev.to), from: cur.from }
-  }, [site.syncedThrough, rows, days, mode])
-
-  const spark = rows.filter((r) => stats && r.date >= stats.from).map((r) => r.clicks)
-  // ช่วงเทียบเก่ากว่าข้อมูลที่ Google เก็บไว้ (16 เดือน) = ไม่โชว์ % (จะโตเกินจริง)
-  const earliest = rows.reduce((m, r) => (!m || r.date < m ? r.date : m), '')
-  const prevPartial = !!site.syncedThrough && !!earliest && periods(site.syncedThrough, days, mode).prev.from < earliest
-  const partialHint = `เทียบไม่ได้ — ข้อมูลมีตั้งแต่ ${fmtGscDate(earliest)}`
-
-  return (
-    <SectionCard
-      title={
-        <div className="flex flex-wrap items-center gap-2">
-          <SiteFavicon domain={site.domain} />
-          <Link href={`/seo/${site.id}`} className="text-base font-bold text-gray-900 hover:underline">
-            {site.displayName}
-          </Link>
-          <span className="text-xs font-normal text-gray-400">{site.domain}</span>
-          {site.gscAccess === 'denied' && <Pill tone="danger">ไม่มีสิทธิ์ GSC</Pill>}
-          {site.gscAccess === 'ok' && !site.backfillDone && <Pill tone="info">กำลังดึงย้อนหลัง</Pill>}
-        </div>
-      }
-      description={
-        site.syncedThrough
-          ? `ข้อมูลถึง ${fmtGscDate(site.syncedThrough)} (วันตามเวลา US — Google ช้า 2–3 วัน) · ${mode === 'yoy' ? 'เทียบช่วงเดียวกันปีที่แล้ว' : `เทียบ ${days} วันก่อนหน้า`}`
-          : 'ยังไม่มีข้อมูล — ระบบดึงให้รอบตี 4'
-      }
-    >
-      {site.lastError && (
-        <Alert tone="error" compact className="mb-3">
-          ดึงล่าสุดพัง: {site.lastError}
-        </Alert>
-      )}
-      {stats && (
-        <>
-          <StatGrid cols={4}>
-            <StatCard
-              label="คลิก"
-              value={fmtNum(stats.cur.clicks)}
-              icon={MousePointerClick}
-              tone="accent"
-              hint={prevPartial ? partialHint : fmtPct(stats.cur.clicks, stats.prev.clicks)}
-            />
-            <StatCard
-              label="การแสดงผล"
-              value={fmtNum(stats.cur.impressions)}
-              icon={Eye}
-              tone="grape"
-              hint={prevPartial ? partialHint : fmtPct(stats.cur.impressions, stats.prev.impressions)}
-            />
-            <StatCard
-              label="CTR"
-              value={fmtCtr(stats.cur.ctr)}
-              icon={Percent}
-              tone="success"
-              hint={prevPartial ? partialHint : stats.prev.impressions ? `ช่วงก่อน ${fmtCtr(stats.prev.ctr)}` : 'ไม่มีช่วงก่อน'}
-            />
-            <StatCard
-              label="อันดับเฉลี่ย"
-              value={stats.cur.position?.toFixed(1) ?? '—'}
-              icon={TrendingUp}
-              tone="warning"
-              hint={prevPartial ? partialHint : fmtPosDelta(stats.cur.position, stats.prev.position)}
-            />
-          </StatGrid>
-          {ai && AI_ENGINES.some((e) => ai[e.key].total) && (
-            // แยกทีละ AI ว่าอ้างลิงก์เรากี่ข้อ (เจ้าของขอ 7 ต.ค. 69) — เขียว = อ้างอย่างน้อย 1
-            <Link href={`/seo/${site.id}`} className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="ดู AI ตอบ">
-              <span className="text-xs text-gray-400">AI อ้างเรา:</span>
-              {AI_ENGINES.filter((e) => ai[e.key].total).map((e) => (
-                <Pill key={e.key} tone={ai[e.key].cited ? 'success' : 'neutral'}>
-                  {e.label} {ai[e.key].cited}/{ai[e.key].total}
-                </Pill>
-              ))}
-            </Link>
-          )}
-          {spark.length > 1 && (
-            <Link href={`/seo/${site.id}`} className="block" aria-label="ดูรายละเอียด">
-              <p className="mb-1 text-xs text-gray-400">คลิกรายวัน · กดเพื่อดูคำค้นและหน้า</p>
-              <Sparkline values={spark} tone="accent" />
-            </Link>
-          )}
-        </>
-      )}
-    </SectionCard>
   )
 }

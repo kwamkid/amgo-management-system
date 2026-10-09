@@ -940,6 +940,8 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 .aoo-status--sm { font-size: 12px; gap: 4px; }
 /* แถบคำอธิบายสัญลักษณ์ใต้ตัวกรอง */
 .aoo-legend { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: var(--fg-3); }
+/* จำนวนคำติดหน้าแรก (หน้ารายการ SEO) */
+.aoo-kw-top { color: var(--trend-up); font-weight: 700; }
 .aoo-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--fg-1); margin-bottom: 2px; }
 /* ป้ายแหล่งข้อมูลข้างหัวข้อ (เช่น Search Console) */
 .aoo-source-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--border-1); background: var(--bg-surface); font-size: 12px; font-weight: 600; color: var(--fg-2); }

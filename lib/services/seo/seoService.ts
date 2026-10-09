@@ -787,3 +787,64 @@ export async function setAeoPromptKeyword(id: string, keywordId: string | null) 
   const { error } = await sb().from('seo_aeo_prompts').update({ keyword_id: keywordId }).eq('id', id)
   if (error) throw new Error(error.message)
 }
+
+// ── สรุปคำเป้าหมายต่อเว็บ (หน้ารายการ SEO) ───────────────────────────────
+// เบากว่า getTargetKeywords ทีละเว็บ: 2 query รวมทุกเว็บ · อันดับใช้กติกาเดียวกับตาราง (displayRank)
+
+export type KeywordSummary = {
+  total: number
+  /** อันดับ 1–3 */
+  top3: number
+  /** อันดับ 1–10 (รวม top3) */
+  top10: number
+  /** อันดับ 11–30 */
+  page23: number
+  /** ไม่ติด 30 อันดับแรก */
+  none: number
+  /** ยังไม่เคยเช็ค */
+  unchecked: number
+}
+
+export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string, KeywordSummary>> {
+  const out = new Map<string, KeywordSummary>(
+    siteIds.map((id) => [id, { total: 0, top3: 0, top10: 0, page23: 0, none: 0, unchecked: 0 }])
+  )
+  if (!siteIds.length) return out
+  const { data: kws, error } = await sb().from('seo_keywords').select('id, site_id').in('site_id', siteIds).eq('is_tracked', true)
+  if (error) throw new Error(error.message)
+  if (!kws?.length) return out
+  // 5 ครั้งล่าสุดต่อคำ — ย้อนพอ (รายสัปดาห์ × 5 + เช็คซ้ำ)
+  const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)
+  const { data: snaps } = await sb()
+    .from('seo_rank_snapshots')
+    .select('keyword_id, checked_on, position')
+    .in(
+      'keyword_id',
+      kws.map((k) => k.id)
+    )
+    .gte('checked_on', since)
+    .order('checked_on', { ascending: false })
+    .limit(10000)
+  const pos = new Map<string, (number | null)[]>()
+  for (const s of snaps ?? []) {
+    const l = pos.get(s.keyword_id) ?? []
+    l.push(s.position)
+    pos.set(s.keyword_id, l)
+  }
+  for (const k of kws) {
+    const sum = out.get(k.site_id)!
+    sum.total++
+    const p = pos.get(k.id)
+    if (!p?.length) {
+      sum.unchecked++
+      continue
+    }
+    const r = displayRank(p)
+    if (r == null) sum.none++
+    else if (r <= 10) {
+      sum.top10++
+      if (r <= 3) sum.top3++
+    } else sum.page23++
+  }
+  return out
+}

@@ -27,9 +27,12 @@ import {
   addAeoPrompts,
   deleteAeoPrompt,
   fmtGscDate,
+  fmtNum,
   getAeoPrompts,
   getSeoSettings,
+  getAiReferrals,
   getTargetKeywords,
+  type AiReferralSummary,
   setAeoPromptKeyword,
   setAeoPromptTracked,
   type AeoPrompt,
@@ -57,11 +60,22 @@ function ResultPill({ r }: { r?: AeoResult }) {
   )
 }
 
+/** ชื่อ AI ที่ส่งคนเข้าเว็บ (seo_ai_referrals.source) */
+const AI_SOURCE_LABEL: Record<string, string> = {
+  chatgpt: 'ChatGPT',
+  perplexity: 'Perplexity',
+  gemini: 'Gemini',
+  copilot: 'Copilot',
+  claude: 'Claude',
+}
+
 export default function AiAnswers({ site }: { site: SeoSite }) {
   const { showToast } = useToast()
   const { confirm, dialog } = useConfirm()
   const [rows, setRows] = useState<AeoPrompt[] | null>(null)
   const [googleAi, setGoogleAi] = useState<{ cited: number; total: number } | null>(null)
+  /** คนที่ AI ส่งเข้าเว็บ 28 วัน (จาก access log ของเว็บเอง) */
+  const [visits, setVisits] = useState<AiReferralSummary | null>(null)
   const [adding, setAdding] = useState(false)
   const [lines, setLines] = useState('')
   /** คำเป้าหมายที่จะผูกกับคำถามที่เพิ่ม — ผลไปโชว์ในตารางคำเป้าหมายด้วย */
@@ -101,6 +115,9 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
           setGoogleAi({ cited: withAio.filter((k) => k.snapshots[0].aiOverviewCitesUs).length, total: withAio.length })
         })
         .catch(() => setGoogleAi(null)),
+      getAiReferrals(site.id)
+        .then(setVisits)
+        .catch(() => setVisits(null)),
     ])
 
   useEffect(() => {
@@ -305,6 +322,45 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
           />
         ))}
       </StatGrid>
+
+      {/* คนที่ AI ส่งเข้าเว็บจริง (เจ้าของขอ 9 ต.ค. 69 "ดูได้มั้ยว่ามีคนคลิกจากผลกี่คน") */}
+      <div className="aoo-card mb-3 mt-3 p-4">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <p className="font-semibold text-gray-800">คนที่ AI ส่งเข้าเว็บ (28 วัน)</p>
+          <p className="text-xs text-gray-500">
+            นับจาก log ของเว็บเอง ทุกคน ไม่ขึ้นกับคุกกี้ · AI ไม่บอกว่าคนถามอะไรมา จึงแยกได้แค่ AI ตัวไหนส่งเข้าหน้าไหน
+            {visits?.lastDate ? ` · ถึง ${fmtGscDate(visits.lastDate)}` : ''}
+          </p>
+        </div>
+        {!visits?.lastDate ? (
+          <p className="text-sm text-gray-500">ยังไม่มีข้อมูล — เว็บนี้ยังไม่ได้ติดตัวนับ (ทำได้กับเว็บ WordPress ที่เราดูแล)</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ul className="space-y-1 text-sm">
+              {visits.bySource.map((s) => (
+                <li key={s.source} className="flex justify-between gap-2">
+                  <span>{AI_SOURCE_LABEL[s.source] ?? s.source}</span>
+                  <span>
+                    <b>{fmtNum(s.people)}</b> คน <span className="text-gray-400">· {fmtNum(s.visits)} ครั้ง</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <ul className="space-y-1 text-sm">
+              {visits.topPages.map((p) => (
+                <li key={`${p.source}${p.path}`} className="flex justify-between gap-2">
+                  <span className="min-w-0 truncate" title={p.path}>
+                    {decodeURIComponent(p.path)}
+                  </span>
+                  <span className="whitespace-nowrap text-gray-500">
+                    {fmtNum(p.people)} คน · {AI_SOURCE_LABEL[p.source] ?? p.source}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       <ul className="mb-3 mt-1 space-y-0.5 text-xs text-gray-500">
         <li>

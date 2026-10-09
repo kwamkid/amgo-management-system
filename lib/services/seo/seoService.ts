@@ -302,6 +302,8 @@ export interface TargetKeyword {
   gscPosition: number | null
   /** การแสดงผลจาก GSC 10 วันล่าสุด (หน้าที่ดีสุดต่อวัน) */
   gscImpressions: number
+  /** คลิกจาก Google 28 วันล่าสุด (GSC · นับเฉพาะคนที่พิมพ์คำนี้ตรงตัว) */
+  clicks28: number
   /** อันดับที่โชว์ = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · null = ไม่ติด 30 อันดับแรก */
   rank: number | null
   /** อันดับที่โชว์ก่อนรอบล่าสุด — ไว้คิดขึ้น/ลง */
@@ -339,7 +341,8 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   const since = new Date(Date.now() - 180 * 24 * 3600_000).toISOString().slice(0, 10)
   // GSC ช้า 2–3 วัน — เอา 10 วันย้อนหลังเพื่อให้ได้ราว 7 วันที่มีข้อมูล
   const gscSince = new Date(Date.now() - 10 * 24 * 3600_000).toISOString().slice(0, 10)
-  const [{ data: snaps }, { data: pending }, { data: gsc }, { data: aiRows }] = await Promise.all([
+  const clickSince = new Date(Date.now() - 28 * 24 * 3600_000).toISOString().slice(0, 10)
+  const [{ data: snaps }, { data: pending }, { data: gsc }, { data: aiRows }, { data: clickRows }] = await Promise.all([
     sb()
       .from('seo_rank_snapshots')
       .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits, organic_seen, features')
@@ -362,7 +365,17 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .in('seo_aeo_prompts.keyword_id', ids)
       .order('checked_on', { ascending: false })
       .limit(2000),
+    sb()
+      .from('seo_gsc_daily')
+      .select('query, clicks')
+      .eq('site_id', siteId)
+      .in('query', (kws ?? []).map((k) => k.keyword))
+      .gte('date', clickSince)
+      .gt('clicks', 0)
+      .limit(20000),
   ])
+  const clicks = new Map<string, number>()
+  for (const r of clickRows ?? []) clicks.set(r.query, (clicks.get(r.query) ?? 0) + r.clicks)
   const byKw = new Map<string, RankSnapshot[]>()
   for (const s of snaps ?? []) {
     const list = byKw.get(s.keyword_id) ?? []
@@ -443,9 +456,55 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     rankBefore: displayRank((byKw.get(k.id) ?? []).slice(1).map((x) => x.position)),
     ai: aiByKw.get(k.id) ?? {},
     gscImpressions: gscAvg.get(k.keyword)?.imp ?? 0,
+    clicks28: clicks.get(k.keyword) ?? 0,
   }))
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// ── คนที่ AI ส่งเข้าเว็บ (จาก access log ของเว็บเอง — app/api/seo/ai-referrals) ──────────
+
+export interface AiReferralSummary {
+  /** ต่อ AI: จำนวนคน (รวมรายวัน) · จำนวนครั้ง */
+  bySource: { source: string; people: number; visits: number }[]
+  /** หน้าที่ AI ส่งคนเข้ามาบ่อยสุด */
+  topPages: { path: string; source: string; people: number }[]
+  /** วันล่าสุดที่มีข้อมูล — null = เว็บนี้ยังไม่ได้ส่งยอดมา */
+  lastDate: string | null
+}
+
+export async function getAiReferrals(siteId: string, days = 28): Promise<AiReferralSummary> {
+  const since = new Date(Date.now() - days * 24 * 3600_000).toISOString().slice(0, 10)
+  const { data, error } = await sb()
+    .from('seo_ai_referrals')
+    .select('date, source, path, visits, people')
+    .eq('site_id', siteId)
+    .gte('date', since)
+    .limit(10000)
+  if (error) throw new Error(error.message)
+  const src = new Map<string, { people: number; visits: number }>()
+  const pages = new Map<string, { path: string; source: string; people: number }>()
+  let lastDate: string | null = null
+  for (const r of data ?? []) {
+    if (!lastDate || r.date > lastDate) lastDate = r.date
+    // แถว "*" = ทั้งเว็บ คนไม่ซ้ำต่อวัน → ยอดรวมต่อ AI · แถวอื่น = รายหน้า
+    if (r.path === '*') {
+      const a = src.get(r.source) ?? { people: 0, visits: 0 }
+      a.people += r.people
+      a.visits += r.visits
+      src.set(r.source, a)
+      continue
+    }
+    const key = `${r.source}|${r.path}`
+    const p = pages.get(key) ?? { path: r.path, source: r.source, people: 0 }
+    p.people += r.people
+    pages.set(key, p)
+  }
+  return {
+    bySource: [...src.entries()].map(([source, v]) => ({ source, ...v })).sort((a, b) => b.people - a.people),
+    topPages: [...pages.values()].sort((a, b) => b.people - a.people).slice(0, 8),
+    lastDate,
+  }
+}
 
 /** รอบเช็คล่าสุดของเว็บ — ไว้โชว์แผงคิว (กี่คำได้ผลแล้ว / ส่งเมื่อไหร่) */
 export interface RankQueue {

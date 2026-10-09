@@ -577,14 +577,14 @@ export type Database = {
           checkin_photo_url: string | null
           checkin_time: string
           checkin_type: string
-          claim_note: string | null
-          claimed_at: string | null
-          claimed_checkout_time: string | null
           checkout_lat: number | null
           checkout_lng: number | null
           checkout_note: string | null
           checkout_reminded_at: string | null
           checkout_time: string | null
+          claim_note: string | null
+          claimed_at: string | null
+          claimed_checkout_time: string | null
           created_at: string
           device_id: string | null
           forgot_checkout: boolean
@@ -627,14 +627,14 @@ export type Database = {
           checkin_photo_url?: string | null
           checkin_time: string
           checkin_type?: string
-          claim_note?: string | null
-          claimed_at?: string | null
-          claimed_checkout_time?: string | null
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
           checkout_reminded_at?: string | null
           checkout_time?: string | null
+          claim_note?: string | null
+          claimed_at?: string | null
+          claimed_checkout_time?: string | null
           created_at?: string
           device_id?: string | null
           forgot_checkout?: boolean
@@ -677,14 +677,14 @@ export type Database = {
           checkin_photo_url?: string | null
           checkin_time?: string
           checkin_type?: string
-          claim_note?: string | null
-          claimed_at?: string | null
-          claimed_checkout_time?: string | null
           checkout_lat?: number | null
           checkout_lng?: number | null
           checkout_note?: string | null
           checkout_reminded_at?: string | null
           checkout_time?: string | null
+          claim_note?: string | null
+          claimed_at?: string | null
+          claimed_checkout_time?: string | null
           created_at?: string
           device_id?: string | null
           forgot_checkout?: boolean
@@ -1203,7 +1203,85 @@ export type Database = {
           user_id?: string
           user_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_claims_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_finance_id_fkey"
+            columns: ["finance_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_finance_id_fkey"
+            columns: ["finance_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       holidays: {
         Row: {
@@ -2589,6 +2667,78 @@ export type Database = {
           },
         ]
       }
+      queue_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          group_key: string | null
+          id: number
+          kind: string
+          label: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          group_key?: string | null
+          id?: never
+          kind: string
+          label?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          group_key?: string | null
+          id?: never
+          kind?: string
+          label?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           can_read_all: boolean
@@ -2802,58 +2952,41 @@ export type Database = {
           },
         ]
       }
-      seo_api_costs: {
+      seo_aeo_prompts: {
         Row: {
-          cost_usd: number
           created_at: string
-          endpoint: string
-          id: number
-          note: string | null
-          provider: string
-          units: number
-        }
-        Insert: {
-          cost_usd: number
-          created_at?: string
-          endpoint: string
-          id?: never
-          note?: string | null
-          provider: string
-          units?: number
-        }
-        Update: {
-          cost_usd?: number
-          created_at?: string
-          endpoint?: string
-          id?: never
-          note?: string | null
-          provider?: string
-          units?: number
-        }
-        Relationships: []
-      }
-      seo_bing_daily: {
-        Row: {
-          clicks: number
-          date: string
-          impressions: number
+          id: string
+          is_tracked: boolean
+          keyword_id: string | null
+          prompt: string
           site_id: string
         }
         Insert: {
-          clicks?: number
-          date: string
-          impressions?: number
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          keyword_id?: string | null
+          prompt: string
           site_id: string
         }
         Update: {
-          clicks?: number
-          date?: string
-          impressions?: number
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          keyword_id?: string | null
+          prompt?: string
           site_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "seo_bing_daily_site_id_fkey"
+            foreignKeyName: "seo_aeo_prompts_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "seo_keywords"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_aeo_prompts_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "seo_sites"
@@ -2911,113 +3044,137 @@ export type Database = {
           },
         ]
       }
-      queue_jobs: {
+      seo_ai_referrals: {
         Row: {
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          finished_at: string | null
-          group_key: string | null
-          id: number
-          kind: string
-          label: string | null
-          max_attempts: number
-          payload: Json
-          priority: number
-          result: Json | null
-          run_after: string
-          started_at: string | null
-          status: string
+          date: string
+          path: string
+          people: number
+          site_id: string
+          source: string
+          visits: number
         }
         Insert: {
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          finished_at?: string | null
-          group_key?: string | null
-          id?: never
-          kind: string
-          label?: string | null
-          max_attempts?: number
-          payload?: Json
-          priority?: number
-          result?: Json | null
-          run_after?: string
-          started_at?: string | null
-          status?: string
+          date: string
+          path: string
+          people?: number
+          site_id: string
+          source: string
+          visits?: number
         }
         Update: {
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          finished_at?: string | null
-          group_key?: string | null
-          id?: never
-          kind?: string
-          label?: string | null
-          max_attempts?: number
-          payload?: Json
-          priority?: number
-          result?: Json | null
-          run_after?: string
-          started_at?: string | null
-          status?: string
+          date?: string
+          path?: string
+          people?: number
+          site_id?: string
+          source?: string
+          visits?: number
         }
         Relationships: [
           {
-            foreignKeyName: "queue_jobs_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "seo_ai_referrals_site_id_fkey"
+            columns: ["site_id"]
             isOneToOne: false
-            referencedRelation: "employee_directory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "queue_jobs_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "seo_sites"
             referencedColumns: ["id"]
           },
         ]
       }
-      seo_aeo_prompts: {
+      seo_alert_events: {
         Row: {
           created_at: string
-          id: string
-          is_tracked: boolean
-          keyword_id: string | null
-          prompt: string
+          engine: string | null
+          from_pos: number | null
+          id: number
+          kind: string
+          label: string
+          sent_at: string | null
           site_id: string
+          to_pos: number | null
         }
         Insert: {
           created_at?: string
-          id?: string
-          is_tracked?: boolean
-          keyword_id?: string | null
-          prompt: string
+          engine?: string | null
+          from_pos?: number | null
+          id?: never
+          kind: string
+          label: string
+          sent_at?: string | null
           site_id: string
+          to_pos?: number | null
         }
         Update: {
           created_at?: string
-          id?: string
-          is_tracked?: boolean
-          keyword_id?: string | null
-          prompt?: string
+          engine?: string | null
+          from_pos?: number | null
+          id?: never
+          kind?: string
+          label?: string
+          sent_at?: string | null
+          site_id?: string
+          to_pos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_alert_events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_api_costs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          endpoint: string
+          id: number
+          note: string | null
+          provider: string
+          units: number
+        }
+        Insert: {
+          cost_usd: number
+          created_at?: string
+          endpoint: string
+          id?: never
+          note?: string | null
+          provider: string
+          units?: number
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          endpoint?: string
+          id?: never
+          note?: string | null
+          provider?: string
+          units?: number
+        }
+        Relationships: []
+      }
+      seo_bing_daily: {
+        Row: {
+          clicks: number
+          date: string
+          impressions: number
+          site_id: string
+        }
+        Insert: {
+          clicks?: number
+          date: string
+          impressions?: number
+          site_id: string
+        }
+        Update: {
+          clicks?: number
+          date?: string
+          impressions?: number
           site_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "seo_aeo_prompts_keyword_id_fkey"
-            columns: ["keyword_id"]
-            isOneToOne: false
-            referencedRelation: "seo_keywords"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "seo_aeo_prompts_site_id_fkey"
+            foreignKeyName: "seo_bing_daily_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "seo_sites"
@@ -5356,50 +5513,6 @@ export type Database = {
       }
     }
     Functions: {
-      seo_merge_rank_sample: {
-        Args: {
-          p_aio_cites: boolean
-          p_aio_refs: Json
-          p_checked_on: string
-          p_device: string
-          p_features?: Json
-          p_has_aio: boolean
-          p_keyword: string
-          p_organic_seen?: number
-          p_position: number
-          p_ranked_url: string
-          p_top: Json
-        }
-        Returns: boolean
-      }
-      queue_prune: { Args: never; Returns: undefined }
-      queue_claim: {
-        Args: { p_limit?: number }
-        Returns: {
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          finished_at: string | null
-          group_key: string | null
-          id: number
-          kind: string
-          label: string | null
-          max_attempts: number
-          payload: Json
-          priority: number
-          result: Json | null
-          run_after: string
-          started_at: string | null
-          status: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "queue_jobs"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       attendance_period_summary: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -5476,18 +5589,22 @@ export type Database = {
         Returns: boolean
       }
       can_view_all: { Args: never; Returns: boolean }
-      clamp_day: {
-        Args: { p_day: number; p_month_start: string }
-        Returns: string
-      }
+      checkin_state: { Args: never; Returns: Json }
       checkout_reminders_due: {
         Args: { p_now?: string }
-        Returns: { checkin_id: string; remind_at: string; user_id: string }[]
+        Returns: {
+          checkin_id: string
+          remind_at: string
+          user_id: string
+        }[]
       }
-      checkin_state: { Args: never; Returns: Json }
       claim_checkout_time: {
         Args: { p_checkin_id: string; p_note?: string; p_time: string }
         Returns: undefined
+      }
+      clamp_day: {
+        Args: { p_day: number; p_month_start: string }
+        Returns: string
       }
       consume_invite_link: {
         Args: { p_code: string }
@@ -5513,18 +5630,10 @@ export type Database = {
           source: string
         }[]
       }
-      payroll_open_from: {
-        Args: { p_cycle: string; p_today: string }
-        Returns: string
-      }
       expand_leave_days: { Args: { p_request_id: string }; Returns: undefined }
       expected_work_mode: {
         Args: { p_date: string; p_user_id: string }
         Returns: string
-      }
-      hourly_rate: {
-        Args: { p_date: string; p_user_id: string }
-        Returns: number
       }
       expense_finance_decide: {
         Args: {
@@ -5540,24 +5649,26 @@ export type Database = {
         Args: { p_approve: boolean; p_id: string; p_reason?: string }
         Returns: undefined
       }
-      hr_inbox: { Args: never; Returns: Json }
-      is_finance: { Args: never; Returns: boolean }
-      is_admin: { Args: never; Returns: boolean }
-      my_profile: { Args: never; Returns: Json }
-      set_my_day_off: { Args: { p_dow: number }; Returns: undefined }
-      is_six_day_worker: { Args: { p_user_id: string }; Returns: boolean }
-      weekly_off_days: { Args: { p_user_id: string }; Returns: number }
-      stock_photo_people: {
-        Args: never
-        Returns: { id: string; name: string }[]
+      hourly_rate: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: number
       }
+      hr_inbox: { Args: never; Returns: Json }
+      is_admin: { Args: never; Returns: boolean }
+      is_finance: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }
       is_production_staff: { Args: never; Returns: boolean }
+      is_six_day_worker: { Args: { p_user_id: string }; Returns: boolean }
       is_web_owner: { Args: never; Returns: boolean }
       months_of_service: { Args: { p_start: string }; Returns: number }
+      my_profile: { Args: never; Returns: Json }
       pay_items_total: {
         Args: { p_date: string; p_user_id: string }
         Returns: number
+      }
+      payroll_open_from: {
+        Args: { p_cycle: string; p_today: string }
+        Returns: string
       }
       payroll_period: {
         Args: { p_cycle: string; p_pay_month: string }
@@ -5582,6 +5693,34 @@ export type Database = {
           used_count: number
         }[]
       }
+      queue_claim: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          group_key: string | null
+          id: number
+          kind: string
+          label: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "queue_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      queue_prune: { Args: never; Returns: undefined }
       recalc_delivery_route: {
         Args: { p_date: string; p_driver_id: string }
         Returns: undefined
@@ -5615,7 +5754,32 @@ export type Database = {
           prev_position: number
         }[]
       }
+      seo_merge_rank_sample: {
+        Args: {
+          p_aio_cites: boolean
+          p_aio_refs: Json
+          p_checked_on: string
+          p_device: string
+          p_features?: Json
+          p_has_aio: boolean
+          p_keyword: string
+          p_organic_seen?: number
+          p_position: number
+          p_ranked_url: string
+          p_top: Json
+        }
+        Returns: boolean
+      }
+      set_my_day_off: { Args: { p_dow: number }; Returns: undefined }
+      srp_can_write_image: { Args: { object_name: string }; Returns: boolean }
       srp_role: { Args: { b_id: string }; Returns: string }
+      stock_photo_people: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       storage_usage: {
         Args: never
         Returns: {
@@ -5663,6 +5827,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      weekly_off_days: { Args: { p_user_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never

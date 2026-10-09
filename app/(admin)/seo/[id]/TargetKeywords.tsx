@@ -343,6 +343,15 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => (k.searchVolume != null ? fmtNum(k.searchVolume) : '—'),
     },
     {
+      // คลิกจริงจาก Google (GSC) — เจ้าของขอ 9 ต.ค. 69 · นับเฉพาะคนที่พิมพ์คำนี้ตรงตัว
+      key: 'clicks',
+      header: 'คลิก 28 วัน',
+      align: 'right',
+      hideOnMobile: true,
+      sortValue: (k) => k.clicks28,
+      cell: (k) => (k.clicks28 ? fmtNum(k.clicks28) : <span className="text-gray-400">0</span>),
+    },
+    {
       // ตัวเลขเดียว = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · กดดูประวัติรายวัน
       key: 'rank',
       header: 'อันดับ',

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Modal, Pill, TabBar, TabItem } from '@/components/aoo'
+import { Button, EmptyState, HelpTooltip, Modal, Pill, TabBar, TabItem } from '@/components/aoo'
 import { AI_ENGINES, type AiCount, type AiSummary } from '@/lib/services/seo/aiSummary'
 import {
   DataTable,
@@ -62,6 +62,9 @@ import {
 
 // 6 เดือน / 1 ปี: เจ้าของอยากดูว่า "ทำ SEO แล้วดีขึ้นหรือยัง" (9 ต.ค. 69) — ช่วงสั้นมองไม่ออก
 // เทียบปีก่อนกับ 1 ปีต้องใช้ข้อมูล ~2 ปี แต่ GSC เก็บ 16 เดือน → ไม่ครบจะขึ้น "เทียบไม่ได้" เอง
+/** ล้างสไตล์ default ของ HelpTooltip (เส้นประ + cursor: help) */
+const PLAIN_TRIGGER = { textDecoration: 'none', cursor: 'inherit' }
+
 const RANGES = [
   { value: '7', label: '7 วัน' },
   { value: '28', label: '28 วัน' },
@@ -398,12 +401,35 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
     state: AiCount['items'][number]['state']
     short: string
     title: string
+    /** คำอธิบายใน tooltip ของแท็บ */
+    help: string
     tone: 'success' | 'warning' | 'danger'
     Icon: typeof CircleCheck
   }[] = [
-    { state: 'none', short: 'ยังไม่พูดถึงเรา', title: 'AI แนะนำเว็บอื่น ไม่พูดถึงเรา — งานที่ต้องทำ', tone: 'danger', Icon: CircleX },
-    { state: 'mentioned', short: 'เอ่ยชื่อเรา', title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์', tone: 'warning', Icon: MessageCircle },
-    { state: 'cited', short: 'อ้างเรา', title: 'อ้างเรา (ใส่ลิงก์เว็บเรา)', tone: 'success', Icon: CircleCheck },
+    {
+      state: 'none',
+      short: 'ไม่พูดถึงเรา',
+      title: 'AI แนะนำเว็บอื่น ไม่มีชื่อและลิงก์เรา — งานที่ต้องทำ',
+      help: 'คำตอบไม่มีทั้งชื่อแบรนด์และลิงก์เว็บเรา — AI แนะนำเจ้าอื่นแทน · งาน AEO: ทำเนื้อหาที่ตอบคำถามนี้ตรง ๆ ให้ AI หยิบไปอ้าง',
+      tone: 'danger',
+      Icon: CircleX,
+    },
+    {
+      state: 'mentioned',
+      short: 'เอ่ยแค่ชื่อ ไม่มีลิงก์',
+      title: 'เอ่ยชื่อเรา แต่ไม่ใส่ลิงก์เว็บเรา',
+      help: 'คำตอบมีชื่อแบรนด์เรา แต่ลิงก์ที่มาไม่ใช่เว็บเรา (อาจเป็น Facebook / เว็บรีวิว) — คนรู้จักชื่อ แต่กดเข้าเว็บเราตรง ๆ ไม่ได้',
+      tone: 'warning',
+      Icon: MessageCircle,
+    },
+    {
+      state: 'cited',
+      short: 'ใส่ลิงก์เรา',
+      title: 'อ้างเรา — ใส่ลิงก์เว็บเราเป็นที่มา',
+      help: 'ลิงก์ที่มาในคำตอบมีโดเมนเว็บเรา — ดีสุด คนเห็นชื่อและกดเข้าเว็บได้ทันที (ตัวเลขบนป้ายนับกลุ่มนี้)',
+      tone: 'success',
+      Icon: CircleCheck,
+    },
   ]
   const firstWithItems = groups.find((g) => count.items.some((i) => i.state === g.state))?.state ?? 'none'
   const [tab, setTab] = useState<AiCount['items'][number]['state']>(firstWithItems)
@@ -446,10 +472,13 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
                   onClick={() => setTab(g.state)}
                   disabled={!n}
                   label={
-                    <>
-                      <g.Icon size={15} />
-                      {g.short} · {n}
-                    </>
+                    // tooltip กลาง (HelpTooltip) อธิบายความต่างของแต่ละกลุ่ม — เจ้าของงง "เอ่ยชื่อ vs อ้างเรา" 9 ต.ค. 69
+                    <HelpTooltip delay={150} width={300} triggerStyle={PLAIN_TRIGGER} content={g.help}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <g.Icon size={15} />
+                        {g.short} · {n}
+                      </span>
+                    </HelpTooltip>
                   }
                 />
               )
@@ -460,9 +489,10 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
             const items = count.items.filter((i) => i.state === tab)
             return (
               <>
-                <p className="aoo-status aoo-status--sm mb-2" data-tone={g.tone}>
+                <p className="aoo-status aoo-status--sm mb-0.5" data-tone={g.tone}>
                   {g.title}
                 </p>
+                <p className="mb-2 text-xs text-gray-500">{g.help}</p>
                 {/* bullet ด้วย utility ของ Tailwind (ไม่พึ่ง globals.css — dev server ชอบค้าง CSS เก่า) */}
                 <ul className="list-disc space-y-1.5 pl-6 text-[15px] leading-snug marker:text-[var(--tone)]" data-tone={g.tone}>
                   {items.map((i, n) => (

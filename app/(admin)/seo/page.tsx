@@ -437,9 +437,16 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
                     <g.Icon size={16} />
                     {g.title} · {items.length}
                   </h3>
-                  <ul className="aoo-ai-list" data-tone={g.tone}>
+                  {/* bullet ด้วย utility ของ Tailwind (ไม่พึ่ง globals.css — dev server ชอบค้าง CSS เก่า)
+                      สีตาม data-tone ของกลุ่ม: ยังไม่พูดถึงเรา = แดงทั้งจุดและข้อความ */}
+                  <ul
+                    className="aoo-ai-list list-disc space-y-1.5 pl-6 text-[15px] leading-snug marker:text-[var(--tone)]"
+                    data-tone={g.tone}
+                  >
                     {items.map((i, n) => (
-                      <li key={n}>{i.text}</li>
+                      <li key={n} className={g.tone === 'danger' ? 'text-[var(--tone-ink)]' : 'text-gray-800'}>
+                        {i.text}
+                      </li>
                     ))}
                   </ul>
                 </section>

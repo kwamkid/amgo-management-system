@@ -4,7 +4,7 @@
 // ตาราง seo_gsc_* อ่านได้อย่างเดียว · เขียนเฉพาะ cron ฝั่งเซิร์ฟเวอร์
 
 import { createClient } from '@/lib/supabase/client'
-import { displayRank } from './rankRules'
+import { gscBestPerDay, judgeRank, type RankVerdict } from './rankRules'
 import { getAiSummaries } from './aiSummary'
 
 const sb = () => createClient()
@@ -304,8 +304,10 @@ export interface TargetKeyword {
   gscImpressions: number
   /** คลิกจาก Google 28 วันล่าสุด (GSC · นับเฉพาะคนที่พิมพ์คำนี้ตรงตัว) */
   clicks28: number
-  /** อันดับที่โชว์ = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · null = ไม่ติด 30 อันดับแรก */
+  /** อันดับที่โชว์ — ตัวตัดสินกลาง rankRules.judgeRank · null = ไม่ติด 30 อันดับแรก */
   rank: number | null
+  /** เหตุผลของตัวเลข (เจอกี่ครั้ง · Google สลับชุด · เชื่อ GSC) */
+  verdict: RankVerdict
   /** อันดับที่โชว์ก่อนรอบล่าสุด — ไว้คิดขึ้น/ลง */
   rankBefore: number | null
   /**
@@ -414,6 +416,10 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
     gscAvg.set(q, a)
   }
 
+  const gscDays = new Map<string, { date: string; position: number; impressions: number }[]>()
+  for (const g of gsc ?? []) gscDays.set(g.query, [...(gscDays.get(g.query) ?? []), g])
+  for (const [q, rows] of gscDays) gscDays.set(q, gscBestPerDay(rows))
+
   // ผลล่าสุดต่อ (คำถาม × AI) แล้วรวมเข้าคำเป้าหมายที่ผูก
   const aiByKw = new Map<string, TargetKeyword['ai']>()
   const seenAi = new Set<string>()
@@ -452,8 +458,13 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       const a = gscAvg.get(k.keyword)
       return a && a.w ? a.sum / a.w : null
     })(),
-    rank: displayRank((byKw.get(k.id) ?? []).map((x) => x.position)),
-    rankBefore: displayRank((byKw.get(k.id) ?? []).slice(1).map((x) => x.position)),
+    ...(() => {
+      // ตัวตัดสินกลาง (rankRules.judgeRank) — ประวัติ + หน้าที่เจอ + GSC
+      const checks = (byKw.get(k.id) ?? []).map((x) => ({ position: x.position, url: x.rankedUrl }))
+      const g = gscDays.get(k.keyword) ?? []
+      const verdict = judgeRank(checks, g)
+      return { verdict, rank: verdict.rank, rankBefore: judgeRank(checks.slice(1), g).rank }
+    })(),
     ai: aiByKw.get(k.id) ?? {},
     gscImpressions: gscAvg.get(k.keyword)?.imp ?? 0,
     clicks28: clicks.get(k.keyword) ?? 0,
@@ -789,7 +800,7 @@ export async function setAeoPromptKeyword(id: string, keywordId: string | null) 
 }
 
 // ── สรุปคำเป้าหมายต่อเว็บ (หน้ารายการ SEO) ───────────────────────────────
-// เบากว่า getTargetKeywords ทีละเว็บ: 2 query รวมทุกเว็บ · อันดับใช้กติกาเดียวกับตาราง (displayRank)
+// เบากว่า getTargetKeywords ทีละเว็บ: 3 query รวมทุกเว็บ · อันดับใช้ตัวตัดสินเดียวกับตาราง (judgeRank)
 
 export type KeywordSummary = {
   total: number
@@ -810,26 +821,41 @@ export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string
     siteIds.map((id) => [id, { total: 0, top3: 0, top10: 0, page23: 0, none: 0, unchecked: 0 }])
   )
   if (!siteIds.length) return out
-  const { data: kws, error } = await sb().from('seo_keywords').select('id, site_id').in('site_id', siteIds).eq('is_tracked', true)
+  const { data: kws, error } = await sb().from('seo_keywords').select('id, site_id, keyword').in('site_id', siteIds).eq('is_tracked', true)
   if (error) throw new Error(error.message)
   if (!kws?.length) return out
   // 5 ครั้งล่าสุดต่อคำ — ย้อนพอ (รายสัปดาห์ × 5 + เช็คซ้ำ)
   const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)
-  const { data: snaps } = await sb()
-    .from('seo_rank_snapshots')
-    .select('keyword_id, checked_on, position')
-    .in(
-      'keyword_id',
-      kws.map((k) => k.id)
-    )
-    .gte('checked_on', since)
-    .order('checked_on', { ascending: false })
-    .limit(10000)
-  const pos = new Map<string, (number | null)[]>()
+  const gscSince = new Date(Date.now() - 10 * 864e5).toISOString().slice(0, 10)
+  const [{ data: snaps }, { data: gsc }] = await Promise.all([
+    sb()
+      .from('seo_rank_snapshots')
+      .select('keyword_id, checked_on, position, ranked_url')
+      .in(
+        'keyword_id',
+        kws.map((k) => k.id)
+      )
+      .gte('checked_on', since)
+      .order('checked_on', { ascending: false })
+      .limit(10000),
+    sb()
+      .from('seo_gsc_daily')
+      .select('site_id, query, date, position, impressions')
+      .in('site_id', siteIds)
+      .in('query', [...new Set(kws.map((k) => k.keyword))])
+      .gte('date', gscSince)
+      .limit(20000),
+  ])
+  const pos = new Map<string, { position: number | null; url: string | null }[]>()
   for (const s of snaps ?? []) {
     const l = pos.get(s.keyword_id) ?? []
-    l.push(s.position)
+    l.push({ position: s.position, url: s.ranked_url })
     pos.set(s.keyword_id, l)
+  }
+  const gscRows = new Map<string, { date: string; position: number; impressions: number }[]>()
+  for (const g of gsc ?? []) {
+    const key = `${g.site_id}|${g.query}`
+    gscRows.set(key, [...(gscRows.get(key) ?? []), g])
   }
   for (const k of kws) {
     const sum = out.get(k.site_id)!
@@ -839,7 +865,7 @@ export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string
       sum.unchecked++
       continue
     }
-    const r = displayRank(p)
+    const r = judgeRank(p, gscBestPerDay(gscRows.get(`${k.site_id}|${k.keyword}`) ?? [])).rank
     if (r == null) sum.none++
     else if (r <= 10) {
       sum.top10++

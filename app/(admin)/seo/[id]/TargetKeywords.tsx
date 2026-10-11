@@ -54,7 +54,7 @@ import {
   type SeoSite,
   type TargetKeyword,
 } from '@/lib/services/seo/seoService'
-import { DISPLAY_ROUNDS, fmtDisplayRank, foundCount, RANK_DEPTH } from '@/lib/services/seo/rankRules'
+import { fmtDisplayRank, LOOKBACK, RANK_DEPTH } from '@/lib/services/seo/rankRules'
 
 type Filter = 'all' | 'top10' | 'top30' | 'none' | 'wrong'
 
@@ -342,7 +342,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
       cell: (k) => (k.clicks28 ? fmtNum(k.clicks28) : <span className="text-gray-400">0</span>),
     },
     {
-      // ตัวเลขเดียว = ค่ากลาง 5 ครั้งล่าสุด (rankRules.displayRank) · กดดูประวัติรายวัน
+      // ตัวเลขเดียวจากตัวตัดสินกลาง (rankRules.judgeRank: ประวัติ + หน้าที่เจอ + GSC) · กดดูประวัติรายวัน
       key: 'rank',
       header: 'อันดับ',
       align: 'right',
@@ -383,7 +383,9 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
               </span>
             </div>
             <div className="text-xs text-gray-400">
-              {k.rank == null ? `${RANK_DEPTH} อันดับแรก · ` : ''}เช็ค {fmtGscDate(cur.checkedOn)}
+              {k.rank == null ? `${RANK_DEPTH} อันดับแรก · ` : ''}
+              {k.verdict.source === 'gsc' ? 'จากคนค้นจริง · ' : k.verdict.pattern === 'split' ? `เจอ ${k.verdict.found}/${k.verdict.total} · ` : ''}
+              เช็ค {fmtGscDate(cur.checkedOn)}
               {k.pending ? ' · รอผลรอบใหม่' : ''}
             </div>
           </button>
@@ -552,7 +554,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         <div>
           <h2 className="aoo-section-title">คำเป้าหมาย — สถานะ ณ วันนี้</h2>
           <p className="text-xs text-gray-500">
-            เฉพาะ {tracked} คำที่เราเลือกติดตาม · อันดับ = ค่ากลางของครั้งที่เจอใน {DISPLAY_ROUNDS} ครั้งล่าสุด
+            เฉพาะ {tracked} คำที่เราเลือกติดตาม · อันดับ = ดูย้อน {LOOKBACK} ครั้ง + หน้าที่เจอ + คนค้นจริง (GSC) ก่อนตัดสิน
             · ดู {RANK_DEPTH} อันดับแรก · เช็คทุก 7 วัน (คำที่อันดับนิ่งทุก 14 วัน · ผลเปลี่ยนเยอะเช็คซ้ำวันถัดไป)
             {stats.lastCheck ? ` · ล่าสุด ${fmtGscDate(stats.lastCheck)}` : ''}
           </p>
@@ -712,7 +714,7 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
         title={detail ? `"${detail.keyword}" · ${fmtDisplayRank(detail.rank)}` : ''}
         description={
           detail?.snapshots[0]
-            ? `อันดับ = ค่ากลางของครั้งที่เจอใน ${DISPLAY_ROUNDS} ครั้งล่าสุด · Google ประเทศไทย · ดู ${RANK_DEPTH} อันดับแรก`
+            ? `${detail.verdict.reason} · ดูย้อน ${LOOKBACK} ครั้ง + GSC 10 วัน · Google ประเทศไทย ${RANK_DEPTH} อันดับแรก`
             : undefined
         }
         maxWidth={640}
@@ -723,14 +725,10 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
             <div>
               <p className="mb-2 flex items-center gap-1.5 font-semibold text-gray-700">
                 <ListOrdered size={16} /> ประวัติอันดับ
-                {(() => {
-                  const c = foundCount(detail.snapshots.map((x) => x.position))
-                  return (
-                    <span className="text-xs font-normal text-gray-500">
-                      · เจอเว็บเรา {c.found} จาก {c.total} ครั้งล่าสุด
-                    </span>
-                  )
-                })()}
+                <span className="text-xs font-normal text-gray-500">
+                  · เจอเว็บเรา {detail.verdict.found} จาก {detail.verdict.total} ครั้งล่าสุด
+                  {detail.verdict.gsc != null ? ` · คนค้นจริง (GSC) ~#${detail.verdict.gsc}` : ''}
+                </span>
               </p>
               <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200">
                 <table className="w-full text-sm">

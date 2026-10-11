@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSerpTask, parseSerp, postSerpTasks, type Device } from './dataforseo'
 import { sendWebAlert } from '@/lib/services/web/webAlerts'
-import { bigMove, displayRank, isStable, needsRecheck } from './rankRules'
+import { gscBestPerDay, isStable, judgeMove, needsRecheck } from './rankRules'
 
 /** เช็คซ้ำเมื่อผลล่าสุดเก่ากว่ากี่วัน · คำที่อันดับนิ่ง 4 รอบติด ห่างได้เป็น 14 วัน (ประหยัด) */
 const RECHECK_DAYS = 7
@@ -71,7 +71,7 @@ export type RankEvent = {
   siteId: string
   site: string
   keyword: string
-  /** up / down = อันดับที่โชว์ (ค่ากลาง 5 ครั้ง) ขยับเยอะ — rankRules.bigMove */
+  /** up / down = อันดับที่ตัวตัดสินกลางให้ (rankRules.judgeRank) ขยับเยอะ — rankRules.bigMove */
   kind: 'up' | 'down' | 'aio_cited' | 'aio_lost'
   from: number | null
   to: number | null
@@ -158,20 +158,28 @@ async function rankEvents(sb: SupabaseClient, t: PendingTask, checkedOn: string)
   const keyword = t.seo_keywords?.keyword ?? ''
   const { data: rows } = await sb
     .from('seo_rank_snapshots')
-    .select('checked_on, position, ai_overview_cites_us, top_competitors')
+    .select('checked_on, position, ranked_url, ai_overview_cites_us, top_competitors')
     .eq('keyword_id', t.keyword_id)
     .eq('device', t.device)
     .lte('checked_on', checkedOn)
     .order('checked_on', { ascending: false })
-    .limit(6)
+    .limit(11)
   const [cur, prevRow] = rows ?? []
   if (!cur || cur.checked_on !== checkedOn || !prevRow) return []
   const events: RankEvent[] = []
   const base = { siteId, site, keyword }
-  const positions = (rows ?? []).map((r) => r.position as number | null)
-  const from = displayRank(positions.slice(1))
-  const to = displayRank(positions)
-  const move = bigMove(from, to)
+  // ตัวตัดสินกลาง: ประวัติ 10 ครั้ง + หน้าที่เจอ + GSC 10 วัน (คนค้นจริง) — rankRules.judgeRank
+  const { data: gscRows } = await sb
+    .from('seo_gsc_daily')
+    .select('date, position, impressions')
+    .eq('site_id', siteId)
+    .eq('query', keyword)
+    .gte('date', new Date(Date.now() - 10 * 864e5).toISOString().slice(0, 10))
+    .limit(200)
+  const checks = (rows ?? []).map((r) => ({ position: r.position as number | null, url: r.ranked_url }))
+  const { before, after, move } = judgeMove(checks, gscBestPerDay(gscRows ?? []))
+  const from = before.rank
+  const to = after.rank
   if (move) events.push({ ...base, kind: move, from, to })
   // ประวัติที่นำเข้าไม่มีข้อมูล AI → ไม่เทียบ AI
   if (prevRow.top_competitors != null) {

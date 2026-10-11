@@ -142,13 +142,16 @@ export function judgeRank(checks: RankCheck[], gscDays: GscDay[] = []): RankVerd
   const otherSet = window.slice(0, streak).some((c) => c.position != null && c.position <= RANK_DEPTH)
   const found = hits.length
 
-  // ไม่เจอติดกันถึงเกณฑ์ → ถาม GSC ก่อนตัดสินว่าหลุด
-  if (streak >= MISS_CONFIRM || (!found && window.length >= MISS_CONFIRM)) {
-    if (gsc != null && gsc <= 10)
+  // ไม่เจอติดกันถึงเกณฑ์ หรือยังไม่เคยเจอเลย → ถาม GSC ก่อนตัดสิน
+  // (12 ต.ค. 69: คำใหม่เช็คครั้งเดียวไม่เจอ แต่ GSC เห็น #2 มีคนเห็น 632 ครั้ง — "ของไหว้พระพิฆเนศ" — เดิมขึ้นไม่ติด)
+  if (streak >= MISS_CONFIRM || !found) {
+    if (gsc != null && gsc <= RANK_DEPTH)
       return {
         ...base, rank: gsc, source: 'gsc', pattern: 'disputed', found, mainUrl,
-        reason: `ระบบเช็ค${otherSet ? 'เจอแค่หน้าอื่นลึก ๆ' : 'ไม่เจอ'} ${streak} ครั้งติด แต่คนค้นจริง (GSC) เห็น ~#${gsc} — Google เสิร์ฟคนละชุด เชื่อฝั่งที่เจอ`,
+        reason: `ระบบเช็ค${otherSet ? 'เจอแค่หน้าอื่นลึก ๆ' : 'ไม่เจอ'} ${streak} ครั้ง${streak > 1 ? 'ติด' : ''} แต่คนค้นจริง (GSC) เห็น ~#${gsc} — Google เสิร์ฟคนละชุด เชื่อฝั่งที่เจอ`,
       }
+    if (streak < MISS_CONFIRM && !found)
+      return { ...base, rank: null, source: 'none', pattern: 'none', found, mainUrl, reason: `ยังไม่เจอใน ${RANK_DEPTH} อันดับแรก (เช็ค ${window.length} ครั้ง · GSC ไม่มีคนเห็นพอ)` }
     return {
       ...base, rank: null, source: 'none', pattern: found ? 'gone' : 'none', found, mainUrl,
       reason: found

@@ -99,6 +99,26 @@ async function gscWeeklyDrops(sb: SupabaseClient, siteIds: string[]) {
 
 const engineLabel = (k: string) => AEO_ENGINES.find((e) => e.key === k)?.label ?? k
 
+/**
+ * อันดับที่คนค้นจริงเห็น (GSC) ของคำนี้ — ค่ากลางของ "หน้าที่ดีที่สุดต่อวัน" ใน 10 วันล่าสุด · ไม่มีข้อมูล = null
+ * ใช้กันแจ้ง "อันดับลง" ผิด: Google เสิร์ฟ 2 ชุดสลับกัน ชุดหนึ่งไม่มีหน้าแรกของเรา (เคส "กระเช้าผลไม้ ส่งด่วน"
+ * 12 ต.ค. 69 — ระบบเช็คเจอแค่หน้าสินค้า #28 ขณะที่ GSC คนค้นจริงเห็นหน้าแรก #1–5 ทุกวัน และเจ้าของค้นเองเห็น #4)
+ */
+async function gscRank(sb: SupabaseClient, siteId: string, query: string) {
+  const since = new Date(Date.now() - 10 * 864e5).toISOString().slice(0, 10)
+  const { data } = await sb
+    .from('seo_gsc_daily')
+    .select('date, position')
+    .eq('site_id', siteId)
+    .eq('query', query)
+    .gte('date', since)
+    .limit(200)
+  const best = new Map<string, number>()
+  for (const r of data ?? []) best.set(r.date, Math.min(best.get(r.date) ?? Infinity, r.position))
+  const days = [...best.values()].sort((a, b) => a - b)
+  return days.length ? Math.round(days[Math.floor((days.length - 1) / 2)]) : null
+}
+
 function section(title: string, lines: string[]) {
   if (!lines.length) return null
   const shown = lines.slice(0, LIST_MAX).map((l) => `• ${l}`)
@@ -154,7 +174,13 @@ export async function flushSeoAlerts(
     const of = (kind: string) => rows.filter((e) => e.kind === kind)
     // top10 / dropped = ชนิดเก่าก่อน 9 ต.ค. 69 ที่อาจค้างในตาราง
     const up = [...of('up'), ...of('top10')]
-    const down = [...of('down'), ...of('dropped')]
+    const downAll = [...of('down'), ...of('dropped')]
+    // หลุดหน้าแรกตามระบบเช็ค แต่คนค้นจริง (GSC) ยังเห็นหน้าแรก = ไม่นับว่าลง แยกไปอีกหัวข้อ
+    const gsc = new Map<number, number | null>()
+    for (const e of downAll)
+      if (e.to_pos == null || e.to_pos > 10) gsc.set(e.id, await gscRank(sb, s.id, e.label))
+    const disputed = downAll.filter((e) => (gsc.get(e.id) ?? 99) <= 10)
+    const down = downAll.filter((e) => !disputed.includes(e))
     const move = (e: EventRow) => {
       const page1 = (p: number | null) => p != null && p <= 10
       const note = !page1(e.from_pos) && page1(e.to_pos) ? ' (ติดหน้าแรก)' : page1(e.from_pos) && !page1(e.to_pos) ? ' (หลุดหน้าแรก)' : ''
@@ -174,6 +200,10 @@ export async function flushSeoAlerts(
     const parts = [
       section(`📈 อันดับขึ้น (${up.length})`, up.map(move)),
       section(`📉 อันดับลง (${down.length})`, down.map(move)),
+      section(
+        `🔍 ระบบเช็คไม่เจอในหน้าแรก แต่คนค้นจริงยังเห็น (${disputed.length})`,
+        disputed.map((e) => `${e.label}  ระบบเช็ค ${fmtDisplayRank(e.to_pos)} · คนค้นจริง (GSC) ~#${gsc.get(e.id)}`)
+      ),
       section(`✨ AI เริ่มอ้างเรา (${aiCited.length})`, aiCited),
       section(`⚠️ AI เลิกอ้างเรา (${aiLost.length})`, aiLost),
       aiSum ? `**🤖 AI อ้างลิงก์เรา** (อ้าง/ทั้งหมด)\n${aiSum}` : null,

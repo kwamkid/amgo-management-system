@@ -119,6 +119,8 @@ const navSections: NavSection[] = [
           { label: 'สรุปประจำวัน', href: '/delivery' },
           { label: 'เช็คอินจุดส่ง', href: '/delivery/checkin' },
           { label: 'แผนที่การส่งของ', href: '/delivery/map' },
+          // ตำแหน่งสดจากเครื่องประจำรถ — HR/แอดมินเท่านั้น (ข้อมูลส่วนตัว)
+          { label: 'คนขับตอนนี้ (สด)', href: '/delivery/live', roles: ['admin', 'hr'] },
         ],
       },
       {

@@ -1118,6 +1118,114 @@ export type Database = {
           },
         ]
       }
+      driver_live: {
+        Row: {
+          accuracy: number | null
+          battery: number | null
+          driver_id: string
+          driver_name: string
+          heading: number | null
+          lat: number
+          lng: number
+          recorded_at: string
+          speed: number | null
+          updated_at: string
+        }
+        Insert: {
+          accuracy?: number | null
+          battery?: number | null
+          driver_id: string
+          driver_name?: string
+          heading?: number | null
+          lat: number
+          lng: number
+          recorded_at: string
+          speed?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accuracy?: number | null
+          battery?: number | null
+          driver_id?: string
+          driver_name?: string
+          heading?: number | null
+          lat?: number
+          lng?: number
+          recorded_at?: string
+          speed?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_live_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_live_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_locations: {
+        Row: {
+          accuracy: number | null
+          battery: number | null
+          driver_id: string
+          heading: number | null
+          id: number
+          lat: number
+          lng: number
+          received_at: string
+          recorded_at: string
+          speed: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          battery?: number | null
+          driver_id: string
+          heading?: number | null
+          id?: never
+          lat: number
+          lng: number
+          received_at?: string
+          recorded_at: string
+          speed?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          battery?: number | null
+          driver_id?: string
+          heading?: number | null
+          id?: never
+          lat?: number
+          lng?: number
+          received_at?: string
+          recorded_at?: string
+          speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_locations_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_locations_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_claims: {
         Row: {
           amount: number
@@ -5899,6 +6007,7 @@ export type Database = {
           used_count: number
         }[]
       }
+      prune_driver_locations: { Args: { keep_days?: number }; Returns: number }
       queue_claim: {
         Args: { p_limit?: number }
         Returns: {
@@ -5935,6 +6044,7 @@ export type Database = {
         Args: { p_leave_type: string; p_user_id: string; p_year: number }
         Returns: undefined
       }
+      record_driver_locations: { Args: { points: Json }; Returns: number }
       seed_leave_quota: {
         Args: { p_user_id: string; p_year: number }
         Returns: number

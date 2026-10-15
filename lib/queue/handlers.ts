@@ -99,5 +99,8 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   'queue.prune': async (sb) => {
     const { error } = await sb.rpc('queue_prune')
     if (error) throw new Error(error.message)
+    // ตำแหน่งคนขับเก่ากว่า 30 วัน (ล้างรายวันพร้อมคิว — ดู migration driver_tracking)
+    const { error: e2 } = await sb.rpc('prune_driver_locations', { keep_days: 30 })
+    if (e2) throw new Error(e2.message)
   },
 }

@@ -710,9 +710,16 @@ async function drain(limit: number) {
  * และปลุกตัวรันคิวกลางทุกครั้ง (cron 2 นาทีนี้เป็นตัวสำรองของคิวกลางด้วย — งานที่ตั้งเวลารอไว้ถึงเวลาแล้ว)
  */
 async function continueAfter(origin: string, ran: number) {
-  await kickQueue(origin)
+  const sb = createAdminClient()
+  // ปลุกคิวกลางเฉพาะเมื่อมีงานถึงเวลาจริง — เดิมปลุกทุกรอบ (= invocation เปล่า 720 ครั้ง/วัน บน Vercel Hobby · 15 ต.ค. 69)
+  const { count: due } = await sb
+    .from('queue_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'queued')
+    .lte('run_after', new Date().toISOString())
+  if (due) await kickQueue(origin)
   if (!ran) return
-  const { count } = await createAdminClient()
+  const { count } = await sb
     .from('web_jobs')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'queued')

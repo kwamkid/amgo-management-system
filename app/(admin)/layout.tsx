@@ -16,6 +16,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ToastProvider } from "@/components/aoo";
 import { Toaster } from "react-hot-toast";
 import { GlobalQueue } from "@/components/shared";
+import DriverTracker from "@/components/delivery/DriverTracker";
 
 export default function AdminLayout({
   children,
@@ -111,6 +112,8 @@ export default function AdminLayout({
         </div>
         {/* แผงคิวลอยทั้งแอป — ตามไปทุกหน้าจนกว่าจะกดปิด (ดู components/shared/GlobalQueue) */}
         <GlobalQueue />
+        {/* แอป Android ประจำรถ: ส่งตำแหน่งคนขับตลอดกะ (เบราว์เซอร์ธรรมดาไม่ทำอะไร) */}
+        <DriverTracker />
       </ToastProvider>
     </ProtectedRoute>
   );

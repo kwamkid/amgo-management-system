@@ -43,7 +43,10 @@ export function inAppBrowser(): 'line' | 'facebook' | null {
 export function isStandalone(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as unknown as { standalone?: boolean }).standalone === true
+    (navigator as unknown as { standalone?: boolean }).standalone === true ||
+    // แอป Android ประจำรถ (Capacitor) — ล็อกอิน LINE ต้องไปทาง handoff แบบเดียวกับ PWA
+    // (หน้า LINE เปิดใน Chrome/แอป LINE แล้วแอปมารับ session) · ดู lib/native/driverTracker.ts
+    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true
   )
 }
 

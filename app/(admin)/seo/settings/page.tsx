@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Alert, Button, Field, IconButton, Input, Modal, Pill, Select, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, PageHeader, SectionCard, SiteFavicon, TechLoader, type Column } from '@/components/shared'
+import ApiKeys from './ApiKeys'
 import {
   AEO_ENGINE_LABELS,
   deleteSeoSite,
@@ -400,6 +401,9 @@ export default function SeoSettingsPage() {
         emptyTitle="ยังไม่มีเว็บที่ติดตาม"
         emptyBody={unregistered.length ? 'กด "เพิ่มเป็นเว็บที่ติดตาม" ที่ property ด้านบนได้เลย' : undefined}
       />
+
+      {/* API ให้เว็บอื่นดึงข้อมูล SEO / AEO (17 ต.ค. 69) */}
+      <ApiKeys sites={sites} />
 
       <Modal
         open={!!editing}

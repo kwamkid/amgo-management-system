@@ -3,6 +3,7 @@
 // ฝั่งหน้าเว็บของเมนู SEO / AEO — RLS (is_web_owner) คุมชั้น DB แล้ว query ตรงได้
 // ตาราง seo_gsc_* อ่านได้อย่างเดียว · เขียนเฉพาะ cron ฝั่งเซิร์ฟเวอร์
 
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { gscBestPerDay, judgeRank, type RankVerdict } from './rankRules'
 import { getAiSummaries } from './aiSummary'
@@ -105,11 +106,12 @@ export async function deleteSeoSite(id: string) {
  * ยอดรวมรายวันของหลายเว็บ ตั้งแต่วันที่กำหนด
  * ยิงทีละเว็บพร้อมกัน — PostgREST ตัดที่ 1,000 แถวต่อคำขอ (เว็บละ ~400 วันรวมกันเกิน)
  */
-export async function getDailyTotals(siteIds: string[], from: string): Promise<Map<string, DailyTotal[]>> {
+export async function getDailyTotals(siteIds: string[], from: string, client?: SupabaseClient): Promise<Map<string, DailyTotal[]>> {
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
   const out = new Map<string, DailyTotal[]>()
   await Promise.all(
     siteIds.map(async (id) => {
-      const { data, error } = await sb()
+      const { data, error } = await db
         .from('seo_gsc_totals')
         .select('date, clicks, impressions, ctr, position')
         .eq('site_id', id)
@@ -329,8 +331,9 @@ export interface SeoSettings {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]> {
-  const { data: kws, error } = await sb()
+export async function getTargetKeywords(siteId: string, client?: SupabaseClient): Promise<TargetKeyword[]> {
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
+  const { data: kws, error } = await db
     .from('seo_keywords')
     .select('id, keyword, group_name, search_volume, priority, is_tracked, seo_pages(path)')
     .eq('site_id', siteId)
@@ -345,7 +348,7 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
   const gscSince = new Date(Date.now() - 10 * 24 * 3600_000).toISOString().slice(0, 10)
   const clickSince = new Date(Date.now() - 28 * 24 * 3600_000).toISOString().slice(0, 10)
   const [{ data: snaps }, { data: pending }, { data: gsc }, { data: aiRows }, { data: clickRows }] = await Promise.all([
-    sb()
+    db
       .from('seo_rank_snapshots')
       .select('keyword_id, checked_on, position, ranked_url, has_ai_overview, ai_overview_cites_us, ai_overview_refs, top_competitors, samples, hits, organic_seen, features')
       .in('keyword_id', ids)
@@ -353,21 +356,21 @@ export async function getTargetKeywords(siteId: string): Promise<TargetKeyword[]
       .order('checked_on', { ascending: false })
       // คำละ ~1 แถว/สัปดาห์ (+ เช็คซ้ำ) × 26 สัปดาห์ × ~50 คำ — เผื่อไว้ ไม่ให้ประวัติเก่าโดนตัด
       .limit(5000),
-    sb().from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
-    sb()
+    db.from('seo_rank_tasks').select('keyword_id').eq('status', 'pending').in('keyword_id', ids),
+    db
       .from('seo_gsc_daily')
       .select('query, date, position, impressions')
       .eq('site_id', siteId)
       .in('query', (kws ?? []).map((k) => k.keyword))
       .gte('date', gscSince)
       .limit(5000),
-    sb()
+    db
       .from('seo_aeo_results')
       .select('prompt_id, engine, checked_on, cited, mentioned, model, sources, seo_aeo_prompts!inner(keyword_id, prompt)')
       .in('seo_aeo_prompts.keyword_id', ids)
       .order('checked_on', { ascending: false })
       .limit(2000),
-    sb()
+    db
       .from('seo_gsc_daily')
       .select('query, clicks')
       .eq('site_id', siteId)
@@ -816,19 +819,20 @@ export type KeywordSummary = {
   unchecked: number
 }
 
-export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string, KeywordSummary>> {
+export async function getKeywordSummaries(siteIds: string[], client?: SupabaseClient): Promise<Map<string, KeywordSummary>> {
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
   const out = new Map<string, KeywordSummary>(
     siteIds.map((id) => [id, { total: 0, top3: 0, top10: 0, page23: 0, none: 0, unchecked: 0 }])
   )
   if (!siteIds.length) return out
-  const { data: kws, error } = await sb().from('seo_keywords').select('id, site_id, keyword').in('site_id', siteIds).eq('is_tracked', true)
+  const { data: kws, error } = await db.from('seo_keywords').select('id, site_id, keyword').in('site_id', siteIds).eq('is_tracked', true)
   if (error) throw new Error(error.message)
   if (!kws?.length) return out
   // 5 ครั้งล่าสุดต่อคำ — ย้อนพอ (รายสัปดาห์ × 5 + เช็คซ้ำ)
   const since = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)
   const gscSince = new Date(Date.now() - 10 * 864e5).toISOString().slice(0, 10)
   const [{ data: snaps }, { data: gsc }] = await Promise.all([
-    sb()
+    db
       .from('seo_rank_snapshots')
       .select('keyword_id, checked_on, position, ranked_url')
       .in(
@@ -838,7 +842,7 @@ export async function getKeywordSummaries(siteIds: string[]): Promise<Map<string
       .gte('checked_on', since)
       .order('checked_on', { ascending: false })
       .limit(10000),
-    sb()
+    db
       .from('seo_gsc_daily')
       .select('site_id, query, date, position, impressions')
       .in('site_id', siteIds)
@@ -888,8 +892,9 @@ export type LlmQuestion = {
   lastSeen: string | null
 }
 
-export async function getLlmMentions(siteId: string): Promise<{ fetchedOn: string | null; share: LlmShare[]; questions: LlmQuestion[] }> {
-  const { data: latest } = await sb()
+export async function getLlmMentions(siteId: string, client?: SupabaseClient): Promise<{ fetchedOn: string | null; share: LlmShare[]; questions: LlmQuestion[] }> {
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
+  const { data: latest } = await db
     .from('seo_llm_share')
     .select('fetched_on')
     .eq('site_id', siteId)
@@ -898,13 +903,13 @@ export async function getLlmMentions(siteId: string): Promise<{ fetchedOn: strin
     .maybeSingle()
   if (!latest) return { fetchedOn: null, share: [], questions: [] }
   const [{ data: share }, { data: qs }] = await Promise.all([
-    sb()
+    db
       .from('seo_llm_share')
       .select('domain, is_us, mentions, ai_search_volume')
       .eq('site_id', siteId)
       .eq('fetched_on', latest.fetched_on)
       .eq('platform', 'all'),
-    sb()
+    db
       .from('seo_llm_questions')
       .select('kind, question, platform, ai_search_volume, sources, competitor, last_seen')
       .eq('site_id', siteId)
@@ -937,18 +942,19 @@ export type LlmSiteSummary = {
   gap: number
 }
 
-export async function getLlmSummaries(siteIds: string[]): Promise<Map<string, LlmSiteSummary>> {
+export async function getLlmSummaries(siteIds: string[], client?: SupabaseClient): Promise<Map<string, LlmSiteSummary>> {
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
   const out = new Map<string, LlmSiteSummary>()
   if (!siteIds.length) return out
   const [{ data: share }, { data: qs }] = await Promise.all([
-    sb()
+    db
       .from('seo_llm_share')
       .select('site_id, fetched_on, domain, is_us, mentions')
       .in('site_id', siteIds)
       .eq('platform', 'all')
       .order('fetched_on', { ascending: false })
       .limit(1000),
-    sb().from('seo_llm_questions').select('site_id, kind').in('site_id', siteIds).limit(5000),
+    db.from('seo_llm_questions').select('site_id, kind').in('site_id', siteIds).limit(5000),
   ])
   for (const r of share ?? []) {
     let s = out.get(r.site_id)

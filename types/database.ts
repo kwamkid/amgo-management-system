@@ -3060,6 +3060,39 @@ export type Database = {
           },
         ]
       }
+      seo_api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          site_ids: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          site_ids?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          site_ids?: string[] | null
+        }
+        Relationships: []
+      }
       seo_llm_share: {
         Row: {
           ai_search_volume: number

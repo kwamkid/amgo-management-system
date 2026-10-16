@@ -556,11 +556,11 @@ export async function getRankQueue(siteId: string): Promise<RankQueue | null> {
 }
 
 /** หา/สร้างหน้าเป้าหมายจาก path — คืน id (path ว่าง = null) */
-async function ensurePage(siteId: string, path: string): Promise<string | null> {
+async function ensurePage(siteId: string, path: string, db: SupabaseClient = sb()): Promise<string | null> {
   const clean = path.trim()
   if (!clean) return null
   const normalized = clean.startsWith('/') ? clean : `/${clean}`
-  const { data, error } = await sb()
+  const { data, error } = await db
     .from('seo_pages')
     .upsert({ site_id: siteId, path: normalized }, { onConflict: 'site_id,path' })
     .select('id')
@@ -579,9 +579,11 @@ async function ensurePage(siteId: string, path: string): Promise<string | null> 
  */
 export async function addTargetKeywords(
   siteId: string,
-  input: { lines: string; groupName?: string; targetPath?: string; priority?: number }
+  input: { lines: string; groupName?: string; targetPath?: string; priority?: number },
+  client?: SupabaseClient
 ): Promise<number> {
-  const pageId = input.targetPath?.trim() ? await ensurePage(siteId, input.targetPath) : undefined
+  const db = client ?? sb() // หน้าเว็บ = browser client (RLS) · API ภายนอก = admin client
+  const pageId = input.targetPath?.trim() ? await ensurePage(siteId, input.targetPath, db) : undefined
   const rows = input.lines
     .split('\n')
     .map((l) => l.trim())
@@ -600,7 +602,7 @@ export async function addTargetKeywords(
       }
     })
   if (!rows.length) return 0
-  const { data: saved, error } = await sb()
+  const { data: saved, error } = await db
     .from('seo_keywords')
     .upsert(rows, { onConflict: 'site_id,keyword' })
     .select('id, keyword, seo_aeo_prompts(id)')
@@ -608,7 +610,7 @@ export async function addTargetKeywords(
   // คำใหม่ได้คำถาม AI อัตโนมัติ — ไม่งั้นช่อง "AI อ้างเราไหม" ว่างตลอด (เจ้าของ 9 ต.ค. 69) · แก้คำได้ในแท็บ AI ตอบ
   const noPrompt = (saved ?? []).filter((k: { seo_aeo_prompts: unknown[] | null }) => !k.seo_aeo_prompts?.length)
   if (noPrompt.length) {
-    await sb()
+    await db
       .from('seo_aeo_prompts')
       .upsert(
         noPrompt.map((k: { id: string; keyword: string }) => ({ site_id: siteId, keyword_id: k.id, prompt: `${k.keyword} ที่ไหนดี แนะนำหน่อย` })),

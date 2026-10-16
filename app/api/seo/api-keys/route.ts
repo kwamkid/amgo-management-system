@@ -1,7 +1,7 @@
 // app/api/seo/api-keys/route.ts — จัดการกุญแจ API ของ SEO (เจ้าของเมนูเท่านั้น)
 //
 //   GET                              → รายการกุญแจ (ไม่มีตัวกุญแจ — เก็บแค่ hash)
-//   POST { label, siteIds? }         → สร้างใหม่ คืนตัวกุญแจเต็ม "ครั้งเดียว"
+//   POST { label, siteIds?, canWrite? } → สร้างใหม่ คืนตัวกุญแจเต็ม "ครั้งเดียว" (canWrite = เพิ่มคำเป้าหมายได้)
 //   DELETE ?id=                      → เพิกถอน (ใช้ไม่ได้ทันที)
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -20,7 +20,7 @@ export async function GET() {
   if (!(await requireOwner())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { data, error } = await createAdminClient()
     .from('seo_api_keys')
-    .select('id, label, key_prefix, site_ids, created_at, last_used_at, revoked_at')
+    .select('id, label, key_prefix, site_ids, can_write, created_at, last_used_at, revoked_at')
     .order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ keys: data })
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const k = newApiKey()
   const { data, error } = await createAdminClient()
     .from('seo_api_keys')
-    .insert({ label, key_hash: k.hash, key_prefix: k.prefix, site_ids: siteIds })
+    .insert({ label, key_hash: k.hash, key_prefix: k.prefix, site_ids: siteIds, can_write: body.canWrite === true })
     .select('id')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

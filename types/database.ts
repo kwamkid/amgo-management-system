@@ -3062,6 +3062,7 @@ export type Database = {
       }
       seo_api_keys: {
         Row: {
+          can_write: boolean
           created_at: string
           id: string
           key_hash: string
@@ -3072,6 +3073,7 @@ export type Database = {
           site_ids: string[] | null
         }
         Insert: {
+          can_write?: boolean
           created_at?: string
           id?: string
           key_hash: string
@@ -3082,6 +3084,7 @@ export type Database = {
           site_ids?: string[] | null
         }
         Update: {
+          can_write?: boolean
           created_at?: string
           id?: string
           key_hash?: string

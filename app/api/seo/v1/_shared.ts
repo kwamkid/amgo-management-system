@@ -15,5 +15,5 @@ export async function siteFromRequest(request: NextRequest, id: string) {
   const { data } = await sb.from('seo_sites').select('id, display_name, domain, synced_through').eq('id', id).eq('is_active', true).maybeSingle()
   if (!data) return { error: apiError(404, 'ไม่พบเว็บนี้') }
   const site: ApiSite = { id: data.id, name: data.display_name, domain: data.domain, dataThrough: data.synced_through }
-  return { sb, site }
+  return { sb, site, caller }
 }

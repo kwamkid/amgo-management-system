@@ -16,6 +16,7 @@ type ApiKey = {
   label: string
   key_prefix: string
   site_ids: string[] | null
+  can_write: boolean
   created_at: string
   last_used_at: string | null
   revoked_at: string | null
@@ -27,7 +28,7 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
   const { showToast } = useToast()
   const { confirm, dialog } = useConfirm()
   const [keys, setKeys] = useState<ApiKey[] | null>(null)
-  const [form, setForm] = useState<{ label: string; siteIds: string[] } | null>(null)
+  const [form, setForm] = useState<{ label: string; siteIds: string[]; canWrite: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState<string | null>(null)
 
@@ -48,7 +49,7 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
       const res = await fetch('/api/seo/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: form.label, siteIds: form.siteIds }),
+        body: JSON.stringify({ label: form.label, siteIds: form.siteIds, canWrite: form.canWrite }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'สร้างไม่สำเร็จ')
@@ -97,6 +98,11 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
       cell: (k) => (k.site_ids?.length ? k.site_ids.map(siteName).join(' · ') : 'ทุกเว็บ'),
     },
     {
+      key: 'perm',
+      header: 'สิทธิ์',
+      cell: (k) => (k.can_write ? <Pill tone="warning">อ่าน + เพิ่มคำ</Pill> : <Pill tone="neutral">อ่านอย่างเดียว</Pill>),
+    },
+    {
       key: 'used',
       header: 'ใช้ล่าสุด',
       hideOnMobile: true,
@@ -125,7 +131,7 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
             <span className="inline-flex items-center gap-2">
               <KeyRound size={18} /> API ให้เว็บอื่นดึงข้อมูล
             </span>
-            <Button size="sm" icon={Plus} onClick={() => setForm({ label: '', siteIds: [] })}>
+            <Button size="sm" icon={Plus} onClick={() => setForm({ label: '', siteIds: [], canWrite: false })}>
               สร้างกุญแจ
             </Button>
           </div>
@@ -141,6 +147,7 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
             <li>GET {BASE}/sites/&#123;id&#125;?days=28&amp;compare=prev|yoy — ภาพรวม (คลิก Google · อันดับ · AI)</li>
             <li>GET {BASE}/sites/&#123;id&#125;/keywords — อันดับรายคำ + เหตุผล</li>
             <li>GET {BASE}/sites/&#123;id&#125;/ai — AI แต่ละตัวอ้างเราข้อไหน + AI Overview เทียบคู่แข่ง</li>
+            <li>POST {BASE}/sites/&#123;id&#125;/keywords — เพิ่มคำเป้าหมาย (กุญแจที่เปิดสิทธิ์) body: &#123; &quot;keywords&quot;: [&quot;คำ1&quot;, &quot;คำ2&quot;], &quot;targetPath&quot;: &quot;/หน้า/&quot; &#125;</li>
           </ul>
         </div>
       </SectionCard>
@@ -180,6 +187,13 @@ export default function ApiKeys({ sites }: { sites: SeoSite[] }) {
                 ))}
               </div>
             </Field>
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <Checkbox checked={form.canWrite} onChange={(on) => setForm({ ...form, canWrite: on })} />
+              <span>
+                <span className="font-semibold text-gray-900">ให้เพิ่มคำเป้าหมายได้ด้วย</span>
+                <span className="block text-gray-500">ทุกคำที่เพิ่มเสียเงินเช็คอันดับทุกสัปดาห์ (~$0.006/คำ/รอบ) · ครั้งละไม่เกิน 100 คำ</span>
+              </span>
+            </label>
           </div>
         )}
       </Modal>

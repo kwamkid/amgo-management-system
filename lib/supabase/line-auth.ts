@@ -53,6 +53,27 @@ export async function fetchLineProfile(code: string): Promise<LineProfile> {
 }
 
 /**
+ * โปรไฟล์จาก access token ของ LIFF (liff.getAccessToken()) — ตรวจกับ LINE ก่อนว่า
+ * token ยังไม่หมดอายุ และออกให้ channel ของเรา (กันเอา token จากแอปอื่นมาสวม)
+ */
+export async function fetchLineProfileFromLiff(accessToken: string): Promise<LineProfile> {
+  const verifyRes = await fetch(
+    `https://api.line.me/oauth2/v2.1/verify?access_token=${encodeURIComponent(accessToken)}`
+  )
+  if (!verifyRes.ok) throw new Error(`LIFF token ไม่ถูกต้อง: ${await verifyRes.text()}`)
+  const { client_id, expires_in } = (await verifyRes.json()) as { client_id: string; expires_in: number }
+  if (client_id !== process.env.NEXT_PUBLIC_LINE_CHANNEL_ID || !(expires_in > 0)) {
+    throw new Error('LIFF token ไม่ได้ออกให้ channel นี้ หรือหมดอายุแล้ว')
+  }
+
+  const profileRes = await fetch('https://api.line.me/v2/profile', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!profileRes.ok) throw new Error(`ดึงโปรไฟล์ LINE ไม่ได้: ${await profileRes.text()}`)
+  return (await profileRes.json()) as LineProfile
+}
+
+/**
  * สร้าง token_hash สำหรับแลกเป็น session ฝั่ง client
  *
  * generateLink คืนลิงก์ยืนยันอีเมลมาให้ เราเอาแค่ token_hash ไปใช้

@@ -40,6 +40,37 @@ export function verifyOAuthState(
   state: string | null,
   userId: string
 ): { ok: true } | { ok: false; reason: 'missing' | 'bad_signature' | 'expired' | 'wrong_user' } {
+  const read = readOAuthState(state)
+  if (!read.ok) return { ok: false, reason: read.reason }
+  if (read.subject !== userId) return { ok: false, reason: 'wrong_user' }
+  return { ok: true }
+}
+
+// ── ล็อกอินด้วย Discord (สำรองให้คนที่ LINE เข้าไม่ได้ · เพิ่ม 28 ต.ค. 69) ──
+// ตอนเริ่มยังไม่มี session จึงไม่มี userId ให้ผูก — ใส่ "login-<nonce>" แทน
+// nonce มีเมื่อกดจากแอปที่ติดตั้ง (PWA) เพื่อส่ง session กลับเข้าแอปแบบเดียวกับ LINE
+const LOGIN_PREFIX = 'login-'
+
+export function createLoginState(nonce?: string): string {
+  return createOAuthState(`${LOGIN_PREFIX}${nonce ?? ''}`)
+}
+
+/** state ของการล็อกอินหรือไม่ · ถ้าใช่คืน nonce (อาจว่าง) */
+export function readLoginState(
+  state: string | null
+): { ok: true; nonce: string | null } | { ok: false; reason: 'missing' | 'bad_signature' | 'expired' | 'not_login' } {
+  const read = readOAuthState(state)
+  // ดูว่าเป็น state ของการล็อกอินก่อน — state ผูกบัญชีที่หมดอายุต้องไปทางผูกบัญชีตามเดิม
+  if (!read.subject?.startsWith(LOGIN_PREFIX)) {
+    return { ok: false, reason: read.ok || read.subject ? 'not_login' : read.reason }
+  }
+  if (!read.ok) return { ok: false, reason: read.reason }
+  return { ok: true, nonce: read.subject.slice(LOGIN_PREFIX.length) || null }
+}
+
+function readOAuthState(
+  state: string | null
+): { ok: true; subject: string } | { ok: false; reason: 'missing' | 'bad_signature' | 'expired'; subject?: string } {
   if (!state) return { ok: false, reason: 'missing' }
 
   const [payload, signature] = state.split('.')
@@ -54,9 +85,8 @@ export function verifyOAuthState(
     return { ok: false, reason: 'bad_signature' }
   }
 
-  const [stateUserId, expiresAt] = unb64url(payload).split('.')
-  if (Number(expiresAt) < Date.now()) return { ok: false, reason: 'expired' }
-  if (stateUserId !== userId) return { ok: false, reason: 'wrong_user' }
+  const [subject, expiresAt] = unb64url(payload).split('.')
+  if (Number(expiresAt) < Date.now()) return { ok: false, reason: 'expired', subject }
 
-  return { ok: true }
+  return { ok: true, subject }
 }

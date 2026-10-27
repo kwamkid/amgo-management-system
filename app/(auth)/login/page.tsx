@@ -23,9 +23,16 @@ import { signInBoth } from '@/lib/auth/dual-session'
 import { useLoading } from '@/lib/contexts/LoadingContext'
 import { createClient } from '@/lib/supabase/client'
 import { LineIcon } from '@/components/icons/LineIcon'
+import { DiscordIcon } from '@/components/icons/DiscordIcon'
 import { isStandalone } from '@/lib/push/client'
 import { buildLineState, newNonce } from '@/lib/auth/pwaState'
 import { startPwaLogin, pendingPwaLogin, clearPwaLogin, claimHandoff } from '@/lib/auth/pwaHandoff'
+import { liffLoginUrl } from '@/lib/auth/liff'
+
+/** มือถือที่น่าจะมีแอป LINE — iPadOS รายงานตัวเป็น Mac จึงดูจอสัมผัสด้วย */
+function isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
 
 const ERROR_TEXT: Record<string, string> = {
   access_denied: 'คุณปฏิเสธการเข้าถึงข้อมูล',
@@ -37,6 +44,9 @@ const ERROR_TEXT: Record<string, string> = {
   account_ended: 'บัญชีนี้พ้นสภาพพนักงานแล้ว',
   account_inactive: 'บัญชียังไม่ได้รับอนุมัติ — ติดต่อ HR',
   inactive: 'บัญชียังไม่ได้รับอนุมัติ — ติดต่อ HR',
+  discord_not_linked: 'บัญชี Discord นี้ยังไม่ได้ผูกกับพนักงาน — เข้าด้วย LINE แล้วผูก Discord ก่อน',
+  discord_failed: 'เข้าสู่ระบบด้วย Discord ไม่สำเร็จ กรุณาลองใหม่',
+  discord_off: 'ยังไม่ได้เปิดใช้การเข้าสู่ระบบด้วย Discord',
 }
 
 function LoginForm() {
@@ -48,6 +58,7 @@ function LoginForm() {
   const claiming = useRef(false)
   const [pending, setPending] = useState<string | null>(null)
   const [standalone, setStandalone] = useState(false)
+  const [mobile, setMobile] = useState(false)
   const searchParams = useSearchParams()
   const isDev = process.env.NODE_ENV === 'development'
 
@@ -60,6 +71,7 @@ function LoginForm() {
     // กลับมาจาก LINE (เปิดในชีต/แท็บซ้อนบนแอป) ม่านโหลดเต็มจอต้องไม่ค้าง
     hideLoading()
     setStandalone(isStandalone())
+    setMobile(isMobile())
     // ล็อกอินอยู่แล้ว (เช่น Android แชร์คุกกี้กับ Chrome) → เข้าเลย ไม่ต้องกดซ้ำ
     createClient()
       .auth.getSession()
@@ -190,6 +202,35 @@ function LoginForm() {
     window.location.href = lineAuthUrl
   }
 
+  /**
+   * มือถือ: เปิดหน้า /liff ในแอป LINE แทนหน้า login ของ LINE (เพิ่ม 28 ต.ค. 69)
+   * แอป LINE รู้อยู่แล้วว่าเป็นใคร — ไม่มีหน้ากรอกอีเมล ไม่โดน 2FA ของ channel
+   * (ต้นเหตุที่ iPhone ของอ๋อมแอ๋มเข้าไม่ได้) · session กลับมาทาง handoff ตาม nonce
+   * แบบเดียวกับแอปที่ติดตั้ง ทั้งในแอปที่ติดตั้งและ Safari/Chrome
+   */
+  const handleLiffLogin = () => {
+    setError('')
+    const nonce = startPwaLogin()
+    setPending(nonce)
+    setIsLoading(true)
+    window.location.href = liffLoginUrl(nonce)
+  }
+
+  // สำรองให้คนที่ LINE เข้าไม่ได้ (เจอจริง 27 ต.ค. 69: iPhone ของอ๋อมแอ๋มเข้า LINE
+  // ไม่ได้ทุกทาง เข้าได้แค่บนคอม) · ใช้ได้เฉพาะคนที่ผูก Discord ไว้แล้วตอน /setup
+  const handleDiscordLogin = () => {
+    setError('')
+    const standalone = isStandalone()
+    const q = new URLSearchParams({ mode: 'login' })
+    if (standalone) {
+      const nonce = startPwaLogin()
+      q.set('nonce', nonce)
+      setPending(nonce)
+    } else showLoading()
+    setIsLoading(true)
+    window.location.href = `/api/auth/discord/start?${q}`
+  }
+
   const cancelPending = () => {
     clearPwaLogin()
     setPending(null)
@@ -207,13 +248,23 @@ function LoginForm() {
 
       {/* ปุ่ม LINE — สีเขียวทางการของ LINE · สูง 56px · โลโก้ซ้าย */}
       <button
-        onClick={() => handleLineLogin(false)}
+        onClick={() => (mobile ? handleLiffLogin() : handleLineLogin(false))}
         disabled={isLoading}
         className="lg-line-btn flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#06C755] px-5 text-base font-semibold text-white transition-all hover:bg-[#05B34C] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isLoading ? <Loader2 size={26} className="animate-spin" /> : <LineIcon size={28} />}
         {isLoading ? 'กำลังเปิด LINE…' : pending ? 'เปิด LINE อีกครั้ง' : 'เข้าสู่ระบบด้วย LINE'}
       </button>
+
+      {mobile && (
+        <button
+          onClick={() => handleLineLogin(false)}
+          disabled={isLoading}
+          className="mt-3 w-full text-center text-sm text-gray-400 underline-offset-2 hover:text-white hover:underline disabled:opacity-60"
+        >
+          ใช้หน้าเข้าสู่ระบบของ LINE แทน
+        </button>
+      )}
 
       {standalone && (
         <button
@@ -228,7 +279,7 @@ function LoginForm() {
       {pending && (
         <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-gray-300">
           <Loader2 size={16} className="-mt-0.5 mr-2 inline animate-spin text-amber-400" />
-          รอการยืนยันจาก LINE — ยืนยันในแอป LINE เสร็จแล้วกลับมาหน้านี้ ระบบจะเข้าให้เอง
+          รอการยืนยัน — ยืนยันใน LINE หรือ Discord เสร็จแล้วกลับมาหน้านี้ ระบบจะเข้าให้เอง
           <button onClick={cancelPending} className="ml-2 text-gray-400 underline underline-offset-2 hover:text-white">
             ยกเลิก
           </button>
@@ -244,6 +295,20 @@ function LoginForm() {
           🛠️ {devLoading ? 'กำลังเข้าสู่ระบบ…' : 'Dev Login (Admin)'}
         </button>
       )}
+
+      {/* ทางสำรองเท่านั้น — เจ้าของไม่อยากให้เป็นทางหลัก (บัญชี Discord ยืมกันได้ง่ายกว่า LINE)
+          จึงเหลือแค่ไอคอนเล็ก ๆ ด้านล่าง */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={handleDiscordLogin}
+          disabled={isLoading}
+          aria-label="เข้าสู่ระบบด้วย Discord"
+          title="เข้าสู่ระบบด้วย Discord"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          <DiscordIcon size={18} />
+        </button>
+      </div>
     </>
   )
 }

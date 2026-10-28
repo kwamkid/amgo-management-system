@@ -82,12 +82,13 @@ const RANGE_CLASSES = {
   week: '',
   day: 'p-0 text-center',
   day_button: 'h-10 w-10 rounded-full text-sm text-gray-700 transition-colors hover:bg-red-100 focus:outline-none',
+  // วันที่เลือกอยู่: hover ทับด้วยเงาเข้มบาง ๆ แทนพื้นชมพูของ day_button — ตัวหนังสือขาวบนชมพูอ่อนอ่านไม่ออก
   // วงแหวน "วันนี้" อยู่ที่ปุ่มด้านใน · ห้ามตั้งสีตัวอักษรตรงนี้ (selected ตั้ง !text-white ที่ <td>)
   today: 'font-bold [&>button]:ring-1 [&>button]:ring-inset [&>button]:ring-red-500',
-  selected: '!bg-red-400 !text-white',
-  range_start: '!bg-red-500 !text-white !rounded-l-full',
-  range_end: '!bg-red-500 !text-white !rounded-r-full',
-  range_middle: '!bg-red-300 !rounded-none !text-white',
+  selected: '!bg-red-400 !text-white [&>button:hover]:!bg-black/10',
+  range_start: '!bg-red-500 !text-white !rounded-l-full [&>button:hover]:!bg-black/10',
+  range_end: '!bg-red-500 !text-white !rounded-r-full [&>button:hover]:!bg-black/10',
+  range_middle: '!bg-red-300 !rounded-none !text-white [&>button:hover]:!bg-black/10',
   outside: 'text-gray-300',
   disabled: 'cursor-not-allowed text-gray-300',
 }

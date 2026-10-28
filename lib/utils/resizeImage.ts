@@ -15,7 +15,7 @@ export async function resizeImage(
   const maxSide = opts.maxSide ?? 1600
   const quality = opts.quality ?? 0.82
 
-  const bitmap = await createImageBitmap(source)
+  const bitmap = await decodeImage(source)
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
 
   // เล็กอยู่แล้ว — ไม่ต้องแตะ (ย่อซ้ำมีแต่เสียคุณภาพ)
@@ -37,4 +37,24 @@ export async function resizeImage(
       quality
     )
   })
+}
+
+/** ไฟล์จาก iPhone (.heic/.heif) — type มักว่างหรือเป็น application/octet-stream เลยดูนามสกุลด้วย */
+export function isHeicFile(file: Blob): boolean {
+  if (/image\/hei[cf]/i.test(file.type)) return true
+  return file instanceof File && /\.hei[cf]$/i.test(file.name)
+}
+
+/**
+ * Safari อ่าน HEIC เองได้ · Chrome/Android/Windows อ่านไม่ได้ → ใช้ heic-to (libheif WASM)
+ * โหลดตัวแปลงเฉพาะตอนเจอไฟล์ HEIC จริง (~1 MB) — ไม่ให้หน้าเว็บทั่วไปหนักขึ้น
+ */
+async function decodeImage(source: Blob): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(source)
+  } catch (err) {
+    if (!isHeicFile(source)) throw err
+    const { heicTo } = await import('heic-to/next')
+    return heicTo({ blob: source, type: 'bitmap' })
+  }
 }

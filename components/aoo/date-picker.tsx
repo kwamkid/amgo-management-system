@@ -97,7 +97,7 @@ export function DatePicker({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-10 w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none transition-colors hover:border-gray-300 focus:border-red-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 ${className}`}
+        className={`flex h-10 w-full items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--bg-surface)] px-3 text-sm outline-none transition-colors hover:border-[var(--fg-4)] focus:border-[var(--border-brand)] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 ${className}`}
       >
         <CalendarIcon size={15} className="shrink-0 text-gray-400" />
         <span className={selected ? "text-gray-900" : "text-gray-400"}>

@@ -4452,6 +4452,220 @@ export type Database = {
           },
         ]
       }
+      task_assignees: {
+        Row: {
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_images: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          path: string
+          sort_order: number
+          task_id: string
+          update_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path: string
+          sort_order?: number
+          task_id: string
+          update_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path?: string
+          sort_order?: number
+          task_id?: string
+          update_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_images_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_images_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_images_update_id_fkey"
+            columns: ["update_id"]
+            isOneToOne: false
+            referencedRelation: "task_updates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_updates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          event_date: string | null
+          event_time: string | null
+          id: string
+          kind: string
+          new_due: string | null
+          old_due: string | null
+          task_id: string
+          updated_at: string
+          waiting_for: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          event_time?: string | null
+          id?: string
+          kind: string
+          new_due?: string | null
+          old_due?: string | null
+          task_id: string
+          updated_at?: string
+          waiting_for?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          event_time?: string | null
+          id?: string
+          kind?: string
+          new_due?: string | null
+          old_due?: string | null
+          task_id?: string
+          updated_at?: string
+          waiting_for?: string | null
+          waiting_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_updates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          brand: string | null
+          created_at: string
+          created_by: string | null
+          done_at: string | null
+          done_by: string | null
+          due_change_reason: string | null
+          due_date: string | null
+          id: string
+          notes: string
+          sort_order: number
+          source_ref: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          created_by?: string | null
+          done_at?: string | null
+          done_by?: string | null
+          due_change_reason?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string
+          sort_order?: number
+          source_ref?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          created_by?: string | null
+          done_at?: string | null
+          done_by?: string | null
+          due_change_reason?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string
+          sort_order?: number
+          source_ref?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_allowed_locations: {
         Row: {
           location_id: string
@@ -5804,6 +6018,22 @@ export type Database = {
       }
     }
     Views: {
+      task_status_line: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          created_by: string | null
+          event_date: string | null
+          event_time: string | null
+          follow_ups: number | null
+          kind: string | null
+          task_id: string | null
+          update_id: string | null
+          waiting_for: string | null
+          waiting_on: string | null
+        }
+        Relationships: []
+      }
       employee_directory: {
         Row: {
           company_code: string | null

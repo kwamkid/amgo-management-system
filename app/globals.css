@@ -777,6 +777,34 @@ input, textarea { font-family: var(--font-sans); }
 .aoo-segmented__opt[aria-pressed="true"]:hover:not(:disabled) { color: var(--fg-on-brand); filter: brightness(0.95); }
 .aoo-segmented__opt:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ---------- StepSelect — ขั้นลูกศรต่อกัน (components/aoo/step-select.tsx) ---------- */
+.aoo-steps { display: flex; width: 100%; }
+.aoo-steps__step {
+  --notch: 12px;
+  flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 44px; padding: 0 calc(var(--notch) + 6px); margin-left: calc(var(--notch) * -1 + 3px);
+  border: 0; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.aoo-steps__step:first-child { margin-left: 0; border-radius: var(--r-md) 0 0 var(--r-md);
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%); }
+.aoo-steps__step:last-child { border-radius: 0 var(--r-md) var(--r-md) 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--notch) 50%); }
+.aoo-steps__step span { overflow: hidden; text-overflow: ellipsis; }
+.aoo-steps__step[data-state="next"] { background: var(--bg-sunken); color: var(--fg-3); }
+.aoo-steps__step[data-state="next"]:hover:not(:disabled) { background: var(--warm-150); color: var(--fg-1); }
+.aoo-steps__step[data-state="passed"] { background: var(--step-tint); color: var(--step-tint-fg); }
+.aoo-steps__step[data-state="current"] { background: var(--step-solid); color: var(--step-on); }
+.aoo-steps__step[data-tone="accent"]  { --step-solid: var(--accent);   --step-on: var(--fg-on-brand); --step-tint: var(--accent-soft); --step-tint-fg: var(--brand-coral-700); }
+.aoo-steps__step[data-tone="warning"] { --step-solid: var(--sun-500);  --step-on: var(--sun-on); --step-tint: var(--sun-100);  --step-tint-fg: var(--sun-700); }
+.aoo-steps__step[data-tone="sky"]     { --step-solid: var(--sky-500);  --step-on: #fff; --step-tint: var(--sky-100);  --step-tint-fg: var(--sky-700); }
+.aoo-steps__step[data-tone="success"] { --step-solid: var(--leaf-500); --step-on: #fff; --step-tint: var(--leaf-100); --step-tint-fg: var(--leaf-700); }
+.aoo-steps__step[data-tone="danger"]  { --step-solid: var(--ruby-500); --step-on: #fff; --step-tint: var(--ruby-50);  --step-tint-fg: var(--ruby-700); }
+.aoo-steps__step[data-tone="grape"]   { --step-solid: var(--grape-500); --step-on: #fff; --step-tint: var(--grape-100); --step-tint-fg: var(--grape-700); }
+.aoo-steps__step:disabled { cursor: not-allowed; }
+.aoo-steps__step:focus-visible { outline: 2px solid var(--fg-1); outline-offset: -4px; }
+
 /* ---------- Field warning message ---------- */
 .aoo-field-warning { font-size: var(--fs-micro); color: var(--sun-700); margin-top: 2px; }
 
@@ -1011,7 +1039,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   color: var(--fg-3); font-size: 14px; text-decoration: none;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.aoo-nav-sub__item:hover { color: var(--fg-1); background: color-mix(in srgb, var(--tone, var(--accent)) 8%, transparent); }
+.aoo-nav-sub__item:hover:not([aria-current="page"]) { color: var(--fg-1); background: color-mix(in srgb, var(--tone, var(--accent)) 8%, transparent); }
 .aoo-nav-sub__item[aria-current="page"] {
   color: var(--tone-ink, var(--accent)); font-weight: 600;
   background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
@@ -1292,11 +1320,12 @@ button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
 
 .aoo-btn--ghost {
   background: transparent;
-  color: var(--fg-2);
+  color: var(--fg-3);
   border-color: transparent;
 }
 .aoo-btn--ghost:not(:disabled):hover {
   background: var(--warm-100);
+  color: var(--fg-1);
 }
 .aoo-btn--ghost:not(:disabled):active {
   background: var(--warm-150);
@@ -1308,29 +1337,38 @@ button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
   background: var(--warm-700);
 }
 
+/* ---------- 3 ระดับทั้งระบบ (เจ้าของ 28 ต.ค. 69) ----------
+ *  1. primary   = ทึบสีแบรนด์ — การกระทำหลักของหน้า/หน้าต่าง มีได้ 1 ปุ่ม
+ *  2. secondary = กรอบ พื้นขาว — ทางเลือกรอง (soft ใช้หน้าตาเดียวกัน)
+ *  3. ghost     = ไม่มีกรอบ ตัวหนังสือจาง — ปุ่มที่ไม่ต้องการให้สะดุดตา (ยกเลิก · ปิด)
+ *     danger    = ระดับ 3 แต่ตัวหนังสือแดง — ลบ ไม่มีกรอบ ไม่แข่งกับปุ่มหลัก
+ */
+.aoo-btn--soft {
+  background: var(--bg-surface);
+  color: var(--fg-1);
+  border-color: var(--border-2);
+}
+.aoo-btn--soft:not(:disabled):hover {
+  background: var(--warm-50);
+  border-color: var(--border-3);
+}
+.aoo-btn--soft:not(:disabled):active {
+  background: var(--warm-100);
+}
+:root[data-theme="dark"] .aoo-btn--soft:not(:disabled):hover { background: var(--warm-800); }
+:root[data-theme="dark"] .aoo-btn--soft:not(:disabled):active { background: var(--warm-700); }
+
 .aoo-btn--danger {
-  background: var(--ruby-500);
-  color: #fff;
+  background: transparent;
+  color: var(--ruby-500);
   border-color: transparent;
 }
 .aoo-btn--danger:not(:disabled):hover {
-  background: var(--ruby-700);
+  background: var(--ruby-50);
 }
 .aoo-btn--danger:not(:disabled):active {
-  background: var(--ruby-700);
-  filter: brightness(0.88);
-}
-
-.aoo-btn--soft {
-  background: var(--brand-coral-50);
-  color: var(--brand-coral-700);
-  border-color: transparent;
-}
-.aoo-btn--soft:not(:disabled):hover {
-  background: var(--brand-coral-100);
-}
-.aoo-btn--soft:not(:disabled):active {
-  background: var(--brand-coral-200);
+  background: var(--ruby-50);
+  filter: brightness(0.95);
 }
 
 /* Text-only link button (was ~16 raw `hover:underline` buttons) */
@@ -2165,3 +2203,200 @@ button:disabled,
   50%      { opacity: 0.3; }
 }
 .animate-blink { animation: blink 1.5s ease-in-out infinite; }
+
+/* ==========================================================================
+ *  Kanban — บอร์ดงาน (components/tasks/TaskBoard.tsx)
+ *  มือถือ: คอลัมน์เลื่อนข้างทีละคอลัมน์ · จอใหญ่: 3 คอลัมน์เต็มกว้าง
+ *  สีคอลัมน์มาจาก data-tone · ไม่มีเงา (เจ้าของไม่เอาเงา)
+ * ========================================================================== */
+.aoo-kanban {
+  display: flex; gap: 12px; align-items: flex-start;
+  overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px;
+}
+@media (min-width: 1024px) {
+  .aoo-kanban { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+}
+.aoo-kanban__col {
+  flex: 0 0 82%; max-width: 360px; scroll-snap-align: start;
+  display: flex; flex-direction: column;
+  background: var(--bg-sunken); border: 2px solid transparent; border-radius: var(--r-lg);
+  padding: 10px; transition: border-color .15s, background-color .15s;
+}
+@media (min-width: 1024px) { .aoo-kanban__col { max-width: none; } }
+.aoo-kanban__col[data-over] { border-color: var(--tone); background: var(--tone-soft); }
+.aoo-kanban__head {
+  display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;
+  font-size: 14px; font-weight: 700; color: var(--tone-ink);
+}
+.aoo-kanban__head > svg { color: var(--tone); }
+.aoo-kanban__count { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--fg-3); }
+.aoo-kanban__list { display: flex; flex-direction: column; gap: 8px; min-height: 72px; }
+.aoo-kanban__empty {
+  margin: 0; padding: 20px 0; text-align: center; font-size: 13px; color: var(--fg-3);
+  border: 1px dashed var(--border-1); border-radius: var(--r-md);
+}
+
+.aoo-task-card {
+  background: var(--bg-surface); border: 1px solid var(--border-1); border-radius: var(--r-lg);
+  padding: 12px; cursor: grab; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: manipulation;
+  transition: opacity .15s, border-color .15s;
+}
+.aoo-task-card:hover { border-color: var(--fg-3); }
+/* ที่เดิมของการ์ดระหว่างลาก — เหลือเป็นกรอบเส้นประให้เห็นว่าจะลงตรงไหน */
+.aoo-task-card[data-dragging] { opacity: .35; border-style: dashed; border-color: var(--accent); }
+/* การ์ดที่ลอยตามนิ้ว */
+.aoo-task-card[data-overlay] { cursor: grabbing; border-color: var(--accent); transform: rotate(2deg) scale(1.03); }
+.aoo-task-card__title {
+  margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--fg-1);
+  overflow-wrap: anywhere;
+}
+.aoo-task-card[data-done] .aoo-task-card__title { text-decoration: line-through; color: var(--fg-3); }
+.aoo-task-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.aoo-task-card__people { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+
+/* คน: รูป + ชื่อเล่น (components/tasks/taskUi.tsx) */
+.aoo-person {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 2px;
+  border-radius: 999px; background: var(--bg-sunken); font-size: 12px; font-weight: 600; color: var(--fg-2);
+}
+.aoo-person__name { white-space: nowrap; }
+.aoo-person__remove {
+  display: grid; place-items: center; width: 16px; height: 16px; margin-right: -4px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--fg-3); cursor: pointer;
+}
+.aoo-person__remove:hover { background: var(--border-1); color: var(--fg-1); }
+
+/* กล่องรูปลากวาง (components/aoo/image-dropzone.tsx) — ลากไฟล์มาวาง · ลากเรียง · รูปแรก = ปก */
+.aoo-dropzone { min-width: 0; }
+.aoo-dropzone__box {
+  border: 1.5px dashed var(--border-2); border-radius: var(--r-lg); background: var(--bg-sunken); padding: 8px;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.aoo-dropzone__box[data-dragging] { border-color: var(--accent); background: var(--accent-soft); }
+.aoo-dropzone__box[data-readonly] { border: 0; padding: 0; background: transparent; }
+.aoo-dropzone__empty {
+  width: 100%; min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 0; background: transparent; color: var(--fg-3); font-size: 13px; cursor: pointer;
+}
+.aoo-dropzone[data-size="sm"] .aoo-dropzone__empty { min-height: 0; flex-direction: row; padding: 8px; }
+.aoo-dropzone__empty:hover:not(:disabled) { color: var(--fg-1); }
+.aoo-dropzone__empty:disabled { cursor: not-allowed; }
+.aoo-dropzone__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.aoo-dropzone[data-size="sm"] .aoo-dropzone__grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+.aoo-dropzone__tile {
+  position: relative; aspect-ratio: 1; overflow: hidden;
+  border: 1px solid var(--border-1); border-radius: var(--r-md); background: var(--bg-surface);
+}
+.aoo-dropzone__tile[data-draggable] { cursor: grab; touch-action: none; }
+.aoo-dropzone__tile[data-dragging] { opacity: .35; border-style: dashed; border-color: var(--accent); }
+.aoo-dropzone__tile[data-overlay] { cursor: grabbing; border-color: var(--accent); transform: scale(1.05); }
+.aoo-dropzone__tile img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
+.aoo-dropzone__cover {
+  position: absolute; left: 4px; bottom: 4px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent); color: var(--fg-on-brand); font-size: 11px; font-weight: 600;
+}
+.aoo-dropzone__pending { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg-surface); opacity: .8; }
+.aoo-dropzone__remove {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+  display: grid; place-items: center; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--fg-1); color: var(--bg-surface); opacity: .85;
+}
+.aoo-dropzone__remove:hover { opacity: 1; }
+.aoo-dropzone__add {
+  aspect-ratio: 1; display: grid; place-items: center; cursor: pointer;
+  border: 1.5px dashed var(--border-2); border-radius: var(--r-md); background: var(--bg-surface); color: var(--fg-3);
+}
+.aoo-dropzone__add:hover { border-color: var(--fg-3); color: var(--fg-1); }
+.aoo-dropzone__hint { margin: 4px 0 0; font-size: 12px; color: var(--fg-3); }
+
+/* ข้อความมีรูปแบบ (components/aoo/rich-text.tsx) — หน้าตาตอนพิมพ์ = ตอนอ่าน */
+.aoo-rich { font-size: 14px; line-height: 1.6; color: var(--fg-1); overflow-wrap: anywhere; }
+.aoo-rich ul, .aoo-rich ol { margin: 4px 0; padding-left: 1.4em; }
+.aoo-rich ul { list-style: disc; }
+.aoo-rich ol { list-style: decimal; }
+.aoo-rich p { margin: 0; }
+.aoo-rich b, .aoo-rich strong { font-weight: 700; }
+.aoo-rich-editor {
+  border: 1px solid var(--border-1); border-radius: var(--r-md); background: var(--bg-surface); overflow: hidden;
+}
+.aoo-rich-editor:focus-within { border-color: var(--accent); }
+.aoo-rich-editor[data-disabled] { background: var(--bg-sunken); }
+.aoo-rich-editor__toolbar { display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid var(--border-1); background: var(--bg-sunken); }
+.aoo-rich-editor__tool {
+  width: 30px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px;
+  background: transparent; color: var(--fg-3); cursor: pointer;
+}
+.aoo-rich-editor__tool:hover:not(:disabled):not([aria-pressed="true"]) { color: var(--fg-1); background: var(--bg-surface); }
+.aoo-rich-editor__tool[aria-pressed="true"]:hover:not(:disabled) { filter: brightness(0.95); }
+.aoo-rich-editor__tool[aria-pressed="true"] { background: var(--accent); color: var(--fg-on-brand); }
+.aoo-rich-editor__body { min-height: var(--rich-min-h, 96px); padding: 8px 12px; outline: none; }
+.aoo-rich-editor__body:empty::before { content: attr(data-placeholder); color: var(--fg-3); pointer-events: none; }
+
+/* โลโก้แบรนด์ในป้าย/ช่องเลือก (components/shared/BrandBadge.tsx) — กรอบขาวให้โลโก้พื้นใสอ่านออกบนทุกสี */
+.aoo-brand-logo {
+  width: 18px; height: 18px; flex: none; object-fit: contain;
+  border-radius: 4px; background: #fff;
+}
+
+/* หน้าต่างงาน (app/(admin)/tasks/page.tsx) — แท็บแบบ segmented เต็มความกว้าง */
+.aoo-task-modal__tabs { display: flex; width: 100%; margin-bottom: 16px; }
+.aoo-task-modal__tabs .aoo-segmented__opt { flex: 1; justify-content: center; }
+/* ชื่องานบนหัวหน้าต่าง — แก้ได้ตรงนั้นเลย ดูเป็นหัวข้อจนกว่าจะชี้/กด */
+.aoo-title-input {
+  display: block; width: 100%; margin: -4px 0 0 -8px; padding: 4px 8px; resize: none; overflow: hidden;
+  border: 1px solid transparent; border-radius: var(--r-md); background: transparent;
+  font: inherit; color: inherit; line-height: 1.35; outline: none; field-sizing: content;
+}
+.aoo-title-input:hover:not(:disabled) { border-color: var(--border-1); }
+.aoo-title-input:focus { border-color: var(--accent); background: var(--bg-surface); }
+.aoo-title-input:disabled { cursor: default; }
+
+/* ปกการ์ด = รูปแรกของงาน */
+.aoo-task-card__cover {
+  display: block; width: calc(100% + 24px); margin: -12px -12px 10px; aspect-ratio: 16 / 9;
+  object-fit: cover; border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--bg-sunken);
+  pointer-events: none; -webkit-user-drag: none;
+}
+
+/* บรรทัด "งานติดอยู่ตรงไหน" บนการ์ด (lib/tasks/updates.ts statusLineText) */
+.aoo-task-card__status {
+  margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--fg-2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ชิปกดเลือก (รออะไร · +วัน) — กดซ้ำได้ ไม่ใช่ segmented เพราะมี "พิมพ์เอง" */
+.aoo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.aoo-chip {
+  padding: 5px 12px; border: 1px solid var(--border-1); border-radius: 999px;
+  background: var(--bg-surface); font-size: 13px; color: var(--fg-2); cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.aoo-chip:hover:not(:disabled):not([aria-pressed="true"]) { border-color: var(--fg-3); color: var(--fg-1); }
+/* ตัวที่เลือกอยู่ (พื้นสีแบรนด์) — hover ห้ามเปลี่ยนตัวหนังสือเป็นสีเข้ม แค่เข้มพื้นลงนิดนึง */
+.aoo-chip[aria-pressed="true"]:hover:not(:disabled) { filter: brightness(0.95); }
+.aoo-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--fg-on-brand); font-weight: 600; }
+.aoo-chip:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ไทม์ไลน์ความคืบหน้า (components/tasks/TaskTimeline.tsx) */
+/* ฟอร์มเพิ่มรายการ — ไม่มีกล่องซ้อน (การ์ดในการ์ดเบียดบนมือถือ) ปุ่มบันทึกอยู่ท้ายหน้าต่างเหมือนแท็บรายละเอียด */
+.aoo-timeline__composer { display: flex; flex-direction: column; gap: 14px; }
+.aoo-timeline__kind-note { margin: 6px 0 0; font-size: 13px; color: var(--fg-2); }
+.aoo-timeline__composer-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--fg-1); }
+.aoo-timeline__history { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-1); }
+.aoo-timeline__history-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg-3); }
+.aoo-timeline__due-note { margin: 0; font-size: 13px; font-weight: 600; color: var(--sun-700); }
+.aoo-timeline { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.aoo-timeline__item {
+  display: flex; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); background: var(--bg-sunken); font-size: 13px;
+}
+.aoo-timeline__emoji { flex: none; line-height: 1.4; }
+.aoo-timeline__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.aoo-timeline__head { font-weight: 600; color: var(--fg-1); overflow-wrap: anywhere; }
+.aoo-timeline__body { color: var(--fg-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.aoo-timeline__dates { display: inline-flex; align-items: center; gap: 4px; }
+.aoo-timeline__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--fg-3); }
+.aoo-timeline__link {
+  padding: 0; border: 0; background: none; font-size: 12px; color: var(--fg-3); cursor: pointer; text-decoration: underline;
+}
+.aoo-timeline__link:hover { color: var(--fg-1); }

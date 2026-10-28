@@ -15,6 +15,23 @@ export async function POST() {
 
   try {
     const sb = createAdminClient()
+
+    // เจ้าของใช้คนเดียวทั้งเว็บจริงและในเครื่อง (LINE login ใน localhost ไม่ได้)
+    // ตั้ง DEV_LOGIN_LINE_ID ใน .env.local = เข้าเป็นบัญชีจริงคนนั้นเลย ไม่แตะ role/Discord ของเขา
+    const asLineId = process.env.DEV_LOGIN_LINE_ID
+    if (asLineId) {
+      const { data: real } = await sb
+        .from('users')
+        .select('id')
+        .eq('line_user_id', asLineId)
+        .maybeSingle()
+      if (!real) {
+        return NextResponse.json({ error: `ไม่พบผู้ใช้ DEV_LOGIN_LINE_ID=${asLineId}` }, { status: 404 })
+      }
+      const tokenHash = await createSessionToken(real.id, emailForLine(asLineId))
+      return NextResponse.json({ tokenHash })
+    }
+
     const email = emailForLine(DEV_LINE_ID)
 
     let { data: user } = await sb

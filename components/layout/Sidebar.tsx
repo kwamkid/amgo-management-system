@@ -37,6 +37,7 @@ import {
   Receipt,
   ReceiptText,
   MapPinCheck,
+  ListChecks,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -70,6 +71,8 @@ const navSections: NavSection[] = [
   {
     title: 'ของฉัน',
     items: [
+      // บอร์ดงาน (27 ต.ค. 69) — ทุกคนเห็นงานของทุกคน กรองตามคน/แบรนด์ได้ในหน้า
+      { label: 'งานของทีม', href: '/tasks', icon: icon(ListChecks), tone: 'accent' },
       {
         label: 'เช็คอิน/เอาท์',
         icon: icon(Clock),

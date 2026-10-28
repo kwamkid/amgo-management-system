@@ -2,7 +2,7 @@
 
 import { Search, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { SelectMenu, type SelectOption } from '@/components/aoo'
+import { Input, SelectMenu, type SelectOption } from '@/components/aoo'
 
 /**
  * แถบค้นหา/กรอง — ของเดิมทุกหน้าเขียน input ค้นหาเองด้วยสไตล์ต่างกัน
@@ -35,22 +35,19 @@ export default function FilterBar({
       }`}
     >
       {onSearch && (
+        // ใช้ Input ตัวกลาง — เดิมเขียน input เองสูง 36px ไม่เท่าช่องอื่นในแถว (เจ้าของทัก 28 ต.ค. 69)
         <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
+          <Input
             value={search ?? ''}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={placeholder}
-            // พื้นขาวตั้งแต่แรก — พื้นเทาอ่านเป็นช่องปิดใช้งานทั้งที่พิมพ์ได้
-            // (เจ้าของทัก 29 ส.ค. 69) กรอบเข้มขึ้นหน่อยเพื่อให้ยังเห็นขอบช่อง
-            // บนการ์ดพื้นขาว แล้วเน้นด้วยวงแหวนตอนโฟกัส
-            className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-8 pr-8 text-sm outline-none transition placeholder:text-gray-400 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+            prefix={<Search size={15} className="text-gray-400" />}
           />
           {search && (
             <button
               onClick={() => onSearch('')}
               aria-label="ล้างคำค้นหา"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
             >
               <X size={14} />
             </button>

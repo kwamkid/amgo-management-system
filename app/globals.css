@@ -2268,6 +2268,12 @@ button:disabled,
 .aoo-kanban__head > svg { color: var(--tone); }
 .aoo-kanban__count { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--fg-3); }
 .aoo-kanban__list { display: flex; flex-direction: column; gap: 8px; min-height: 72px; }
+/* มือถือ/แท็บเล็ต: บอร์ดเต็มกรอบที่แม่ให้ คอลัมน์เลื่อนขึ้นลงในตัว — ไม่ลากทั้งหน้าเลื่อนตาม */
+@media (max-width: 1023px) {
+  .aoo-kanban { height: 100%; align-items: stretch; overscroll-behavior-x: contain; }
+  .aoo-kanban__col { min-height: 0; }
+  .aoo-kanban__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px 4px; }
+}
 .aoo-kanban__empty {
   margin: 0; padding: 20px 0; text-align: center; font-size: 13px; color: var(--fg-3);
   border: 1px dashed var(--border-1); border-radius: var(--r-md);

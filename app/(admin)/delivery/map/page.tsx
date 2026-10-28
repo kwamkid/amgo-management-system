@@ -14,14 +14,18 @@ import {
   ChevronRight,
   X,
   Trash2,
+  Route,
+  Maximize2,
+  Search,
 } from 'lucide-react'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
-import FilterBar, { FilterSelect } from '@/components/shared/FilterBar'
+import FilterBar from '@/components/shared/FilterBar'
+import PersonStrip, { type PersonStripItem } from '@/components/shared/PersonStrip'
 import Segmented from '@/components/shared/Segmented'
 import { useToast } from '@/hooks/useToast'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Card, CardContent, Button, IconButton, Modal, Alert, EmptyState, Spinner } from '@/components/aoo'
+import { DatePicker, Card, CardContent, Button, IconButton, Input, Modal, Alert, EmptyState, Spinner } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -141,6 +145,18 @@ export default function DeliveryMapPage() {
     })
     return Array.from(drivers, ([id, name]) => ({ id, name }))
   }, [mapPoints])
+
+  // แถบรูปคนขับ (แบบเดียวกับหน้างาน — เจ้าของขอ 28 ต.ค. 69) · ตัวเลข = จุดส่งของวันนั้น · คนส่งเยอะก่อน
+  const driverItems = useMemo<PersonStripItem[]>(() => {
+    const count = new Map<string, number>()
+    mapPoints.forEach(p => p.driverId && count.set(p.driverId, (count.get(p.driverId) ?? 0) + 1))
+    return [
+      { key: 'all', name: 'ทุกคน', count: mapPoints.length, hint: `${mapPoints.length} จุด` },
+      ...uniqueDrivers
+        .map(d => ({ key: d.id, name: d.name, userId: d.id, count: count.get(d.id) ?? 0, hint: `${count.get(d.id) ?? 0} จุด` }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'th')),
+    ]
+  }, [mapPoints, uniqueDrivers])
 
   // สีประจำคนขับ — เรียงตามชื่อให้สีนิ่งตลอดวัน ไม่สลับตามลำดับเช็คอิน
   const driverColors = useMemo(() => {
@@ -609,19 +625,15 @@ export default function DeliveryMapPage() {
           <div className="mt-3">
             <FilterBar
               sticky={false}
-              search={searchTerm}
-              onSearch={setSearchTerm}
-              placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า / คนขับ"
+              activeCount={searchTerm.trim() ? 1 : 0}
+              lead={<PersonStrip items={driverItems} value={selectedDriver} onChange={setSelectedDriver} ariaLabel="ดูจุดส่งของใคร" />}
             >
-              {uniqueDrivers.length > 0 && (
-                <FilterSelect
-                  label="พนักงาน"
-                  value={selectedDriver === 'all' ? null : selectedDriver}
-                  options={uniqueDrivers.map(d => ({ value: d.id, label: d.name }))}
-                  onChange={(v) => setSelectedDriver(v ?? 'all')}
-                  width={200}
-                />
-              )}
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า"
+                prefix={<Search size={15} className="text-gray-400" />}
+              />
             </FilterBar>
           </div>
         </div>
@@ -637,9 +649,24 @@ export default function DeliveryMapPage() {
       <div className="lg:hidden flex h-full w-full flex-col">
         {/* Mobile Header */}
         <div className="shrink-0 bg-white border-b z-40 p-3 shadow-sm">
-          {/* ขนาดเท่ากับ desktop — เจ้าของขอไม่ให้ย่อ font/ปุ่มบนมือถือ */}
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">รายการส่งของ</h2>
+          {/* มือถือเหลือ 2 แถว (เจ้าของขอ 28 ต.ค. 69 "น้อย ๆ แบบหน้างาน"): วัน + รายการ/แผนที่ · คนขับ + กรอง
+              ค้นหาอยู่ในกรอง · เส้นทาง/ดูทั้งหมด ลอยบนแผนที่ */}
+          <div className="mb-2 flex items-center gap-2">
+            <IconButton icon={ChevronLeft} tone="sunken" size={40} title="วันก่อนหน้า" onClick={() => changeDate(-1)} disabled={loading} />
+            <DatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              max={getLocalDateString(new Date())}
+              className="flex-1"
+            />
+            <IconButton
+              icon={ChevronRight}
+              tone="sunken"
+              size={40}
+              title="วันถัดไป"
+              onClick={() => changeDate(1)}
+              disabled={loading || selectedDate === getLocalDateString(new Date())}
+            />
             <Segmented
               value={activeView}
               onChange={(v) => setActiveView(v as 'map' | 'list')}
@@ -650,63 +677,17 @@ export default function DeliveryMapPage() {
             />
           </div>
 
-          {/* Date Navigation */}
-          <div className="flex items-center gap-2 mb-2">
-            <IconButton icon={ChevronLeft} tone="sunken" size={40} title="วันก่อนหน้า" onClick={() => changeDate(-1)} disabled={loading} />
-
-            <DatePicker
-              value={selectedDate}
-              onChange={setSelectedDate}
-              max={getLocalDateString(new Date())}
-              className="flex-1"
-            />
-
-            <IconButton
-              icon={ChevronRight}
-              tone="sunken"
-              size={40}
-              title="วันถัดไป"
-              onClick={() => changeDate(1)}
-              disabled={loading || selectedDate === getLocalDateString(new Date())}
-            />
-          </div>
-
-          {/* Summary */}
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm text-gray-600">พบ {filteredPoints.length} จุด</span>
-            {mapPoints.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant={showRoutes ? 'primary' : 'secondary'}
-                  size="sm"
-                  onClick={() => setShowRoutes(v => !v)}
-                  title="เปิด/ปิดเส้นลำดับการส่ง"
-                >
-                  เส้นทาง
-                </Button>
-                <Button variant="soft" size="sm" icon="Eye" onClick={viewAllPoints} disabled={loading}>
-                  ดูทั้งหมด
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* ตัวกรอง — component กลางชุดเดียวกับหน้ารายการอื่นทั้งระบบ */}
           <FilterBar
             sticky={false}
-            search={searchTerm}
-            onSearch={setSearchTerm}
-            placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า / คนขับ"
+            activeCount={searchTerm.trim() ? 1 : 0}
+            lead={<PersonStrip items={driverItems} value={selectedDriver} onChange={setSelectedDriver} ariaLabel="ดูจุดส่งของใคร" />}
           >
-            {uniqueDrivers.length > 0 && (
-              <FilterSelect
-                label="พนักงาน"
-                value={selectedDriver === 'all' ? null : selectedDriver}
-                options={uniqueDrivers.map(d => ({ value: d.id, label: d.name }))}
-                onChange={(v) => setSelectedDriver(v ?? 'all')}
-                width={180}
+            <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="ค้นหาที่อยู่ / ร้าน · บิล · ลูกค้า"
+                prefix={<Search size={15} className="text-gray-400" />}
               />
-            )}
           </FilterBar>
         </div>
 
@@ -718,7 +699,23 @@ export default function DeliveryMapPage() {
         </div>
 
         {/* Mobile Map View */}
-        <div className={`${activeView === 'map' ? 'block' : 'hidden'} min-h-0 flex-1`}>
+        <div className={`${activeView === 'map' ? 'block' : 'hidden'} relative min-h-0 flex-1`}>
+          {mapPoints.length > 0 && (
+            <div className="absolute bottom-10 left-3 z-10 flex gap-2">
+              <Button
+                variant={showRoutes ? 'primary' : 'secondary'}
+                size="sm"
+                icon={Route}
+                onClick={() => setShowRoutes(v => !v)}
+                title="เปิด/ปิดเส้นลำดับการส่ง"
+              >
+                เส้นทาง
+              </Button>
+              <Button variant="secondary" size="sm" icon={Maximize2} onClick={viewAllPoints} disabled={loading}>
+                ดูทั้งหมด
+              </Button>
+            </div>
+          )}
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={defaultCenter} // ค่าคงที่ — ส่งก้อนใหม่ทุก render แล้วแผนที่จะเด้งกลับเองทุกครั้งที่กดอะไร (ตำแหน่งจริง fitAll จัดให้)

@@ -186,7 +186,9 @@ export default function TasksPage() {
   const topOfTodo = Math.min(0, ...tasks.filter((x) => x.status === 'todo').map((x) => x.sortOrder)) - 1
 
   return (
-    <div className="space-y-4">
+    // มือถือ: ทั้งหน้าพอดีจอ บอร์ดเลื่อนในกรอบของตัวเอง — เดิมเลื่อนนอกบอร์ดแล้วทั้งจอเลื่อน ดูเป็นเว็บไม่ใช่แอป
+    // (เจ้าของทัก 28 ต.ค. 69) · 100dvh − navbar 3.5rem − main pt 1.25rem − ขอบล่าง 0.75rem · -mb กิน pb-10 ของ main
+    <div className="space-y-4 max-lg:-mb-7 max-lg:flex max-lg:h-[calc(100dvh-5.5rem)] max-lg:flex-col">
       <PageHeader
         title="งานของทีม"
         description="กดค้างที่การ์ดแล้วลากเพื่อย้ายสถานะหรือเรียงลำดับ · แตะการ์ดเพื่อดูรายละเอียด"
@@ -234,7 +236,9 @@ export default function TasksPage() {
         />
       </FilterBar>
 
-      <TaskBoard tasks={visible} onMove={move} onOpen={setModal} />
+      <div className="max-lg:min-h-0 max-lg:flex-1">
+        <TaskBoard tasks={visible} onMove={move} onOpen={setModal} />
+      </div>
 
       {modal && (
         <TaskModal

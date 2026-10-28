@@ -27,12 +27,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  Calculator, Download, Eye, EyeOff, FileSpreadsheet, GripVertical, History, ImageIcon, Loader2,
+  Calculator, Download, Eye, EyeOff, FileSpreadsheet, GripVertical, History, ImageIcon, ImagePlus, Loader2,
   Plus, Power, RotateCcw, Settings2, Trash2, Upload, Wand2, X,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Modal, SelectMenu } from '@/components/aoo'
+import { Button, FilePickButton, IconButton, Modal, SelectMenu } from '@/components/aoo'
 import { FilterBar, FilterSelect, PageHeader, Segmented, TechLoader } from '@/components/shared'
 import { createClient } from '@/lib/supabase/client'
 import { useMediaQuery } from '@/lib/use-media-query'
@@ -1140,13 +1140,9 @@ export default function SrpBrandPage() {
               onCreate={(name) => applyCategoryToMarked(name)}
             />
           </div>
-          <button
-            type="button"
-            className="ml-auto text-gray-500 hover:text-gray-700 hover:underline"
-            onClick={() => setMarked(new Set())}
-          >
+          <Button variant="link" size="sm" className="ml-auto" onClick={() => setMarked(new Set())}>
             ล้างการเลือก
-          </button>
+          </Button>
         </div>
       )}
 
@@ -1395,24 +1391,13 @@ export default function SrpBrandPage() {
             )}
             {canEdit && (
             <div className="flex justify-center gap-2">
-              <label className="cursor-pointer">
-                <span className="inline-flex h-9 items-center rounded-lg border border-gray-200 px-3 text-sm hover:bg-gray-50">
-                  {lightbox.imageUrl ? 'เปลี่ยนรูป' : 'อัพโหลดรูป'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadProductImage(lightbox, f)
-                  }}
-                />
-              </label>
+              <FilePickButton icon={ImagePlus} onPick={(f) => uploadProductImage(lightbox, f)}>
+                {lightbox.imageUrl ? 'เปลี่ยนรูป' : 'อัพโหลดรูป'}
+              </FilePickButton>
               {lightbox.imageUrl && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="danger"
                   onClick={() => {
                     if (!confirm('ลบรูปนี้?')) return
                     patchProduct(lightbox.id, { image_url: '' }, { imageUrl: '' })
@@ -1482,9 +1467,9 @@ export default function SrpBrandPage() {
               พิมพ์แล้วกด Enter หรือกดปุ่ม &ldquo;บันทึก&rdquo; · Esc = ยกเลิกช่องที่กำลังพิมพ์
             </p>
             <div className="flex justify-between gap-2 border-t border-gray-100 pt-3">
-              <button
-                type="button"
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={async () => {
                   if (!confirm(`ลบช่องทาง "${editingChannel.name}" ออกจากตาราง?`)) return
                   try {
@@ -1498,7 +1483,7 @@ export default function SrpBrandPage() {
                 }}
               >
                 ลบช่องทางนี้
-              </button>
+              </Button>
               <Button type="button" size="sm" onClick={() => setEditingChannelId(null)}>
                 บันทึก
               </Button>
@@ -1779,13 +1764,9 @@ function ChannelGroup({
           {CHANNEL_TYPE_LABEL[type]} <span className="font-normal text-gray-400">({list.length})</span>
         </h3>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => onAdd(type)}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-sky-600 hover:bg-sky-50"
-          >
-            <Plus size={13} /> เพิ่มช่องทาง
-          </button>
+          <Button variant="ghost" size="sm" icon={Plus} onClick={() => onAdd(type)}>
+            เพิ่มช่องทาง
+          </Button>
         )}
       </div>
 
@@ -1942,15 +1923,7 @@ function ChannelRow({
         />
       ))}
 
-      <button
-        type="button"
-        disabled={!canEdit}
-        title="ลบช่องทางนี้"
-        onClick={() => onDelete(ch)}
-        className="flex justify-center text-gray-300 hover:text-red-500 disabled:opacity-30 disabled:hover:text-gray-300"
-      >
-        <Trash2 size={14} />
-      </button>
+      <IconButton icon={Trash2} tone="danger" size={28} disabled={!canEdit} title="ลบช่องทางนี้" onClick={() => onDelete(ch)} />
     </div>
   )
 }
@@ -2199,14 +2172,7 @@ const SrpRow = memo(function SrpRow({
         )
       })}
       <td className={`${td} whitespace-nowrap`}>
-        <button
-          type="button"
-          title="ดูประวัติการแก้ไขของสินค้าตัวนี้"
-          className="mr-1 text-gray-300 hover:text-sky-600"
-          onClick={() => onHistory(p)}
-        >
-          <History size={14} />
-        </button>
+        <IconButton icon={History} size={28} title="ดูประวัติการแก้ไขของสินค้าตัวนี้" onClick={() => onHistory(p)} />
         {canEdit && (
           <>
             <button
@@ -2218,14 +2184,7 @@ const SrpRow = memo(function SrpRow({
             >
               {isToggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
             </button>
-            <button
-              type="button"
-              title="ลบสินค้า"
-              className="text-gray-300 hover:text-red-500"
-              onClick={() => onDelete(p)}
-            >
-              <Trash2 size={14} />
-            </button>
+            <IconButton icon={Trash2} tone="danger" size={28} title="ลบสินค้า" onClick={() => onDelete(p)} />
           </>
         )}
       </td>
@@ -2347,14 +2306,7 @@ const SrpCard = memo(function SrpCard({
       )}
 
       <div className="mt-2 flex justify-end gap-1 border-t border-gray-100 pt-2">
-        <button
-          type="button"
-          title="ดูประวัติการแก้ไข"
-          className="rounded p-1.5 text-gray-300 hover:text-sky-600"
-          onClick={() => onHistory(p)}
-        >
-          <History size={15} />
-        </button>
+        <IconButton icon={History} size={32} title="ดูประวัติการแก้ไข" onClick={() => onHistory(p)} />
         {canEdit && (
           <>
           <button
@@ -2366,14 +2318,7 @@ const SrpCard = memo(function SrpCard({
           >
             {isToggling ? <Loader2 size={15} className="animate-spin" /> : <Power size={15} />}
           </button>
-          <button
-            type="button"
-            className="rounded p-1.5 text-gray-300 hover:text-red-500"
-            title="ลบสินค้า"
-            onClick={() => onDelete(p)}
-          >
-            <Trash2 size={15} />
-          </button>
+          <IconButton icon={Trash2} tone="danger" size={32} title="ลบสินค้า" onClick={() => onDelete(p)} />
           </>
         )}
       </div>
@@ -2494,18 +2439,19 @@ function SrpHistoryModal({
                     </td>
                     <td className="py-1.5 text-right">
                       {canEdit && !isNew && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={RotateCcw}
                           title={`ย้อนกลับเป็น ${historyValue(e.field, e.oldValue)}`}
-                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-sky-50 hover:text-sky-700"
                           onClick={() => {
                             onRevert(e)
                             // ตัวเซฟหน่วง 400ms — รอให้เขียนเสร็จก่อนค่อยโหลดรายการใหม่
                             setTimeout(() => setTick((t) => t + 1), 900)
                           }}
                         >
-                          <RotateCcw size={12} /> ย้อนกลับ
-                        </button>
+                          ย้อนกลับ
+                        </Button>
                       )}
                     </td>
                   </tr>

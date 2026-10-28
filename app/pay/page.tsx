@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
-import { Alert, Button, Field, Input, Pill, RadioCardGroup, type PillTone } from '@/components/aoo'
+import { Alert, Button, Field, FileDropzone, Input, Pill, RadioCardGroup, type PillTone } from '@/components/aoo'
 import SectionCard from '@/components/shared/SectionCard'
 import InfoPanel from '@/components/shared/InfoPanel'
 import ListRow, { ListRows } from '@/components/shared/ListRow'
@@ -217,12 +217,10 @@ export default function PayPage() {
             </InfoPanel>
 
             <Field label="แนบสลิปโอนเงิน" asDiv>
-              {/* ช่องไฟล์ยังไม่มีคอมโพเนนต์กลาง — ใช้ input ของเบราว์เซอร์ */}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-200 file:px-3 file:py-1.5 file:text-sm"
+              <FileDropzone
+                files={file ? [file] : []}
+                onChange={(f) => setFile(f[0] ?? null)}
+                label="ลากสลิปมาวาง หรือกดเพื่อเลือก"
               />
             </Field>
 

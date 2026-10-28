@@ -9,8 +9,8 @@
 //
 // <ImageDropzone items={imgs} onFilesPicked={upload} onRemove={del} onReorder={reorder} coverLabel="ปก" />
 
-import { useCallback, useId, useRef, useState, type DragEvent } from 'react'
-import { ImagePlus, Plus, X } from 'lucide-react'
+import { useCallback, useEffect, useId, useRef, useState, type DragEvent } from 'react'
+import { FileText, ImagePlus, Plus, X } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -32,6 +32,8 @@ export interface ImageDropzoneItem {
   name?: string | null
   /** กำลังอัปโหลด — มีวงหมุนทับ ลากเรียงได้แต่ลบไม่ได้ */
   pending?: boolean
+  /** ไฟล์ PDF — โชว์ไอคอน + ชื่อแทนรูป */
+  isPdf?: boolean
 }
 
 export interface ImageDropzoneProps {
@@ -52,6 +54,8 @@ export interface ImageDropzoneProps {
   label?: string
   /** ขนาดช่อง: md = รูปของงาน · sm = แนบในฟอร์มเล็ก */
   size?: 'sm' | 'md'
+  /** รับ PDF ด้วย (ใบเสร็จ · ใบรับรองแพทย์) */
+  allowPdf?: boolean
   className?: string
 }
 
@@ -59,6 +63,7 @@ export interface ImageDropzoneProps {
 const ACCEPT = 'image/*,image/heic,image/heif,.heic,.heif'
 
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)
+const isPdfFile = (f: File) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
 
 export function ImageDropzone({
   items,
@@ -71,6 +76,7 @@ export function ImageDropzone({
   coverLabel,
   label = 'ลากรูปมาวาง หรือกดเพื่อเลือก',
   size = 'md',
+  allowPdf,
   className,
 }: ImageDropzoneProps) {
   const inputId = useId()
@@ -91,10 +97,12 @@ export function ImageDropzone({
 
   const pick = useCallback(
     (list: FileList | File[]) => {
-      const files = Array.from(list).filter(isImageFile).slice(0, remaining)
+      const files = Array.from(list)
+        .filter((f) => isImageFile(f) || (allowPdf && isPdfFile(f)))
+        .slice(0, remaining)
       if (files.length) onFilesPicked?.(files)
     },
-    [onFilesPicked, remaining]
+    [onFilesPicked, remaining, allowPdf]
   )
 
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -125,7 +133,7 @@ export function ImageDropzone({
         ref={inputRef}
         id={inputId}
         type="file"
-        accept={ACCEPT}
+        accept={allowPdf ? `${ACCEPT},application/pdf,.pdf` : ACCEPT}
         multiple={maxItems > 1}
         hidden
         disabled={!canAdd}
@@ -243,7 +251,12 @@ function Tile({
   overlay?: boolean
   onRemove?: () => void
 }) {
-  const img = item.url ? (
+  const img = item.isPdf ? (
+    <span className="aoo-dropzone__file">
+      <FileText size={22} />
+      <span>{item.name ?? 'PDF'}</span>
+    </span>
+  ) : item.url ? (
     // eslint-disable-next-line @next/next/no-img-element -- signed URL / blob: ใช้ next/image ไม่ได้
     <img src={item.url} alt={item.name ?? 'รูปแนบ'} loading="lazy" draggable={false} />
   ) : null
@@ -280,5 +293,48 @@ function Tile({
         </button>
       )}
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  FileDropzone — ฟอร์มที่เก็บไฟล์ไว้ก่อนกดบันทึก (สลิป · ใบเสร็จ · ใบรับรองแพทย์)  */
+/*  แม่ถือ File[] ตรง ๆ · ตัวนี้ทำรูปตัวอย่าง (blob:) และคืน URL ให้เองตอนเลิกใช้      */
+/* ------------------------------------------------------------------ */
+
+export interface FileDropzoneProps
+  extends Pick<ImageDropzoneProps, 'maxItems' | 'disabled' | 'label' | 'size' | 'allowPdf' | 'className'> {
+  files: File[]
+  onChange: (files: File[]) => void
+}
+
+export function FileDropzone({ files, onChange, maxItems = 1, ...rest }: FileDropzoneProps) {
+  const ids = useRef(new WeakMap<File, string>())
+  const seq = useRef(0)
+  const idOf = (f: File) => {
+    let id = ids.current.get(f)
+    if (!id) ids.current.set(f, (id = `f${++seq.current}`))
+    return id
+  }
+  // สร้าง/คืน blob: ใน effect คู่กัน — StrictMode เรียก cleanup แล้วสร้างใหม่ได้ไม่พัง
+  const [items, setItems] = useState<ImageDropzoneItem[]>([])
+  useEffect(() => {
+    const next = files.map((f) =>
+      isPdfFile(f)
+        ? { id: idOf(f), name: f.name, isPdf: true }
+        : { id: idOf(f), name: f.name, url: URL.createObjectURL(f) }
+    )
+    setItems(next)
+    return () => next.forEach((it) => it.url && URL.revokeObjectURL(it.url))
+  }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <ImageDropzone
+      {...rest}
+      maxItems={maxItems}
+      items={items}
+      onFilesPicked={(picked) => onChange(maxItems === 1 ? picked.slice(0, 1) : [...files, ...picked].slice(0, maxItems))}
+      onRemove={(id) => onChange(files.filter((f) => idOf(f) !== id))}
+      onReorder={maxItems > 1 ? (order) => onChange(order.map((id) => files.find((f) => idOf(f) === id)!)) : undefined}
+    />
   )
 }

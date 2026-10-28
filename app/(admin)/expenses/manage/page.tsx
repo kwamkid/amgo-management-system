@@ -17,6 +17,7 @@ import {
   Button,
   EmptyState,
   Field,
+  FileDropzone,
   Input,
   Modal,
   RadioCardGroup,
@@ -292,12 +293,7 @@ export default function ExpenseManagePage() {
             </Field>
             {dialog.mode === 'paid' && (
               <Field label="สลิปโอน (ไม่บังคับ)">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setSlip(e.target.files?.[0] ?? null)}
-                  className="text-sm"
-                />
+                <FileDropzone files={slip ? [slip] : []} onChange={(f) => setSlip(f[0] ?? null)} size="sm" label="แนบสลิป" />
               </Field>
             )}
           </div>

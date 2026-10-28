@@ -6,10 +6,10 @@
 // เขียนเหตุผลแทน) · เลือกได้ทีละใบว่าจะรับคืนกับเงินเดือนหรือให้โอนแยก
 // ขั้นอนุมัติ: ผู้จัดการ → บัญชี/HR · รูปใบเสร็จเลือกจากคลังได้ (ถ่ายเก็บไว้ก่อนได้)
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { ImagePlus, Receipt, X } from 'lucide-react'
+import { Receipt } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ import {
   DatePicker,
   EmptyState,
   Field,
+  FileDropzone,
   Input,
   Modal,
   MoneyInput,
@@ -68,7 +69,6 @@ export default function MyExpensesPage() {
   const [files, setFiles] = useState<File[]>([])
   const [noReceipt, setNoReceipt] = useState(false)
   const [noReceiptReason, setNoReceiptReason] = useState('')
-  const fileInput = useRef<HTMLInputElement>(null)
 
   const reload = useCallback(async () => {
     if (!userData?.id) return
@@ -104,11 +104,6 @@ export default function MyExpensesPage() {
     setOpen(true)
   }
 
-  const addFiles = (list: FileList | null) => {
-    if (!list) return
-    setFiles((prev) => [...prev, ...Array.from(list)].slice(0, 6))
-    if (fileInput.current) fileInput.current.value = ''
-  }
 
   const submit = async () => {
     if (!userData?.id) return
@@ -287,41 +282,7 @@ export default function MyExpensesPage() {
                 placeholder="เหตุผลที่ไม่มีใบเสร็จ เช่น ค่าวินมอเตอร์ไซค์"
               />
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {files.map((f, i) => (
-                  <span
-                    key={`${f.name}-${i}`}
-                    className="flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-700 ring-1 ring-gray-200"
-                  >
-                    {f.name.length > 18 ? `${f.name.slice(0, 15)}…` : f.name}
-                    <button
-                      type="button"
-                      aria-label="เอารูปนี้ออก"
-                      onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-                {files.length < 6 && (
-                  <button
-                    type="button"
-                    onClick={() => fileInput.current?.click()}
-                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    <ImagePlus size={16} /> เพิ่มรูปใบเสร็จ
-                  </button>
-                )}
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => addFiles(e.target.files)}
-                />
-              </div>
+              <FileDropzone files={files} onChange={setFiles} maxItems={6} allowPdf size="sm" label="ลากรูปใบเสร็จ/PDF มาวาง หรือกดเพื่อเลือก" />
             )}
           </Field>
 

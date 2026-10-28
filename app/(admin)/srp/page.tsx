@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import { Calculator, Pencil, Users } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Field, IconButton, Input, Modal, Pill, SelectMenu } from '@/components/aoo'
+import { Button, EmptyState, Field, FilePickButton, IconButton, Input, Modal, Pill, SelectMenu } from '@/components/aoo'
 import {
   ListRow,
   ListRows,
@@ -248,24 +248,19 @@ export default function SrpBrandsPage() {
                   โลโก้
                 </div>
               )}
-              <label className="cursor-pointer text-sm text-red-600 hover:underline">
+              <FilePickButton
+                variant="link"
+                onPick={async (f) => {
+                  try {
+                    const url = await uploadSrpImage(f, 'logos')
+                    setDraft((d) => (d ? { ...d, logoUrl: url } : d))
+                  } catch (err) {
+                    showToast(err instanceof Error ? err.message : 'อัพโหลดไม่สำเร็จ', 'error')
+                  }
+                }}
+              >
                 เปลี่ยนโลโก้
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0]
-                    if (!f) return
-                    try {
-                      const url = await uploadSrpImage(f, 'logos')
-                      setDraft((d) => (d ? { ...d, logoUrl: url } : d))
-                    } catch (err) {
-                      showToast(err instanceof Error ? err.message : 'อัพโหลดไม่สำเร็จ', 'error')
-                    }
-                  }}
-                />
-              </label>
+              </FilePickButton>
             </div>
             <Input
               value={draft.name}

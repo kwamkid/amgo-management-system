@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
 import { calculateLeaveDays, validateLeaveRequest } from '@/lib/services/leaveService';
-import { Alert, Button, Field, Select, DatePicker, Textarea, Input, ConfirmDialog, toIso } from '@/components/aoo'
+import { Alert, Button, Field, Select, DatePicker, Textarea, FileDropzone, ConfirmDialog, toIso } from '@/components/aoo'
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
@@ -152,8 +152,8 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleFileChange = (files: File[]) => {
+    form.clearErrors('attachments');
     const validFiles = files.filter(file => {
       if (file.size > MAX_FILE_SIZE) {
         form.setError('attachments', {
@@ -320,7 +320,14 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             asDiv
           >
             <div className="space-y-2">
-              <Input type="file" accept="image/*,.pdf" multiple onChange={handleFileChange} />
+              <FileDropzone
+                files={form.watch('attachments') ?? []}
+                onChange={handleFileChange}
+                maxItems={5}
+                allowPdf
+                size="sm"
+                label="ลากรูป/PDF มาวาง หรือกดเพื่อเลือก"
+              />
               {requireCertificate && (
                 <Alert tone="warning">
                   <div>

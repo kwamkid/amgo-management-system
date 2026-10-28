@@ -1,12 +1,14 @@
 // POST /api/bot/tasks/{id}/updates — เพิ่มรายการในไทม์ไลน์ความคืบหน้า (บันทึก/คอมเมนต์)
 //   { kind?: "note" (ค่าเริ่มต้น) | "waiting" | "follow_up" | "appointment",
 //     body?: "ข้อความ", date?: "YYYY-MM-DD", time?: "HH:MM" (นัดหมายเท่านั้น),
-//     waiting_for?: "รออะไร", waiting_on?: "รอใคร" (waiting เท่านั้น) }
+//     waiting_for?: "รออะไร", waiting_on?: "รอใคร" (waiting เท่านั้น),
+//     images?: ["<ลิงก์ไฟล์แนบ Discord>", ...] (ไม่เกิน 5) }
 //   waiting / follow_up / appointment ต้องมี date · มี date แล้ววันครบกำหนดของงานเปลี่ยนเป็นวันนั้น (trigger)
 //   รายการแรกของงานเปลี่ยน "ต้องทำ" → "กำลังทำ" ให้เอง
 //   เพิ่มได้: แอดมิน · คนสร้าง · ผู้รับผิดชอบ (task_updates_insert)
 import type { NextRequest } from 'next/server'
 import { UUID, apiError, apiJson, authBotApi, readJson } from '@/lib/services/bot/botApi'
+import { collectImages, saveTaskImage } from '@/lib/services/bot/botImages'
 import { DATE_REQUIRED, UPDATE_KINDS, canEditTask, getTaskRow, isYmd, type BotUpdateKind } from '@/lib/services/bot/botTasks'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +33,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const time = typeof body.time === 'string' && /^\d{2}:\d{2}$/.test(body.time) ? body.time : null
   const str = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 200) || null : null)
 
+  // ตรวจ/ย่อรูปก่อนบันทึก — รูปพังจะได้ไม่เหลือรายการครึ่ง ๆ กลาง ๆ
+  let images: Buffer[] = []
+  if (body.images !== undefined) {
+    if (!Array.isArray(body.images)) return apiError(400, 'images ต้องเป็น array ของลิงก์')
+    if (body.images.length) {
+      const r = await collectImages({ json: { urls: body.images } })
+      if (typeof r === 'string') return apiError(400, r)
+      images = r
+    }
+  }
+
   const { data, error } = await caller.sb
     .from('task_updates')
     .insert({
@@ -47,6 +60,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single()
   if (error) return apiError(500, error.message)
 
+  const imageIds: string[] = []
+  for (const [i, jpeg] of images.entries()) {
+    try {
+      imageIds.push(await saveTaskImage(caller.sb, id, jpeg, caller.user.id, { updateId: data.id, sortOrder: i + 1 }))
+    } catch (e) {
+      console.error('[bot] รูปในอัปเดตบันทึกไม่สำเร็จ:', e)
+    }
+  }
+
   const { data: t } = await caller.sb.from('tasks').select('status, due_date').eq('id', id).single()
   return apiJson(
     {
@@ -56,6 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         body: data.body || undefined,
         date: data.event_date ?? undefined,
         dueChange: data.new_due ? { from: data.old_due, to: data.new_due } : undefined,
+        images: imageIds.length ? imageIds : undefined,
         at: data.created_at,
       },
       task: { id, status: t?.status, due: t?.due_date ?? null },

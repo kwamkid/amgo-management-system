@@ -1,4 +1,4 @@
-// GET   /api/bot/tasks/{id} — งานเดียว + ไทม์ไลน์ 10 รายการล่าสุด (ใหม่สุดก่อน)
+// GET   /api/bot/tasks/{id} — งานเดียว + รูป + ไทม์ไลน์ 10 รายการล่าสุด (ใหม่สุดก่อน) พร้อมรูปของแต่ละรายการ
 //
 // PATCH /api/bot/tasks/{id} — แก้งาน (ส่งเฉพาะช่องที่จะเปลี่ยน)
 //   { status?: "todo"|"doing"|"done", due_date?: "YYYY-MM-DD"|null, due_reason?: "เหตุผลที่เลื่อน",
@@ -6,6 +6,7 @@
 //   แก้ได้: แอดมิน · คนสร้าง · ผู้รับผิดชอบ — ผู้รับผิดชอบที่ไม่ได้สร้างงาน แก้ได้แค่ status / due_date / notes
 //   เลื่อนวัน → ลงไทม์ไลน์ "เลื่อนวัน" พร้อมเหตุผลและชื่อคนเลื่อน (เหมือนหน้าเว็บ)
 import type { NextRequest } from 'next/server'
+import { listTaskImages } from '@/lib/services/bot/botImages'
 import { UUID, apiError, apiJson, authBotApi, readJson, resolvePeople, untyped } from '@/lib/services/bot/botApi'
 import {
   STATUSES,
@@ -38,10 +39,14 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     .eq('task_id', id)
     .order('created_at', { ascending: false })
     .limit(10)
-  const people = await peopleMap(sb, (ups ?? []).map((u) => u.created_by ?? ''))
-  const [task] = await toBotTasks(sb, [row], { notes: 'full' })
+  const [people, [task], images] = await Promise.all([
+    peopleMap(sb, (ups ?? []).map((u) => u.created_by ?? '')),
+    toBotTasks(sb, [row], { notes: 'full' }),
+    listTaskImages(sb, id),
+  ])
+  const imagesOf = (updateId: string | null) => images.filter((i) => i.updateId === updateId)
   return apiJson({
-    task: { ...task, canEdit: canEditTask(a.caller, row) },
+    task: { ...task, canEdit: canEditTask(a.caller, row), images: imagesOf(null) },
     updates: (ups ?? []).map((u) => ({
       id: u.id,
       kind: u.kind,
@@ -51,6 +56,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
       date: u.event_date ?? undefined,
       time: u.event_time?.slice(0, 5) ?? undefined,
       dueChange: u.kind === 'due_change' || u.new_due ? { from: u.old_due, to: u.new_due } : undefined,
+      images: imagesOf(u.id).length ? imagesOf(u.id) : undefined,
       by: u.created_by ? (people.get(u.created_by)?.name ?? '?') : null,
       at: u.created_at,
     })),

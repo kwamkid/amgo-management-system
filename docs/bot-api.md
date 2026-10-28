@@ -23,7 +23,7 @@ node scripts/mint-bot-key.mjs general    "Edith (Hermes VPS)"
 
 - กุญแจหน้าตาแบบ `amgo_bot_xxxxxxxx…` · DB เก็บแค่ sha256 · ตัวเต็มโชว์ครั้งเดียว
 - เพิกถอน: `update public.bot_api_keys set revoked_at = now() where key_prefix = 'amgo_bot_xxxx';` → ได้ `401` ทันที
-- ต้อง apply migration `20261028085739_bot_api_keys.sql` ก่อน
+- migration `20261028023731_bot_api_keys.sql` apply แล้ว (28 ต.ค. 69) · กุญแจ Jarvis (`amgo_bot_oQj7…`) และ Edith (`amgo_bot_rQnG…`) สร้างแล้ว — ตัวเต็มอยู่ในไฟล์ `memo/bot-keys.env` บนเครื่องเจ้าของ (ไม่อยู่ใน git)
 
 > ⚠️ เก็บกุญแจใน env ของ Hermes บน VPS เท่านั้น (เช่น `AMGO_JARVIS_KEY`, `AMGO_EDITH_KEY`) ห้าม commit ลง git
 > **กุญแจ Edith + Discord id ใด ๆ = ทำได้เท่าพนักงานคนนั้น** — Hermes ต้องส่ง id ของคนที่พิมพ์ข้อความจริง (จาก event ของ Discord) ห้ามรับ id ที่ผู้ใช้พิมพ์มาเอง
@@ -58,9 +58,15 @@ X-Discord-User-Id: 123456789012345678     (Edith — บังคับ · Jarvi
 | GET | `/people` | พนักงานทั้งหมด + ตัวผู้เรียก (ใช้แปลงชื่อเล่น → id) |
 | GET | `/tasks` | รายการงาน + ตัวกรอง |
 | POST | `/tasks` | สร้างงาน |
-| GET | `/tasks/{id}` | งานเดียว + ไทม์ไลน์ 10 รายการล่าสุด |
+| GET | `/tasks/{id}` | งานเดียว + รูป + ไทม์ไลน์ 10 รายการล่าสุด |
 | PATCH | `/tasks/{id}` | แก้สถานะ / วันครบกำหนด / โน้ต / ผู้รับผิดชอบ |
-| POST | `/tasks/{id}/updates` | บันทึกความคืบหน้า (คอมเมนต์) |
+| POST | `/tasks/{id}/updates` | บันทึกความคืบหน้า (แนบรูปได้) |
+| PATCH | `/tasks/{id}/updates/{updateId}` | แก้รายการในไทม์ไลน์ |
+| DELETE | `/tasks/{id}/updates/{updateId}` | ลบรายการในไทม์ไลน์ |
+| GET | `/tasks/{id}/images` | รูปทั้งหมดของงาน |
+| POST | `/tasks/{id}/images` | เพิ่มรูป (ลิงก์ไฟล์แนบ Discord หรือ multipart) |
+| PATCH | `/tasks/{id}/images` | เรียงรูปใหม่ (รูปแรก = ปก) |
+| DELETE | `/tasks/{id}/images/{imageId}` | ลบรูป |
 | GET | `/tasks/brief` | สรุปประจำวัน: เลยกำหนด + ครบกำหนดใน 7 วัน |
 
 ระบุคน (`assignee`, `assignees`, `user`) ได้ 3 แบบ: `"me"` · Discord id · user id (uuid)
@@ -78,6 +84,8 @@ X-Discord-User-Id: 123456789012345678     (Edith — บังคับ · Jarvi
 ```
 - `daysLate` = เลยกำหนดกี่วัน · `daysLeft` = อีกกี่วัน (0 = วันนี้) — มีเฉพาะงานยังไม่เสร็จที่มีวันครบกำหนด
 - `notes` ในรายการตัดที่ 200 ตัวอักษร (งานเดียว/หลังสร้าง/หลังแก้ = เต็ม) · ช่องที่ว่างจะไม่ส่งมา
+- `notes` บนหน้าเว็บเก็บเป็น HTML (ตัวหนา/bullet) — API แปลงเป็นตัวหนังสือล้วนให้ (bullet = `• `) · บอทเขียน `notes` เป็นตัวหนังสือธรรมดาได้เลย
+- `progress` = งานติดอยู่ตรงไหน บรรทัดเดียวกับบนการ์ดหน้าเว็บ เช่น `"⏳ รอใบเสนอราคา (ผู้รับเหมา) · ตามแล้ว 1 ครั้ง · ตาม 31 ต.ค."` — เฉพาะงานยังไม่เสร็จที่มีความคืบหน้า
 
 ### 4.1 `GET /tasks`
 
@@ -139,6 +147,7 @@ curl -s -X PATCH https://app.amgovenger.com/api/bot/tasks/6f1c… \
 | `date` | `YYYY-MM-DD` — **บังคับ** สำหรับ waiting / follow_up / appointment |
 | `time` | `HH:MM` (appointment เท่านั้น) |
 | `waiting_for` / `waiting_on` | รออะไร / รอใคร (waiting เท่านั้น) |
+| `images` | ลิงก์ไฟล์แนบ Discord ไม่เกิน 5 รูป (ไม่บังคับ) |
 
 - มี `date` → วันครบกำหนดของงานเปลี่ยนเป็นวันนั้นทันที (เหมือนหน้าเว็บ)
 - รายการแรกของงานเปลี่ยนสถานะ `todo` → `doing` ให้เอง
@@ -150,6 +159,37 @@ curl -s -X POST https://app.amgovenger.com/api/bot/tasks/6f1c…/updates \
   -d '{"kind":"waiting","waiting_for":"รอใบเสนอราคา","waiting_on":"Hape HQ","date":"2026-10-31"}'
 ```
 คืน `201 { update: {...}, task: { id, status, due } }`
+
+### 4.5.1 `PATCH` / `DELETE /tasks/{id}/updates/{updateId}` — แก้/ลบรายการในไทม์ไลน์
+
+ส่งเฉพาะช่องที่จะแก้: `body` · `kind` · `date` · `time` · `waiting_for` · `waiting_on` (ความหมายเดียวกับตอนเพิ่ม)
+
+- แก้/ลบได้: แอดมิน (ตลอด) · คนบันทึกเอง **ภายใน 24 ชม.** — ไม่ใช่ = `403`
+- `kind` / `date` แก้ได้เฉพาะ **รายการล่าสุด** ของงาน (รายการเก่าแก้ได้แค่ข้อความ → `400`) — แก้วันแล้ววันครบกำหนดของงานเปลี่ยนตาม
+- ลบรายการล่าสุด → วันครบกำหนดกลับเป็นวันก่อนบันทึก · รูปในรายการถูกลบด้วย
+- รายการ `due_change` (เลื่อนวัน) แก้ได้แค่ `body` (เหตุผล)
+- คืน `{ update, task: { id, status, due } }` / `{ deleted, task }`
+
+### 4.5.2 รูป — `/tasks/{id}/images`
+
+ทุกรูปถูกย่อเป็น JPEG ด้านยาว 1600px (เหมือนหน้าเว็บ) · รับ JPEG / PNG / WebP / GIF ไม่เกิน 25 MB ต่อไฟล์ ครั้งละ ≤ 5 รูป
+
+| | |
+|---|---|
+| `GET` | `{ images: [{ id, url, updateId, cover?, order }] }` — `url` ใช้ได้ 1 ชม. · `updateId: null` = รูปของงาน · `cover: true` = ปกบนการ์ด |
+| `POST` (JSON) | `{ "url": "<ลิงก์ไฟล์แนบ Discord>" }` หรือ `{ "urls": [...] }` + `update_id` (ไม่บังคับ — แนบเข้ารายการไทม์ไลน์) |
+| `POST` (multipart) | field `file` (หลายไฟล์ได้) + `update_id` |
+| `PATCH` | `{ "order": ["<image id>", ...] }` — ตัวที่ส่งขึ้นก่อนตามลำดับ ตัวที่ไม่ส่งต่อท้าย · ส่งทีละกลุ่ม (รูปของงาน หรือรูปของรายการเดียว) |
+| `DELETE /images/{imageId}` | ลบรูป |
+
+- ลิงก์ที่รับมีแค่ `https://cdn.discordapp.com/…` และ `https://media.discordapp.net/…` (server เป็นคนดึง — กันการชี้ไปที่อื่น) · ไฟล์จากที่อื่นให้ส่งแบบ multipart
+- สิทธิ์: ดูได้ทุกคน · เพิ่ม/เรียง/ลบ = แอดมิน · คนสร้างงาน · ผู้รับผิดชอบ
+
+```bash
+curl -s -X POST https://app.amgovenger.com/api/bot/tasks/6f1c…/images \
+  -H "Authorization: Bearer $AMGO_EDITH_KEY" -H "X-Discord-User-Id: $DISCORD_USER_ID" \
+  -H "Content-Type: application/json" -d '{"url":"https://cdn.discordapp.com/attachments/…/IMG_1234.png"}'
+```
 
 ### 4.6 `GET /tasks/brief` — สรุปประจำวัน
 

@@ -31,7 +31,7 @@ export function newBotKey() {
 export type AdminDb = ReturnType<typeof createAdminClient>
 
 /**
- * bot_api_keys / bot_set_task_due ยังไม่อยู่ใน types/database.ts (migration 20261028085739 ยังไม่ apply)
+ * bot_api_keys / bot_set_task_due ยังไม่อยู่ใน types/database.ts (types:gen ไม่มีสิทธิ์ — migration 20261028023731 apply แล้ว)
  * — หลัง apply + npm run types:gen แล้วเลิกใช้ตัวนี้ได้
  */
 export const untyped = (sb: AdminDb) => sb as unknown as SupabaseClient

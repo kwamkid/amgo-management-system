@@ -11,6 +11,8 @@
 // สถานะ done: ส่ง done_by เอง (trigger ใช้ auth.uid() ซึ่ง service role ไม่มี)
 
 import { bangkokDayKey } from '@/lib/services/workingHoursService'
+import { richTextToPlain } from '@/lib/utils/richText'
+import { statusLineText, type ManualUpdateKind } from '@/lib/tasks/updates'
 import { personName, type AdminDb, type BotCaller, type BotPerson } from './botApi'
 
 export type TaskStatus = 'todo' | 'doing' | 'done'
@@ -67,6 +69,8 @@ export interface BotTask {
   createdBy: BotPerson | null
   notes?: string
   doneAt?: string
+  /** งานติดอยู่ตรงไหน — บรรทัดเดียวกับบนการ์ดหน้าเว็บ เช่น "⏳ รอใบเสนอราคา (ผู้รับเหมา) · ตาม 31 ต.ค." */
+  progress?: string
 }
 
 /** โหลดชื่อคนที่เกี่ยวข้องทีเดียว */
@@ -78,7 +82,13 @@ export async function peopleMap(sb: AdminDb, ids: string[]): Promise<Map<string,
 }
 
 export async function toBotTasks(sb: AdminDb, rows: TaskRow[], opts: { notes?: 'full' | 'short' } = {}): Promise<BotTask[]> {
-  const people = await peopleMap(sb, rows.flatMap((r) => [r.created_by ?? '', ...r.task_assignees.map((a) => a.user_id)]))
+  const [people, { data: lines }] = await Promise.all([
+    peopleMap(sb, rows.flatMap((r) => [r.created_by ?? '', ...r.task_assignees.map((a) => a.user_id)])),
+    rows.length
+      ? sb.from('task_status_line').select('*').in('task_id', rows.map((r) => r.id))
+      : Promise.resolve({ data: [] as never[] }),
+  ])
+  const lineOf = new Map((lines ?? []).map((l) => [l.task_id, l]))
   const today = todayBkk()
   const who = (id: string) => people.get(id) ?? { id, name: '?', discordId: null }
   return rows.map((r) => {
@@ -96,9 +106,22 @@ export async function toBotTasks(sb: AdminDb, rows: TaskRow[], opts: { notes?: '
       if (d < 0) t.daysLate = -d
       else t.daysLeft = d
     }
-    const notes = r.notes?.trim()
+    // รายละเอียดงานเก็บเป็น HTML (ตัวหนา/bullet จากหน้าเว็บ) — บอทอ่านเป็นตัวหนังสือล้วน
+    const notes = richTextToPlain(r.notes)
     if (notes) t.notes = opts.notes === 'full' || notes.length <= 200 ? notes : notes.slice(0, 200) + '…'
     if (r.done_at) t.doneAt = r.done_at
+    const l = lineOf.get(r.id)
+    if (l && r.status !== 'done')
+      t.progress = statusLineText({
+        kind: l.kind as ManualUpdateKind,
+        waitingFor: l.waiting_for,
+        waitingOn: l.waiting_on,
+        body: richTextToPlain(l.body),
+        eventDate: l.event_date,
+        eventTime: l.event_time,
+        followUps: l.follow_ups ?? 0,
+        createdAt: l.created_at ?? '',
+      })
     return t
   })
 }

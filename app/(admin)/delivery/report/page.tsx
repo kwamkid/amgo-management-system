@@ -171,7 +171,7 @@ export default function DeliveryReportPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="รายงานการส่งของ"
         description="วันไหนใครส่งกี่เจ้า — นับจากจุดส่งที่เช็คอินแล้ว"
@@ -185,7 +185,7 @@ export default function DeliveryReportPage() {
               รวมทั้งช่วง{' '}
               <b className="font-semibold text-gray-900">{grand.toLocaleString('th-TH')}</b> เจ้า
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="hidden text-xs text-gray-400 sm:inline">
               0 = มาทำงานแต่ไม่มีงานส่ง · ขาด/ลา/หยุด ตามรายงานเข้างาน
             </span>
           </>

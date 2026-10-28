@@ -74,9 +74,12 @@ export function StatCard({
 export function StatGrid({
   children,
   cols = 4,
+  compact,
 }: {
   children: ReactNode
   cols?: 2 | 3 | 4 | 5
+  /** มือถือเรียง 3 ใบต่อแถว ไม่มีไอคอน — ตัวเลขสรุปที่ไม่อยากให้กินจอแรก */
+  compact?: boolean
 }) {
   const map = {
     2: 'sm:grid-cols-2',
@@ -84,5 +87,9 @@ export function StatGrid({
     4: 'sm:grid-cols-2 lg:grid-cols-4',
     5: 'sm:grid-cols-2 lg:grid-cols-5',
   }
-  return <div className={`mb-6 grid grid-cols-1 gap-3 ${map[cols]}`}>{children}</div>
+  return (
+    <div className={`aoo-stat-grid mb-6 grid grid-cols-1 gap-3 ${map[cols]}`} data-compact={compact || undefined}>
+      {children}
+    </div>
+  )
 }

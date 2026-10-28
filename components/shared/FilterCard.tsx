@@ -25,8 +25,9 @@ export default function FilterCard({
   className?: string
 }) {
   return (
-    <div className={`rounded-xl border border-gray-100 bg-white p-5 shadow-sm ${className}`}>
-      <p className="mb-3 text-base font-semibold text-gray-900">{title}</p>
+    // มือถือ: ไม่มีหัวข้อ ขอบในน้อย ช่องเต็มแถว — ไม่ให้การ์ดกรองกินจอแรก (เจ้าของขอ 28 ต.ค. 69)
+    <div className={`rounded-xl border border-gray-100 bg-white p-3 sm:p-5 ${className}`}>
+      <p className="mb-3 hidden text-base font-semibold text-gray-900 sm:block">{title}</p>
       <div className="flex flex-wrap items-end gap-3">
         {children}
         {actions && <div className="flex items-center gap-3">{actions}</div>}
@@ -48,8 +49,8 @@ export function FilterField({
 }) {
   return (
     // maxWidth กันช่องกว้างคงที่ทะลุการ์ดตอนจอแคบ
-    <div style={width ? { width, maxWidth: '100%' } : undefined}>
-      <p className="mb-1 text-sm text-gray-500">{label}</p>
+    <div className="max-sm:!w-full" style={width ? { width, maxWidth: '100%' } : undefined}>
+      <p className="mb-1 text-xs text-gray-500 sm:text-sm">{label}</p>
       {children}
     </div>
   )

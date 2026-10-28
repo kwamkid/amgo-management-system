@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PageHeader, StatCard, ListRows, ListRow } from '@/components/shared'
+import { PageHeader, Segmented, StatCard, StatGrid, ListRows, ListRow } from '@/components/shared'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import TechLoader from '@/components/shared/TechLoader'
 import { getDeliveryPoints } from '@/lib/services/deliveryService'
-import { SelectMenu, Pill, Card, CardContent, CardHeader, CardTitle, Button, EmptyState } from '@/components/aoo'
+import { Pill, Card, CardContent, CardHeader, CardTitle, Button, EmptyState } from '@/components/aoo'
 export default function DeliveryDashboardPage() {
   const router = useRouter()
   const { userData } = useAuth()
@@ -88,7 +88,7 @@ export default function DeliveryDashboardPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-4 sm:space-y-6">
       <PageHeader
         title="สรุปการส่งของวันนี้"
         description={new Date().toLocaleDateString('th-TH', {
@@ -101,25 +101,21 @@ export default function DeliveryDashboardPage() {
         actions={
           // คนขับเลือกดูเฉพาะงานตัวเอง หรือของทุกคน
           userData?.role === 'driver' ? (
-            <div className="w-44">
-              <SelectMenu
-                size="md"
-                value={viewMode}
-                searchThreshold={99}
-                onChange={(v) => v && setViewMode(v as 'mine' | 'all')}
-                options={[
-                  { value: 'mine', label: 'เฉพาะของฉัน' },
-                  { value: 'all', label: 'ทั้งหมด' },
-                ]}
-              />
-            </div>
+            <Segmented
+              value={viewMode}
+              onChange={(v) => setViewMode(v as 'mine' | 'all')}
+              options={[
+                { value: 'mine', label: 'ของฉัน' },
+                { value: 'all', label: 'ทุกคน' },
+              ]}
+            />
           ) : undefined
         }
       />
 
       {/* Quick Action */}
       <Link href="/delivery/checkin">
-        <Card hoverable className="mb-6">
+        <Card hoverable>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle icon={Camera} tone="accent">เช็คอินจุดส่งของ</CardTitle>
@@ -131,11 +127,11 @@ export default function DeliveryDashboardPage() {
       </Link>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <StatGrid cols={3} compact>
         <StatCard label="จุดทั้งหมด" value={totalPoints} icon={Package} tone="sky" />
         <StatCard label="สำเร็จ" value={completedPoints} icon={CheckCircle} tone="success" />
         <StatCard label="รอดำเนินการ" value={pendingPoints} icon={Clock} tone="warning" />
-      </div>
+      </StatGrid>
 
       {/* Working Time */}
       {totalPoints > 0 && firstDelivery && lastDelivery && viewMode === 'mine' && (

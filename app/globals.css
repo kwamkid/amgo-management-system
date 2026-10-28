@@ -858,6 +858,14 @@ input, textarea { font-family: var(--font-sans); }
 .aoo-stat[data-tone="muted"] .aoo-stat__icon { background: var(--bg-surface); color: var(--fg-3); }
 /* แบบอ่อน (variant="soft") — ข้อมูลรอง/ข้อมูลอ้างอิง เช่น ภาพรวม Search Console เหนือการ์ดหลักสีเต็ม */
 .aoo-stat[data-variant="soft"] { background: var(--tone-soft); color: var(--tone-ink); }
+/* StatGrid compact — มือถือ 3 ใบต่อแถว ไม่มีไอคอน (เจ้าของขอให้มือถือ "น้อย ๆ" 28 ต.ค. 69) */
+@media (max-width: 639px) {
+  .aoo-stat-grid[data-compact] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .aoo-stat-grid[data-compact] .aoo-stat { padding: 10px 12px; }
+  .aoo-stat-grid[data-compact] .aoo-stat__icon { display: none; }
+  .aoo-stat-grid[data-compact] .aoo-stat__label { font-size: 12px; }
+  .aoo-stat-grid[data-compact] .aoo-stat__value { font-size: 22px; }
+}
 .aoo-stat[data-variant="soft"] .aoo-stat__icon { background: var(--bg-surface); color: var(--tone-ink); }
 button.aoo-stat { cursor: pointer; transition: filter var(--dur-fast) var(--ease-out); }
 button.aoo-stat:hover { filter: brightness(0.94); }

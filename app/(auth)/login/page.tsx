@@ -319,7 +319,7 @@ export default function LoginPage() {
       <style>{`
         .lg-root {
           background:
-            radial-gradient(60% 50% at 15% 10%, rgba(249, 161, 27, 0.22), transparent 70%),
+            radial-gradient(60% 50% at 15% 10%, rgba(240, 61, 14, 0.22), transparent 70%),
             radial-gradient(50% 45% at 90% 90%, rgba(239, 74, 34, 0.18), transparent 70%),
             #0f0b09;
         }
@@ -334,7 +334,7 @@ export default function LoginPage() {
         }
         /* เส้นสแกนวิ่งลงช้า ๆ */
         .lg-scan {
-          background: linear-gradient(180deg, transparent, rgba(249, 161, 27, 0.10), transparent);
+          background: linear-gradient(180deg, transparent, rgba(240, 61, 14, 0.10), transparent);
           height: 28vh;
           animation: lg-scan 9s linear infinite;
         }
@@ -345,7 +345,7 @@ export default function LoginPage() {
           position: absolute;
           inset: -3px;
           border-radius: 9999px;
-          background: conic-gradient(from 0deg, transparent 0 60%, rgba(249, 161, 27, 0.9) 85%, transparent 100%);
+          background: conic-gradient(from 0deg, transparent 0 60%, rgba(240, 61, 14, 0.9) 85%, transparent 100%);
           animation: lg-spin 6s linear infinite;
         }
         @keyframes lg-spin { to { transform: rotate(360deg); } }

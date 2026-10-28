@@ -18,8 +18,8 @@ const OUT = 'public/icons'
 mkdirSync(OUT, { recursive: true })
 
 const LOGO_SVG = readFileSync(SRC, 'utf8')
-const LOGO_COLOR = '#f9a11b' // สีเดียวในไฟล์ต้นฉบับ
-const BG = { r: 249, g: 161, b: 27, alpha: 1 } // = LOGO_COLOR
+const LOGO_COLOR = '#f03d0e' // สีเดียวในไฟล์ต้นฉบับ = --brand-coral-500 (สีหลักของระบบ · เปลี่ยนจากเหลืองส้ม 28 ต.ค. 69)
+const BG = { r: 240, g: 61, b: 14, alpha: 1 } // = LOGO_COLOR
 
 function recolored(color) {
   return Buffer.from(LOGO_SVG.replace(LOGO_COLOR, color), 'utf8')

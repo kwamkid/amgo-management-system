@@ -792,9 +792,12 @@ input, textarea { font-family: var(--font-sans); }
 .aoo-steps__step:last-child { border-radius: 0 var(--r-md) var(--r-md) 0;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--notch) 50%); }
 .aoo-steps__step span { overflow: hidden; text-overflow: ellipsis; }
-.aoo-steps__step[data-state="next"] { background: var(--bg-sunken); color: var(--fg-3); }
-.aoo-steps__step[data-state="next"]:hover:not(:disabled) { background: var(--warm-150); color: var(--fg-1); }
+/* ทุกขั้นมีสีของตัวเองตลอด (เจ้าของขอ 28 ต.ค. 69 "เพิ่มสีสัน") — ขั้นปัจจุบันสีเต็ม ที่เหลือสีอ่อนของตัวเอง
+   ขั้นที่ยังไม่ถึงจางลงนิดให้รู้ว่ายังไม่ได้เดินไป */
+.aoo-steps__step[data-state="next"],
 .aoo-steps__step[data-state="passed"] { background: var(--step-tint); color: var(--step-tint-fg); }
+.aoo-steps__step[data-state="next"] { opacity: .75; }
+.aoo-steps__step:not([data-state="current"]):hover:not(:disabled) { opacity: 1; filter: brightness(.95); }
 .aoo-steps__step[data-state="current"] { background: var(--step-solid); color: var(--step-on); }
 .aoo-steps__step[data-tone="accent"]  { --step-solid: var(--accent);   --step-on: var(--fg-on-brand); --step-tint: var(--accent-soft); --step-tint-fg: var(--brand-coral-700); }
 .aoo-steps__step[data-tone="warning"] { --step-solid: var(--sun-500);  --step-on: var(--sun-on); --step-tint: var(--sun-100);  --step-tint-fg: var(--sun-700); }
@@ -2226,11 +2229,12 @@ button:disabled,
 .aoo-kanban__col {
   flex: 0 0 82%; max-width: 360px; scroll-snap-align: start;
   display: flex; flex-direction: column;
-  background: var(--bg-sunken); border: 2px solid transparent; border-radius: var(--r-lg);
+  /* พื้นคอลัมน์เป็นสีอ่อนของสถานะนั้น (เจ้าของขอ 28 ต.ค. 69 "เพิ่มสีสัน") — เดิมเทาเท่ากันทั้งสามคอลัมน์ */
+  background: var(--tone-soft); border: 2px solid transparent; border-radius: var(--r-lg);
   padding: 10px; transition: border-color .15s, background-color .15s;
 }
 @media (min-width: 1024px) { .aoo-kanban__col { max-width: none; } }
-.aoo-kanban__col[data-over] { border-color: var(--tone); background: var(--tone-soft); }
+.aoo-kanban__col[data-over] { border-color: var(--tone); }
 .aoo-kanban__head {
   display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;
   font-size: 14px; font-weight: 700; color: var(--tone-ink);

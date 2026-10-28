@@ -21,8 +21,8 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Db } from '@/lib/supabase/db'
 import { format } from 'date-fns'
-import { resolveCycle, type CycleCode } from './payrollCycle'
-import { checkSwap } from './scheduleSwapRules'
+import { isCutoffPassed, periodOf, resolveCycle, type CycleCode } from './payrollCycle'
+import { checkSwap, monthOfPeriod } from './scheduleSwapRules'
 import { pushNotify } from '@/lib/push/notify'
 
 export { checkSwap } from './scheduleSwapRules'
@@ -123,9 +123,10 @@ export async function createSwap(params: {
   reason: string
 }): Promise<string> {
   const cycle = await getUserCycle(params.userId)
-  const [workedDateMode, offDateMode] = await Promise.all([
+  const [workedDateMode, offDateMode, offCheckins] = await Promise.all([
     expectedMode(params.userId, params.workedDate),
     expectedMode(params.userId, params.offDate),
+    sb().from('checkins').select('id').eq('user_id', params.userId).eq('work_date', ymd(params.offDate)).limit(1),
   ])
 
   const problem = checkSwap({
@@ -134,6 +135,7 @@ export async function createSwap(params: {
     offDate: params.offDate,
     workedDateMode,
     offDateMode,
+    offDateWorked: (offCheckins.data ?? []).length > 0,
   })
   if (problem) throw new Error(problem)
 
@@ -160,6 +162,42 @@ export async function createSwap(params: {
   // push ถึงคนอนุมัติ — ยิงแล้วไม่รอ
   pushNotify({ event: 'swap_request', workedDate: ymd(params.workedDate), offDate: ymd(params.offDate) })
   return data.id
+}
+
+/* ------------------------------------------------------------------ */
+export interface OffDayOptions {
+  /** ช่วงที่เลือกได้ = งวดจ่ายเดียวกับวันที่มาทำงาน (YYYY-MM-DD) */
+  from: string
+  to: string
+  /** งวดตัดยอดแล้ว — ยื่นไม่ได้ทั้งงวด */
+  cutoffPassed: boolean
+  /** วันที่เลือกไม่ได้ → เหตุผลสั้น ๆ */
+  blocked: Map<string, string>
+}
+
+/**
+ * วันที่เลือกเป็นวันหยุดชดเชยได้ — ให้ปฏิทินเทาวันที่ใช้ไม่ได้ไว้ก่อน (กติกาเดียวกับ checkSwap)
+ * เดิมปฏิทินเปิดหมด พนักงานต้องเดาแล้วโดนปฏิเสธทีละข้อ (เจ้าของให้แก้ 28 ต.ค. 69)
+ */
+export async function getOffDayOptions(userId: string, workedDate: Date): Promise<OffDayOptions> {
+  const cycle = await getUserCycle(userId)
+  const period = periodOf(cycle, workedDate)
+  const from = ymd(period.from)
+  const to = ymd(period.to)
+  const cutoffPassed = isCutoffPassed(cycle, monthOfPeriod(cycle, period.to))
+
+  const { data, error } = await sb().rpc('swap_day_options', { p_from: from, p_to: to })
+  if (error) throw new Error(`โหลดวันที่เลือกได้ไม่สำเร็จ: ${error.message}`)
+
+  const blocked = new Map<string, string>()
+  for (const d of data ?? []) {
+    if (d.day === ymd(workedDate)) blocked.set(d.day, 'วันที่มาทำงาน')
+    else if (d.work_mode === 'off') blocked.set(d.day, 'เป็นวันหยุดอยู่แล้ว')
+    else if (d.work_mode === 'optional') blocked.set(d.day, 'วันไม่บังคับ')
+    else if (d.worked) blocked.set(d.day, 'มาทำงานแล้ว')
+    else if (d.taken) blocked.set(d.day, 'มีใบสลับใช้แล้ว')
+  }
+  return { from, to, cutoffPassed, blocked }
 }
 
 /* ------------------------------------------------------------------ */

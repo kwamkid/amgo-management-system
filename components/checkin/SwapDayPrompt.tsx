@@ -18,9 +18,10 @@ import { th } from 'date-fns/locale'
 import { CalendarSync } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, DatePicker, Input, Modal, Field } from '@/components/aoo'
+import { Alert, Button, DatePicker, Input, Modal, Field } from '@/components/aoo'
 import { InfoPanel } from '@/components/shared'
 import { createSwap } from '@/lib/services/scheduleSwapService'
+import { useSwapOffDays } from '@/hooks/useSwapOffDays'
 
 export default function SwapDayPrompt({
   workedDate,
@@ -35,6 +36,10 @@ export default function SwapDayPrompt({
   const [offDate, setOffDate] = useState('')
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const days = useSwapOffDays(userData?.id, workedDate)
+  // ไม่มีวันให้เลือกเลย (งวดตัดยอดแล้ว / ที่เหลือเป็นวันหยุดหรือมาทำงานแล้วทุกวัน) — บังคับเลือกต่อ = ติดอยู่ในหน้าต่างนี้
+  // จึงเป็นกรณีเดียวที่ปิดได้ ให้ไปคุยกับ HR แทน
+  const stuck = days.cutoffPassed || days.noFreeDay
 
   const submit = async () => {
     if (!offDate) {
@@ -77,13 +82,22 @@ export default function SwapDayPrompt({
           </p>
         </InfoPanel>
 
-        <Field
-          asDiv
-          label="จะไปหยุดวันไหนแทน"
-          help="ต้องเป็นวันทำงานปกติ และอยู่ในงวดจ่ายเงินเดือนเดียวกันกับวันนี้"
-        >
-          <DatePicker value={offDate} onChange={setOffDate} />
-        </Field>
+        {stuck ? (
+          <Alert tone="warning">
+            {days.cutoffPassed
+              ? 'งวดเงินเดือนของวันนี้ตัดยอดไปแล้ว ยื่นสลับวันหยุดไม่ได้ — แจ้ง HR ให้จัดการแทน'
+              : 'ในงวดเงินเดือนนี้ไม่เหลือวันทำงานที่ยังไม่ได้มาให้หยุดแทนแล้ว — แจ้ง HR ให้จัดการแทน'}
+          </Alert>
+        ) : (
+          <Field
+            asDiv
+            label="จะไปหยุดวันไหนแทน"
+            help="เลือกได้เฉพาะวันทำงานในงวดเงินเดือนเดียวกันที่ยังไม่ได้มาทำงาน — วันสีเทาเลือกไม่ได้ (แตะค้างดูเหตุผล)"
+            error={days.error ?? undefined}
+          >
+            <DatePicker value={offDate} onChange={setOffDate} disabled={days.loading} {...days.pickerProps} />
+          </Field>
+        )}
 
         <Field label="เหตุผล (ไม่บังคับ)">
           <Input
@@ -93,9 +107,15 @@ export default function SwapDayPrompt({
           />
         </Field>
 
-        <Button onClick={submit} loading={saving} className="w-full">
-          {saving ? 'กำลังยื่น...' : 'ยื่นใบสลับวันหยุด'}
-        </Button>
+        {stuck ? (
+          <Button onClick={onDone} className="w-full">
+            รับทราบ
+          </Button>
+        ) : (
+          <Button onClick={submit} loading={saving} disabled={!offDate} className="w-full">
+            {saving ? 'กำลังยื่น...' : 'ยื่นใบสลับวันหยุด'}
+          </Button>
+        )}
       </div>
     </Modal>
   )

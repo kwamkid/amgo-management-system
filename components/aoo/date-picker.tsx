@@ -30,6 +30,8 @@ export interface DatePickerProps {
   /** จำกัดไม่ให้เลือกเกินวันนี้ ฯลฯ — YYYY-MM-DD */
   min?: string;
   max?: string;
+  /** ปิดบางวันในช่วง — คืนเหตุผล (โชว์เป็น tooltip) หรือ true · false/undefined = เลือกได้ */
+  isDisabled?: (iso: string) => string | boolean | undefined;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -40,19 +42,25 @@ export function DatePicker({
   onChange,
   min,
   max,
+  isDisabled,
   placeholder = "เลือกวันที่",
   disabled,
   className = "",
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() => startOfMonth(parseIso(value) ?? new Date()));
+  const [month, setMonth] = useState(() => startOfMonth(parseIso(value) ?? parseIso(min) ?? new Date()));
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const selected = parseIso(value);
 
   useEffect(() => {
+    // ยังไม่เลือก + ช่วงอยู่นอกเดือนนี้ (เช่นงวดที่แล้ว) → เปิดที่เดือนของช่วงนั้น
+    const minD = parseIso(min);
+    const maxD = parseIso(max);
+    const now = new Date();
     if (open && selected) setMonth(startOfMonth(selected));
+    else if (open && minD && maxD && (now < minD || now > maxD)) setMonth(startOfMonth(minD));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // วางปฏิทินใต้ปุ่ม — ใช้ portal เพื่อไม่ให้โดน overflow ของ card ตัดหาย
@@ -145,13 +153,15 @@ export function DatePicker({
                 if (!d) return <div key={i} />;
                 const isSelected = selected ? sameDay(d, selected) : false;
                 const isToday = sameDay(d, new Date());
-                const blocked = outOfRange(d);
+                const reason = outOfRange(d) || (isDisabled?.(toIso(d)) ?? false);
+                const blocked = !!reason;
 
                 return (
                   <button
                     key={i}
                     type="button"
                     disabled={blocked}
+                    title={typeof reason === "string" ? reason : undefined}
                     onClick={() => {
                       onChange(toIso(d));
                       setOpen(false);

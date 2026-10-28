@@ -19,11 +19,13 @@ export interface SwapCheckInput {
   /** โหมดที่ตารางบอกว่าวันนั้นควรเป็นอะไร — จาก expected_work_mode() · undefined = ไม่ตรวจ */
   workedDateMode?: string | null
   offDateMode?: string | null
+  /** มีเช็คอินในวันที่ขอไปหยุดแล้ว — มาทำงานวันนั้นจริงก็ไม่ได้หยุดชดเชย */
+  offDateWorked?: boolean
   now?: Date
 }
 
 /** เดือนของงวดที่จบวันนี้ — cycleWindow(cycle, เดือนนั้น).to ต้องตรงกับ periodEnd */
-function monthOfPeriod(cycle: CycleCode, periodEnd: Date): Date {
+export function monthOfPeriod(cycle: CycleCode, periodEnd: Date): Date {
   for (const offset of [0, 1, -1]) {
     const m = new Date(periodEnd.getFullYear(), periodEnd.getMonth() + offset, 1)
     if (cycleWindow(cycle, m).to.getTime() === periodEnd.getTime()) return m
@@ -41,7 +43,7 @@ function monthOfPeriod(cycle: CycleCode, periodEnd: Date): Date {
  *   · ทั้งคู่ต้องอยู่งวดจ่ายเดียวกัน และงวดนั้นต้องยังไม่ตัดยอด
  */
 export function checkSwap(input: SwapCheckInput): string | null {
-  const { cycle, workedDate, offDate, workedDateMode, offDateMode } = input
+  const { cycle, workedDate, offDate, workedDateMode, offDateMode, offDateWorked } = input
   const now = input.now ?? new Date()
 
   if (ymd(workedDate) === ymd(offDate)) {
@@ -64,6 +66,11 @@ export function checkSwap(input: SwapCheckInput): string | null {
   // ไม่มาก็ไม่นับขาดอยู่แล้ว — เอามาเป็นวันชดเชยเท่ากับได้หยุดฟรี
   if (offDateMode === 'optional') {
     return `วันที่ ${dm(offDate)} เป็นวันไม่บังคับอยู่แล้ว เลือกวันทำงานปกติเป็นวันหยุดชดเชย`
+  }
+
+  // เจอจริง 28 ต.ค. 69: 7 ใบเลือกวันชดเชยที่ตัวเองก็มาทำงาน แค่ให้หน้าต่างบังคับปิดได้
+  if (offDateWorked) {
+    return `วันที่ ${dm(offDate)} คุณมาทำงานแล้ว เลือกวันที่จะหยุดจริง`
   }
 
   const pWorked = periodOf(cycle, workedDate)

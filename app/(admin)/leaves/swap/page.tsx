@@ -14,6 +14,7 @@ import { th } from 'date-fns/locale'
 import { CalendarSync } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
+import { useSwapOffDays } from '@/hooks/useSwapOffDays'
 import { Button, DatePicker, Modal, Input, EmptyState, Field } from '@/components/aoo'
 import { PageHeader, SectionCard, Skeleton, StatusBadge, ListRow, ListRows } from '@/components/shared'
 import {
@@ -40,6 +41,7 @@ export default function SchedulSwapPage() {
   const [workedDate, setWorkedDate] = useState('')
   const [offDate, setOffDate] = useState('')
   const [reason, setReason] = useState('')
+  const offDays = useSwapOffDays(userData?.id, workedDate ? new Date(`${workedDate}T00:00:00`) : null)
 
   const reload = useCallback(async () => {
     if (!userData?.id) return
@@ -174,10 +176,38 @@ export default function SchedulSwapPage() {
       >
         <div className="space-y-4">
           <Field label="วันหยุดที่มาทำงาน" help="ต้องเป็นวันหยุดประจำของคุณ · ทำงานไปแล้วค่อยมายื่นก็ได้" asDiv>
-            <DatePicker value={workedDate} onChange={setWorkedDate} />
+            <DatePicker
+              value={workedDate}
+              onChange={(v) => {
+                setWorkedDate(v)
+                setOffDate('') // วันชดเชยขึ้นกับงวดของวันบน — เลือกใหม่
+              }}
+            />
           </Field>
-          <Field label="วันที่ขอไปหยุดแทน" help="ต้องเป็นวันทำงานปกติ และอยู่ในงวดจ่ายเงินเดือนเดียวกันกับวันบน" asDiv>
-            <DatePicker value={offDate} onChange={setOffDate} />
+          <Field
+            label="วันที่ขอไปหยุดแทน"
+            help={
+              offDays.cutoffPassed
+                ? undefined
+                : 'เลือกได้เฉพาะวันทำงานในงวดเงินเดือนเดียวกันที่ยังไม่ได้มาทำงาน — วันสีเทาเลือกไม่ได้'
+            }
+            error={
+              offDays.error ??
+              (offDays.cutoffPassed
+                ? 'งวดของวันบนตัดยอดไปแล้ว ยื่นไม่ได้ — แจ้ง HR แทน'
+                : offDays.noFreeDay
+                  ? 'งวดนี้ไม่เหลือวันทำงานที่ยังไม่ได้มาให้หยุดแทนแล้ว — แจ้ง HR แทน'
+                  : undefined)
+            }
+            asDiv
+          >
+            <DatePicker
+              value={offDate}
+              onChange={setOffDate}
+              placeholder={workedDate ? 'เลือกวันที่' : 'เลือกวันบนก่อน'}
+              disabled={!workedDate || offDays.loading || offDays.cutoffPassed || offDays.noFreeDay}
+              {...offDays.pickerProps}
+            />
           </Field>
           <Field label="เหตุผล">
             <Input

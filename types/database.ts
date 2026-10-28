@@ -6381,6 +6381,10 @@ export type Database = {
         }[]
       }
       user_requires_checkin: { Args: { p_user_id: string }; Returns: boolean }
+      swap_day_options: {
+        Args: { p_from: string; p_to: string }
+        Returns: { day: string; work_mode: string; worked: boolean; taken: boolean }[]
+      }
       web_claim_jobs: {
         Args: { p_limit?: number }
         Returns: {

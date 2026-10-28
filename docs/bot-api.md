@@ -1,4 +1,4 @@
-# amgo Bot API — งานของทีม (v1)
+# amgo Bot API — งานของทีม + HR (v1)
 
 API ให้บอทแชท (Hermes Agent บน VPS คุยกับพนักงานใน Discord) อ่านและจัดการงานของทีม — ชุดเดียวกับหน้า **งาน** ใน amgo
 
@@ -48,6 +48,10 @@ X-Discord-User-Id: 123456789012345678     (Edith — บังคับ · Jarvi
 | เปลี่ยนสถานะ / วันครบกำหนด / โน้ต / บันทึกความคืบหน้า | แอดมิน · คนสร้างงาน · ผู้รับผิดชอบ |
 | แก้ชื่องาน / แบรนด์ | แอดมิน · คนสร้างงาน |
 | เปลี่ยนผู้รับผิดชอบ | แอดมิน (พนักงานเพิ่ม/ถอดได้แค่ตัวเอง ในงานที่ตัวเองสร้าง) |
+| HR — ดูเช็คอิน / ใบลา / โควต้าของคนอื่น · ดูเอกสาร | Jarvis เท่านั้น |
+| HR — อนุมัติ / ปฏิเสธใบลา · ยื่นลาแทน · ยกเลิกใบที่อนุมัติแล้ว | Jarvis เท่านั้น (Edith ทำไม่ได้แม้คนที่คุยเป็น HR/แอดมิน) |
+| HR — ดูของตัวเอง · ยื่นลา · ถอนใบที่ยังรอ | ทุกคน (Edith) |
+| วันหยุดบริษัท | ทุกคน |
 
 ไม่ผ่าน = `403` พร้อมเหตุผลภาษาไทยใน `error` — ให้บอทตอบข้อความนั้นกับผู้ใช้ได้เลย
 
@@ -68,6 +72,14 @@ X-Discord-User-Id: 123456789012345678     (Edith — บังคับ · Jarvi
 | PATCH | `/tasks/{id}/images` | เรียงรูปใหม่ (รูปแรก = ปก) |
 | DELETE | `/tasks/{id}/images/{imageId}` | ลบรูป |
 | GET | `/tasks/brief` | สรุปประจำวัน: เลยกำหนด + ครบกำหนดใน 7 วัน |
+| GET | `/attendance` | ใครมา/สาย/ขาด/ลา รายวัน + เวลาเข้า-ออก (§6.1) |
+| GET | `/leave` | รายการใบลา + ตัวกรอง (§6.2) |
+| POST | `/leave` | ยื่นใบลา (Jarvis ยื่นแทน/อนุมัติเลยได้) (§6.3) |
+| GET | `/leave/{id}` | ใบลาใบเดียว |
+| PATCH | `/leave/{id}` | อนุมัติ / ปฏิเสธ / ยกเลิก (§6.4) |
+| GET | `/leave/balance` | โควต้าวันลาคงเหลือ (§6.5) |
+| GET | `/holidays` | วันหยุดบริษัท (§6.6) |
+| GET | `/documents` | เอกสารที่ออกจากระบบ — Jarvis (§6.7) |
 
 ระบุคน (`assignee`, `assignees`, `user`) ได้ 3 แบบ: `"me"` · Discord id · user id (uuid)
 
@@ -220,6 +232,13 @@ curl -s "https://app.amgovenger.com/api/bot/tasks/brief" \
   "people": [ { "id": "…", "name": "กอล์ฟ", "discordId": "…" } ] }
 ```
 
+Jarvis ได้รายละเอียดเพิ่มในแต่ละคน: `fullName` · `nickname` · `role` · `position` (ตำแหน่งงาน) · `company` · `location` (สาขาหลัก) · `employmentStatus` · `startDate` · `endDate` · `active`
+และใช้ `?q=ชื่อ` (ค้นชื่อเล่น/ชื่อจริง) · `?include_inactive=1` (รวมคนที่ปิดบัญชีแล้ว) ได้
+
+```bash
+curl -s -H "Authorization: Bearer $AMGO_JARVIS_KEY" "$BASE/people?q=กอล์ฟ"
+```
+
 ## 5. Error
 
 | Status | ความหมาย |
@@ -227,7 +246,128 @@ curl -s "https://app.amgovenger.com/api/bot/tasks/brief" \
 | 400 | ข้อมูลไม่ครบ/ผิดรูปแบบ หรือหาพนักงานไม่เจอ (`ไม่พบพนักงาน: …`) |
 | 401 | กุญแจผิดหรือถูกเพิกถอน |
 | 403 | ไม่มีสิทธิ์ · Edith ไม่ได้ส่ง `X-Discord-User-Id` · Discord นี้ยังไม่ผูกกับพนักงาน |
-| 404 | ไม่พบงาน |
+| 404 | ไม่พบงาน / ใบลา (Edith ขอใบของคนอื่นก็ได้ 404) |
+| 409 | ใบลาถูกตัดสินไปแล้ว หรือมีใบทับช่วงวันเดียวกัน |
 | 500 | ข้อผิดพลาดฝั่งเซิร์ฟเวอร์ |
 
 ทุก error = `{ "error": "ข้อความภาษาไทย" }`
+
+## 6. HR
+
+Jarvis เห็นของทุกคน · Edith เห็นแค่ของคนที่คุยด้วยเสมอ (ส่ง `person` เป็นคนอื่น = `403`)
+ระบุคน (`person`) ได้ 3 แบบเหมือนงาน: `me` · Discord id · user id
+ทุกการเขียนลงชื่อคนทำ (Jarvis = `acts_as` · Edith = คนที่คุยด้วย) ทั้งในใบลา (`approved_by` / `cancelled_by`) และ `audit_log.changed_by`
+ยื่น/อนุมัติ/ปฏิเสธ ส่ง push แจ้งเตือนเหมือนกดบนเว็บ (ยื่น → HR/ผู้จัดการ · ผล → เจ้าของใบ)
+
+```bash
+BASE=https://app.amgovenger.com/api/bot
+```
+
+### 6.1 `GET /attendance` — การมาทำงาน
+
+| พารามิเตอร์ | ค่า |
+|---|---|
+| `date` | `YYYY-MM-DD` (ค่าเริ่มต้น วันนี้) |
+| `from` + `to` | ช่วงวัน (รวมวันนั้น · ไม่เกิน 62 วัน) แทน `date` |
+| `person` | คนเดียว (Jarvis ไม่ส่ง = ทุกคน) |
+| `status` | กรองผล คั่นด้วยจุลภาค: `worked` `worked_wfh` `leave` `absent` `day_off` `holiday` `not_tracked` `not_scheduled` และ `late` (มาแต่สาย) |
+
+```bash
+# วันนี้ใครขาด/สาย
+curl -s -H "Authorization: Bearer $AMGO_JARVIS_KEY" "$BASE/attendance?status=absent,late"
+# เช็คอินของกอล์ฟทั้งเดือน
+curl -s -H "Authorization: Bearer $AMGO_JARVIS_KEY" "$BASE/attendance?person=1357559583136157696&from=2026-10-01&to=2026-10-31"
+```
+
+```json
+{ "from": "2026-10-28", "to": "2026-10-28",
+  "summary": { "worked": 26, "absent": 5, "late": 5, "day_off": 3, "not_tracked": 5 },
+  "rows": [ { "date": "2026-10-28", "person": { "id": "…", "name": "ณัฐวดี ชื่นชิต (ยุ้ย)" },
+              "company": "AGD", "unit": "พนักงานขาย", "status": "worked", "expected": "onsite",
+              "late": true, "lateMinutes": 28, "checkIn": "09:28", "checkOut": null,
+              "open": true, "needsReview": false, "location": "…", "checkinType": "onsite",
+              "leaveType": null, "hours": 0 } ],
+  "count": 1 }
+```
+
+- `summary` นับทุกแถวก่อนกรอง `status` · `open` = ยังไม่เช็คเอาท์ · `needsReview` = ลืมเช็คเอาท์ ระบบปิดกะให้ รอ HR ตรวจ
+- `absent` = ควรมาแต่ไม่มีเช็คอินและไม่มีใบลาที่อนุมัติ (สูตรเดียวกับกล่องงาน HR หน้าแรก) · ระหว่างวันคนที่ยังไม่มาจะขึ้น `absent` ไปก่อน
+
+### 6.2 `GET /leave` — รายการใบลา
+
+`status` = `pending,approved,rejected,cancelled` หรือ `all` (ค่าเริ่มต้น) · `person` · `type` = `sick|personal|vacation` · `from`/`to` (ใบที่ทับช่วงนี้) · `limit` (50, สูงสุด 200) · ใหม่สุดก่อน
+
+```bash
+curl -s -H "Authorization: Bearer $AMGO_JARVIS_KEY" "$BASE/leave?status=pending"
+```
+
+```json
+{ "leaves": [ { "id": "…", "person": { "id": "…", "name": "ปู", "discordId": "…" },
+    "type": "personal", "typeLabel": "ลากิจ", "status": "pending",
+    "start": "2026-10-31", "end": "2026-10-31", "days": 1, "charged": 1, "urgent": false,
+    "reason": "ประชุมผู้ปกครองค่ะ", "decidedBy": null, "decidedAt": null,
+    "rejectedReason": null, "cancelReason": null, "createdAt": "…" } ],
+  "count": 1 }
+```
+
+`charged` = โควต้าที่หักจริง (ลาด่วน = 2 เท่าของ `days`)
+
+### 6.3 `POST /leave` — ยื่นใบลา
+
+```json
+{ "type": "personal", "start_date": "2026-11-10", "end_date": "2026-11-11", "reason": "ธุระที่บ้าน",
+  "urgent": false,
+  "person": "1536548253372256276",   // Jarvis เท่านั้น — ยื่นแทน
+  "approve": true }                  // Jarvis เท่านั้น — อนุมัติเลย
+```
+
+- `end_date` ไม่ส่ง = วันเดียว · นับทุกวันรวมเสาร์อาทิตย์ (เหมือนเว็บ) · ห้ามข้ามปี · ไม่เกิน 60 วัน
+- ลากิจแจ้งไม่ถึง 3 วัน / พักร้อนไม่ถึง 7 วัน → หักโควต้า 2 เท่าอัตโนมัติ ตอบ `"autoUrgent": true` — ให้บอทบอกผู้ใช้
+- ลากิจ/พักร้อนย้อนหลังไม่ได้ (Edith) · Jarvis ลงย้อนหลังได้ทุกประเภท
+- โควต้าไม่พอ → `400` · มีใบรอ/อนุมัติทับช่วงนี้แล้ว → `409`
+- ตอบ `201` `{ "leave": {…}, "autoUrgent": false }`
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $AMGO_EDITH_KEY" -H "X-Discord-User-Id: <id คนที่คุย>" \
+  -H "Content-Type: application/json" -d '{"type":"sick","start_date":"2026-10-28","reason":"ไข้หวัด"}' "$BASE/leave"
+```
+
+### 6.4 `PATCH /leave/{id}` — อนุมัติ / ปฏิเสธ / ยกเลิก
+
+| body | ใครทำได้ | ใบสถานะไหน |
+|---|---|---|
+| `{ "action": "approve" }` | Jarvis | `pending` (ตรวจโควต้าอีกรอบ) |
+| `{ "action": "reject", "reason": "…" }` | Jarvis | `pending` · ต้องมี `reason` |
+| `{ "action": "cancel", "reason": "…" }` | Edith: ใบของตัวเอง · Jarvis: ทุกใบ | `pending` · ใบ `approved` เฉพาะ Jarvis และต้องมี `reason` (โควต้าคืนเอง) |
+
+ใบถูกตัดสินไปแล้ว → `409` · ตอบ `{ "leave": {…} }` สถานะใหม่
+
+```bash
+curl -s -X PATCH -H "Authorization: Bearer $AMGO_JARVIS_KEY" -H "Content-Type: application/json" \
+  -d '{"action":"reject","reason":"ช่วงนั้นคนไม่พอ"}' "$BASE/leave/<id>"
+```
+
+### 6.5 `GET /leave/balance` — โควต้าคงเหลือ
+
+`person` (Jarvis ไม่ส่ง = ทุกคนที่ยังทำงานอยู่) · `year` (ค่าเริ่มต้น ปีนี้)
+
+```json
+{ "year": 2026, "types": ["sick","personal","vacation"],
+  "people": [ { "id": "…", "name": "แอม",
+    "quota": { "sick": { "total": 30, "used": 0, "remaining": 30 },
+               "personal": { "total": 4, "used": 0, "remaining": 4 },
+               "vacation": { "total": 6, "used": 0, "remaining": 6 } } } ] }
+```
+
+### 6.6 `GET /holidays` — วันหยุดบริษัท
+
+`year` (ค่าเริ่มต้น ปีนี้) หรือ `from`/`to` → `{ "holidays": [ { "date", "name", "type", "workingDay", "description" } ] }`
+`workingDay: true` = วันหยุดที่ยังต้องมาทำงาน (คิด OT อัตราวันหยุด)
+
+### 6.7 `GET /documents` — เอกสาร (Jarvis)
+
+`q` (ชื่อ/เลขที่/ผู้รับ) · `status` (`draft` …) · `limit` (30, สูงสุด 100)
+→ `{ "documents": [ { "id", "docNo", "title", "period", "recipient", "status", "issuedAt", "company", "createdBy", "createdAt" } ] }`
+เปิดดูตัวเอกสารต้องเข้าเว็บ (ล็อกอิน) — API ส่งแค่รายการ
+
+ยังไม่มีใน API: สลับวันหยุด · เบิกค่าใช้จ่าย · OT/แก้เวลาเช็คเอาท์ · เงินเดือน (เจ้าของยังไม่สั่ง)

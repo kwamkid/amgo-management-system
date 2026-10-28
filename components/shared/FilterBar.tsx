@@ -1,8 +1,8 @@
 'use client'
 
-import { Search, X } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { Input, SelectMenu, type SelectOption } from '@/components/aoo'
+import { useState, type ReactNode } from 'react'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Button, Input, SelectMenu, type SelectOption } from '@/components/aoo'
 
 /**
  * แถบค้นหา/กรอง — ของเดิมทุกหน้าเขียน input ค้นหาเองด้วยสไตล์ต่างกัน
@@ -18,6 +18,7 @@ export default function FilterBar({
   children,
   actions,
   sticky = true,
+  activeCount = 0,
 }: {
   search?: string
   onSearch?: (v: string) => void
@@ -27,7 +28,12 @@ export default function FilterBar({
   /** ปุ่มด้านขวาสุด */
   actions?: ReactNode
   sticky?: boolean
+  /** จำนวนตัวกรองที่ตั้งอยู่ — โชว์บนปุ่ม "กรอง" ของมือถือ */
+  activeCount?: number
 }) {
+  // มือถือ: ตัวกรองซ่อนหลังปุ่ม "กรอง" ไม่ให้กินจอแรก (เจ้าของทัก 28 ต.ค. 69)
+  const [open, setOpen] = useState(false)
+
   return (
     <div
       className={`mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-2.5 ${
@@ -55,7 +61,21 @@ export default function FilterBar({
         </div>
       )}
 
-      {children}
+      {children && (
+        // ห่ออีกชั้น — .aoo-btn ไม่อยู่ใน @layer เลยชนะ class `hidden` ของ Tailwind
+        <div className="sm:hidden">
+          <Button
+            variant={activeCount > 0 ? 'soft' : 'secondary'}
+            icon={SlidersHorizontal}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+          >
+            {activeCount > 0 ? `กรอง (${activeCount})` : 'กรอง'}
+          </Button>
+        </div>
+      )}
+
+      {children && <div className={open ? 'contents' : 'hidden sm:contents'}>{children}</div>}
 
       {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
     </div>

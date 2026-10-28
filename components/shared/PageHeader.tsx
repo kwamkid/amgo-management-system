@@ -43,25 +43,26 @@ export default function PageHeader({
   )
 
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    // มือถือ: แถวเดียว ไม่มีคำอธิบาย/กล่องไอคอน ปุ่มเหลือแค่ไอคอน — เดิมหัวหน้ากินจอแรกไปครึ่งจอ (เจ้าของทัก 28 ต.ค. 69)
+    <div className="aoo-page-header mb-4 flex items-center justify-between gap-3 sm:mb-6">
       <div className="flex min-w-0 items-center gap-3">
         {showBack && (backHref && !onBack ? <Link href={backHref}>{back}</Link> : back)}
 
         {Icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50">
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 sm:flex">
             <Icon size={20} className="text-red-600" strokeWidth={1.75} />
           </div>
         )}
 
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold text-gray-900 sm:text-2xl">{title}</h1>
+          <h1 className="truncate text-lg font-bold text-gray-900 sm:text-2xl">{title}</h1>
           {description && (
-            <p className="mt-0.5 truncate text-sm text-gray-500">{description}</p>
+            <p className="mt-0.5 hidden truncate text-sm text-gray-500 sm:block">{description}</p>
           )}
         </div>
       </div>
 
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="aoo-page-header__actions flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
   )
 }

@@ -956,6 +956,13 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 @media (max-width: 640px) {
   .aoo-queue, .aoo-queue-fab { right: 16px; bottom: 16px; }
 }
+/* หัวหน้าบนมือถือ — ปุ่มที่มีไอคอนเหลือแค่ไอคอน (ข้อความยังอ่านได้ด้วย screen reader) */
+@media (max-width: 639px) {
+  .aoo-page-header__actions .aoo-btn:has(> .aoo-btn__label) { aspect-ratio: 1; padding-inline: 0; gap: 0; }
+  .aoo-page-header__actions .aoo-btn__label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
 /* คำตอบเต็มของ AI (แท็บ AI ตอบ) — เก็บบรรทัดตามต้นฉบับ เลื่อนดูในกรอบ */
 .aoo-answer {
   max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;

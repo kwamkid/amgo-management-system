@@ -255,7 +255,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       ) : (
         renderIcon(icon, iconSz)
       )}
-      {children}
+      {/* Wrapped so containers (e.g. PageHeader on mobile) can collapse an
+          icon+label button down to its icon. */}
+      {icon && children != null ? <span className="aoo-btn__label">{children}</span> : children}
       {renderIcon(iconRight, iconSz)}
     </>
   );

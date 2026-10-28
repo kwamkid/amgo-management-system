@@ -220,7 +220,13 @@ export default function TasksPage() {
         <TabItem active={tab === 'all'} onClick={() => switchTab('all')} label={`งานทั้งหมด (${openCount(tasks)})`} />
       </TabBar>
 
-      <FilterBar search={q} onSearch={setQ} placeholder="ค้นหางาน" sticky={false}>
+      <FilterBar
+        search={q}
+        onSearch={setQ}
+        placeholder="ค้นหางาน"
+        sticky={false}
+        activeCount={[tab === 'all' && person, brand, range, dueFilter !== 'any'].filter(Boolean).length}
+      >
         {tab === 'all' && (
           <FilterSelect label="คน" value={person} options={personOptions} onChange={setPerson} width={180} />
         )}

@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
-import { Button, Input, SelectMenu, type SelectOption } from '@/components/aoo'
+import { Button, Input, Modal, SelectMenu, type SelectOption } from '@/components/aoo'
 
 /**
  * แถบค้นหา/กรอง — ของเดิมทุกหน้าเขียน input ค้นหาเองด้วยสไตล์ต่างกัน
@@ -31,7 +31,7 @@ export default function FilterBar({
   /** จำนวนตัวกรองที่ตั้งอยู่ — โชว์บนปุ่ม "กรอง" ของมือถือ */
   activeCount?: number
 }) {
-  // มือถือ: ตัวกรองซ่อนหลังปุ่ม "กรอง" ไม่ให้กินจอแรก (เจ้าของทัก 28 ต.ค. 69)
+  // มือถือ: ตัวกรองอยู่ในหน้าต่างที่เปิดจากปุ่ม "กรอง" — กางในหน้าแล้วดันบอร์ดลงไปทั้งจอ (เจ้าของทัก 28 ต.ค. 69)
   const [open, setOpen] = useState(false)
 
   return (
@@ -67,15 +67,30 @@ export default function FilterBar({
           <Button
             variant={activeCount > 0 ? 'soft' : 'secondary'}
             icon={SlidersHorizontal}
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
           >
             {activeCount > 0 ? `กรอง (${activeCount})` : 'กรอง'}
           </Button>
         </div>
       )}
 
-      {children && <div className={open ? 'contents' : 'hidden sm:contents'}>{children}</div>}
+      {children && <div className="hidden sm:contents">{children}</div>}
+
+      {children && (
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          title="กรอง"
+          footer={
+            <Button className="w-full" onClick={() => setOpen(false)}>
+              ดูผล
+            </Button>
+          }
+        >
+          <div className="aoo-filter-sheet">{children}</div>
+        </Modal>
+      )}
 
       {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
     </div>

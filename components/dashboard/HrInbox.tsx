@@ -89,7 +89,7 @@ export default function HrInbox() {
             icon={FileText}
             label="ใบลา"
             count={data.leave_pending}
-            tone="pink"
+            tone="accent"
           />
           <Tile
             href="/leaves/swap/management"
@@ -111,7 +111,7 @@ export default function HrInbox() {
             icon={Receipt}
             label="ใบเบิกค่าใช้จ่าย"
             count={expensePending + expenses.toPay}
-            tone="sky"
+            tone="success"
             sub={
               expensePending || expenses.toPay
                 ? [

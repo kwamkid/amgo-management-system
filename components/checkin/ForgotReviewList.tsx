@@ -66,7 +66,8 @@ export default function ForgotReviewList({
         const claimed = !!it.claimed_checkout_time
         return (
           <div key={it.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
-            <div className="min-w-0 flex-1">
+            {/* กว้างขั้นต่ำ — มือถือปุ่มตกไปบรรทัดล่าง แทนที่จะบีบชื่อเหลือบรรทัดละคำ */}
+            <div className="min-w-[14rem] flex-1">
               <p className="text-sm font-medium text-gray-900">
                 {it.name} <span className="font-normal text-gray-500">· {day(it.work_date)}</span>
               </p>
@@ -75,7 +76,7 @@ export default function ForgotReviewList({
                 {claimed && (
                   <>
                     {' '}·{' '}
-                    <span className="font-semibold text-blue-700">
+                    <span className="font-semibold text-[var(--grape-700)]">
                       แจ้งว่าเลิก {hm(it.claimed_checkout_time)}
                     </span>
                     {it.claim_note && <span className="text-gray-600"> — {it.claim_note}</span>}

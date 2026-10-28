@@ -959,6 +959,29 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 @media (max-width: 640px) {
   .aoo-queue, .aoo-queue-fab { right: 16px; bottom: 16px; }
 }
+/* แถบเลือกคนแบบรูป (AssigneeStrip · หน้างาน) — เลื่อนข้างได้บนมือถือ */
+.aoo-people-strip { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+.aoo-people-strip::-webkit-scrollbar { display: none; }
+.aoo-people-strip__item {
+  flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 2px; border: 0; border-radius: var(--r-md); background: transparent; cursor: pointer;
+}
+.aoo-people-strip__item:hover { background: var(--bg-sunken); }
+.aoo-people-strip__avatar { position: relative; display: inline-flex; border-radius: 9999px; box-shadow: 0 0 0 2px transparent; transition: box-shadow var(--dur-fast); }
+.aoo-people-strip__item[aria-checked="true"] .aoo-people-strip__avatar { box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--accent); }
+.aoo-people-strip__all {
+  width: 40px; height: 40px; border-radius: 9999px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.aoo-people-strip__count {
+  position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  background: var(--warm-600); color: #fff; border: 2px solid var(--bg-surface);
+}
+.aoo-people-strip__count[data-overdue] { background: var(--accent); }
+.aoo-people-strip__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-2); }
+.aoo-people-strip__item[aria-checked="true"] .aoo-people-strip__name { color: var(--fg-1); font-weight: 700; }
+
 /* ตัวกรองในหน้าต่างมือถือ (FilterBar) — เรียงลงทีละช่อง เต็มความกว้าง (FilterSelect กำหนด width เป็น inline) */
 .aoo-filter-sheet { display: flex; flex-direction: column; gap: 12px; }
 .aoo-filter-sheet > * { width: 100% !important; }

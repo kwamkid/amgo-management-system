@@ -6,8 +6,8 @@
 // เพิ่มงาน = ปุ่ม → modal เดียวกับหน้าแก้ไข (เจ้าของขอ 28 ต.ค. 69 แทนแถวพิมพ์ด่วน)
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
-import { AlarmClock, AlertTriangle, FileText, History, ListChecks, ListTodo } from 'lucide-react'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { AlarmClock, AlertTriangle, FileText, History, ListChecks, ListTodo, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -19,14 +19,13 @@ import {
   Modal,
   SelectMenu,
   StepSelect,
-  TabBar,
-  TabItem,
   RichText,
   RichTextEditor,
   type DateRangeValue,
   type SelectOption,
 } from '@/components/aoo'
-import { BrandLogo, FilterBar, FilterSelect, PageHeader, Segmented, TechLoader, UserAvatar } from '@/components/shared'
+import { BrandLogo, FilterBar, FilterSelect, PageHeader, Segmented, TechLoader } from '@/components/shared'
+import AssigneeStrip, { type AssigneeScope } from '@/components/tasks/AssigneeStrip'
 import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
 import TaskImages from '@/components/tasks/TaskImages'
@@ -73,15 +72,14 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null)
   const [people, setPeople] = useState<TaskPerson[]>([])
   const [q, setQ] = useState('')
-  // แท็บ "งานของฉัน" = งานที่ตัวเองรับผิดชอบ (รวมงานที่สร้างเองแต่ยังไม่มีคนรับ) · จำแท็บล่าสุดไว้ในเครื่อง
-  const [tab, setTab] = useState<'mine' | 'all'>(() => {
+  // ดูงานของใคร: 'all' · 'mine' (รับผิดชอบเอง รวมงานที่สร้างแต่ยังไม่มีคนรับ) · user id — จำไว้ในเครื่อง
+  const [scope, setScope] = useState<AssigneeScope>(() => {
     try {
-      return localStorage.getItem('tasks.tab') === 'all' ? 'all' : 'mine'
+      return localStorage.getItem('tasks.tab') ?? 'mine'
     } catch {
       return 'mine'
     }
   })
-  const [person, setPerson] = useState<string | null>(null)
   const [brand, setBrand] = useState<string | null>(null)
   const [range, setRange] = useState<DateRangeValue>(null)
   const [dueFilter, setDueFilter] = useState<DueFilter>('any')
@@ -124,40 +122,29 @@ export default function TasksPage() {
     }))
   }, [tasks, extraBrands])
 
-  const personOptions: SelectOption[] = useMemo(() => {
-    const mine = people.find((p) => p.userId === me)
-    const ordered = mine ? [{ ...mine, name: `ฉัน (${mine.name})` }, ...people.filter((p) => p !== mine)] : people
-    return ordered.map((p) => ({
-      value: p.userId,
-      label: p.name,
-      icon: <UserAvatar userId={p.userId} name={p.name} size="xs" />,
-    }))
-  }, [people, me])
-
   const isMine = useCallback(
     (t: Task) => (t.assignees.length ? t.assignees.some((a) => a.userId === me) : t.createdBy === me),
     [me]
   )
 
-  const switchTab = (t: 'mine' | 'all') => {
-    setTab(t)
+  const pickScope = (v: AssigneeScope) => {
+    setScope(v)
     try {
-      localStorage.setItem('tasks.tab', t)
+      localStorage.setItem('tasks.tab', v)
     } catch {}
   }
 
-  // ขอบเขต (แท็บ + คน + แบรนด์ + คำค้น + ช่วงวัน) — ปุ่มใกล้/เลยกำหนดนับจากชุดนี้
+  // ขอบเขต (คน + แบรนด์ + คำค้น + ช่วงวัน) — ปุ่มใกล้/เลยกำหนดนับจากชุดนี้
   const scoped = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return (tasks ?? []).filter(
       (t) =>
-        (tab === 'all' || isMine(t)) &&
+        (scope === 'all' || (scope === 'mine' ? isMine(t) : t.assignees.some((a) => a.userId === scope))) &&
         (!range || (!!t.dueDate && t.dueDate >= range.since && t.dueDate <= range.until)) &&
-        (tab === 'mine' || !person || t.assignees.some((a) => a.userId === person)) &&
         (!brand || t.brand === brand) &&
         (!needle || `${t.title} ${richTextToPlain(t.notes)} ${t.sourceRef ?? ''}`.toLowerCase().includes(needle))
     )
-  }, [tasks, tab, isMine, person, brand, q, range])
+  }, [tasks, scope, isMine, brand, q, range])
 
   const visible = useMemo(
     () => (dueFilter === 'soon' ? scoped.filter(isSoon) : dueFilter === 'overdue' ? scoped.filter(isOverdue) : scoped),
@@ -195,7 +182,7 @@ export default function TasksPage() {
 
   if (!userData || !tasks || !me) return <TechLoader />
 
-  const openCount = (list: Task[]) => list.filter((t) => t.status !== 'done').length
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
   const topOfTodo = Math.min(0, ...tasks.filter((x) => x.status === 'todo').map((x) => x.sortOrder)) - 1
 
   return (
@@ -211,25 +198,29 @@ export default function TasksPage() {
         }
       />
 
-      <TabBar ariaLabel="ขอบเขตงาน">
-        <TabItem
-          active={tab === 'mine'}
-          onClick={() => switchTab('mine')}
-          label={`งานของฉัน (${openCount(tasks.filter(isMine))})`}
-        />
-        <TabItem active={tab === 'all'} onClick={() => switchTab('all')} label={`งานทั้งหมด (${openCount(tasks)})`} />
-      </TabBar>
-
       <FilterBar
-        search={q}
-        onSearch={setQ}
-        placeholder="ค้นหางาน"
         sticky={false}
-        activeCount={[tab === 'all' && person, brand, range, dueFilter !== 'any'].filter(Boolean).length}
+        activeCount={[q.trim(), brand, range, dueFilter !== 'any'].filter(Boolean).length}
+        lead={
+          <AssigneeStrip
+            tasks={tasks}
+            people={people}
+            me={me}
+            isMine={isMine}
+            value={scope}
+            onChange={pickScope}
+            today={todayKey}
+          />
+        }
       >
-        {tab === 'all' && (
-          <FilterSelect label="คน" value={person} options={personOptions} onChange={setPerson} width={180} />
-        )}
+        <div className="sm:w-64">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ค้นหางาน"
+            prefix={<Search size={15} className="text-gray-400" />}
+          />
+        </div>
         <FilterSelect label="แบรนด์" value={brand} options={brandOptions} onChange={setBrand} />
         <DateRangePicker value={range} onChange={setRange} placeholder="ครบกำหนดช่วงไหน" clearable aria-label="ช่วงวันครบกำหนด" />
         <Segmented

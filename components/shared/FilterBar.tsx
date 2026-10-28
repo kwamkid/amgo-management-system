@@ -17,6 +17,7 @@ export default function FilterBar({
   placeholder = 'ค้นหา',
   children,
   actions,
+  lead,
   sticky = true,
   activeCount = 0,
 }: {
@@ -27,6 +28,8 @@ export default function FilterBar({
   children?: ReactNode
   /** ปุ่มด้านขวาสุด */
   actions?: ReactNode
+  /** วางหน้าสุดแทนช่องค้นหา (เช่น แถบเลือกคน) — มือถืออยู่แถวเดียวกับปุ่ม "กรอง" · จอใหญ่เต็มแถว */
+  lead?: ReactNode
   sticky?: boolean
   /** จำนวนตัวกรองที่ตั้งอยู่ — โชว์บนปุ่ม "กรอง" ของมือถือ */
   activeCount?: number
@@ -40,6 +43,8 @@ export default function FilterBar({
         sticky ? 'sticky top-14 z-20' : ''
       }`}
     >
+      {lead && <div className="min-w-0 flex-1 sm:basis-full">{lead}</div>}
+
       {onSearch && (
         // ใช้ Input ตัวกลาง — เดิมเขียน input เองสูง 36px ไม่เท่าช่องอื่นในแถว (เจ้าของทัก 28 ต.ค. 69)
         <div className="relative min-w-[180px] flex-1 sm:max-w-xs">

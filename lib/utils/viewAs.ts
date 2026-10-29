@@ -66,5 +66,6 @@ export function applyViewAs(user: UserData): UserData {
     hasSrpAccess: preset.hasSrpAccess ?? false,
     // เมนูส่วนตัว (ดูแลเว็บไซต์) ไม่โผล่ในมุมมองจำลอง — ไม่มีสิทธิ์ไหนเห็นนอกจากเจ้าของ
     hasWebAccess: false,
+    importAccess: null,
   }
 }

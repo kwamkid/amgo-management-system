@@ -55,6 +55,8 @@ export interface UserData {
   needsDayOff?: boolean
   /** อยู่ในรายชื่อ web_owners — เมนูดูแลเว็บไซต์ลูกค้า (งานส่วนตัว แอดมินคนอื่นไม่เห็น) */
   hasWebAccess?: boolean
+  /** อยู่ในรายชื่อ import_access — เมนูนำเข้า (เจ้าของคนเดียวก่อน · 29 ต.ค. 69) · canEdit แก้จำนวน · seeCost เห็นทุน/FOB */
+  importAccess?: { canEdit: boolean; seeCost: boolean } | null
   inviteLinkId?: string
   inviteLinkCode?: string
   isActive: boolean

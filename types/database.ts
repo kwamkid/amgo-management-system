@@ -1587,6 +1587,210 @@ export type Database = {
           },
         ]
       }
+      import_access: {
+        Row: {
+          added_at: string
+          can_edit: boolean
+          see_cost: boolean
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          can_edit?: boolean
+          see_cost?: boolean
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          can_edit?: boolean
+          see_cost?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      import_round_items: {
+        Row: {
+          avg: number | null
+          barcode: string | null
+          blocked: string | null
+          case_pack: number | null
+          cbm: number | null
+          channel: string | null
+          code: string
+          ctn: Json | null
+          fob: number | null
+          grp: string | null
+          gw: number | null
+          id: string
+          img: string | null
+          incoming: number | null
+          name: string
+          note: string | null
+          nw: number | null
+          our_price: number | null
+          our_price_src: string | null
+          pdq_dim: string | null
+          pdq_per_case: number | null
+          qty: number
+          qty_edited_at: string | null
+          qty_edited_by: string | null
+          qty_pdq: number | null
+          remark: string | null
+          round_id: string
+          sort: number
+          srp: number | null
+          stock: number | null
+          sub: string | null
+          suggested: number | null
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          avg?: number | null
+          barcode?: string | null
+          blocked?: string | null
+          case_pack?: number | null
+          cbm?: number | null
+          channel?: string | null
+          code: string
+          ctn?: Json | null
+          fob?: number | null
+          grp?: string | null
+          gw?: number | null
+          id?: string
+          img?: string | null
+          incoming?: number | null
+          name?: string
+          note?: string | null
+          nw?: number | null
+          our_price?: number | null
+          our_price_src?: string | null
+          pdq_dim?: string | null
+          pdq_per_case?: number | null
+          qty?: number
+          qty_edited_at?: string | null
+          qty_edited_by?: string | null
+          qty_pdq?: number | null
+          remark?: string | null
+          round_id: string
+          sort?: number
+          srp?: number | null
+          stock?: number | null
+          sub?: string | null
+          suggested?: number | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          avg?: number | null
+          barcode?: string | null
+          blocked?: string | null
+          case_pack?: number | null
+          cbm?: number | null
+          channel?: string | null
+          code?: string
+          ctn?: Json | null
+          fob?: number | null
+          grp?: string | null
+          gw?: number | null
+          id?: string
+          img?: string | null
+          incoming?: number | null
+          name?: string
+          note?: string | null
+          nw?: number | null
+          our_price?: number | null
+          our_price_src?: string | null
+          pdq_dim?: string | null
+          pdq_per_case?: number | null
+          qty?: number
+          qty_edited_at?: string | null
+          qty_edited_by?: string | null
+          qty_pdq?: number | null
+          remark?: string | null
+          round_id?: string
+          sort?: number
+          srp?: number | null
+          stock?: number | null
+          sub?: string | null
+          suggested?: number | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      import_rounds: {
+        Row: {
+          arrive: string | null
+          brand: string
+          container: string | null
+          containers: Json
+          created_at: string
+          currency: string
+          extra: Json
+          fx: number | null
+          id: string
+          incoterm: string | null
+          lead_months: number | null
+          notes: string | null
+          over_months: number | null
+          round: string
+          slug: string
+          srp_brand: string | null
+          status: string
+          sub: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          arrive?: string | null
+          brand: string
+          container?: string | null
+          containers?: Json
+          created_at?: string
+          currency?: string
+          extra?: Json
+          fx?: number | null
+          id?: string
+          incoterm?: string | null
+          lead_months?: number | null
+          notes?: string | null
+          over_months?: number | null
+          round: string
+          slug: string
+          srp_brand?: string | null
+          status?: string
+          sub?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          arrive?: string | null
+          brand?: string
+          container?: string | null
+          containers?: Json
+          created_at?: string
+          currency?: string
+          extra?: Json
+          fx?: number | null
+          id?: string
+          incoterm?: string | null
+          lead_months?: number | null
+          notes?: string | null
+          over_months?: number | null
+          round?: string
+          slug?: string
+          srp_brand?: string | null
+          status?: string
+          sub?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       invite_links: {
         Row: {
           allow_checkin_outside_location: boolean

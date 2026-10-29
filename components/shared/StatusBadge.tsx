@@ -102,6 +102,11 @@ const KINDS = {
     macro: { label: 'Macro', tone: 'pink' },
     mega: { label: 'Mega', tone: 'grape' },
   },
+  importRound: {
+    draft: { label: 'ร่าง', tone: 'neutral' },
+    approved: { label: 'อนุมัติแล้ว', tone: 'success' },
+    sent: { label: 'ส่ง PO แล้ว', tone: 'grape' },
+  },
   leaveType: {
     sick: { label: 'ลาป่วย', tone: 'pink' },
     personal: { label: 'ลากิจ', tone: 'sky' },

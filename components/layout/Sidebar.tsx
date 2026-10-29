@@ -9,7 +9,7 @@
 //   ของฉัน    — สิ่งที่พนักงานทุกคนทำกับตัวเอง (เช็คอิน · ลา · เบิก)
 //   รออนุมัติ — งานอนุมัติทั้งหมดรวมที่เดียว (เดิมซ่อนอยู่ท้ายเมนูย่อยของแต่ละเรื่อง
 //               หัวหน้าต้องกางทีละกลุ่มเพื่อหา) · พนักงานทั่วไปไม่เห็นกลุ่มนี้เลย
-//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · เว็บไซต์ · SEO / AEO)
+//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · นำเข้า · เว็บไซต์ · SEO / AEO)
 //   จัดการ    — HR/แอดมิน (พนักงาน · รายงาน · เงินเดือน · เอกสาร · ตั้งค่า)
 
 'use client'
@@ -38,6 +38,7 @@ import {
   ReceiptText,
   MapPinCheck,
   ListChecks,
+  Ship,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -145,6 +146,14 @@ const navSections: NavSection[] = [
         // 'srp' = ได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ) — สิทธิ์รายคนรายแบรนด์
         roles: ['admin', 'srp'],
         href: '/srp',
+      },
+      {
+        // แผนสั่งของนำเข้าตามตู้ — ต้องมีชื่อใน import_access (เจ้าของคนเดียวก่อน · 29 ต.ค. 69)
+        label: 'นำเข้า',
+        icon: icon(Ship),
+        tone: 'warning',
+        roles: ['import'],
+        href: '/import',
       },
       {
         label: 'เว็บไซต์',
@@ -267,6 +276,7 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     ...(userData?.jobFunctionCode === 'accountant' ? ['finance'] : []),
     ...(userData?.hasSrpAccess ? ['srp'] : []),
     ...(userData?.hasWebAccess ? ['website'] : []),
+    ...(userData?.importAccess ? ['import'] : []),
   ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 

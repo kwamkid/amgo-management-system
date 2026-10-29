@@ -84,6 +84,7 @@ interface ProfilePayload {
   } | null
   has_srp_access: boolean
   has_web_access: boolean
+  import_access?: { can_edit: boolean; see_cost: boolean } | null
   has_push?: boolean
   needs_day_off?: boolean
 }
@@ -131,6 +132,7 @@ export async function loadAuthState(authUser: User | null): Promise<AuthState> {
         : null,
     hasSrpAccess: !!p.has_srp_access,
     hasWebAccess: !!p.has_web_access,
+    importAccess: p.import_access ? { canEdit: p.import_access.can_edit, seeCost: p.import_access.see_cost } : null,
     // ของที่ /setup บังคับ (migration 20260930200000)
     hasPush: !!p.has_push,
     needsDayOff: !!p.needs_day_off,

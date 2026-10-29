@@ -45,6 +45,47 @@ const partsOf = (r: Pick<RoundRow, 'extra' | 'brand' | 'sub' | 'srp_brand'>): Pa
   return p?.length ? p : [{ source: '', name: r.sub || r.brand, srpBrand: r.srp_brand || r.sub || r.brand }]
 }
 
+// ── aoo shelf prices via aoo MCP (tool `stock`, read-only key AOO_MCP_KEY) · 10 min cache per server instance ──
+const AOO_MCP_URL = process.env.AOO_MCP_URL || 'https://app.aoocommerce.com/api/mcp'
+type AooPrices = { prices: Record<string, { price: number; discount: number }>; error?: string }
+const AOO_CACHE = new Map<string, { at: number; v: AooPrices }>()
+export async function aooPrices(brand: string): Promise<AooPrices> {
+  const hit = AOO_CACHE.get(brand)
+  if (hit && Date.now() - hit.at < 600_000) return hit.v
+  const key = process.env.AOO_MCP_KEY
+  if (!key) return { prices: {}, error: 'ยังไม่ได้ตั้งกุญแจ MCP ของ aoo' }
+  try {
+    const res = await fetch(AOO_MCP_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'stock', arguments: { brands: [brand], include_zero: true, limit: 2000 } },
+      }),
+      cache: 'no-store',
+    })
+    if (!res.ok) return { prices: {}, error: `aoo MCP ${res.status}` }
+    const body = (await res.json()) as { result?: { content?: { text?: string }[]; isError?: boolean } }
+    const text = body.result?.content?.[0]?.text
+    if (!text || body.result?.isError) return { prices: {}, error: text ?? 'aoo MCP ไม่ตอบ' }
+    const prices: AooPrices['prices'] = {}
+    type StockRow = { sku: string | null; barcode: string | null; price: number | null; discount_price: number | null }
+    for (const x of JSON.parse(text) as StockRow[]) {
+      if (!(Number(x.price) > 0)) continue
+      const p = { price: Number(x.price), discount: Number(x.discount_price) || 0 }
+      const sku = String(x.sku || '').trim().toUpperCase().replace(/^00-[A-Z]+-/, '')
+      for (const k of [String(x.barcode || '').trim(), sku]) if (k && !prices[k]) prices[k] = p
+    }
+    const v = { prices }
+    AOO_CACHE.set(brand, { at: Date.now(), v })
+    return v
+  } catch (e) {
+    return { prices: {}, error: (e as Error).message }
+  }
+}
+
 const ctnsOf = (qty: number, pack: number | null) => (pack ? Math.ceil(qty / pack) : 0)
 const yearOf = (r: Pick<RoundRow, 'container' | 'arrive' | 'created_at'>) =>
   r.container?.match(/^(20\d\d)/)?.[1] ?? (r.arrive ?? r.created_at).slice(0, 4)
@@ -101,34 +142,31 @@ export async function listRounds(sb: Sb) {
     .sort((a, b) => (b.year + b.round).localeCompare(a.year + a.round) || (a.sub ? 1 : 0) - (b.sub ? 1 : 0) || a.sub.localeCompare(b.sub))
 }
 
-async function loadRound(sb: Sb, slug: string) {
-  const { data: round, error } = await sb.from('import_rounds').select('*').eq('slug', slug).maybeSingle()
-  if (error) throw error
-  if (!round) return null
-  const items: ItemRow[] = []
-  for (let from = 0; ; from += 1000) {
-    const { data, error: e2 } = await sb
-      .from('import_round_items')
-      .select('*')
-      .eq('round_id', round.id)
-      .order('sort')
-      .range(from, from + 999)
-    if (e2) throw e2
-    items.push(...(data ?? []))
-    if ((data ?? []).length < 1000) break
-  }
-  return { round, items }
-}
-
-/** รอบเดียวในรูปแบบ plan.json · รูปใน bucket แปลงเป็นลิงก์ชั่วคราว (6 ชม.) */
+/**
+ * รอบเดียวในรูปแบบ plan.json + ทุกอย่างที่หน้าต้องใช้ในคำขอเดียว (เจ้าของ 30 ต.ค. 69: "rpc, server load ได้เลย")
+ * RPC import_plan = รอบ + รายการ + โลโก้ + ราคา SRP ทุกแบรนด์ในรอบ (1 รอบเน็ตไป DB) · ราคา aoo มาจากแคช
+ */
 export async function getPlan(sb: Sb, slug: string) {
-  const logosP = brandLogos() // in parallel with the items
-  const loaded = await loadRound(sb, slug)
-  if (!loaded) return null
-  const { round: r, items } = loaded
+  const { data, error } = await sb.rpc('import_plan', { p_slug: slug })
+  if (error) throw error
+  if (!data) return null
+  const d = data as unknown as {
+    round: RoundRow
+    items: ItemRow[]
+    logos: Record<string, string>
+    srp: { brand: string; id: string; usdToThb: number; eurToThb: number; prices: Record<string, unknown> }[]
+    srpBrands: string[]
+    mates: string[]
+  }
+  const r = d.round
+  const items = d.items
+  const logos = new Map(Object.entries(d.logos))
+  const parts = partsOf(r).map((p) => ({ ...p, logo: logos.get(p.srpBrand.toLowerCase()) ?? null }))
+  const aooP = aooPrices(r.brand)
 
   // product pictures are public (bucket import-images is public since 30 Oct 2026) — stable URLs the browser can cache
   const pub = (key: string) => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/import-images/${key}`
+  const missing = d.srpBrands.filter((b) => !d.srp.some((x) => x.brand === b))
 
   const extra = (r.extra && typeof r.extra === 'object' && !Array.isArray(r.extra) ? r.extra : {}) as Record<string, Json>
   return {
@@ -140,11 +178,18 @@ export async function getPlan(sb: Sb, slug: string) {
     title: r.title,
     container: r.container ?? '',
     shipNo: r.ship_no ?? undefined,
-    ...(await (async () => {
-      const logos = await logosP
-      const parts = partsOf(r).map((p) => ({ ...p, logo: logos.get(p.srpBrand.toLowerCase()) ?? null }))
-      return { logo: logoOf(logos, r), parts, srpBrands: parts.map((p) => p.srpBrand) }
-    })()),
+    logo: logoOf(logos, r),
+    parts,
+    srpBrands: d.srpBrands,
+    // prices the page used to fetch itself (same shapes as /api/import/srp and /api/import/aoo-prices)
+    _srp: {
+      brand: d.srp[0]?.brand ?? null,
+      link: d.srp[0] ? `/srp/${d.srp[0].id}` : '/srp',
+      prices: Object.assign({}, ...d.srp.map((x) => x.prices)),
+      error: missing.length ? `ไม่พบแบรนด์ "${missing.join('", "')}" ใน SRP Calculator` : undefined,
+    },
+    _aoo: await aooP,
+    _mates: d.mates,
     status: r.status,
     currency: r.currency,
     fx: r.fx,

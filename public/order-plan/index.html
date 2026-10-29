@@ -284,14 +284,15 @@ async function openPlan(p) {
   if (!r.ok) { $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
   plan = await r.json();
   savedQ = new Map(plan.items.map(i => [i.code, qkey(i)]));
-  // amgo speed: prices and the other rounds of the container load side by side
+  // amgo speed: the server sends the round + prices in one response (RPC import_plan) — no extra calls on open
+  srp = plan._srp || { prices: {} }; aoo = plan._aoo || { prices: {} }; pricesAt = Date.now();
   const matesP = (async () => {
     // other order files that ship in the same container (separate brand forms, one box to fill)
-    mates = plan.container ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
+    mates = plan.container && (plan._mates || []).length ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
     // their lines too, so the footer can show each file's selling value
     await Promise.all(mates.map(async x => { try { x.items = (await (await fetch('/api/import/plan?p=' + encodeURIComponent(x.path))).json()).items || []; } catch { x.items = []; } }));
   })();
-  await Promise.all([loadSrp(), matesP]);
+  await matesP;
   document.title = `${plan.shipNo ? '#' + plan.shipNo : plan.round} ${plan.sub || plan.brand} — แผนสั่งของ`;
   renderShell(); renderRows(); renderTotals();
 }

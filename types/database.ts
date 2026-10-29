@@ -1617,6 +1617,7 @@ export type Database = {
           cbm: number | null
           channel: string | null
           code: string
+          extra: Json
           ctn: Json | null
           fob: number | null
           grp: string | null
@@ -1653,6 +1654,7 @@ export type Database = {
           cbm?: number | null
           channel?: string | null
           code: string
+          extra?: Json
           ctn?: Json | null
           fob?: number | null
           grp?: string | null
@@ -1689,6 +1691,7 @@ export type Database = {
           cbm?: number | null
           channel?: string | null
           code?: string
+          extra?: Json
           ctn?: Json | null
           fob?: number | null
           grp?: string | null

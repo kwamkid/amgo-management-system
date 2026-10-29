@@ -3,6 +3,8 @@ paths:
   - "app/(admin)/import/**"
   - "lib/services/import/**"
   - "app/api/import/**"
+  - "public/order-plan/**"
+  - "scripts/import-sync.mjs"
 ---
 
 # Import module (สั่งของนำเข้า) — 29 Oct 2026
@@ -14,4 +16,7 @@ paths:
 - Pictures: use aoocommerce `product_images` URL (Shopee CDN, zero storage) when barcode/code matches; otherwise upload webp to private bucket `import-images/<brand>/<code>.webp` (keyed by brand+code, not round). Storage was 542 MB / 1 GB on 29 Oct, growing ~250 MB/month — keep it small.
 - Never show cost/FOB to a brand; internal only.
 - Sync = `node scripts/import-sync.mjs push|pull <round folder | plan.json> [...] [--dry]` (run from amgo root; service key from .env.local, aoo key from ~/aoocommerce/.env.local). push = file → amgo (keeps web-edited qty; status only on create; deletes items gone from the file; uploads missing pictures once). pull = web-edited qty + status → plan.json. First push 29 Oct: C1-hape 866 · C1-jadore 43 · 539 pictures = 1.5 MB (most local pictures are tiny Excel thumbnails, e.g. 31×57 px — source quality, not a bug).
-- Owner 29 Oct: the round page must look EXACTLY like the local order-plan page — copy its layout/look, don't redesign.
+- Owner 29 Oct: the round page must look EXACTLY like the local order-plan page. So it is NOT React: `public/order-plan/index.html` is the AGD file copied verbatim (diff = API paths, picture URLs, no version polling, hash → parent), shown full-bleed in an iframe by `app/(admin)/import/page.tsx` (`/import#p=<slug>`). When the owner changes the local page, re-copy and re-apply those few edits — don't restyle it into the design system.
+- API (`lib/services/import/importServer.ts`, routes `app/api/import/{rounds,plan,srp,aoo-prices}`) returns the old serve.mjs shapes. PUT keeps only status · fx · qty; `edited:false` (took the suggestion) clears qty_edited_*; blocked lines can't get qty. Pictures in the bucket go out as 6 h signed URLs. aoo shelf prices need `AOO_SUPABASE_URL` + `AOO_SUPABASE_SECRET_KEY` (local .env.local has them; Vercel must too).
+- Rounds sharing a container are tabs of one page (Hape + J'adore = 2026-C1) — don't delete a sub-brand round because "it's in the Hape order": that means it's a tab there.
+- Never-order list (replaced / discontinued models): see `import-do-not-order.md` → `01-AGD/02-hape/2026/99-data/hape/do-not-order.json`.

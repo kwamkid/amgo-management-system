@@ -100,6 +100,11 @@ async function aooImages(brandNames) {
   return out
 }
 
+// plan.json item keys that have their own column — everything else goes to `extra`
+const ITEM_KEYS = ['code', 'barcode', 'name', 'group', 'sub', 'channel', 'tags', 'remark', 'img', 'fob', 'srp', 'ourPrice',
+  'ourPriceSrc', 'qty', 'suggested', 'note', 'blocked', 'casePack', 'qtyPdq', 'pdqPerCase', 'pdqDim', 'ctn', 'cbm', 'nw',
+  'gw', 'stock', 'incoming', 'avg', 'edited']
+
 // ── push ───────────────────────────────────────────────────────────────────
 async function push(sb, file, dry) {
   const dir = path.dirname(file)
@@ -221,6 +226,7 @@ async function push(sb, file, dry) {
       incoming: num(it.incoming),
       avg: num(it.avg),
       sort: i,
+      extra: Object.fromEntries(Object.entries(it).filter(([k]) => !ITEM_KEYS.includes(k))),
     })
   }
   for (let i = 0; i < rows.length; i += 500) {

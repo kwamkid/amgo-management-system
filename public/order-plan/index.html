@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แผนสั่งของ</title>
+<!-- Copied verbatim from AGD 00-system/tools/order-plan/index.html (owner 29 Oct 2026: "เหมือนเป๊ะ").
+     amgo changes only: API paths → /api/import/*, pictures are full URLs, no version polling,
+     hash is mirrored to the parent /import page. Keep the look identical to the local page. -->
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#fff;--ink:#1d1d1b;--muted:#6b6a66;--line:#e4e2dc;--soft:#f0eee9;
+  --accent:#c8102e;--accent-soft:#fbe9ec;--ok:#1f7a4d;--ok-soft:#e5f3eb;--warn:#a15c00;--warn-soft:#fdf1df;
+  --blue:#2457a6;--blue-soft:#e8eef8;--shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+}
+:root{color-scheme:light;--bg:#fafaf9;--soft:#f5f5f3;--ed:#fff6d6;--ed-head:#fbe9a8;--thb:#f1f3f6;--thb-head:#e2e6ec;
+  --aoo:#F4511E;--aoo-soft:#FFF1EB;--aoo-deep:#7C2D12;
+  --fob:#eaf1fd;--fob-head:#cddff9;--fob-ink:#1e4b8f;--srp:#f3effe;--srp-head:#e0d6fb;--srp-ink:#5b3fb0;
+  --sell:#eaf7ef;--sell-head:#cdebd8;--sell-ink:#1f6b43;--avg:#fff1e8;--avg-head:#fdd9c4;--avg-ink:#a2400f;
+  --cov:#e6f6f5;--cov-head:#c4ebe8;--cov-ink:#11706a;--blue:#F4511E;--blue-soft:#FFF1EB}
+*{box-sizing:border-box}
+/* column highlights: yellow = you can edit · blue = Thai baht */
+/* order box: the input itself turns yellow on lines we order, white otherwise (owner 2026-10-29) */
+td.ed{background:var(--panel)!important}
+tr.ordered td.ed{background:color-mix(in srgb,var(--ok-soft) 45%,var(--panel))!important}
+td.ed input{background:#fff}
+tr.ordered td.ed input{background:var(--ed-head);border-color:#e3c24f;font-weight:650}
+td.thb{background:var(--thb)!important}
+td.g-fob{background:var(--fob)!important}td.g-srp{background:var(--srp)!important}td.g-sell{background:var(--sell)!important}
+td.g-avg{background:var(--avg)!important}td.g-now{background:#f6f1fb!important}
+thead th.g-now{background:#e6dcf3!important;color:#5d3f8a}
+td.now-red{background:#fde2e0!important;color:#b3261e;font-weight:700}td.now-amber{background:#fff0d6!important;color:#a15c00;font-weight:650}td.g-cov{background:var(--cov)!important}
+thead th.g-fob{background:var(--fob-head)!important;color:var(--fob-ink)}thead th.g-srp{background:var(--srp-head)!important;color:var(--srp-ink)}
+thead th.g-sell{background:var(--sell-head)!important;color:var(--sell-ink)}thead th.g-avg{background:var(--avg-head)!important;color:var(--avg-ink)}
+thead th.g-cov{background:var(--cov-head)!important;color:var(--cov-ink)}
+header.top{border-top:4px solid var(--aoo)}
+.b-aoo{background:var(--aoo-soft);color:var(--aoo-deep)}
+thead th.ed{background:var(--ed-head)!important;color:#7a5a00}
+thead th.thb{background:var(--thb-head)!important;color:#1e4b8f}
+.legend{display:flex;gap:10px;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Sukhumvit Set","Thonburi","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.sym{margin-left:3px;font-size:.85em;color:var(--muted);font-weight:500}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+header.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+header.top h1{font-size:17px;margin:0;font-weight:650}
+.back{text-decoration:none;color:var(--muted);font-size:13px}
+.ctrl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.ctrl input[type=number]{width:72px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:right}
+.ctrl input[type=search]{width:180px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.ctrl select{padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.spacer{flex:1}
+.save{font-size:12px;color:var(--muted);min-width:90px;text-align:right}
+.save.err{color:var(--accent)}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.pill.draft{background:var(--blue-soft);color:var(--blue)}
+.pill.approved{background:var(--ok-soft);color:var(--ok)}
+.pill.sent{background:var(--soft);color:var(--muted)}
+.banner{margin:12px 20px 0;padding:10px 14px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:12px;align-items:center}
+.banner button{border:1px solid currentColor;background:transparent;border-radius:6px;padding:2px 10px;cursor:pointer;color:inherit}
+main{padding:14px 20px 200px}
+.wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:auto;max-height:calc(100vh - 290px)}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+thead th{position:sticky;top:0;z-index:5;background:var(--soft);font-size:12px;font-weight:600;color:var(--muted);text-align:left;white-space:nowrap}
+thead th.num{text-align:right}
+thead tr.sup th{top:0;font-size:11px;text-transform:none;letter-spacing:.02em;border-bottom:0;padding-bottom:0}
+thead tr.sub th{top:22px}
+.stick0,.stick1,.stick2,.stick3{position:sticky;z-index:3;background:var(--panel)}
+thead .stick0,thead .stick1,thead .stick2,thead .stick3{z-index:6;background:var(--soft)}
+.stick0{left:0;width:38px;min-width:38px;text-align:right;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.stick1{left:38px;width:64px}.stick2{left:102px;width:92px}.stick3{left:194px;min-width:230px;max-width:260px;box-shadow:1px 0 0 var(--line)}
+.code .bc{display:block;font-weight:400;font-size:10.5px;color:var(--muted);letter-spacing:-.01em}
+.sell-src{display:block;margin-top:3px}
+.fbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 20px}
+/* search + filters stay on screen while scrolling (owner 2026-10-29) */
+#chips{position:sticky;top:var(--hdr,60px);z-index:18;background:var(--bg)}
+.fbar .search{flex:1 1 260px;max-width:380px;height:40px;padding:0 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:14px}
+.fbar .search:focus{outline:2px solid var(--aoo);background:#fff}
+.fbar select{height:40px;border:1px solid #d1d5db;border-radius:10px;background:#fff;padding:0 10px;font-size:13.5px}
+.fbar select.on{background:var(--aoo);color:#fff}
+/* picture dropdown — same pattern as aoo's FormSelect (components/ui/FormSelect.tsx): trigger · floating panel ·
+   search when > 7 options · icon + label + subtitle · check on the selected one */
+.fs{position:relative}
+.fs-opt.lvl1{padding-left:22px;font-size:13.5px}.fs-opt .tree{color:#d1d5db;margin-right:-4px}.fs-opt.lvl1 .fs-ico{width:24px;height:24px}
+#fcat .fs-trig{min-width:240px;max-width:340px}
+.qbox{flex:1 1 260px;max-width:380px}.qbox .search{width:100%;max-width:none}
+.qbox .fs-panel{right:0;width:auto}
+.qh-head{font-size:11.5px;color:var(--muted);padding:6px 14px 2px}
+.fs-opt.qh{cursor:pointer}.qh-x{border:0;background:none;color:#9ca3af;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:5px}.qh-x:hover{background:#f3f4f6;color:var(--ink)}
+a.fk{color:inherit;text-decoration:none;cursor:pointer;border-bottom:1px dotted #c4c4c4}a.fk:hover{color:var(--aoo);border-bottom-color:var(--aoo)}
+.fs-trig{display:flex;align-items:center;gap:8px;height:40px;min-width:200px;max-width:280px;padding:0 10px 0 8px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;font:inherit;font-size:13.5px;color:var(--ink);text-align:left}
+.fs-trig:hover{border-color:#9ca3af}.fs.open .fs-trig{border-color:#9ca3af;box-shadow:0 0 0 3px rgba(156,163,175,.25)}
+.fs.active .fs-trig{border-color:var(--aoo);box-shadow:inset 0 0 0 1px var(--aoo)}
+.fs-trig .t{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.fs-trig .t small{color:var(--muted)}
+.fs-trig .chev{width:14px;height:14px;color:#9ca3af;transition:transform .15s}.fs.open .chev{transform:rotate(180deg)}
+.fs-ico{width:28px;height:28px;flex:none;border-radius:7px;background:#fff;border:1px solid #eee;object-fit:contain;display:block}
+.fs-ico.ph{background:#f3f4f6;border:0}
+.fs-panel{position:absolute;top:calc(100% + 4px);left:0;z-index:60;min-width:100%;width:max-content;max-width:420px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.12);display:none;flex-direction:column;overflow:hidden}
+.fs.open .fs-panel{display:flex}
+.fs-search{padding:8px;border-bottom:1px solid #f3f4f6}.fs-search input{width:100%;padding:6px 10px;border:1px solid #e5e7eb;border-radius:7px;background:#f9fafb;font:inherit;font-size:13.5px}
+.fs-list{max-height:340px;overflow-y:auto;padding:4px 0}
+.fs-opt{display:flex;align-items:center;gap:10px;width:100%;padding:7px 14px;border:0;background:none;font:inherit;font-size:14px;text-align:left;cursor:pointer;color:var(--ink)}
+.fs-opt:hover,.fs-opt.hi{background:#f9fafb}.fs-opt.sel{color:var(--aoo);font-weight:600}
+.fs-opt .fs-lb{flex:1}.fs-opt .fs-sub{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
+.per-menu .per-trig{min-width:0;height:32px;padding:0 10px;gap:6px;font-size:13px}
+.fs-panel.up{top:auto;bottom:calc(100% + 4px);left:auto;right:0}
+.fs-opt .ck{width:16px;color:var(--aoo);visibility:hidden}.fs-opt.sel .ck{visibility:visible}
+.fbar .lab{font-size:12px;color:var(--muted)}
+.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;padding:8px 0;font-size:13px;color:var(--muted)}
+.pager button{border:0;background:#ecebe7;border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;color:var(--ink)}
+.pager button.on{background:var(--aoo);color:#fff}.pager button:disabled{opacity:.4;cursor:default}
+tr.grp td{background:var(--soft);font-weight:650;font-size:12px;letter-spacing:.02em}
+tr.grp td span{position:sticky;left:12px}
+tr.ordered td{background:color-mix(in srgb,var(--ok-soft) 45%,var(--panel))}
+tr.ordered .stick0,tr.ordered .stick1,tr.ordered .stick2,tr.ordered .stick3{background:color-mix(in srgb,var(--ok-soft) 45%,var(--panel))}
+tr.blocked td{opacity:.5}
+.thumb{width:48px;height:48px;object-fit:contain;border-radius:6px;background:#fff;border:1px solid var(--line);cursor:zoom-in;display:block}
+.noimg{width:48px;height:48px;border-radius:6px;background:var(--soft);display:grid;place-items:center;font-size:10px;color:var(--muted)}
+.code{font-weight:600;font-variant-numeric:tabular-nums}
+.name{font-weight:550}
+.badge{display:inline-block;padding:0 6px;border-radius:4px;font-size:11px;font-weight:600;margin-top:2px;white-space:normal;max-width:100%}
+.b-our{background:var(--ok-soft);color:var(--ok)}
+.b-srp{background:var(--warn-soft);color:var(--warn)}
+.b-new{background:var(--blue);color:#fff;margin-right:4px;letter-spacing:.04em}
+.cov-low{color:var(--accent);font-weight:650}
+.cov-over{background:var(--accent-soft)!important;color:var(--accent);font-weight:650}
+.cov-ok{color:var(--ok)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 20px 0}
+.tabs .lab{font-size:12px;color:var(--muted);margin-right:4px}
+/* filled cards (owner 2026-10-29): solid colour, no outlines */
+.tab{display:flex;flex-direction:column;gap:2px;text-decoration:none;border:0;border-radius:12px;padding:9px 16px;background:#ecebe7;min-width:170px;transition:background .15s}
+.tab:hover{background:#e2e0da}
+.tab b{font-size:14px}.tab span{font-size:12px;color:var(--muted)}
+.tab.on{background:var(--aoo);color:#fff;box-shadow:0 4px 14px rgba(244,81,30,.28)}
+.tab.on span{color:rgba(255,255,255,.88)}
+.tab.on .pill{background:rgba(255,255,255,.22);color:#fff}
+.ctr-h{margin:18px 0 8px;font-size:13px;color:var(--muted)}
+.kpi.ctr{border-left:2px solid var(--blue);padding-left:14px}
+.b-agreed{background:var(--blue-soft);color:var(--blue)}
+.b-in{background:var(--ok-soft);color:var(--ok)}
+.b-out{background:var(--accent-soft);color:var(--accent)}
+a.badge{text-decoration:none}
+thead th[data-sort]{cursor:pointer;user-select:none}
+thead th[data-sort]:hover{color:var(--ink)}
+thead th .arr{font-size:10px;margin-left:3px}
+.srplink{font-size:13px;color:var(--blue);text-decoration:none;white-space:nowrap}
+.srplink.err{color:var(--accent)}
+.b-block{background:var(--accent-soft);color:var(--accent)}
+input.qty,input.price{width:86px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:right;font-variant-numeric:tabular-nums}
+input.price{width:74px}
+input.qty:focus,input.price:focus{outline:2px solid var(--blue);outline-offset:0;border-color:transparent}
+input:disabled{background:var(--soft);color:var(--muted)}
+.qwarn{display:block;margin-top:3px;font-size:11px;color:var(--warn);cursor:pointer;text-decoration:underline dotted}
+.sugg{display:block;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer}
+footer.tot{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.05);padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:flex-end}
+.kpi .l{font-size:11px;color:var(--muted)}
+.kpi .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .v.big{font-size:24px}
+.boxes{display:flex;gap:14px;align-items:flex-end}
+.cont{width:120px}
+.cont .bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden;margin-top:4px}
+.cont .bar i{display:block;height:100%;background:var(--blue)}
+.cont.over .bar i{background:var(--accent)}
+.cont .t{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+/* shared-container footer: one row per brand file + total */
+.ctr-sum{border-collapse:collapse;width:auto;min-width:0;font-size:13px}
+.ctr-sum th{font-size:11px;font-weight:500;color:var(--muted);text-align:left;padding:0 12px 3px;border:0;position:static;background:none}
+.ctr-sum th.num{text-align:right}
+.ctr-sum td{padding:3px 12px;border:0;font-variant-numeric:tabular-nums}
+.ctr-sum tbody tr{cursor:pointer}.ctr-sum tbody tr:hover td{background:var(--soft)}
+.ctr-sum tbody tr.me{cursor:default}.ctr-sum tbody tr.me td{background:var(--aoo-soft)}
+.ctr-sum tbody tr td:first-child{border-radius:8px 0 0 8px}.ctr-sum tbody tr td:last-child{border-radius:0 8px 8px 0}
+.ctr-sum td.sell{color:var(--sell-ink);font-weight:600}
+.ctr-sum tfoot td{font-size:17px;font-weight:700;border-top:2px solid var(--ink);padding-top:5px}
+footer.tot .tot-tg{position:absolute;top:-30px;right:20px;border:0;background:var(--aoo);color:#fff;border-radius:8px 8px 0 0;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 -3px 10px rgba(0,0,0,.08)}
+.tot-line{display:flex;gap:16px;align-items:center;font-size:14px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.tot-line b{font-size:16px}
+.mini-bar{display:inline-block;width:120px;height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.mini-bar i{display:block;height:100%;background:var(--aoo)}.mini-bar.over i{background:var(--accent)}
+body.tot-min main{padding-bottom:70px}
+body.tot-min .wrap{max-height:calc(100vh - 200px)}
+.ctr-side{display:flex;flex-direction:column;gap:8px;margin-left:auto;min-width:240px}
+.cont.big{width:260px}.cont.big .bar{height:12px;border-radius:6px}.cont.big .t{font-size:12px}.cont.big b{color:var(--ink)}
+/* list page */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.card:hover{border-color:var(--muted)}
+.card h3{margin:4px 0 8px;font-size:15px}
+.card .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:100;background:rgba(10,10,10,.82);display:none;align-items:center;justify-content:center;padding:40px}
+.lb.on{display:flex}
+.lb figure{margin:0;max-width:min(900px,92vw);text-align:center}
+.lb img{max-width:100%;max-height:78vh;background:#fff;border-radius:10px;display:block;margin:0 auto}
+.lb figcaption{color:#eee;margin-top:12px;font-size:14px}
+.lb .x{position:absolute;top:14px;right:18px;font-size:28px;color:#fff;background:none;border:0;cursor:pointer;line-height:1}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);font-size:34px;color:#fff;background:none;border:0;cursor:pointer;padding:10px}
+.lb .prev{left:10px}.lb .next{right:10px}
+@media (max-width:700px){header.top,main,footer.tot{padding-left:16px;padding-right:16px}.stick3{min-width:170px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="lb" id="lb" role="dialog" aria-modal="true">
+  <button class="x" aria-label="ปิด" data-close>×</button>
+  <button class="nav prev" aria-label="ก่อนหน้า">‹</button>
+  <figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
+  <button class="nav next" aria-label="ถัดไป">›</button>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (n, d = 0) => n == null || isNaN(n) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SYM = { USD: '$', EUR: '€', GBP: '£', RMB: '¥', CNY: '¥' };
+// money in table cells: number then its currency sign (owner 2026-10-29) — fc = the order's currency, thb = baht
+const fc = (n, d = 2) => n == null || isNaN(n) ? '—' : `${fmt(n, d)}<span class="sym">${SYM[plan.currency] || plan.currency}</span>`;
+const thb = n => n == null || isNaN(n) ? '—' : `${fmt(n, 0)}<span class="sym">฿</span>`;
+const STATUS = { draft: 'ร่าง', approved: 'อนุมัติแล้ว', sent: 'ส่งแล้ว' };
+
+let plan = null, planPath = '', dir = '', unlocked = false, onlyOrdered = false, query = '', cat = '', sub = '', chan = '', kind = '', saveTimer = null;
+let aoo = { prices: {} }, srp = { prices: {} }, sortKey = 'qty', sortDir = -1, mates = [];  // default: biggest order first (owner 2026-10-29)
+
+function route() {
+  const p = new URLSearchParams(location.hash.slice(1)).get('p');
+  p ? openPlan(p) : showList();
+}
+addEventListener('hashchange', route);
+// amgo: the parent /import page keeps this hash in its own URL (refresh / share opens the same round)
+addEventListener('hashchange', () => { try { parent.postMessage({ orderPlanHash: location.hash, title: document.title }, location.origin); } catch {} });
+
+/* ---------- list of rounds ---------- */
+async function showList() {
+  plan = null;
+  document.title = 'แผนสั่งของ';
+  const rows = await (await fetch('/api/import/rounds')).json();
+  $('#app').innerHTML = `
+    <header class="top"><h1>แผนสั่งของ — ทุกแบรนด์</h1></header>
+    <main>${rows.length ? groupBy(rows).map(([ctr, rs]) => `
+      <div class="ctr-h">${ctr ? `ตู้ ${esc(ctr)} — รวม $${fmt(rs.reduce((s, x) => s + x.fob, 0), 0)} · ${fmt(rs.reduce((s, x) => s + x.cbm, 0), 1)} CBM` : 'ไม่ได้ระบุตู้'}</div>
+      <div class="grid">${rs.map(r => `
+      <a class="card" href="#p=${encodeURIComponent(r.path)}">
+        <div class="row"><span>${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
+        <h3>${esc(r.round)} — ${esc(r.title)}</h3>
+        <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${SYM[r.currency] || ''}${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>
+      </a>`).join('')}</div>`).join('') : '<div class="empty">ยังไม่มีรอบสั่งของ — ส่งแผนขึ้นด้วย scripts/import-sync.mjs push</div>'}</main>`;
+}
+
+const groupBy = rows => { const m = new Map(); rows.forEach(r => { const k = r.container || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m].sort((a, b) => (b[0] || '').localeCompare(a[0] || '')); };
+
+/* ---------- one round ---------- */
+async function openPlan(p) {
+  planPath = p; dir = p.replace(/plan\.json$/, ''); unlocked = false;
+  const r = await fetch('/api/import/plan?p=' + encodeURIComponent(p));
+  if (!r.ok) { $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
+  plan = await r.json();
+  await loadSrp();
+  // other order files that ship in the same container (separate brand forms, one box to fill)
+  mates = plan.container ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
+  // their lines too, so the footer can show each file's selling value
+  await Promise.all(mates.map(async x => { try { x.items = (await (await fetch('/api/import/plan?p=' + encodeURIComponent(x.path))).json()).items || []; } catch { x.items = []; } }));
+  document.title = `${plan.round} ${plan.sub || plan.brand} — แผนสั่งของ`;
+  renderShell(); renderRows(); renderTotals();
+}
+
+async function loadSrp() {
+  const name = plan.srpBrand || plan.sub || plan.brand;
+  try {
+    const r = await fetch('/api/import/srp?brand=' + encodeURIComponent(name));
+    srp = r.ok ? await r.json() : { prices: {}, error: 'ดึงราคาไม่ได้' };
+    if (r.ok && !srp.brand) srp.error = `ไม่พบแบรนด์ "${name}" ใน SRP Calculator`;
+  } catch { srp = { prices: {}, error: 'ดึงราคาไม่ได้' }; }
+  try {  // real shelf prices in aoo win when aoo already sells the model
+    const r = await fetch('/api/import/aoo-prices?brand=' + encodeURIComponent(plan.aooBrand || plan.brand));
+    aoo = r.ok ? await r.json() : { prices: {} };
+  } catch { aoo = { prices: {} }; }
+}
+// re-read prices when coming back from the SRP Calculator tab
+addEventListener('focus', async () => { if (!plan) return; await loadSrp(); renderSrpLink(); renderRows(); renderTotals(); });
+
+const locked = () => plan.status === 'sent' && !unlocked;
+const cur = () => SYM[plan.currency] || plan.currency + ' ';
+const ctns = i => i.casePack ? Math.ceil((i.qty || 0) / i.casePack) : 0;
+// selling price: ours if we have one, else the brand's SRP converted to baht
+// selling price: SRP Calculator (amgo-management) → price agreed in our notes but not yet in the calculator → brand SRP × fx
+const sell = i => {
+  const a = aoo.prices[String(i.barcode || '').trim()] || aoo.prices[String(i.code).trim().toUpperCase()];
+  if (a && a.price > 0) return { v: a.price, disc: a.discount, src: 'aoo' };
+  const c = srp.prices[String(i.code).trim()];
+  if (c && c.ourPrice > 0) return { v: c.ourPrice, src: 'calc' };
+  if (i.ourPrice != null && i.ourPrice !== '') return { v: +i.ourPrice, src: 'agreed' };
+  return i.srp ? { v: i.srp * plan.fx, src: 'srp' } : { v: null, src: '' };
+};
+// stock (only rounds that carry it): now = sellable in aoo · incoming = on a brand invoice not yet received
+const hasStock = () => plan.items.some(i => i.stock != null);
+const after = i => (i.stock || 0) + (i.incoming || 0) + (i.qty || 0);
+// months of sales the stock covers; rounds with `leadMonths` count from the day the order lands (sales until then come off)
+const cover = (i, n) => i.avg > 0 ? Math.max(0, n / i.avg - (plan.leadMonths || 0)) : null;
+const overM = () => plan.overMonths || 6;
+const NCOL = () => 17 + (hasStock() ? 6 : 0);
+const SORT = {
+  stock: i => i.stock || 0, nowc: i => i.avg > 0 ? (i.stock || 0) / i.avg : 99, inc: i => i.incoming || 0, avg: i => i.avg || 0, after: i => after(i), cov: i => cover(i, after(i)) ?? -1,
+  code: i => Number(i.code) || 0, name: i => i.name.toLowerCase(), barcode: i => String(i.barcode),
+  fob: i => i.fob || 0, srp: i => i.srp || 0, sell: i => sell(i).v || 0, src: i => sell(i).src,
+  qty: i => i.qty || 0, ctn: i => ctns(i), pdq: i => i.qtyPdq || 0, pack: i => i.casePack || 0,
+  cbm: i => i.cbm || 0, tfob: i => (i.qty || 0) * (i.fob || 0), tcbm: i => ctns(i) * (i.cbm || 0),
+};
+const th = (key, label, cls = '') => `<th class="${cls}" data-sort="${key}">${label}<span class="arr">${sortKey === key ? (sortDir > 0 ? '▲' : '▼') : ''}</span></th>`;
+function renderSrpLink() {
+  const el = $('#srplink'); if (!el) return;
+  el.className = 'srplink' + (srp.error ? ' err' : '');
+  el.textContent = srp.error || 'แก้ราคาขาย → SRP Calculator ↗';
+  el.href = srp.link || '/srp';
+}
+
+function renderShell() {
+  $('#app').innerHTML = `
+  <header class="top">
+    <a class="back" href="#">← ทุกรอบ</a>
+    <h1>${esc(plan.brand)}${plan.sub ? ' · ' + esc(plan.sub) : ''} — ${esc(plan.round)} <span class="muted" style="font-weight:400">${esc(plan.title || '')}</span></h1>
+    <label class="ctrl">สถานะ <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${plan.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <label class="ctrl">อัตรา ฿/${esc(plan.currency)} ✎ <input style="background:var(--ed)" id="fx" type="number" step="0.01" value="${plan.fx}"></label>
+    <label class="ctrl"><input id="only" type="checkbox" ${onlyOrdered ? 'checked' : ''}> เฉพาะที่สั่ง</label>
+    <a class="srplink" id="srplink" target="_blank" rel="noopener"></a>
+    <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
+    <span class="spacer"></span><span class="save" id="save"></span>
+  </header>
+  ${plan.container ? `<nav class="tabs"><span class="lab">ตู้ ${esc(plan.container)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
+      ? `<a class="tab on"><b>${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
+      : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
+  <div id="chips"></div>
+  ${plan.status === 'sent' ? `<div class="banner" id="banner">รอบนี้ <b>ส่งแล้ว</b>${plan.sentFile ? ` (${esc(plan.sentFile)})` : ''} — ตัวเลขด้านล่างคือที่ส่งไป ใช้เทียบกับ invoice <button id="unlock">ปลดล็อกเพื่อแก้</button></div>` : ''}
+  <main><div class="wrap"><table>
+    <thead>
+      <tr class="sup"><th class="stick0"></th><th class="stick1"></th><th class="stick2"></th><th class="stick3"></th>
+        <th colspan="2" class="num g-fob">FOB ต่อชิ้น (ต้นทุน)</th><th colspan="2" class="num g-srp">SRP แบรนด์</th><th class="g-sell">ราคาขายเรา</th>
+        <th colspan="2">สั่ง</th>${hasStock() ? `<th colspan="6" class="num">สต็อก (ชิ้น) — ห้ามเกิน ${overM()} เดือน${plan.arrive ? ` · พอขายนับจากของถึง ${esc(plan.arrive)}` : ''}</th>` : ''}<th class="num"></th><th colspan="2">ขนาดกล่อง</th><th colspan="3" class="num">รวมรายการนี้</th></tr>
+      <tr class="sub">
+        <th class="stick0">#</th><th class="stick1">รูป</th>${th('code', 'Item code', 'stick2')}${th('name', 'สินค้า', 'stick3')}
+        ${th('fob', esc(plan.currency), 'num g-fob')}${th('fob', '฿', 'num g-fob')}
+        ${th('srp', esc(plan.currency), 'num g-srp')}${th('srp', '฿', 'num g-srp')}
+        ${th('sell', '฿ · ที่มา', 'num g-sell')}
+        ${th('ctn', 'กล่อง ✎', 'num ed')}${th('qty', 'ชิ้น', 'num')}${hasStock() ? th('stock', 'ตอนนี้', 'num') + th('nowc', 'พอขายตอนนี้ (ด.)', 'num g-now') + th('inc', 'กำลังเข้า', 'num') + th('avg', 'ขาย/ด.', 'num g-avg') + th('after', 'หลังสั่ง', 'num') + th('cov', 'พอขาย (ด.)', 'num g-cov') : ''}
+        ${th('pack', 'บรรจุ', 'num')}
+        <th>ซม. (ย×ก×ส)</th>${th('cbm', 'CBM', 'num')}
+        ${th('tfob', esc(plan.currency), 'num')}${th('tfob', '฿', 'num thb')}${th('tcbm', 'CBM', 'num')}
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table></div><div class="pager" id="pagerBot"></div></main>
+  <footer class="tot" id="tot"></footer>`;
+
+  $('#status').onchange = e => { plan.status = e.target.value; unlocked = false; renderShell(); renderRows(); renderTotals(); save(); };
+  $('#fx').oninput = e => { plan.fx = parseFloat(e.target.value) || 0; renderRows(); renderTotals(); save(); };
+  $('#only').onchange = e => { onlyOrdered = e.target.checked; page = 1; renderRows(); };
+  renderChips();
+  // the sticky filter bar sits right under the sticky header — follow the header's real height (it wraps on narrow windows)
+  new ResizeObserver(([e]) => document.documentElement.style.setProperty('--hdr', e.target.offsetHeight + 'px')).observe($('header.top'));
+  renderSrpLink();
+  document.querySelectorAll('th[data-sort]').forEach(h => h.onclick = () => {
+    const k = h.dataset.sort;
+    if (sortKey !== k) { sortKey = k; sortDir = ['name', 'code', 'barcode', 'src'].includes(k) ? 1 : -1; }
+    else if (sortDir === (['name', 'code', 'barcode', 'src'].includes(k) ? 1 : -1)) sortDir = -sortDir;
+    else { sortKey = 'qty'; sortDir = -1; } // third click: back to the default (biggest order first)
+    renderShell(); renderRows(); renderTotals();
+  });
+  const u = $('#unlock'); if (u) u.onclick = () => { unlocked = true; $('#banner').remove(); renderRows(); };
+}
+
+// [category, items, ordered] in the plan's own order — the category filter
+const tally = (items, key) => { const m = new Map(); items.forEach(i => { const g = i[key]; if (!g) return; const c = m.get(g) || [g, 0, 0]; c[1]++; if (i.qty > 0) c[2]++; m.set(g, c); }); return [...m.values()]; };
+const cats = () => tally(plan.items, 'group');
+// sub-categories / channels (brand order forms that have them, e.g. Hape) — sub-categories follow the chosen category
+const subs = () => tally(plan.items.filter(i => !cat || i.group === cat), 'sub').sort((a, b) => a[0].localeCompare(b[0]));
+const chans = () => tally(plan.items, 'channel').sort((a, b) => a[0].localeCompare(b[0]));
+// NEW = never sold yet (owner 2026-10-29: filter new products) · the rest = models we already sell
+const subsOf = g => [...new Set(plan.items.filter(i => i.group === g && i.sub && i.sub !== g).map(i => i.sub))].sort();
+const kindOf = i => (i.tags || []).includes('new') ? 'NEW ยังไม่เคยขาย' : 'ขายอยู่แล้ว';
+const kinds = () => tally(plan.items.map(i => ({ ...i, kind: kindOf(i) })), 'kind');
+
+// container tabs keep one fixed order whichever file is open: main brand first, then sub-brands by name
+const tabOrder = (a, b) => (a.sub ? 1 : 0) - (b.sub ? 1 : 0) || String(a.sub || '').localeCompare(String(b.sub || '')) || a.path.localeCompare(b.path);
+// picture of a category / sub-category = its best seller (else the biggest line ordered)
+const hero = (key, g) => {
+  const f = key === 'group' ? i => i.group === g : i => i.sub === g && (!cat || i.group === cat);
+  const h = plan.items.filter(i => f(i) && i.img).sort((a, b) => (b.avg || 0) - (a.avg || 0) || (b.qty || 0) - (a.qty || 0))[0];
+  return h ? h.img : '';
+};
+// dropdown with pictures — vanilla port of aoo's FormSelect (one open at a time, outside click / Esc closes)
+// "NEW …" option text → the red NEW badge in front of the rest
+const newLabel = t => /^NEW /.test(t) ? `<span class="badge b-new">NEW</span> ${esc(t.slice(4))}` : esc(t);
+function fsHtml(id, label, list, val, key) {
+  const ico = src => src ? `<img class="fs-ico" src="${src}" alt="" loading="lazy">` : '<span class="fs-ico ph"></span>';
+  const cur = list.find(o => o[0] === val);
+  const opts = [['', `${label}: ทั้งหมด`, `${fmt(list.reduce((s, o) => s + o[1], 0))} รุ่น`, '']]
+    .concat(list.map(([g, n, k]) => [g, g, `${k ? `สั่ง ${k} · ` : ''}${fmt(n)} รุ่น${key === 'group' && subsOf(g).length > 1 ? ' · ' + subsOf(g).slice(0, 3).join(', ') + (subsOf(g).length > 3 ? '…' : '') : ''}`, key ? hero(key, g) : '']));
+  return `<div class="fs ${val ? 'active' : ''}" id="${id}">
+    <button type="button" class="fs-trig">${key ? ico(cur ? hero(key, val) : '') : ''}<span class="t">${cur ? newLabel(val) : `<small>${label}:</small> ทั้งหมด`}</span>
+      <svg class="chev" viewBox="0 0 20 20" fill="currentColor"><path d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4z"/></svg></button>
+    <div class="fs-panel">${opts.length > 8 ? '<div class="fs-search"><input type="text" placeholder="ค้นหา…"></div>' : ''}
+      <div class="fs-list">${opts.map(([v, lb, sub, img]) => `<button type="button" class="fs-opt ${v === val ? 'sel' : ''}" data-v="${esc(v)}" data-kw="${esc(key === 'group' && v ? subsOf(v).join(' ') : '')}">
+        ${key ? ico(img) : ''}<span class="fs-lb">${newLabel(lb)}<span class="fs-sub">${sub}</span></span><span class="ck">✓</span></button>`).join('')}</div></div></div>`;
+}
+// category + sub-category in ONE picture dropdown (owner 2026-10-29): category rows, their sub-categories indented
+// under them; value = "c§<cat>" or "s§<cat>§<sub>"
+function catHtml() {
+  const ico = src => src ? `<img class="fs-ico" src="${src}" alt="" loading="lazy">` : '<span class="fs-ico ph"></span>';
+  const pic = (g, sb) => { const h = plan.items.filter(i => i.group === g && (!sb || i.sub === sb) && i.img)
+    .sort((a, b) => (b.avg || 0) - (a.avg || 0) || (b.qty || 0) - (a.qty || 0))[0]; return h ? h.img : ''; };
+  const cnt = (n, k) => `${k ? `สั่ง ${k} · ` : ''}${fmt(n)} รุ่น`;
+  const val = sub ? `s§${cat}§${sub}` : cat ? `c§${cat}` : '';
+  const rows = [{ v: '', lb: 'หมวด: ทั้งหมด', sb: cnt(plan.items.length, plan.items.filter(i => i.qty > 0).length), img: '', lvl: 0, kw: '' }];
+  for (const [g, n, k] of cats()) {
+    rows.push({ v: `c§${g}`, lb: g, sb: cnt(n, k), img: pic(g), lvl: 0, kw: subsOf(g).join(' ') });
+    const ss = tally(plan.items.filter(i => i.group === g), 'sub').filter(x => x[0] !== g);
+    if (ss.length > 1) for (const [sg, sn, sk] of ss.sort((a, b) => a[0].localeCompare(b[0])))
+      rows.push({ v: `s§${g}§${sg}`, lb: sg, sb: cnt(sn, sk), img: pic(g, sg), lvl: 1, kw: g });
+  }
+  return `<div class="fs ${val ? 'active' : ''}" id="fcat">
+    <button type="button" class="fs-trig">${ico(cat ? pic(cat, sub) : '')}<span class="t">${cat ? esc(cat) + (sub ? ` <small>› ${esc(sub)}</small>` : '') : '<small>หมวด:</small> ทั้งหมด'}</span>
+      <svg class="chev" viewBox="0 0 20 20" fill="currentColor"><path d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4z"/></svg></button>
+    <div class="fs-panel"><div class="fs-search"><input type="text" placeholder="ค้นหาหมวด / หมวดย่อย…"></div>
+      <div class="fs-list">${rows.map(r => `<button type="button" class="fs-opt ${r.lvl ? 'lvl1' : ''} ${r.v === val ? 'sel' : ''}" data-v="${esc(r.v)}" data-kw="${esc(r.kw)}">
+        ${r.lvl ? '<span class="tree">└</span>' : ''}${ico(r.img)}<span class="fs-lb">${esc(r.lb)}<span class="fs-sub">${r.sb}</span></span><span class="ck">✓</span></button>`).join('')}</div></div></div>`;
+}
+function fsBind(id, onPick) {
+  const box = $('#' + id); if (!box) return;
+  const list = [...box.querySelectorAll('.fs-opt')], q = box.querySelector('.fs-search input');
+  let hi = -1;
+  const shown = () => list.filter(o => o.style.display !== 'none');
+  const mark = () => list.forEach(o => o.classList.toggle('hi', shown()[hi] === o));
+  box.querySelector('.fs-trig').onclick = e => {
+    e.stopPropagation();
+    const wasOpen = box.classList.contains('open');
+    document.querySelectorAll('.fs.open').forEach(x => x.classList.remove('open'));
+    if (!wasOpen) { box.classList.add('open'); hi = -1; if (q) { q.value = ''; list.forEach(o => o.style.display = ''); setTimeout(() => q.focus(), 30); } }
+  };
+  box.querySelector('.fs-panel').onclick = e => e.stopPropagation();
+  list.forEach(o => o.onclick = () => { box.classList.remove('open'); onPick(o.dataset.v); });
+  if (q) q.oninput = () => { const t = q.value.trim().toLowerCase(); list.forEach(o => o.style.display = !t || (o.textContent + ' ' + (o.dataset.kw || '')).toLowerCase().includes(t) ? '' : 'none'); hi = t ? 0 : -1; mark(); };
+  box.onkeydown = e => {
+    if (!box.classList.contains('open')) return;
+    const n = shown().length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, n - 1); mark(); shown()[hi]?.scrollIntoView({ block: 'nearest' }); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); mark(); shown()[hi]?.scrollIntoView({ block: 'nearest' }); }
+    if (e.key === 'Enter' && shown()[hi]) { e.preventDefault(); shown()[hi].click(); }
+    if (e.key === 'Escape') box.classList.remove('open');
+  };
+}
+document.addEventListener('click', () => document.querySelectorAll('.fs.open').forEach(x => x.classList.remove('open')));
+
+// filter bar (owner 2026-10-29): search · category · sub-category · channel (picture dropdowns) · rows per page
+function renderChips() {
+  const box = $('#chips'); if (!box) return;
+  const had = document.activeElement && document.activeElement.id === 'fq';
+  box.innerHTML = `<div class="fbar">
+    <div class="fs qbox" id="fqbox"><input id="fq" class="search" type="search" autocomplete="off" spellcheck="false" placeholder="🔍 ค้นหาชื่อ / item code / barcode / หมวด เช่น railway" value="${esc(query)}"><div class="fs-panel"><div class="fs-list" id="fqhist"></div></div></div>
+    ${cats().length > 1 ? catHtml() : ''}
+    ${chans().length > 1 ? fsHtml('fchan', 'Channel', chans(), chan, '') : ''}
+    ${kinds().length > 1 ? fsHtml('fkind', 'สินค้า', kinds(), kind, '') : ''}
+  </div>`;
+  if (had) { const q = $('#fq'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  $('#fq').oninput = e => { query = e.target.value.trim().toLowerCase(); page = 1; renderRows(); };
+  // Esc clears (the browser's own history pop-up used to swallow it → autocomplete off) · the ✕ button fires 'search'
+  $('#fq').onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.target.value = ''; query = ''; page = 1; renderRows(); } };
+  $('#fq').addEventListener('search', e => { if (!e.target.value) { query = ''; page = 1; renderRows(); } });
+  // our own search history (owner 2026-10-29) — last 12 terms per browser, shown under the box on focus, filtered as you type
+  const qb = $('#fqbox'), qh = $('#fqhist'), fq = $('#fq');
+  const hist = () => { try { return JSON.parse(localStorage.getItem('plan.qhist') || '[]'); } catch { return []; } };
+  const keep = t => { t = t.trim(); if (t.length < 2) return; try { localStorage.setItem('plan.qhist', JSON.stringify([t, ...hist().filter(x => x !== t)].slice(0, 12))); } catch {} };
+  const showHist = () => {
+    const t = fq.value.trim().toLowerCase(), h = hist().filter(x => !t || (x.toLowerCase().includes(t) && x.toLowerCase() !== t));
+    qh.innerHTML = h.length ? '<div class="qh-head">ค้นหาล่าสุด</div>' + h.map(x => `<div class="fs-opt qh" data-q="${esc(x)}"><span class="fs-lb">🕘 ${esc(x)}</span><button type="button" class="qh-x" data-del="${esc(x)}" title="ลบออกจากประวัติ">✕</button></div>`).join('') : '';
+    qb.classList.toggle('open', !!h.length && document.activeElement === fq);
+  };
+  fq.addEventListener('focus', showHist);
+  fq.addEventListener('input', showHist);
+  fq.addEventListener('keydown', e => { if (e.key === 'Enter') { keep(fq.value); qb.classList.remove('open'); } if (e.key === 'Escape') qb.classList.remove('open'); });
+  fq.addEventListener('blur', () => { keep(fq.value); setTimeout(() => qb.classList.remove('open'), 150); });
+  qh.addEventListener('mousedown', e => {
+    e.preventDefault();  // keep focus in the box
+    const del = e.target.closest('[data-del]'), it = e.target.closest('[data-q]');
+    if (del) { try { localStorage.setItem('plan.qhist', JSON.stringify(hist().filter(x => x !== del.dataset.del))); } catch {} showHist(); return; }
+    if (it) { fq.value = it.dataset.q; query = it.dataset.q.toLowerCase(); page = 1; keep(it.dataset.q); qb.classList.remove('open'); renderRows(); }
+  });
+  const pick = f => v => { f(v); page = 1; renderChips(); renderRows(); };
+  fsBind('fcat', pick(v => { const [t, g, sg] = v.split('§'); cat = g || ''; sub = t === 's' ? sg : ''; }));
+  fsBind('fchan', pick(v => { chan = v; }));
+  fsBind('fkind', pick(v => { kind = v; }));
+}
+
+function visible() {
+  const v = plan.items.filter(i => (!onlyOrdered || i.qty > 0) && (!cat || i.group === cat) && (!sub || i.sub === sub) && (!chan || i.channel === chan) && (!kind || kindOf(i) === kind) &&
+    (!query || [i.code, i.name, i.barcode, i.group, i.sub, i.channel].some(v => String(v || '').toLowerCase().includes(query))));
+  if (!sortKey) return v;
+  const f = SORT[sortKey];
+  // ties: best seller first, then the brand's order
+  return v.sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir || (b.avg || 0) - (a.avg || 0) || plan.items.indexOf(a) - plan.items.indexOf(b); });
+}
+
+function stockCells(i) {
+  const now = cover(i, (i.stock || 0) + (i.incoming || 0)), aft = cover(i, after(i));
+  const cls = aft == null ? '' : aft > overM() && i.qty > 0 ? 'cov-over' : aft < 1 ? 'cov-low' : 'cov-ok';
+  // months the stock on hand lasts from today (no incoming, no order) — red = runs out before this container lands
+  const nc = i.avg > 0 ? (i.stock || 0) / i.avg : null, lead = plan.leadMonths || 0;
+  const ncCls = nc == null ? '' : nc < lead ? 'now-red' : nc < lead + 1 ? 'now-amber' : '';
+  return `<td class="num">${fmt(i.stock)}</td>
+    <td class="num g-now ${ncCls}" title="${nc == null ? 'ยังไม่มียอดขาย' : nc < lead ? `หมดก่อนของถึง (${esc(plan.arrive || '')})` : ''}">${nc == null ? '—' : fmt(nc, 1)}</td>
+    <td class="num">${i.incoming ? fmt(i.incoming) : ''}</td>
+    <td class="num g-avg">${i.avg ? fmt(i.avg, 1) : '—'}</td><td class="num"><b>${fmt(after(i))}</b></td>
+    <td class="num g-cov ${cls}" title="ตอนนี้+กำลังเข้า พอขาย ${now == null ? '—' : fmt(now, 1)} เดือน">${aft == null ? '—' : fmt(aft, 1)}${aft != null && aft > overM() && i.qty > 0 ? ' ⚠' : ''}</td>`;
+}
+function rowHtml(i, idx, no) {
+  const s = sell(i), c = ctns(i), off = i.casePack && i.qty % i.casePack;
+  const dis = locked() || i.blocked ? 'disabled' : '';
+  const dims = i.ctn && i.ctn.l ? `${fmt(i.ctn.l, 1).replace('.0', '')}×${fmt(i.ctn.w, 1).replace('.0', '')}×${fmt(i.ctn.h, 1).replace('.0', '')}` : '—';
+  return `<tr data-i="${idx}" class="${i.qty > 0 ? 'ordered' : ''} ${i.blocked ? 'blocked' : ''}">
+    <td class="stick0">${no || ''}</td>
+    <td class="stick1">${i.img ? `<img class="thumb" loading="lazy" src="${esc(i.img)}" alt="${esc(i.name)}" data-zoom="${idx}">` : '<div class="noimg">ไม่มีรูป</div>'}</td>
+    <td class="stick2 code">${esc(i.code)}${i.barcode ? `<span class="bc">${esc(i.barcode)}</span>` : ''}</td>
+    <td class="stick3"><div class="name">${(i.tags || []).includes('new') ? '<span class="badge b-new" title="ยังไม่เคยขาย — สั่งมาลอง">NEW</span>' : ''}${esc(i.name)}</div>
+      ${i.sub || i.channel || sortKey ? `<div class="muted small">${[[sortKey ? i.group : '', 'cat'], [i.sub, 'sub'], [i.channel, 'chan']].filter(x => x[0])
+        .map(([v, k]) => `<a class="fk" data-fk="${k}" data-fv="${esc(v)}" data-fg="${esc(i.group || '')}" title="กรองเฉพาะ ${esc(v)}">${esc(v)}</a>`).join(' · ')}</div>` : ''}
+      ${i.remark ? `<div class="muted small">${esc(i.remark)}</div>` : ''}
+      ${i.blocked ? `<span class="badge b-block">${esc(i.blocked)}</span>` : ''}
+      ${i.supply ? `<span class="badge ${i.supply.in ? 'b-in' : 'b-out'}" title="${esc(i.supply.src || '')}">${i.supply.in ? 'Hape มีสต็อก' : 'Hape หมดสต็อก'} · ${esc(i.supply.date || '')}</span>` : ''}
+      ${i.note ? `<div class="small">${esc(i.note)}</div>` : ''}</td>
+    <td class="num g-fob">${fc(i.fob)}</td><td class="num g-fob">${thb(i.fob * plan.fx)}</td>
+    <td class="num g-srp">${fc(i.srp)}</td><td class="num g-srp">${i.srp ? thb(i.srp * plan.fx) : '—'}</td>
+    <td class="num g-sell"><b>${thb(s.v)}</b><span class="sell-src">${s.src === 'aoo' ? `<span class="badge b-aoo" title="ราคาขายจริงใน aoo${s.disc ? ` · ลดเหลือ ฿${fmt(s.disc, 0)}` : ''}">ราคาขายจริง aoo</span>` : s.src === 'calc' ? `<a class="badge b-our" href="${esc(srp.link)}" target="_blank" rel="noopener" title="แก้ราคาใน SRP Calculator">SRP Calculator</a>`
+      : s.src === 'agreed' ? `<span class="badge b-agreed" title="${esc(i.ourPriceSrc || '')}">${i.ourPriceStatus === 'proposed' ? 'ราคาเสนอ · รออนุมัติ' : 'ราคาที่ตกลง'} · ยังไม่อยู่ใน calculator</span>`
+      : s.src === 'srp' ? '<span class="badge b-srp">SRP×อัตรา</span>' : ''}</span></td>
+    <td class="num ed"><input class="qty" type="number" min="0" step="1" value="${c || ''}" ${dis} data-f="ctn" title="จำนวนกล่อง (กล่องละ ${fmt(i.casePack)} ชิ้น)">
+      ${off ? `<span class="qwarn" data-round="${idx}">ไม่ครบกล่อง (${fmt(i.qty)} ชิ้น) → ปัดเป็น ${fmt(c)} กล่อง</span>` : ''}
+      ${i.suggested != null && i.suggested !== i.qty ? `<span class="sugg" data-sugg="${idx}">แนะนำ ${fmt(i.casePack ? Math.ceil(i.suggested / i.casePack) : i.suggested)} กล่อง</span>` : ''}</td>
+    <td class="num">${i.qty ? fmt(i.qty) : ''}</td>${hasStock() ? stockCells(i) : ''}
+    <td class="num">${i.qtyPdq ? `${fmt(i.qtyPdq)} ชิ้น/PDQ${i.pdqPerCase > 1 ? `<div class="muted small">${fmt(i.pdqPerCase)} PDQ/กล่อง</div>` : ''}` : `${fmt(i.casePack)} ชิ้น/กล่อง`}</td>
+    <td class="small">${dims}${i.pdqDim ? `<div class="muted">PDQ ${esc(i.pdqDim)}</div>` : ''}</td>
+    <td class="num">${fmt(i.cbm, 3)}</td>
+    <td class="num">${i.qty ? fc(i.qty * i.fob) : ''}</td>
+    <td class="num thb">${i.qty ? thb(i.qty * i.fob * plan.fx) : ''}</td>
+    <td class="num">${c ? fmt(c * (i.cbm || 0), 2) : ''}</td>
+  </tr>`;
+}
+
+// pagination (owner 2026-10-29): rows per page remembered per browser; 0 = all
+let page = 1, per = (() => { try { return +(localStorage.getItem('plan.per') ?? 50); } catch { return 50; } })();
+function renderPager(total) {
+  const pages = per ? Math.max(1, Math.ceil(total / per)) : 1;
+  if (page > pages) page = pages;
+  const nums = [...new Set([1, page - 2, page - 1, page, page + 1, page + 2, pages])].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const html = `<span>${fmt(total)} รายการ</span>
+    <button data-pg="${page - 1}" ${page <= 1 ? 'disabled' : ''}>‹</button>
+    ${nums.map((n, k) => `${k && n - nums[k - 1] > 1 ? '<span>…</span>' : ''}<button data-pg="${n}" class="${n === page ? 'on' : ''}">${n}</button>`).join('')}
+    <button data-pg="${page + 1}" ${page >= pages ? 'disabled' : ''}>›</button>`;
+  // rows per page: icon menu at the end of the table (owner 2026-10-29), same look as the picture dropdowns
+  const perMenu = `<div class="fs per-menu" id="fper"><button type="button" class="fs-trig per-trig" title="แถวต่อหน้า">
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor"><path d="M3 5h14v2H3zM3 9h14v2H3zM3 13h14v2H3z"/></svg>
+      <span class="t">${per || 'ทั้งหมด'}</span></button>
+    <div class="fs-panel up"><div class="fs-list">${[25, 50, 100, 0].map(n => `<button type="button" class="fs-opt ${n === per ? 'sel' : ''}" data-v="${n}">
+      <span class="fs-lb">${n ? n + ' แถว/หน้า' : 'แสดงทั้งหมด'}</span><span class="ck">✓</span></button>`).join('')}</div></div></div>`;
+  for (const id of ['#pagerBot']) {
+    const el = $(id); if (!el) continue;
+    el.innerHTML = (pages > 1 ? html : `<span>${fmt(total)} รายการ</span>`) + (id === '#pagerBot' ? perMenu : '');
+    el.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { page = +b.dataset.pg; renderRows(); $('.wrap').scrollTop = 0; });
+  }
+  fsBind('fper', v => { per = +v; try { localStorage.setItem('plan.per', String(per)); } catch {} page = 1; renderRows(); });
+}
+function renderRows() {
+  let html = '', grp = null;
+  const vis = visible();
+  renderPager(vis.length);
+  const from = per ? (page - 1) * per : 0, shown = per ? vis.slice(from, from + per) : vis;
+  shown.forEach((i, k) => {
+    if (!sortKey && i.group && i.group !== grp) { grp = i.group; html += `<tr class="grp"><td colspan="${NCOL()}"><span>${esc(grp)}</span></td></tr>`; }
+    html += rowHtml(i, plan.items.indexOf(i), from + k + 1);
+  });
+  $('#rows').innerHTML = html || `<tr><td colspan="${NCOL()}" class="empty">ไม่มีรายการ</td></tr>`;
+}
+
+// footer can fold down to one line (remembered per browser)
+let totMin = (() => { try { return localStorage.getItem('plan.totMin') === '1'; } catch { return false; } })();
+const totToggle = () => `<button class="tot-tg" id="totTg" title="${totMin ? 'ขยายสรุป' : 'ย่อสรุป'}">${totMin ? '▲ ขยาย' : '▼ ย่อ'}</button>`;
+function bindTotToggle() {
+  document.body.classList.toggle('tot-min', totMin);
+  $('#totTg').onclick = () => { totMin = !totMin; try { localStorage.setItem('plan.totMin', totMin ? '1' : '0'); } catch {} renderTotals(); };
+}
+
+function renderTotals() {
+  renderChips(); // ordered counts on the chips follow qty edits
+  const o = plan.items.filter(i => i.qty > 0);
+  const fob = o.reduce((s, i) => s + i.qty * i.fob, 0);
+  const cbm = o.reduce((s, i) => s + ctns(i) * (i.cbm || 0), 0);
+  const ct = o.reduce((s, i) => s + ctns(i), 0);
+  const pcs = o.reduce((s, i) => s + i.qty, 0);
+  const retail = o.reduce((s, i) => s + i.qty * (sell(i).v || 0), 0);
+  const conts = Object.entries(plan.containers || { "20'": 28, "40'": 58, "40'HQ": 68 });
+  const cCbm = cbm + mates.reduce((s, x) => s + x.cbm, 0), cFob = fob + mates.reduce((s, x) => s + x.fob, 0);
+  const cThb = fob * plan.fx + mates.reduce((s, x) => s + x.fob * (x.fx || plan.fx), 0);
+  const cNo = o.filter(i => !i.cbm).length + mates.reduce((s, x) => s + (x.noCbm || 0), 0);
+  const tm = $('#tabme'); if (tm) tm.textContent = `$${fmt(fob, 0)} · ${fmt(cbm, 1)} CBM`;
+  if (totMin) {
+    const allC = mates.length ? cCbm : cbm, cap = Math.max(...conts.map(c => c[1])), pct = allC / cap * 100;
+    $('#tot').innerHTML = `<div class="tot-line">${mates.length ? `<span>ตู้ ${esc(plan.container)}</span><b>${fc(cFob, 0)}</b><b>${thb(cThb)}</b>` : `<b>${fc(fob, 0)}</b><b>${thb(fob * plan.fx)}</b>`}
+      <span>${fmt(allC, 1)} / ${cap} CBM</span><span class="mini-bar ${pct > 100 ? 'over' : ''}"><i style="width:${Math.min(pct, 100)}%"></i></span><b>${fmt(pct, 0)}%</b>
+      <span class="muted">${esc(plan.sub || plan.brand)}: ${fmt(o.length)} รายการ · ${fc(fob, 0)}</span></div>${totToggle()}`;
+    return bindTotToggle();
+  }
+  if (mates.length) {  // shared container: one line per brand file + the container total (Hape · J'adore · Flower Monaco …)
+    const me = { path: planPath, me: true, sub: plan.sub, brand: plan.brand, status: plan.status, lines: o.length, pcs, ctns: ct, fob, fx: plan.fx, cbm, noCbm: o.filter(i => !i.cbm).length, retail };
+    mates.forEach(x => { x.retail = (x.items || []).filter(i => i.qty > 0).reduce((s, i) => { const a = aoo.prices[String(i.barcode || '').trim()];
+      return s + i.qty * (a && a.price > 0 ? a.price : i.ourPrice != null && i.ourPrice !== '' ? +i.ourPrice : (i.srp || 0) * (x.fx || plan.fx)); }, 0); });
+    const rows = [me, ...mates].sort(tabOrder), sum = k => rows.reduce((s, x) => s + (x[k] || 0), 0);
+    const cap = Math.max(...conts.map(c => c[1])), pct = cCbm / cap * 100;
+    const tr = x => `<tr class="${x.me ? 'me' : ''}" ${x.me ? '' : `data-go="${esc(x.path)}"`}>
+      <td><b>${esc(x.sub || x.brand)}</b> <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></td>
+      <td class="num">${fmt(x.lines)}</td><td class="num">${fmt(x.pcs)}</td><td class="num">${fmt(x.ctns)}</td>
+      <td class="num">${fc(x.fob, 0)}</td><td class="num">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;
+    $('#tot').innerHTML = `
+    <table class="ctr-sum"><thead><tr><th>ตู้ ${esc(plan.container)}</th><th class="num">รายการ</th><th class="num">ชิ้น</th><th class="num">กล่อง</th>
+      <th class="num">${esc(plan.incoterm || 'FOB')}</th><th class="num">ต้นทุน บาท @ ${fmt(plan.fx, 0)}</th><th class="num">มูลค่าขาย (ราคาเรา)</th><th class="num">CBM${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</th></tr></thead>
+      <tbody>${rows.map(tr).join('')}</tbody>
+      <tfoot><tr><td>รวมทั้งตู้</td><td class="num">${fmt(sum('lines'))}</td><td class="num">${fmt(sum('pcs'))}</td><td class="num">${fmt(sum('ctns'))}</td>
+        <td class="num">${fc(cFob, 0)}</td><td class="num">${thb(cThb)}</td><td class="num sell">${thb(sum('retail'))}</td><td class="num">${fmt(cCbm, 2)}</td></tr></tfoot></table>
+    <div class="ctr-side">
+      <div class="cont big ${pct > 100 ? 'over' : ''}"><div class="t"><span>ตู้ ${esc(conts.find(c => c[1] === cap)[0])} · ${fmt(cCbm, 1)} / ${cap} CBM</span><b>${fmt(pct, 0)}%</b></div><div class="bar"><i style="width:${Math.min(pct, 100)}%"></i></div>
+        <div class="t">${pct > 100 ? `<span class="cov-low">เกิน ${fmt(cCbm - cap, 1)} CBM</span>` : `<span>เหลือที่ ${fmt(cap - cCbm, 1)} CBM</span>`}</div></div>
+      ${hasStock() ? `<div class="kpi"><div class="l">สั่งเกิน ${overM()} เดือน</div><div class="v ${o.some(i => (cover(i, after(i)) || 0) > overM()) ? 'cov-low' : ''}">${fmt(o.filter(i => (cover(i, after(i)) || 0) > overM()).length)} รุ่น</div></div>` : ''}
+    </div>`;
+    $('#tot').insertAdjacentHTML('beforeend', totToggle());
+    $('#tot').querySelectorAll('tr[data-go]').forEach(r => r.onclick = () => { location.hash = 'p=' + encodeURIComponent(r.dataset.go); });
+    return bindTotToggle();
+  }
+  $('#tot').innerHTML = `
+    <div class="kpi"><div class="l">รายการ</div><div class="v">${fmt(o.length)}</div></div>
+    <div class="kpi"><div class="l">ชิ้น</div><div class="v">${fmt(pcs)}</div></div>
+    <div class="kpi"><div class="l">กล่อง</div><div class="v">${fmt(ct)}</div></div>
+    <div class="kpi"><div class="l">ยอดที่ต้องจ่าย (${esc(plan.incoterm || 'FOB')})</div><div class="v big">${fc(fob, 2)}</div></div>
+    <div class="kpi"><div class="l">เป็นเงินบาท @ ${fmt(plan.fx, 2)}</div><div class="v big">${thb(fob * plan.fx)}</div></div>
+    <div class="kpi"><div class="l">มูลค่าขาย (ราคาเรา/SRP)</div><div class="v">${thb(retail)}</div></div>
+    ${hasStock() ? `<div class="kpi"><div class="l">สั่งเกิน ${overM()} เดือน</div><div class="v ${o.some(i => (cover(i, after(i)) || 0) > overM()) ? 'cov-low' : ''}">${fmt(o.filter(i => (cover(i, after(i)) || 0) > overM()).length)} รุ่น</div></div>` : ''}
+    <div class="kpi"><div class="l">CBM${o.some(i => !i.cbm) ? ` <span class="cov-low">(ไม่มีขนาดกล่อง ${o.filter(i => !i.cbm).length} รายการ)</span>` : ''}</div><div class="v big">${fmt(cbm, 2)}</div></div>
+    ${mates.length ? `<div class="kpi ctr"><div class="l">ทั้งตู้ ${esc(plan.container)} (${mates.length + 1} ไฟล์)</div><div class="v">${fc(cFob, 0)} · ${thb(cThb)}</div></div>
+    <div class="kpi"><div class="l">CBM ทั้งตู้${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</div><div class="v big">${fmt(cCbm, 2)}</div></div>` : ''}
+    <div class="boxes">${conts.map(([k, cap]) => { const p = (mates.length ? cCbm : cbm) / cap * 100; return `
+      <div class="cont ${p > 100 ? 'over' : ''}"><div class="t"><span>ตู้ ${esc(k)} (${cap})</span><span>${fmt(p, 0)}%</span></div><div class="bar"><i style="width:${Math.min(p, 100)}%"></i></div></div>`; }).join('')}</div>${totToggle()}`;
+  bindTotToggle();
+}
+
+/* edits */
+document.addEventListener('change', e => {
+  const t = e.target, tr = t.closest('tr[data-i]');
+  if (!tr || !t.dataset.f) return;
+  const i = plan.items[+tr.dataset.i];
+  if (t.dataset.f === 'qty') i.qty = Math.max(0, parseInt(t.value) || 0);
+  if (t.dataset.f === 'ctn') i.qty = Math.max(0, parseInt(t.value) || 0) * (i.casePack || 1); // order in full cartons
+  if (t.dataset.f === 'qty' || t.dataset.f === 'ctn') i.edited = i.qty !== i.suggested;  // the builder keeps edited lines
+  if (t.dataset.f === 'ourPrice') { i.ourPrice = t.value === '' ? null : +t.value; i.ourPriceSrc = t.value === '' ? '' : 'edited ' + new Date().toISOString().slice(0, 10); }
+  tr.outerHTML = rowHtml(i, +tr.dataset.i, tr.querySelector('.stick0').textContent);  // keep the row number
+  renderTotals(); save();
+});
+document.addEventListener('click', e => {
+  // category / sub-category / channel under a product name → filter by it (owner 2026-10-29)
+  const fk = e.target.closest('[data-fk]');
+  if (fk) {
+    const v = fk.dataset.fv;
+    if (fk.dataset.fk === 'cat') { cat = v; sub = ''; }
+    if (fk.dataset.fk === 'sub') { cat = fk.dataset.fg; sub = v; }
+    if (fk.dataset.fk === 'chan') chan = v;
+    page = 1; renderChips(); renderRows(); $('.wrap').scrollTop = 0;
+    return;
+  }
+  const z = e.target.closest('[data-zoom]'); if (z) return openLb(+z.dataset.zoom);
+  const r = e.target.closest('[data-round]');
+  const s = e.target.closest('[data-sugg]');
+  const el = r || s; if (!el || locked()) return;
+  const idx = +(r ? r.dataset.round : s.dataset.sugg), i = plan.items[idx];
+  i.qty = r ? ctns(i) * i.casePack : i.suggested;
+  i.edited = !!r && i.qty !== i.suggested;  // taking the suggestion = no longer an own edit
+  const row = document.querySelector(`tr[data-i="${idx}"]`);
+  row.outerHTML = rowHtml(i, idx, row.querySelector('.stick0').textContent);
+  renderTotals(); save();
+});
+
+function save() {
+  const el = $('#save'); el.className = 'save'; el.textContent = 'กำลังบันทึก…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/import/plan?p=' + encodeURIComponent(planPath), { method: 'PUT', body: JSON.stringify(plan) });
+      if (!r.ok) throw new Error(r.status);
+      el.textContent = 'บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    } catch (err) { el.className = 'save err'; el.textContent = 'บันทึกไม่ได้ — ลองใหม่'; }
+    saveTimer = null;  // nothing pending — safe for checkVersion() to reload
+  }, 500);
+}
+
+/* lightbox */
+let lbList = [], lbPos = 0;
+function openLb(idx) {
+  lbList = visible().filter(i => i.img).map(i => plan.items.indexOf(i));
+  lbPos = Math.max(0, lbList.indexOf(idx)); showLb(); $('#lb').classList.add('on');
+}
+function showLb() {
+  const i = plan.items[lbList[lbPos]];
+  $('#lbImg').src = i.img;
+  $('#lbCap').textContent = `${i.code} · ${i.name}${i.barcode ? ' · ' + i.barcode : ''}`;
+}
+const closeLb = () => $('#lb').classList.remove('on');
+$('#lb').addEventListener('click', e => {
+  if (e.target.closest('.prev')) { lbPos = (lbPos - 1 + lbList.length) % lbList.length; return showLb(); }
+  if (e.target.closest('.next')) { lbPos = (lbPos + 1) % lbList.length; return showLb(); }
+  if (e.target.closest('img')) return;
+  closeLb(); // backdrop, caption or ×
+});
+addEventListener('keydown', e => {
+  if (!$('#lb').classList.contains('on')) return;
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'ArrowLeft') { lbPos = (lbPos - 1 + lbList.length) % lbList.length; showLb(); }
+  if (e.key === 'ArrowRight') { lbPos = (lbPos + 1) % lbList.length; showLb(); }
+});
+
+route();
+</script>
+</body>
+</html>

@@ -1,25 +1,19 @@
 'use client'
 
-// สั่งของนำเข้า — รายการรอบสั่ง จัดกลุ่มตามตู้ (29 ต.ค. 69)
-// เห็นเฉพาะคนใน import_access (ตอนนี้เจ้าของคนเดียว) · รอบมาจาก sync ของ builder ฝั่ง AGD
+// สั่งของนำเข้า — หน้าแผนสั่งของ ยกมาจากหน้า order-plan ในเครื่องเจ้าของทั้งหน้า (29 ต.ค. 69)
+// เจ้าของ: "copy หน้าตามาเลย เอาเหมือนที่ทำอยู่เป๊ะๆ" → ไม่ทำใหม่เป็น React แต่ฝังไฟล์เดิม
+// (public/order-plan/index.html) ไว้ในกรอบเต็มพื้นที่ใต้แถบบน · ข้อมูลผ่าน /api/import/* (เช็คสิทธิ์ทุกครั้ง)
+// รอบที่เปิดอยู่เก็บใน hash ของหน้านี้ (/import#p=C1-hape) — refresh / ส่งลิงก์แล้วเปิดรอบเดิม
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Container, Ship } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { useToast } from '@/hooks/useToast'
-import { EmptyState } from '@/components/aoo'
-import { ListRow, ListRows, PageHeader, SectionCard, StatusBadge, TechLoader } from '@/components/shared'
-import { getRounds, groupByContainer, type ImportRound } from '@/lib/services/import/importService'
+import { TechLoader } from '@/components/shared'
 
-const fmtDate = (d: string | null) =>
-  d ? new Date(`${d}T00:00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : null
-
-export default function ImportRoundsPage() {
+export default function ImportPage() {
   const router = useRouter()
   const { userData } = useAuth()
-  const { showToast } = useToast()
-  const [rounds, setRounds] = useState<ImportRound[] | null>(null)
+  const [src, setSrc] = useState<string | null>(null)
 
   const canSee = !!userData?.importAccess
 
@@ -27,61 +21,38 @@ export default function ImportRoundsPage() {
     if (userData && !canSee) router.push('/unauthorized')
   }, [userData, canSee, router])
 
+  // อ่าน hash ครั้งเดียวตอนเปิด — หลังจากนั้นกรอบเป็นคนเปลี่ยนเอง
   useEffect(() => {
-    if (!canSee) return
-    getRounds()
-      .then(setRounds)
-      .catch((e: Error) => showToast(e.message, 'error'))
-  }, [canSee, showToast])
+    setSrc(`/order-plan/index.html${window.location.hash}`)
+  }, [])
 
-  const groups = useMemo(() => groupByContainer(rounds ?? []), [rounds])
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return
+      const d = e.data as { orderPlanHash?: string; title?: string } | null
+      if (typeof d?.orderPlanHash !== 'string') return
+      window.history.replaceState(null, '', `/import${d.orderPlanHash}`)
+      if (d.title) document.title = d.title
+    }
+    // เปลี่ยน hash จากแถบที่อยู่ / ปุ่มย้อนกลับ → ส่งต่อเข้ากรอบ
+    const onHash = () => {
+      const w = document.querySelector<HTMLIFrameElement>('iframe[data-order-plan]')?.contentWindow
+      if (w && w.location.hash !== window.location.hash) w.location.hash = window.location.hash
+    }
+    window.addEventListener('message', onMsg)
+    window.addEventListener('hashchange', onHash)
+    return () => {
+      window.removeEventListener('message', onMsg)
+      window.removeEventListener('hashchange', onHash)
+    }
+  }, [])
 
-  if (!canSee || !rounds) return <TechLoader />
+  if (!canSee || !src) return <TechLoader />
 
+  // ลบ padding ของ <main> ให้กรอบชิดขอบ · สูงเต็มจอลบแถบบน (h-14)
   return (
-    <div>
-      <PageHeader title="นำเข้า" description="แผนสั่งของรายตู้ — เลือกรอบเพื่อวางจำนวนสั่ง" icon={Ship} />
-
-      {groups.length === 0 ? (
-        <EmptyState
-          icon={<Ship size={28} />}
-          title="ยังไม่มีรอบสั่ง"
-          body="รอบสั่งจะขึ้นที่นี่หลัง sync แผนจากเครื่องมือ order-plan"
-          size="lg"
-        />
-      ) : (
-        <div className="space-y-4">
-          {groups.map((g) => {
-            const cbm = Object.entries(g.rounds[0]?.containers ?? {})
-              .map(([name, v]) => `${name} ${v} CBM`)
-              .join(' · ')
-            const arrive = fmtDate(g.rounds.find((r) => r.arrive)?.arrive ?? null)
-            return (
-              <SectionCard
-                key={g.container ?? 'none'}
-                title={
-                  <span className="flex items-center gap-2">
-                    <Container size={16} /> {g.container ?? 'ยังไม่ระบุตู้'}
-                  </span>
-                }
-                description={[cbm, arrive && `ถึง ${arrive}`].filter(Boolean).join(' · ') || undefined}
-              >
-                <ListRows>
-                  {g.rounds.map((r) => (
-                    <ListRow
-                      key={r.id}
-                      href={`/import/${r.slug}`}
-                      title={r.sub || r.brand}
-                      meta={`${r.title} · ${r.itemCount.toLocaleString()} รายการ`}
-                      trailing={<StatusBadge status={r.status} kind="importRound" />}
-                    />
-                  ))}
-                </ListRows>
-              </SectionCard>
-            )
-          })}
-        </div>
-      )}
+    <div className="-mx-4 -mb-10 -mt-5 lg:-mx-7">
+      <iframe data-order-plan src={src} title="แผนสั่งของ" className="block h-[calc(100dvh-3.5rem)] w-full border-0" />
     </div>
   )
 }

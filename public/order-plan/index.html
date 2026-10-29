@@ -202,6 +202,9 @@ body.tot-min .wrap{max-height:calc(100vh - 200px)}
 .lb .x{position:absolute;top:14px;right:18px;font-size:28px;color:#fff;background:none;border:0;cursor:pointer;line-height:1}
 .lb .nav{position:absolute;top:50%;transform:translateY(-50%);font-size:34px;color:#fff;background:none;border:0;cursor:pointer;padding:10px}
 .lb .prev{left:10px}.lb .next{right:10px}
+/* amgo (owner 30 Oct 2026): brand logo next to each round */
+.blogo{height:22px;width:auto;max-width:76px;object-fit:contain;border-radius:4px;background:#fff;vertical-align:middle;margin-right:7px}
+h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
 @media (max-width:700px){header.top,main,footer.tot{padding-left:16px;padding-right:16px}.stick3{min-width:170px}}
 </style>
 </head>
@@ -223,6 +226,9 @@ const fc = (n, d = 2) => n == null || isNaN(n) ? '—' : `${fmt(n, d)}<span clas
 const thb = n => n == null || isNaN(n) ? '—' : `${fmt(n, 0)}<span class="sym">฿</span>`;
 const STATUS = { draft: 'ร่าง', approved: 'อนุมัติแล้ว', sent: 'ส่งแล้ว' };
 // amgo (owner 30 Oct 2026): container no. per brand per year in front of the container name — "Hape 2026 #5 · ตู้ 2026-C1"
+const logo = r => r && r.logo ? `<img class="blogo" src="${esc(r.logo)}" alt="">` : '';
+// container no. replaces the round code in headings (owner 30 Oct 2026: "ตู้ที่ 5")
+const rno = r => r.shipNo ? '#' + r.shipNo : esc(r.round);
 const ctrName = (ctr, r) => r && r.shipNo ? `${esc(r.brand)} ${(String(ctr).match(/^20\d\d/) || [''])[0]} #${r.shipNo} · ตู้ ${esc(ctr)}` : `ตู้ ${esc(ctr)}`;
 
 let plan = null, planPath = '', dir = '', unlocked = false, onlyOrdered = false, query = '', cat = '', sub = '', chan = '', kind = '', saveTimer = null;
@@ -247,8 +253,8 @@ async function showList() {
       <div class="ctr-h">${ctr ? `${ctrName(ctr, rs[0])} — รวม $${fmt(rs.reduce((s, x) => s + x.fob, 0), 0)} · ${fmt(rs.reduce((s, x) => s + x.cbm, 0), 1)} CBM` : 'ไม่ได้ระบุตู้'}</div>
       <div class="grid">${rs.map(r => `
       <a class="card" href="#p=${encodeURIComponent(r.path)}">
-        <div class="row"><span>${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
-        <h3>${esc(r.round)} — ${esc(r.title)}</h3>
+        <div class="row"><span>${logo(r)}${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
+        <h3>${esc(r.title)}</h3>
         <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${SYM[r.currency] || ''}${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>
       </a>`).join('')}</div>`).join('') : '<div class="empty">ยังไม่มีรอบสั่งของ — ส่งแผนขึ้นด้วย scripts/import-sync.mjs push</div>'}</main>`;
 }
@@ -266,7 +272,7 @@ async function openPlan(p) {
   mates = plan.container ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
   // their lines too, so the footer can show each file's selling value
   await Promise.all(mates.map(async x => { try { x.items = (await (await fetch('/api/import/plan?p=' + encodeURIComponent(x.path))).json()).items || []; } catch { x.items = []; } }));
-  document.title = `${plan.round} ${plan.sub || plan.brand} — แผนสั่งของ`;
+  document.title = `${plan.shipNo ? '#' + plan.shipNo : plan.round} ${plan.sub || plan.brand} — แผนสั่งของ`;
   renderShell(); renderRows(); renderTotals();
 }
 
@@ -324,7 +330,7 @@ function renderShell() {
   $('#app').innerHTML = `
   <header class="top">
     <a class="back" href="#">← ทุกรอบ</a>
-    <h1>${esc(plan.brand)}${plan.sub ? ' · ' + esc(plan.sub) : ''} — ${esc(plan.round)} <span class="muted" style="font-weight:400">${esc(plan.title || '')}</span></h1>
+    <h1>${logo(plan)}${plan.title ? esc(plan.title) : `${esc(plan.brand)}${plan.sub ? ' · ' + esc(plan.sub) : ''} — ${rno(plan)}`}</h1>
     <label class="ctrl">สถานะ <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${plan.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <label class="ctrl">อัตรา ฿/${esc(plan.currency)} ✎ <input style="background:var(--ed)" id="fx" type="number" step="0.01" value="${plan.fx}"></label>
     <label class="ctrl"><input id="only" type="checkbox" ${onlyOrdered ? 'checked' : ''}> เฉพาะที่สั่ง</label>
@@ -333,8 +339,8 @@ function renderShell() {
     <span class="spacer"></span><span class="save" id="save"></span>
   </header>
   ${plan.container ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
-      ? `<a class="tab on"><b>${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
-      : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
+      ? `<a class="tab on"><b>${logo(plan)}${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
+      : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${logo(x)}${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
   <div id="chips"></div>
   ${plan.status === 'sent' ? `<div class="banner" id="banner">รอบนี้ <b>ส่งแล้ว</b>${plan.sentFile ? ` (${esc(plan.sentFile)})` : ''} — ตัวเลขด้านล่างคือที่ส่งไป ใช้เทียบกับ invoice <button id="unlock">ปลดล็อกเพื่อแก้</button></div>` : ''}
   <main><div class="wrap"><table>
@@ -614,13 +620,13 @@ function renderTotals() {
     return bindTotToggle();
   }
   if (mates.length) {  // shared container: one line per brand file + the container total (Hape · J'adore · Flower Monaco …)
-    const me = { path: planPath, me: true, sub: plan.sub, brand: plan.brand, status: plan.status, lines: o.length, pcs, ctns: ct, fob, fx: plan.fx, cbm, noCbm: o.filter(i => !i.cbm).length, retail };
+    const me = { path: planPath, me: true, sub: plan.sub, brand: plan.brand, logo: plan.logo, status: plan.status, lines: o.length, pcs, ctns: ct, fob, fx: plan.fx, cbm, noCbm: o.filter(i => !i.cbm).length, retail };
     mates.forEach(x => { x.retail = (x.items || []).filter(i => i.qty > 0).reduce((s, i) => { const a = aoo.prices[String(i.barcode || '').trim()];
       return s + i.qty * (a && a.price > 0 ? a.price : i.ourPrice != null && i.ourPrice !== '' ? +i.ourPrice : (i.srp || 0) * (x.fx || plan.fx)); }, 0); });
     const rows = [me, ...mates].sort(tabOrder), sum = k => rows.reduce((s, x) => s + (x[k] || 0), 0);
     const cap = Math.max(...conts.map(c => c[1])), pct = cCbm / cap * 100;
     const tr = x => `<tr class="${x.me ? 'me' : ''}" ${x.me ? '' : `data-go="${esc(x.path)}"`}>
-      <td><b>${esc(x.sub || x.brand)}</b> <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></td>
+      <td>${logo(x)}<b>${esc(x.sub || x.brand)}</b> <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></td>
       <td class="num">${fmt(x.lines)}</td><td class="num">${fmt(x.pcs)}</td><td class="num">${fmt(x.ctns)}</td>
       <td class="num">${fc(x.fob, 0)}</td><td class="num">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;
     $('#tot').innerHTML = `

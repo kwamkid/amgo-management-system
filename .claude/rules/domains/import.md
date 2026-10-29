@@ -21,3 +21,4 @@ paths:
 - Rounds sharing a container are tabs of one page (Hape + J'adore = 2026-C1) — don't delete a sub-brand round because "it's in the Hape order": that means it's a tab there.
 - Never-order list (replaced / discontinued models): see `import-do-not-order.md` → `01-AGD/02-hape/2026/99-data/hape/do-not-order.json`.
 - Container no. = `import_rounds.ship_no`, per brand per year like AGD's invoice folders ("Hape #5_ INV. …"). Owner 30 Oct: 2026-C1 = Hape 2026 #5, next = #6. Sync sets it on create (same container → same no., else brand's max that year + 1; plan.json `shipNo` overrides). The page shows "Hape 2026 #5 · ตู้ 2026-C1" (`ctrName()` in public/order-plan/index.html — an amgo-only addition).
+- Brand logos on the page come from the SRP Calculator (`srp_brands.logo_url`, name = srp_brand ?? sub ?? brand) — add a brand's logo there, not in import. Headings use the container no. ("Hape — ตู้ #5 …" = plan title) instead of the round code C1 (owner 30 Oct).

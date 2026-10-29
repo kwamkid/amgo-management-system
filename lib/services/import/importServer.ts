@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database, Json } from '@/types/database'
 
 type Sb = Awaited<ReturnType<typeof createServerSupabase>>
@@ -29,6 +30,14 @@ export async function importGuard(): Promise<ImportCtx | NextResponse> {
   return { sb, userId: user.id, canEdit: data.can_edit, seeCost: data.see_cost }
 }
 
+/** brand logos from the SRP Calculator (srp_brands.logo_url, public bucket) — name = srp_brand ?? sub ?? brand */
+async function brandLogos(): Promise<Map<string, string>> {
+  const { data } = await createAdminClient().from('srp_brands').select('name, logo_url')
+  return new Map((data ?? []).filter((b) => b.logo_url).map((b) => [b.name.toLowerCase(), b.logo_url as string]))
+}
+const logoOf = (logos: Map<string, string>, r: Pick<RoundRow, 'srp_brand' | 'sub' | 'brand'>) =>
+  logos.get((r.srp_brand || r.sub || r.brand).toLowerCase()) ?? logos.get(r.brand.toLowerCase()) ?? null
+
 const ctnsOf = (qty: number, pack: number | null) => (pack ? Math.ceil(qty / pack) : 0)
 const yearOf = (r: Pick<RoundRow, 'container' | 'arrive' | 'created_at'>) =>
   r.container?.match(/^(20\d\d)/)?.[1] ?? (r.arrive ?? r.created_at).slice(0, 4)
@@ -42,6 +51,7 @@ export async function listRounds(sb: Sb) {
     .select('round_id, qty, fob, case_pack, cbm')
     .gt('qty', 0)
   if (e2) throw e2
+  const logos = await brandLogos()
   return (rounds ?? [])
     .map((r) => {
       const ord = (ordered ?? []).filter((i) => i.round_id === r.id)
@@ -61,13 +71,15 @@ export async function listRounds(sb: Sb) {
         fx: r.fx ?? 0,
         container: r.container ?? '',
         shipNo: r.ship_no,
+        logo: logoOf(logos, r),
         containers: r.containers,
         ctns: ord.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack), 0),
         cbm: ord.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack) * (i.cbm ?? 0), 0),
         noCbm: ord.filter((i) => !i.cbm).length,
       }
     })
-    .sort((a, b) => (b.year + b.round).localeCompare(a.year + a.round))
+    // newest first · inside one container the main brand before sub-brands (same order as the page's tabs)
+    .sort((a, b) => (b.year + b.round).localeCompare(a.year + a.round) || (a.sub ? 1 : 0) - (b.sub ? 1 : 0) || a.sub.localeCompare(b.sub))
 }
 
 async function loadRound(sb: Sb, slug: string) {
@@ -112,6 +124,7 @@ export async function getPlan(sb: Sb, slug: string) {
     title: r.title,
     container: r.container ?? '',
     shipNo: r.ship_no ?? undefined,
+    logo: logoOf(await brandLogos(), r),
     status: r.status,
     currency: r.currency,
     fx: r.fx,

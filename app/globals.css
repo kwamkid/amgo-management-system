@@ -1088,6 +1088,44 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   color: var(--tone-ink, var(--accent)); font-weight: 600;
   background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
 }
+.aoo-nav-item__label { flex: 1; min-width: 0; }
+
+/* ---------- Sidebar shell + โหมดย่อ (icon rail) — แบบ AOO (เจ้าของขอ 30 ต.ค. 69) ----------
+ * 232px ↔ 68px · data-collapsed ติดเฉพาะตัวบนเดสก์ท็อป (ลิ้นชักมือถือเต็มความกว้างเสมอ)
+ * โหมดย่อ: ซ่อนชื่อ/ลูกศร · หัวกลุ่มกลายเป็นเส้นคั่น · ชื่อเมนูลอยเป็น .aoo-nav-tip (position: fixed) */
+.aoo-sidebar {
+  display: flex; flex-direction: column; flex-shrink: 0;
+  width: 232px; height: 100%;
+  border-right: 1px solid var(--border-1);
+  background: var(--bg-surface);
+  transition: width var(--dur-med) var(--ease-out);
+}
+.aoo-sidebar__head { display: flex; align-items: center; gap: 8px; height: 56px; flex-shrink: 0; padding: 0 12px 0 16px; }
+.aoo-sidebar__toggle {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 32px; height: 32px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--fg-4); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.aoo-sidebar__toggle:hover { background: var(--bg-sunken); color: var(--fg-1); }
+
+.aoo-sidebar[data-collapsed] { width: 68px; }
+.aoo-sidebar[data-collapsed] .aoo-sidebar__head { justify-content: center; padding: 0; }
+.aoo-sidebar[data-collapsed] .aoo-nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+.aoo-sidebar[data-collapsed] .aoo-nav-item__label,
+.aoo-sidebar[data-collapsed] .aoo-nav-item__chevron { display: none; }
+.aoo-sidebar[data-collapsed] .aoo-nav-section {
+  height: 1px; padding: 0; margin: 0 8px 8px; overflow: hidden;
+  font-size: 0; background: var(--border-1);
+}
+
+.aoo-nav-tip {
+  position: fixed; z-index: 60; transform: translateY(-50%);
+  padding: 5px 10px; border-radius: 8px;
+  background: var(--bg-inverse); color: var(--bg-surface);
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+  pointer-events: none;
+}
 
 /* ---------- Well — neutral inset panel inside a card (<InfoPanel>) ---------- */
 .aoo-well {

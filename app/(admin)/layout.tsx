@@ -1,6 +1,6 @@
 // app/(admin)/layout.tsx
 //
-// โครงหน้าหลังบ้าน — เมนูข้างตรึงซ้าย 232px + แถบบน 56px
+// โครงหน้าหลังบ้าน — เมนูข้างตรึงซ้าย 232px (ย่อเหลือ 68px ได้) + แถบบน 56px
 // จอแคบกว่า 1024px เมนูข้างกลายเป็นลิ้นชัก เลื่อนออกมาทับพร้อมฉากหลังทึบ
 
 "use client";
@@ -57,7 +57,8 @@ export default function AdminLayout({
         <div className="flex min-h-screen bg-gray-50">
           {/* เมนูข้าง — เดสก์ท็อป */}
           <div className="sticky top-0 hidden h-screen lg:block">
-            <Sidebar userData={userData} />
+            {/* ย่อเป็นแถบไอคอนได้ (จำค่าใน localStorage) — <main> เป็น flex-1 จึงกว้างขึ้นเองตอนย่อ */}
+            <Sidebar userData={userData} collapsible />
           </div>
 
           {/* เมนูข้าง — ลิ้นชักบนมือถือ */}

@@ -1,16 +1,22 @@
 // components/layout/Sidebar.tsx
 //
-// เมนูข้าง — ปรับใหม่ 6 ต.ค. 69 ตามที่เจ้าของขอ: minimal · ไม่มีเงา · สีสดต่อเรื่อง
-//   · กว้าง 232px ตรึงซ้าย · จอแคบกว่า 1024px กลายเป็นลิ้นชักเลื่อนออกมา
-//   · แต่ละเมนูมีสีของเรื่องตัวเอง (tone): แดง=accent/danger (สีนำ) เหลือง=warning เขียว=success ม่วง=grape/plum น้ำตาล=sky — หน้าที่เปิดอยู่เป็นพื้นสีเต็ม · สไตล์อยู่ที่ .aoo-nav-* ใน globals.css
-//   · เมนูย่อยไม่มีไอคอน (ไอคอนซ้ำ ๆ ทำให้รก)
+// เมนูข้าง — ปรับใหม่ 30 ต.ค. 69 ตามที่เจ้าของขอ: ยุบเมนูให้น้อยลง + ย่อเป็นแถบไอคอนได้แบบ AOO
+//   · กว้าง 232px · ย่อเหลือ 68px (เฉพาะจอ ≥ 1024px) ปุ่ม PanelLeft มุมบนขวา · จำค่าใน localStorage
+//     (lib/use-sidebar-collapsed.ts) — ย่อแล้วเนื้อหา (เช่น /import) กว้างขึ้นเอง เพราะ <main> เป็น flex-1
+//   · โหมดย่อ: ซ่อนชื่อ/หัวกลุ่ม/เมนูย่อย · ชี้ไอคอนแล้วชื่อลอยออกมาด้านขวา (.aoo-nav-tip)
+//     · กดเมนูที่มีเมนูย่อย = ขยายแผงกลับแล้วกางกลุ่มนั้นให้
+//   · มือถือเป็นลิ้นชักเต็มความกว้างเสมอ (ไม่มีโหมดย่อ)
+//   · แต่ละเมนูมีสีของเรื่องตัวเอง (tone) — หน้าที่เปิดอยู่เป็นพื้นสีเต็ม · สไตล์อยู่ที่ .aoo-nav-* ใน globals.css
+//   · เมนูย่อยไม่มีไอคอน (ไอคอนซ้ำ ๆ ทำให้รก) · ไม่มีเงา
 //
-// โครงกลุ่ม:
-//   ของฉัน    — สิ่งที่พนักงานทุกคนทำกับตัวเอง (เช็คอิน · ลา · เบิก)
-//   รออนุมัติ — งานอนุมัติทั้งหมดรวมที่เดียว (เดิมซ่อนอยู่ท้ายเมนูย่อยของแต่ละเรื่อง
-//               หัวหน้าต้องกางทีละกลุ่มเพื่อหา) · พนักงานทั่วไปไม่เห็นกลุ่มนี้เลย
-//   งาน       — ตามฝ่าย (ส่งของ · ผลิต · SRP · นำเข้า · เว็บไซต์ · SEO / AEO)
-//   จัดการ    — HR/แอดมิน (พนักงาน · รายงาน · เงินเดือน · เอกสาร · ตั้งค่า)
+// โครงกลุ่ม (เดิม 21 แถวบนสุดสำหรับแอดมิน → เหลือ 15):
+//   (บนสุด)  — Dashboard · งานของทีม · รออนุมัติ (ใบอนุมัติทุกชนิดรวมเป็นกลุ่มเดียว)
+//   ของฉัน   — เช็คอิน/เอาท์ · การลา · เบิกค่าใช้จ่าย
+//   งาน      — ส่งของ · การผลิต · SRP · นำเข้า · เว็บไซต์ · SEO / AEO
+//   จัดการ   — พนักงาน (+ เงินเดือน + เอกสารบริษัท) · รายงาน · ตั้งค่าระบบ
+//
+// ⚠️ สิทธิ์ (roles) ของทุกเมนูคงเดิมทุกตัว — ย้ายแค่ที่อยู่ · เมนูแม่ที่รวมลูกหลายสิทธิ์ใช้ roles = ยูเนียนของลูก
+//    และลูกแต่ละตัวยังกรองด้วย roles ของตัวเอง
 
 'use client'
 
@@ -21,27 +27,25 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
-  CalendarSync,
-  FileSignature,
   FileText,
   Settings,
   Clock,
-  UserPlus,
   ChevronDown,
   Truck,
-  Wallet,
   FlaskConical,
   Calculator,
   Globe,
   TrendingUp,
   Receipt,
-  ReceiptText,
-  MapPinCheck,
   ListChecks,
   Ship,
+  ClipboardCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
+import { useSidebarCollapsed } from '@/lib/use-sidebar-collapsed'
 
 interface NavItem {
   label: string
@@ -61,19 +65,39 @@ interface NavSection {
 interface SidebarProps {
   userData?: UserData | null
   onNavigate?: () => void
+  /** ย่อเป็นแถบไอคอนได้ — ตัวบนเดสก์ท็อปเท่านั้น (ลิ้นชักมือถือเต็มความกว้างเสมอ) */
+  collapsible?: boolean
 }
 
 const icon = (I: typeof Clock) => <I size={17} strokeWidth={2} />
 
 const navSections: NavSection[] = [
   {
-    items: [{ label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard), tone: 'accent' }],
+    items: [
+      { label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard), tone: 'accent' },
+      // บอร์ดงาน (27 ต.ค. 69) — ทุกคนเห็นงานของทุกคน กรองตามคน/แบรนด์ได้ในหน้า
+      { label: 'งานของทีม', href: '/tasks', icon: icon(ListChecks), tone: 'accent' },
+      {
+        // งานอนุมัติทั้งหมดรวมเป็นกลุ่มเดียว (เดิมเป็นหัวข้อแยก 5 แถว) · พนักงานทั่วไปไม่เห็นเลย
+        // roles = ยูเนียนของลูก · ลูกแต่ละตัวกรองสิทธิ์เองเหมือนเดิม
+        label: 'รออนุมัติ',
+        icon: icon(ClipboardCheck),
+        tone: 'danger',
+        roles: ['hr', 'admin', 'manager', 'finance'],
+        subItems: [
+          { label: 'เช็คอินรอตรวจ', href: '/checkin/pending', roles: ['hr', 'admin'] },
+          { label: 'คำขอลา', href: '/leaves/management', roles: ['hr', 'admin', 'manager'] },
+          { label: 'ใบสลับวันหยุด', href: '/leaves/swap/management', roles: ['hr', 'admin', 'manager'] },
+          // 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
+          { label: 'ใบเบิก', href: '/expenses/manage', roles: ['hr', 'admin', 'manager', 'finance'] },
+          { label: 'พนักงานใหม่', href: '/employees/pending', roles: ['hr', 'admin', 'manager'] },
+        ],
+      },
+    ],
   },
   {
     title: 'ของฉัน',
     items: [
-      // บอร์ดงาน (27 ต.ค. 69) — ทุกคนเห็นงานของทุกคน กรองตามคน/แบรนด์ได้ในหน้า
-      { label: 'งานของทีม', href: '/tasks', icon: icon(ListChecks), tone: 'accent' },
       {
         label: 'เช็คอิน/เอาท์',
         icon: icon(Clock),
@@ -95,19 +119,8 @@ const navSections: NavSection[] = [
           { label: 'สลับวันหยุด', href: '/leaves/swap' },
         ],
       },
-      // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — ฝั่งจัดการย้ายไปกลุ่มรออนุมัติ
+      // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — ฝั่งจัดการอยู่ในกลุ่มรออนุมัติ
       { label: 'เบิกค่าใช้จ่าย', href: '/expenses', icon: icon(Receipt), tone: 'success' },
-    ],
-  },
-  {
-    title: 'รออนุมัติ',
-    items: [
-      { label: 'เช็คอินรอตรวจ', href: '/checkin/pending', icon: icon(MapPinCheck), tone: 'warning', roles: ['hr', 'admin'] },
-      { label: 'คำขอลา', href: '/leaves/management', icon: icon(Calendar), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
-      { label: 'ใบสลับวันหยุด', href: '/leaves/swap/management', icon: icon(CalendarSync), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
-      // 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
-      { label: 'ใบเบิก', href: '/expenses/manage', icon: icon(ReceiptText), tone: 'success', roles: ['hr', 'admin', 'manager', 'finance'] },
-      { label: 'พนักงานใหม่', href: '/employees/pending', icon: icon(UserPlus), tone: 'danger', roles: ['hr', 'admin', 'manager'] },
     ],
   },
   {
@@ -184,6 +197,7 @@ const navSections: NavSection[] = [
     title: 'จัดการ',
     items: [
       {
+        // รวมงาน HR ที่เกี่ยวกับคน (เดิม พนักงาน · สรุปเงินเดือน · เอกสารบริษัท แยกกัน 3 แถว)
         label: 'พนักงาน',
         icon: icon(Users),
         tone: 'accent',
@@ -194,6 +208,9 @@ const navSections: NavSection[] = [
           // ย้ายมาจากกลุ่มการลา — HR หาไม่เจอเพราะเป็นงานจัดการคน ไม่ใช่งานยื่นลา
           { label: 'โควต้าวันลา', href: '/leaves/quota', roles: ['hr', 'admin'] },
           { label: 'เชิญพนักงานใหม่', href: '/employees/invite-links' },
+          { label: 'สรุปเงินเดือน', href: '/payroll', roles: ['hr', 'admin'] },
+          // จดหมาย/ประกาศจากแม่แบบกลาง — หน้าเดียวใช้ได้ทั้ง 3 บริษัท (สลับแค่โลโก้+ข้อมูล)
+          { label: 'เอกสารบริษัท', href: '/documents', roles: ['hr', 'admin', 'manager'] },
         ],
       },
       {
@@ -212,9 +229,6 @@ const navSections: NavSection[] = [
           { label: 'รูปสต็อก/หน้าร้าน', href: '/reports/stock-photos', roles: ['hr', 'admin', 'manager'] },
         ],
       },
-      { label: 'สรุปเงินเดือน', href: '/payroll', icon: icon(Wallet), tone: 'success', roles: ['hr', 'admin'] },
-      // จดหมาย/ประกาศจากแม่แบบกลาง — หน้าเดียวใช้ได้ทั้ง 3 บริษัท (สลับแค่โลโก้+ข้อมูล)
-      { label: 'เอกสารบริษัท', href: '/documents', icon: icon(FileSignature), tone: 'grape', roles: ['hr', 'admin', 'manager'] },
       {
         label: 'ตั้งค่าระบบ',
         icon: icon(Settings),
@@ -259,11 +273,15 @@ function matchHref(pathname: string) {
   )
 }
 
-export default function Sidebar({ userData, onNavigate }: SidebarProps) {
+export default function Sidebar({ userData, onNavigate, collapsible = false }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [expanded, setExpanded] = useState<string[]>([])
   const current = useMemo(() => matchHref(pathname), [pathname])
+  const { collapsed, setCollapsed, toggleCollapsed } = useSidebarCollapsed()
+  const rail = collapsible && collapsed
+  // ชื่อเมนูที่ลอยออกมาตอนชี้ไอคอนในโหมดย่อ — position: fixed จึงไม่โดน overflow ของ <nav> ตัด
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null)
 
   const userRole = userData?.role || 'employee'
   // นอกจาก role แล้ว บางตำแหน่งได้สิทธิ์พิเศษ — แทนเป็น key เสมือนในลิสต์เดียวกัน
@@ -289,6 +307,9 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     setExpanded((prev) => Array.from(new Set([...prev, ...open])))
   }, [current])
 
+  // เปลี่ยนหน้า/สลับโหมดแล้วเก็บป้ายชื่อที่ลอยอยู่
+  useEffect(() => setTip(null), [pathname, rail])
+
   const go = (href: string) => {
     router.push(href)
     onNavigate?.()
@@ -305,8 +326,28 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     onNavigate?.()
   }
 
+  // โหมดย่อ: ชี้/โฟกัสไอคอน → โชว์ชื่อด้านขวา
+  const tipProps = (label: string) =>
+    rail
+      ? {
+          'aria-label': label,
+          onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            setTip({ label, top: r.top + r.height / 2, left: r.right + 10 })
+          },
+          onFocus: (e: React.FocusEvent<HTMLElement>) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            setTip({ label, top: r.top + r.height / 2, left: r.right + 10 })
+          },
+          onMouseLeave: () => setTip(null),
+          onBlur: () => setTip(null),
+        }
+      : {}
+
   const renderItem = (item: NavItem) => {
     const subs = item.subItems?.filter((s) => allowed(s.roles))
+    // เมนูแม่ที่ลูกโดนกรองสิทธิ์ออกหมด — ไม่ต้องโชว์แม่เปล่า ๆ
+    if (item.subItems && !subs?.length) return null
     const hasSubs = !!subs?.length
     const isOpen = expanded.includes(item.label)
     const childActive = subs?.some((s) => s.href === current) ?? false
@@ -320,9 +361,10 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
           aria-current={item.href === current ? 'page' : undefined}
           className="aoo-nav-item"
           data-tone={item.tone}
+          {...tipProps(item.label)}
         >
           <span className="aoo-nav-item__icon">{item.icon}</span>
-          <span className="flex-1">{item.label}</span>
+          <span className="aoo-nav-item__label">{item.label}</span>
         </Link>
       )
     }
@@ -330,17 +372,26 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
     return (
       <div key={item.label} data-tone={item.tone}>
         <button
-          onClick={() => toggle(item.label)}
-          aria-expanded={isOpen}
+          onClick={() => {
+            // โหมดย่อซ่อนเมนูย่อย — กดแล้วขยายแผงกลับและกางกลุ่มนี้ให้ (แบบ AOO)
+            if (rail) {
+              setCollapsed(false)
+              setExpanded((prev) => (prev.includes(item.label) ? prev : [...prev, item.label]))
+              return
+            }
+            toggle(item.label)
+          }}
+          aria-expanded={rail ? false : isOpen}
           data-child-active={childActive || undefined}
           className="aoo-nav-item"
+          {...tipProps(item.label)}
         >
           <span className="aoo-nav-item__icon">{item.icon}</span>
-          <span className="flex-1 text-left">{item.label}</span>
+          <span className="aoo-nav-item__label text-left">{item.label}</span>
           <ChevronDown size={15} className="aoo-nav-item__chevron" />
         </button>
 
-        {isOpen && (
+        {isOpen && !rail && (
           <div className="aoo-nav-sub">
             {subs!.map((sub) => (
               <Link
@@ -360,13 +411,31 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-gray-100 bg-white">
-      <button onClick={() => go('/dashboard')} className="flex h-14 shrink-0 items-center gap-2 px-4">
-        <img src="/amgo-logo.svg" alt="AMGO" className="h-7 w-auto" />
-        <span className="text-sm font-bold tracking-[0.12em] text-gray-700">AMGO HR</span>
-      </button>
+    <aside className="aoo-sidebar" data-collapsed={rail || undefined}>
+      <div className="aoo-sidebar__head">
+        {!rail && (
+          <button onClick={() => go('/dashboard')} className="flex min-w-0 flex-1 items-center gap-2">
+            <img src="/amgo-logo.svg" alt="AMGO" className="h-7 w-auto" />
+            <span className="truncate text-sm font-bold tracking-[0.12em] text-gray-700">AMGO HR</span>
+          </button>
+        )}
+        {/* ย่อ/ขยายเมนู — เฉพาะตัวบนเดสก์ท็อป */}
+        {collapsible && (
+          <button
+            onClick={toggleCollapsed}
+            className="aoo-sidebar__toggle"
+            aria-label={rail ? 'ขยายเมนู' : 'ย่อเมนู'}
+            title={rail ? 'ขยายเมนู' : 'ย่อเมนู'}
+          >
+            {rail ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        )}
+      </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-1">
+      <nav
+        className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 pt-1"
+        onScroll={() => tip && setTip(null)}
+      >
         {navSections.map((section, i) => {
           const items = section.items.filter((it) => allowed(it.roles))
           if (!items.length) return null
@@ -378,6 +447,13 @@ export default function Sidebar({ userData, onNavigate }: SidebarProps) {
           )
         })}
       </nav>
+
+      {tip && (
+        // ตำแหน่งคำนวณจากไอคอนที่ชี้อยู่ (ค่าไดนามิกจริง จึงต้องเป็น inline style)
+        <div className="aoo-nav-tip" role="tooltip" style={{ top: tip.top, left: tip.left }}>
+          {tip.label}
+        </div>
+      )}
     </aside>
   )
 }

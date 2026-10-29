@@ -122,16 +122,13 @@ async function loadRound(sb: Sb, slug: string) {
 
 /** รอบเดียวในรูปแบบ plan.json · รูปใน bucket แปลงเป็นลิงก์ชั่วคราว (6 ชม.) */
 export async function getPlan(sb: Sb, slug: string) {
+  const logosP = brandLogos() // in parallel with the items
   const loaded = await loadRound(sb, slug)
   if (!loaded) return null
   const { round: r, items } = loaded
 
-  const keys = items.map((i) => i.img).filter((k): k is string => !!k && !/^https?:/.test(k))
-  const signed = new Map<string, string>()
-  if (keys.length) {
-    const { data } = await sb.storage.from('import-images').createSignedUrls(keys, 6 * 3600)
-    for (const s of data ?? []) if (s.path && s.signedUrl) signed.set(s.path, s.signedUrl)
-  }
+  // product pictures are public (bucket import-images is public since 30 Oct 2026) — stable URLs the browser can cache
+  const pub = (key: string) => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/import-images/${key}`
 
   const extra = (r.extra && typeof r.extra === 'object' && !Array.isArray(r.extra) ? r.extra : {}) as Record<string, Json>
   return {
@@ -144,7 +141,7 @@ export async function getPlan(sb: Sb, slug: string) {
     container: r.container ?? '',
     shipNo: r.ship_no ?? undefined,
     ...(await (async () => {
-      const logos = await brandLogos()
+      const logos = await logosP
       const parts = partsOf(r).map((p) => ({ ...p, logo: logos.get(p.srpBrand.toLowerCase()) ?? null }))
       return { logo: logoOf(logos, r), parts, srpBrands: parts.map((p) => p.srpBrand) }
     })()),
@@ -169,7 +166,7 @@ export async function getPlan(sb: Sb, slug: string) {
       channel: i.channel ?? '',
       tags: i.tags,
       remark: i.remark ?? '',
-      img: i.img ? (/^https?:/.test(i.img) ? i.img : signed.get(i.img) ?? '') : '',
+      img: i.img ? (/^https?:/.test(i.img) ? i.img : pub(i.img)) : '',
       fob: i.fob,
       srp: i.srp,
       ourPrice: i.our_price,
@@ -205,9 +202,21 @@ interface PlanIn {
  * สถานะ · อัตราแลกเปลี่ยน · จำนวนสั่ง · edited=false (กดใช้ค่าแนะนำ) = ไม่นับเป็นที่แก้เอง
  */
 export async function savePlan(sb: Sb, slug: string, body: PlanIn) {
-  const loaded = await loadRound(sb, slug)
-  if (!loaded) return 0
-  const { round, items } = loaded
+  const { data: round, error: rErr } = await sb.from('import_rounds').select('*').eq('slug', slug).maybeSingle()
+  if (rErr) throw rErr
+  if (!round) return 0
+  // the page sends only the lines it changed — read just those
+  const codes = (body.items ?? []).map((i) => String(i.code))
+  const items: ItemRow[] = []
+  for (let k = 0; k < codes.length; k += 200) {
+    const { data, error } = await sb
+      .from('import_round_items')
+      .select('*')
+      .eq('round_id', round.id)
+      .in('code', codes.slice(k, k + 200))
+    if (error) throw error
+    items.push(...(data ?? []))
+  }
 
   const patch: Database['public']['Tables']['import_rounds']['Update'] = {}
   if (body.status && ['draft', 'approved', 'sent'].includes(body.status) && body.status !== round.status)

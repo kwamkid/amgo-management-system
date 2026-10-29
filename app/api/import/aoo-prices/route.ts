@@ -6,6 +6,8 @@ import { importGuard } from '@/lib/services/import/importServer'
 
 const AOO_MCP_URL = process.env.AOO_MCP_URL || 'https://app.aoocommerce.com/api/mcp'
 
+const CACHE = new Map<string, { at: number; prices: Record<string, { price: number; discount: number }> }>()
+
 type StockRow = { sku: string | null; barcode: string | null; price: number | null; discount_price: number | null }
 
 export async function GET(req: NextRequest) {
@@ -14,6 +16,9 @@ export async function GET(req: NextRequest) {
   const key = process.env.AOO_MCP_KEY
   if (!key) return NextResponse.json({ prices: {}, error: 'ยังไม่ได้ตั้งกุญแจ MCP ของ aoo' })
   const brand = req.nextUrl.searchParams.get('brand') ?? ''
+  // shelf prices change rarely — keep them 10 min per server instance (each page open used to call aoo)
+  const hit = CACHE.get(brand)
+  if (hit && Date.now() - hit.at < 600_000) return NextResponse.json({ prices: hit.prices })
 
   const res = await fetch(AOO_MCP_URL, {
     method: 'POST',
@@ -42,5 +47,6 @@ export async function GET(req: NextRequest) {
     const sku = String(r.sku || '').trim().toUpperCase().replace(/^00-[A-Z]+-/, '')
     for (const k of [String(r.barcode || '').trim(), sku]) if (k && !prices[k]) prices[k] = p
   }
+  CACHE.set(brand, { at: Date.now(), prices })
   return NextResponse.json({ prices })
 }

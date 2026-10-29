@@ -283,16 +283,24 @@ async function openPlan(p) {
   const r = await fetch('/api/import/plan?p=' + encodeURIComponent(p));
   if (!r.ok) { $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
   plan = await r.json();
-  await loadSrp();
-  // other order files that ship in the same container (separate brand forms, one box to fill)
-  mates = plan.container ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
-  // their lines too, so the footer can show each file's selling value
-  await Promise.all(mates.map(async x => { try { x.items = (await (await fetch('/api/import/plan?p=' + encodeURIComponent(x.path))).json()).items || []; } catch { x.items = []; } }));
+  savedQ = new Map(plan.items.map(i => [i.code, qkey(i)]));
+  // amgo speed: prices and the other rounds of the container load side by side
+  const matesP = (async () => {
+    // other order files that ship in the same container (separate brand forms, one box to fill)
+    mates = plan.container ? (await (await fetch('/api/import/rounds')).json()).filter(x => x.container === plan.container && x.path !== p) : [];
+    // their lines too, so the footer can show each file's selling value
+    await Promise.all(mates.map(async x => { try { x.items = (await (await fetch('/api/import/plan?p=' + encodeURIComponent(x.path))).json()).items || []; } catch { x.items = []; } }));
+  })();
+  await Promise.all([loadSrp(), matesP]);
   document.title = `${plan.shipNo ? '#' + plan.shipNo : plan.round} ${plan.sub || plan.brand} — แผนสั่งของ`;
   renderShell(); renderRows(); renderTotals();
 }
 
+let pricesAt = 0;
 async function loadSrp() {
+  // real shelf prices in aoo win when aoo already sells the model — fetched alongside the SRP prices
+  const aooP = fetch('/api/import/aoo-prices?brand=' + encodeURIComponent(plan.aooBrand || plan.brand))
+    .then(r => r.ok ? r.json() : { prices: {} }).catch(() => ({ prices: {} }));
   // amgo: one round can hold several brands (Hape + J'adore) — merge each brand's SRP Calculator prices
   const names = plan.srpBrands && plan.srpBrands.length ? plan.srpBrands : [plan.srpBrand || plan.sub || plan.brand];
   const got = await Promise.all(names.map(async name => {
@@ -304,13 +312,18 @@ async function loadSrp() {
     } catch { return { prices: {}, error: 'ดึงราคาไม่ได้' }; }
   }));
   srp = { ...got[0], prices: Object.assign({}, ...got.map(g => g.prices)), error: got.find(g => g.error)?.error };
-  try {  // real shelf prices in aoo win when aoo already sells the model
-    const r = await fetch('/api/import/aoo-prices?brand=' + encodeURIComponent(plan.aooBrand || plan.brand));
-    aoo = r.ok ? await r.json() : { prices: {} };
-  } catch { aoo = { prices: {} }; }
+  aoo = await aooP;
+  pricesAt = Date.now();
 }
 // re-read prices when coming back from the SRP Calculator tab
-addEventListener('focus', async () => { if (!plan) return; await loadSrp(); renderSrpLink(); renderRows(); renderTotals(); });
+// amgo speed: at most every 10 minutes, and only redraw when a price actually changed
+addEventListener('focus', async () => {
+  if (!plan || Date.now() - pricesAt < 600000) return;
+  const before = JSON.stringify([srp.prices, aoo.prices]);
+  await loadSrp();
+  if (JSON.stringify([srp.prices, aoo.prices]) === before) return;
+  renderSrpLink(); renderRows(); renderTotals();
+});
 
 const locked = () => plan.status === 'sent' && !unlocked;
 const cur = () => SYM[plan.currency] || plan.currency + ' ';
@@ -721,13 +734,19 @@ document.addEventListener('click', e => {
   renderTotals(); save();
 });
 
+let savedQ = new Map();
+const qkey = i => `${i.qty || 0}|${!!i.edited}`;
 function save() {
   const el = $('#save'); el.className = 'save'; el.textContent = 'กำลังบันทึก…';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      const r = await fetch('/api/import/plan?p=' + encodeURIComponent(planPath), { method: 'PUT', body: JSON.stringify(plan) });
+      // amgo speed: send only the lines whose qty changed since the last save (not all ~900)
+      const dirty = plan.items.filter(i => savedQ.get(i.code) !== qkey(i));
+      const r = await fetch('/api/import/plan?p=' + encodeURIComponent(planPath), { method: 'PUT',
+        body: JSON.stringify({ status: plan.status, fx: plan.fx, items: dirty.map(i => ({ code: i.code, qty: i.qty, edited: !!i.edited })) }) });
       if (!r.ok) throw new Error(r.status);
+      dirty.forEach(i => savedQ.set(i.code, qkey(i)));
       el.textContent = 'บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     } catch (err) { el.className = 'save err'; el.textContent = 'บันทึกไม่ได้ — ลองใหม่'; }
     saveTimer = null;  // nothing pending — safe for checkVersion() to reload

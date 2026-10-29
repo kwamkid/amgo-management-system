@@ -5,7 +5,9 @@
 //   node scripts/import-sync.mjs pull <plan.json | round folder> [...]   amgo → file (web-edited qty + status)
 //   add --dry to print what would change without writing
 //
-// Field master (owner, 29 Oct 2026): qty = web, everything else = builder (plan.json).
+// amgo is the single master (owner, 30 Oct 2026) — the local page is retired; plan.json is only the builder's
+// working copy. Order of work: pull → build → push (AGD: `npm run plan:hape`).
+//   qty: the owner's own edits (qty_edited_at, or `edited` in the file) are kept; other lines take the builder's.
 //   push never overwrites a qty that was edited on the web (qty_edited_at set).
 //   round status: web owns it after creation, but a file that moved further (draft → approved → sent) wins.
 // Pictures: aoocommerce product image URL when barcode/code matches (no storage used);
@@ -117,7 +119,7 @@ async function push(sb, file, dry) {
     'containers', 'overMonths', 'arrive', 'leadMonths', 'notes', 'updated']
   const extra = Object.fromEntries(Object.entries(r).filter(([k]) => !known.includes(k)))
 
-  const { data: existing } = await sb.from('import_rounds').select('id, status').eq('slug', slug).maybeSingle()
+  const existing = await findRound(sb, slug, r)
   const roundRow = {
     slug,
     brand: r.brand,
@@ -203,12 +205,18 @@ async function push(sb, file, dry) {
     }
   }
 
-  const { data: round, error: rErr } = await sb.from('import_rounds').upsert(roundRow, { onConflict: 'slug' }).select('id').single()
+  // by id, not slug: the folder gets renamed when the invoice arrives (rules §9.7) — same round, new slug
+  const { data: round, error: rErr } = existing
+    ? await sb.from('import_rounds').update(roundRow).eq('id', existing.id).select('id').single()
+    : await sb.from('import_rounds').insert(roundRow).select('id').single()
   if (rErr) throw new Error(`round ${slug}: ${rErr.message}`)
+  if (existing && existing.slug !== slug) console.log(`  ${existing.slug} → renamed ${slug}`)
 
   const { data: cur, error: cErr } = await sb.from('import_round_items').select('code, qty, qty_edited_at').eq('round_id', round.id)
   if (cErr) throw cErr
   const webQty = new Map((cur ?? []).filter((c) => c.qty_edited_at).map((c) => [c.code, c.qty]))
+  const webAt = new Map((cur ?? []).filter((c) => c.qty_edited_at).map((c) => [c.code, c.qty_edited_at]))
+  const now = new Date().toISOString()
 
   const rows = []
   for (const [i, it] of items.entries()) {
@@ -229,6 +237,8 @@ async function push(sb, file, dry) {
       our_price_src: it.ourPriceSrc || null,
       qty: webQty.has(String(it.code)) ? webQty.get(String(it.code)) : int(it.qty) ?? 0,
       suggested: int(it.suggested),
+      // "edited" = the owner's own qty — the builder keeps it on the next build (file flag from an older page / builder)
+      qty_edited_at: webAt.get(String(it.code)) ?? (it.edited ? now : null),
       note: it.note || null,
       blocked: it.blocked ? String(it.blocked) : null,
       case_pack: int(it.casePack),
@@ -262,36 +272,57 @@ async function push(sb, file, dry) {
 }
 
 // ── pull ───────────────────────────────────────────────────────────────────
+// amgo is the master (owner 30 Oct 2026): every line's qty + `edited`, and the round status, go into plan.json
+// so the builder starts from what the owner set on the web.
 async function pull(sb, file, dry) {
   const slug = path.basename(path.dirname(file))
-  const { data: round, error } = await sb.from('import_rounds').select('id, status').eq('slug', slug).maybeSingle()
-  if (error) throw error
-  if (!round) return console.log(`  ${slug}: not in amgo yet — push first`)
-  const { data: edited, error: e2 } = await sb
-    .from('import_round_items')
-    .select('code, qty')
-    .eq('round_id', round.id)
-    .not('qty_edited_at', 'is', null)
-  if (e2) throw e2
-
   const plan = JSON.parse(await fs.readFile(file, 'utf8'))
-  const web = new Map(edited.map((e) => [e.code, e.qty]))
+  const round = await findRound(sb, slug, plan)
+  if (!round) return console.log(`  ${slug}: not in amgo yet — push first`)
+  const rows = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb
+      .from('import_round_items')
+      .select('code, qty, qty_edited_at')
+      .eq('round_id', round.id)
+      .range(from, from + 999)
+    if (error) throw error
+    rows.push(...data)
+    if (data.length < 1000) break
+  }
+  const db = new Map(rows.map((x) => [x.code, x]))
   let changed = 0
   for (const it of plan.items ?? []) {
-    if (web.has(String(it.code)) && it.qty !== web.get(String(it.code))) {
-      it.qty = web.get(String(it.code))
-      changed++
-    }
+    const x = db.get(String(it.code))
+    if (!x) continue
+    const edited = !!x.qty_edited_at
+    if (it.qty !== x.qty || !!it.edited !== edited) changed++
+    it.qty = x.qty
+    if (edited) it.edited = true
+    else delete it.edited
   }
   const statusChanged = plan.status !== round.status
   if (!changed && !statusChanged) return console.log(`  ${slug}: up to date`)
-  console.log(`  ${slug}: qty ${changed}${statusChanged ? ` · status ${plan.status} → ${round.status}` : ''}${dry ? ' (dry run)' : ''}`)
+  console.log(`  ${slug}: lines ${changed}${statusChanged ? ` · status ${plan.status} → ${round.status}` : ''}${dry ? ' (dry run)' : ''}`)
   if (dry) return
   plan.status = round.status
   plan.updated = new Date().toISOString()
   const tmp = file + '.tmp'
   await fs.writeFile(tmp, JSON.stringify(plan, null, 1))
   await fs.rename(tmp, file)
+}
+
+/** a round by folder name, else by brand + sub + round code (the folder was renamed) */
+async function findRound(sb, slug, plan) {
+  const { data: bySlug } = await sb.from('import_rounds').select('id, slug, status').eq('slug', slug).maybeSingle()
+  if (bySlug) return bySlug
+  const { data } = await sb
+    .from('import_rounds')
+    .select('id, slug, status')
+    .eq('brand', plan.brand)
+    .eq('sub', plan.sub || '')
+    .eq('round', plan.round)
+  return data?.length === 1 ? data[0] : null
 }
 
 // ── main ───────────────────────────────────────────────────────────────────

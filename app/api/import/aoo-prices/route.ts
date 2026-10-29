@@ -1,35 +1,46 @@
-// ราคาขายจริงบนชั้นใน aoocommerce (?brand=) — ยกมาจาก aooPrices() ใน serve.mjs
-// กุญแจ aoo อยู่ใน env ฝั่ง server เท่านั้น (AOO_SUPABASE_URL / AOO_SUPABASE_SECRET_KEY) · ไม่ตั้ง = ไม่มีราคา aoo
+// ราคาขายจริงบนชั้นใน aoocommerce (?brand=) — ผลเหมือน aooPrices() ใน serve.mjs เดิม
+// เรียกผ่าน MCP ของ aoo (เครื่องมือ stock · กุญแจอ่านอย่างเดียว บริษัทเดียว) แทนกุญแจหลักของฐานข้อมูล
+// (เจ้าของ 30 ต.ค. 69) · กุญแจ AOO_MCP_KEY อยู่ฝั่ง server เท่านั้น · ไม่ตั้ง = ไม่มีราคา aoo (หน้าใช้ SRP แทน)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { importGuard } from '@/lib/services/import/importServer'
+
+const AOO_MCP_URL = process.env.AOO_MCP_URL || 'https://app.aoocommerce.com/api/mcp'
+
+type StockRow = { sku: string | null; barcode: string | null; price: number | null; discount_price: number | null }
 
 export async function GET(req: NextRequest) {
   const ctx = await importGuard()
   if (ctx instanceof NextResponse) return ctx
-  const url = process.env.AOO_SUPABASE_URL
-  const key = process.env.AOO_SUPABASE_SECRET_KEY
-  if (!url || !key) return NextResponse.json({ prices: {}, error: 'ยังไม่ได้ตั้งกุญแจ aoocommerce' })
-  const aoo = createClient(url, key, { auth: { persistSession: false } })
-  const name = req.nextUrl.searchParams.get('brand') ?? ''
-  const { data: brands } = await aoo.from('product_brands').select('id').ilike('name', name)
-  if (!brands?.length) return NextResponse.json({ prices: {} })
+  const key = process.env.AOO_MCP_KEY
+  if (!key) return NextResponse.json({ prices: {}, error: 'ยังไม่ได้ตั้งกุญแจ MCP ของ aoo' })
+  const brand = req.nextUrl.searchParams.get('brand') ?? ''
+
+  const res = await fetch(AOO_MCP_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      Accept: 'application/json, text/event-stream',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'stock', arguments: { brands: [brand], include_zero: true, limit: 2000 } },
+    }),
+    cache: 'no-store',
+  })
+  if (!res.ok) return NextResponse.json({ prices: {}, error: `aoo MCP ${res.status}` })
+  const body = (await res.json()) as { result?: { content?: { text?: string }[]; isError?: boolean } }
+  const text = body.result?.content?.[0]?.text
+  if (!text || body.result?.isError) return NextResponse.json({ prices: {}, error: text ?? 'aoo MCP ไม่ตอบ' })
+
   const prices: Record<string, { price: number; discount: number }> = {}
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await aoo
-      .from('products_with_variations')
-      .select('sku, barcode, default_price, discount_price')
-      .is('variation_deleted_at', null)
-      .gt('default_price', 0)
-      .in('brand_id', brands.map((b) => b.id))
-      .range(from, from + 999)
-    if (error) return NextResponse.json({ prices, error: error.message })
-    for (const r of data ?? []) {
-      const p = { price: Number(r.default_price), discount: Number(r.discount_price) || 0 }
-      const sku = String(r.sku || '').trim().toUpperCase().replace(/^00-[A-Z]+-/, '')
-      for (const k of [String(r.barcode || '').trim(), sku]) if (k && !prices[k]) prices[k] = p
-    }
-    if ((data ?? []).length < 1000) break
+  for (const r of JSON.parse(text) as StockRow[]) {
+    if (!(Number(r.price) > 0)) continue
+    const p = { price: Number(r.price), discount: Number(r.discount_price) || 0 }
+    const sku = String(r.sku || '').trim().toUpperCase().replace(/^00-[A-Z]+-/, '')
+    for (const k of [String(r.barcode || '').trim(), sku]) if (k && !prices[k]) prices[k] = p
   }
   return NextResponse.json({ prices })
 }

@@ -1639,6 +1639,7 @@ export type Database = {
           remark: string | null
           round_id: string
           sort: number
+          source: string
           srp: number | null
           stock: number | null
           sub: string | null
@@ -1676,6 +1677,7 @@ export type Database = {
           remark?: string | null
           round_id: string
           sort?: number
+          source?: string
           srp?: number | null
           stock?: number | null
           sub?: string | null
@@ -1713,6 +1715,7 @@ export type Database = {
           remark?: string | null
           round_id?: string
           sort?: number
+          source?: string
           srp?: number | null
           stock?: number | null
           sub?: string | null

@@ -226,7 +226,8 @@ const fc = (n, d = 2) => n == null || isNaN(n) ? '—' : `${fmt(n, d)}<span clas
 const thb = n => n == null || isNaN(n) ? '—' : `${fmt(n, 0)}<span class="sym">฿</span>`;
 const STATUS = { draft: 'ร่าง', approved: 'อนุมัติแล้ว', sent: 'ส่งแล้ว' };
 // amgo (owner 30 Oct 2026): container no. per brand per year in front of the container name — "Hape 2026 #5 · ตู้ 2026-C1"
-const logo = r => r && r.logo ? `<img class="blogo" src="${esc(r.logo)}" alt="">` : '';
+const logo1 = u => u ? `<img class="blogo" src="${esc(u)}" alt="">` : '';
+const logo = r => !r ? '' : r.parts && r.parts.length > 1 ? r.parts.map(p => logo1(p.logo)).join('') : logo1(r.logo);
 // container no. replaces the round code in headings (owner 30 Oct 2026: "ตู้ที่ 5")
 const rno = r => r.shipNo ? '#' + r.shipNo : esc(r.round);
 const ctrName = (ctr, r) => r && r.shipNo ? `${esc(r.brand)} ${(String(ctr).match(/^20\d\d/) || [''])[0]} #${r.shipNo} · ตู้ ${esc(ctr)}` : `ตู้ ${esc(ctr)}`;
@@ -249,16 +250,31 @@ async function showList() {
   const rows = await (await fetch('/api/import/rounds')).json();
   $('#app').innerHTML = `
     <header class="top"><h1>แผนสั่งของ — ทุกแบรนด์</h1></header>
-    <main>${rows.length ? groupBy(rows).map(([ctr, rs]) => `
-      <div class="ctr-h">${ctr ? `${ctrName(ctr, rs[0])} — รวม $${fmt(rs.reduce((s, x) => s + x.fob, 0), 0)} · ${fmt(rs.reduce((s, x) => s + x.cbm, 0), 1)} CBM` : 'ไม่ได้ระบุตู้'}</div>
-      <div class="grid">${rs.map(r => `
+    <main>${rows.length ? `<div class="grid">${groupBy(rows).flatMap(([ctr, rs]) => ctr ? [ctrCard(ctr, rs)] : rs.map(r => roundCard(r))).join('')}</div>` : '<div class="empty">ยังไม่มีรอบสั่งของ — ส่งแผนขึ้นด้วย scripts/import-sync.mjs push</div>'}</main>`;
+}
+
+// amgo (owner 30 Oct 2026: "มันคือตู้เดียวกัน จะได้ไม่งง"): ONE card per container — brands that ship together
+// (separate sheets of the brand's form = separate rounds) show as lines inside it; the card opens the main brand's
+// tab and the others are tabs on that page
+const roundCard = r => `
       <a class="card" href="#p=${encodeURIComponent(r.path)}">
         <div class="row"><span>${logo(r)}${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
         <h3>${esc(r.title)}</h3>
         <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${SYM[r.currency] || ''}${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>
-      </a>`).join('')}</div>`).join('') : '<div class="empty">ยังไม่มีรอบสั่งของ — ส่งแผนขึ้นด้วย scripts/import-sync.mjs push</div>'}</main>`;
+      </a>`;
+function ctrCard(ctr, rs) {
+  rs = [...rs].sort(tabOrder);
+  const main = rs[0], st = rs.every(r => r.status === main.status) ? main.status : 'draft';
+  const sum = k => rs.reduce((s, x) => s + (x[k] || 0), 0);
+  const cap = Math.max(0, ...Object.values(main.containers || {}).map(Number));
+  return `
+      <a class="card" href="#p=${encodeURIComponent(main.path)}">
+        <div class="row"><span>${rs.map(logo).join('')}</span><span class="pill ${st}">${STATUS[st] || st}</span></div>
+        <h3>${ctrName(ctr, main)}</h3>
+        ${rs.flatMap(r => r.parts && r.parts.length > 1 ? r.parts : [r]).map(r => `<div class="row"><span>${esc(r.name || r.sub || r.brand)} · ${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">$${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>`).join('')}
+        <div class="row" style="color:var(--ink);font-weight:650;margin-top:4px"><span>รวม ${fmt(sum('lines'))} รายการ · ${fmt(sum('pcs'))} ชิ้น</span><span class="num">$${fmt(sum('fob'), 0)} · ${fmt(sum('cbm'), 1)}${cap ? ` / ${cap}` : ''} CBM</span></div>
+      </a>`;
 }
-
 const groupBy = rows => { const m = new Map(); rows.forEach(r => { const k = r.container || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m].sort((a, b) => (b[0] || '').localeCompare(a[0] || '')); };
 
 /* ---------- one round ---------- */
@@ -277,12 +293,17 @@ async function openPlan(p) {
 }
 
 async function loadSrp() {
-  const name = plan.srpBrand || plan.sub || plan.brand;
-  try {
-    const r = await fetch('/api/import/srp?brand=' + encodeURIComponent(name));
-    srp = r.ok ? await r.json() : { prices: {}, error: 'ดึงราคาไม่ได้' };
-    if (r.ok && !srp.brand) srp.error = `ไม่พบแบรนด์ "${name}" ใน SRP Calculator`;
-  } catch { srp = { prices: {}, error: 'ดึงราคาไม่ได้' }; }
+  // amgo: one round can hold several brands (Hape + J'adore) — merge each brand's SRP Calculator prices
+  const names = plan.srpBrands && plan.srpBrands.length ? plan.srpBrands : [plan.srpBrand || plan.sub || plan.brand];
+  const got = await Promise.all(names.map(async name => {
+    try {
+      const r = await fetch('/api/import/srp?brand=' + encodeURIComponent(name));
+      const j = r.ok ? await r.json() : { prices: {}, error: 'ดึงราคาไม่ได้' };
+      if (r.ok && !j.brand) j.error = `ไม่พบแบรนด์ "${name}" ใน SRP Calculator`;
+      return j;
+    } catch { return { prices: {}, error: 'ดึงราคาไม่ได้' }; }
+  }));
+  srp = { ...got[0], prices: Object.assign({}, ...got.map(g => g.prices)), error: got.find(g => g.error)?.error };
   try {  // real shelf prices in aoo win when aoo already sells the model
     const r = await fetch('/api/import/aoo-prices?brand=' + encodeURIComponent(plan.aooBrand || plan.brand));
     aoo = r.ok ? await r.json() : { prices: {} };
@@ -338,7 +359,7 @@ function renderShell() {
     <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
     <span class="spacer"></span><span class="save" id="save"></span>
   </header>
-  ${plan.container ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
+  ${plan.container && mates.length ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
       ? `<a class="tab on"><b>${logo(plan)}${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
       : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${logo(x)}${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
   <div id="chips"></div>
@@ -619,13 +640,18 @@ function renderTotals() {
       <span class="muted">${esc(plan.sub || plan.brand)}: ${fmt(o.length)} รายการ · ${fc(fob, 0)}</span></div>${totToggle()}`;
     return bindTotToggle();
   }
-  if (mates.length) {  // shared container: one line per brand file + the container total (Hape · J'adore · Flower Monaco …)
+  const split = !mates.length && (plan.parts || []).length > 1;  // amgo: brands inside one round
+  if (mates.length || split) {  // shared container: one line per brand file + the container total (Hape · J'adore · Flower Monaco …)
     const me = { path: planPath, me: true, sub: plan.sub, brand: plan.brand, logo: plan.logo, status: plan.status, lines: o.length, pcs, ctns: ct, fob, fx: plan.fx, cbm, noCbm: o.filter(i => !i.cbm).length, retail };
     mates.forEach(x => { x.retail = (x.items || []).filter(i => i.qty > 0).reduce((s, i) => { const a = aoo.prices[String(i.barcode || '').trim()];
       return s + i.qty * (a && a.price > 0 ? a.price : i.ourPrice != null && i.ourPrice !== '' ? +i.ourPrice : (i.srp || 0) * (x.fx || plan.fx)); }, 0); });
-    const rows = [me, ...mates].sort(tabOrder), sum = k => rows.reduce((s, x) => s + (x[k] || 0), 0);
+    const rows = split ? plan.parts.map(p => { const po = o.filter(i => (i.source || '') === p.source);
+        return { me: true, sub: p.name, logo: p.logo, status: plan.status, lines: po.length, pcs: po.reduce((s, i) => s + i.qty, 0),
+          ctns: po.reduce((s, i) => s + ctns(i), 0), fob: po.reduce((s, i) => s + i.qty * i.fob, 0), fx: plan.fx,
+          cbm: po.reduce((s, i) => s + ctns(i) * (i.cbm || 0), 0), retail: po.reduce((s, i) => s + i.qty * (sell(i).v || 0), 0) }; })
+      : [me, ...mates].sort(tabOrder), sum = k => rows.reduce((s, x) => s + (x[k] || 0), 0);
     const cap = Math.max(...conts.map(c => c[1])), pct = cCbm / cap * 100;
-    const tr = x => `<tr class="${x.me ? 'me' : ''}" ${x.me ? '' : `data-go="${esc(x.path)}"`}>
+    const tr = x => `<tr class="${x.me && !split ? 'me' : ''}" ${x.me ? '' : `data-go="${esc(x.path)}"`}>
       <td>${logo(x)}<b>${esc(x.sub || x.brand)}</b> <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></td>
       <td class="num">${fmt(x.lines)}</td><td class="num">${fmt(x.pcs)}</td><td class="num">${fmt(x.ctns)}</td>
       <td class="num">${fc(x.fob, 0)}</td><td class="num">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;

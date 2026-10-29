@@ -116,10 +116,18 @@ async function push(sb, file, dry) {
   const plan = JSON.parse(await fs.readFile(file, 'utf8'))
   const { items = [], ...r } = plan
   const known = ['brand', 'sub', 'srpBrand', 'round', 'title', 'container', 'status', 'currency', 'fx', 'incoterm',
-    'containers', 'overMonths', 'arrive', 'leadMonths', 'notes', 'updated']
+    'containers', 'overMonths', 'arrive', 'leadMonths', 'notes', 'updated', 'mergeInto']
   const extra = Object.fromEntries(Object.entries(r).filter(([k]) => !known.includes(k)))
+  // one order form = one round (owner 30 Oct 2026): a sub-brand file with `mergeInto: "<main folder>"` adds its
+  // lines to the main round as source = its sub-brand name; the main brand's lines are source ''
+  const merged = !!r.mergeInto
+  const source = merged ? r.sub || slug : ''
 
-  const existing = await findRound(sb, slug, r)
+  const existing = merged ? await findRound(sb, r.mergeInto, { ...r, sub: '' }) : await findRound(sb, slug, r)
+  if (merged && !existing) throw new Error(`${slug}: push ${r.mergeInto} first (mergeInto)`)
+  const part = { source, name: r.sub || r.brand, srpBrand: r.srpBrand || r.sub || r.brand, ...(r.sentFile ? { sentFile: r.sentFile } : {}) }
+  const parts = [...((existing?.extra?.parts ?? []).filter((p) => p.source !== source)), part]
+    .sort((a, b) => (a.source ? 1 : 0) - (b.source ? 1 : 0) || a.source.localeCompare(b.source))
   const roundRow = {
     slug,
     brand: r.brand,
@@ -138,7 +146,7 @@ async function push(sb, file, dry) {
     arrive: r.arrive || null,
     lead_months: num(r.leadMonths),
     notes: r.notes ?? null,
-    extra,
+    extra: { ...extra, parts },
   }
 
   // pictures
@@ -206,13 +214,19 @@ async function push(sb, file, dry) {
   }
 
   // by id, not slug: the folder gets renamed when the invoice arrives (rules §9.7) — same round, new slug
-  const { data: round, error: rErr } = existing
+  const { data: round, error: rErr } = merged
+    ? await sb.from('import_rounds').update({ extra: { ...existing.extra, parts } }).eq('id', existing.id).select('id').single()
+    : existing
     ? await sb.from('import_rounds').update(roundRow).eq('id', existing.id).select('id').single()
     : await sb.from('import_rounds').insert(roundRow).select('id').single()
   if (rErr) throw new Error(`round ${slug}: ${rErr.message}`)
-  if (existing && existing.slug !== slug) console.log(`  ${existing.slug} → renamed ${slug}`)
+  if (!merged && existing && existing.slug !== slug) console.log(`  ${existing.slug} → renamed ${slug}`)
 
-  const { data: cur, error: cErr } = await sb.from('import_round_items').select('code, qty, qty_edited_at').eq('round_id', round.id)
+  const { data: cur, error: cErr } = await sb
+    .from('import_round_items')
+    .select('code, qty, qty_edited_at')
+    .eq('round_id', round.id)
+    .eq('source', source)
   if (cErr) throw cErr
   const webQty = new Map((cur ?? []).filter((c) => c.qty_edited_at).map((c) => [c.code, c.qty]))
   const webAt = new Map((cur ?? []).filter((c) => c.qty_edited_at).map((c) => [c.code, c.qty_edited_at]))
@@ -225,8 +239,10 @@ async function push(sb, file, dry) {
       code: String(it.code),
       barcode: it.barcode || null,
       name: it.name || '',
-      grp: it.group || null,
-      sub: it.sub || null,
+      // merged sub-brand: the sub-brand is the category, its own groups (Phase I …) the sub-categories
+      grp: merged ? r.sub || null : it.group || null,
+      sub: merged ? it.group || null : it.sub || null,
+      source,
       channel: it.channel || null,
       tags: Array.isArray(it.tags) ? it.tags : [],
       remark: it.remark || null,
@@ -262,7 +278,7 @@ async function push(sb, file, dry) {
   }
   const gone = (cur ?? []).map((c) => c.code).filter((c) => !rows.some((x) => x.code === c))
   if (gone.length) {
-    const { error } = await sb.from('import_round_items').delete().eq('round_id', round.id).in('code', gone)
+    const { error } = await sb.from('import_round_items').delete().eq('round_id', round.id).eq('source', source).in('code', gone)
     if (error) throw error
   }
   console.log(
@@ -277,14 +293,16 @@ async function push(sb, file, dry) {
 async function pull(sb, file, dry) {
   const slug = path.basename(path.dirname(file))
   const plan = JSON.parse(await fs.readFile(file, 'utf8'))
-  const round = await findRound(sb, slug, plan)
+  const round = plan.mergeInto ? await findRound(sb, plan.mergeInto, { ...plan, sub: '' }) : await findRound(sb, slug, plan)
   if (!round) return console.log(`  ${slug}: not in amgo yet — push first`)
+  const source = plan.mergeInto ? plan.sub || slug : ''
   const rows = []
   for (let from = 0; ; from += 1000) {
     const { data, error } = await sb
       .from('import_round_items')
       .select('code, qty, qty_edited_at')
       .eq('round_id', round.id)
+      .eq('source', source)
       .range(from, from + 999)
     if (error) throw error
     rows.push(...data)
@@ -314,11 +332,11 @@ async function pull(sb, file, dry) {
 
 /** a round by folder name, else by brand + sub + round code (the folder was renamed) */
 async function findRound(sb, slug, plan) {
-  const { data: bySlug } = await sb.from('import_rounds').select('id, slug, status').eq('slug', slug).maybeSingle()
+  const { data: bySlug } = await sb.from('import_rounds').select('id, slug, status, extra').eq('slug', slug).maybeSingle()
   if (bySlug) return bySlug
   const { data } = await sb
     .from('import_rounds')
-    .select('id, slug, status')
+    .select('id, slug, status, extra')
     .eq('brand', plan.brand)
     .eq('sub', plan.sub || '')
     .eq('round', plan.round)

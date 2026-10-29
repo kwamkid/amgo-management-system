@@ -38,6 +38,13 @@ async function brandLogos(): Promise<Map<string, string>> {
 const logoOf = (logos: Map<string, string>, r: Pick<RoundRow, 'srp_brand' | 'sub' | 'brand'>) =>
   logos.get((r.srp_brand || r.sub || r.brand).toLowerCase()) ?? logos.get(r.brand.toLowerCase()) ?? null
 
+type Part = { source: string; name: string; srpBrand: string; sentFile?: string }
+/** brands inside one round — extra.parts from the sync; a plain round = just its own brand */
+const partsOf = (r: Pick<RoundRow, 'extra' | 'brand' | 'sub' | 'srp_brand'>): Part[] => {
+  const p = (r.extra as { parts?: Part[] } | null)?.parts
+  return p?.length ? p : [{ source: '', name: r.sub || r.brand, srpBrand: r.srp_brand || r.sub || r.brand }]
+}
+
 const ctnsOf = (qty: number, pack: number | null) => (pack ? Math.ceil(qty / pack) : 0)
 const yearOf = (r: Pick<RoundRow, 'container' | 'arrive' | 'created_at'>) =>
   r.container?.match(/^(20\d\d)/)?.[1] ?? (r.arrive ?? r.created_at).slice(0, 4)
@@ -48,7 +55,7 @@ export async function listRounds(sb: Sb) {
   if (error) throw error
   const { data: ordered, error: e2 } = await sb
     .from('import_round_items')
-    .select('round_id, qty, fob, case_pack, cbm')
+    .select('round_id, qty, fob, case_pack, cbm, source')
     .gt('qty', 0)
   if (e2) throw e2
   const logos = await brandLogos()
@@ -72,6 +79,18 @@ export async function listRounds(sb: Sb) {
         container: r.container ?? '',
         shipNo: r.ship_no,
         logo: logoOf(logos, r),
+        // one order form can hold several brands (Hape + J'adore) — per-brand totals for the card
+        parts: partsOf(r).map((p) => {
+          const o = ord.filter((i) => i.source === p.source)
+          return {
+            ...p,
+            logo: logos.get(p.srpBrand.toLowerCase()) ?? null,
+            lines: o.length,
+            pcs: o.reduce((s, i) => s + i.qty, 0),
+            fob: o.reduce((s, i) => s + i.qty * (i.fob ?? 0), 0),
+            cbm: o.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack) * (i.cbm ?? 0), 0),
+          }
+        }),
         containers: r.containers,
         ctns: ord.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack), 0),
         cbm: ord.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack) * (i.cbm ?? 0), 0),
@@ -124,7 +143,11 @@ export async function getPlan(sb: Sb, slug: string) {
     title: r.title,
     container: r.container ?? '',
     shipNo: r.ship_no ?? undefined,
-    logo: logoOf(await brandLogos(), r),
+    ...(await (async () => {
+      const logos = await brandLogos()
+      const parts = partsOf(r).map((p) => ({ ...p, logo: logos.get(p.srpBrand.toLowerCase()) ?? null }))
+      return { logo: logoOf(logos, r), parts, srpBrands: parts.map((p) => p.srpBrand) }
+    })()),
     status: r.status,
     currency: r.currency,
     fx: r.fx,
@@ -138,6 +161,7 @@ export async function getPlan(sb: Sb, slug: string) {
     items: items.map((i) => ({
       ...((i.extra && typeof i.extra === 'object' && !Array.isArray(i.extra) ? i.extra : {}) as Record<string, Json>),
       code: i.code,
+      source: i.source,
       barcode: i.barcode ?? '',
       name: i.name,
       group: i.grp ?? '',

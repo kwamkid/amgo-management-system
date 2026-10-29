@@ -222,6 +222,8 @@ const SYM = { USD: '$', EUR: '€', GBP: '£', RMB: '¥', CNY: '¥' };
 const fc = (n, d = 2) => n == null || isNaN(n) ? '—' : `${fmt(n, d)}<span class="sym">${SYM[plan.currency] || plan.currency}</span>`;
 const thb = n => n == null || isNaN(n) ? '—' : `${fmt(n, 0)}<span class="sym">฿</span>`;
 const STATUS = { draft: 'ร่าง', approved: 'อนุมัติแล้ว', sent: 'ส่งแล้ว' };
+// amgo (owner 30 Oct 2026): container no. per brand per year in front of the container name — "Hape 2026 #5 · ตู้ 2026-C1"
+const ctrName = (ctr, r) => r && r.shipNo ? `${esc(r.brand)} ${(String(ctr).match(/^20\d\d/) || [''])[0]} #${r.shipNo} · ตู้ ${esc(ctr)}` : `ตู้ ${esc(ctr)}`;
 
 let plan = null, planPath = '', dir = '', unlocked = false, onlyOrdered = false, query = '', cat = '', sub = '', chan = '', kind = '', saveTimer = null;
 let aoo = { prices: {} }, srp = { prices: {} }, sortKey = 'qty', sortDir = -1, mates = [];  // default: biggest order first (owner 2026-10-29)
@@ -242,7 +244,7 @@ async function showList() {
   $('#app').innerHTML = `
     <header class="top"><h1>แผนสั่งของ — ทุกแบรนด์</h1></header>
     <main>${rows.length ? groupBy(rows).map(([ctr, rs]) => `
-      <div class="ctr-h">${ctr ? `ตู้ ${esc(ctr)} — รวม $${fmt(rs.reduce((s, x) => s + x.fob, 0), 0)} · ${fmt(rs.reduce((s, x) => s + x.cbm, 0), 1)} CBM` : 'ไม่ได้ระบุตู้'}</div>
+      <div class="ctr-h">${ctr ? `${ctrName(ctr, rs[0])} — รวม $${fmt(rs.reduce((s, x) => s + x.fob, 0), 0)} · ${fmt(rs.reduce((s, x) => s + x.cbm, 0), 1)} CBM` : 'ไม่ได้ระบุตู้'}</div>
       <div class="grid">${rs.map(r => `
       <a class="card" href="#p=${encodeURIComponent(r.path)}">
         <div class="row"><span>${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
@@ -330,7 +332,7 @@ function renderShell() {
     <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
     <span class="spacer"></span><span class="save" id="save"></span>
   </header>
-  ${plan.container ? `<nav class="tabs"><span class="lab">ตู้ ${esc(plan.container)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
+  ${plan.container ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
       ? `<a class="tab on"><b>${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
       : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
   <div id="chips"></div>
@@ -606,7 +608,7 @@ function renderTotals() {
   const tm = $('#tabme'); if (tm) tm.textContent = `$${fmt(fob, 0)} · ${fmt(cbm, 1)} CBM`;
   if (totMin) {
     const allC = mates.length ? cCbm : cbm, cap = Math.max(...conts.map(c => c[1])), pct = allC / cap * 100;
-    $('#tot').innerHTML = `<div class="tot-line">${mates.length ? `<span>ตู้ ${esc(plan.container)}</span><b>${fc(cFob, 0)}</b><b>${thb(cThb)}</b>` : `<b>${fc(fob, 0)}</b><b>${thb(fob * plan.fx)}</b>`}
+    $('#tot').innerHTML = `<div class="tot-line">${mates.length ? `<span>${ctrName(plan.container, plan)}</span><b>${fc(cFob, 0)}</b><b>${thb(cThb)}</b>` : `<b>${fc(fob, 0)}</b><b>${thb(fob * plan.fx)}</b>`}
       <span>${fmt(allC, 1)} / ${cap} CBM</span><span class="mini-bar ${pct > 100 ? 'over' : ''}"><i style="width:${Math.min(pct, 100)}%"></i></span><b>${fmt(pct, 0)}%</b>
       <span class="muted">${esc(plan.sub || plan.brand)}: ${fmt(o.length)} รายการ · ${fc(fob, 0)}</span></div>${totToggle()}`;
     return bindTotToggle();
@@ -622,7 +624,7 @@ function renderTotals() {
       <td class="num">${fmt(x.lines)}</td><td class="num">${fmt(x.pcs)}</td><td class="num">${fmt(x.ctns)}</td>
       <td class="num">${fc(x.fob, 0)}</td><td class="num">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;
     $('#tot').innerHTML = `
-    <table class="ctr-sum"><thead><tr><th>ตู้ ${esc(plan.container)}</th><th class="num">รายการ</th><th class="num">ชิ้น</th><th class="num">กล่อง</th>
+    <table class="ctr-sum"><thead><tr><th>${ctrName(plan.container, plan)}</th><th class="num">รายการ</th><th class="num">ชิ้น</th><th class="num">กล่อง</th>
       <th class="num">${esc(plan.incoterm || 'FOB')}</th><th class="num">ต้นทุน บาท @ ${fmt(plan.fx, 0)}</th><th class="num">มูลค่าขาย (ราคาเรา)</th><th class="num">CBM${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</th></tr></thead>
       <tbody>${rows.map(tr).join('')}</tbody>
       <tfoot><tr><td>รวมทั้งตู้</td><td class="num">${fmt(sum('lines'))}</td><td class="num">${fmt(sum('pcs'))}</td><td class="num">${fmt(sum('ctns'))}</td>
@@ -645,7 +647,7 @@ function renderTotals() {
     <div class="kpi"><div class="l">มูลค่าขาย (ราคาเรา/SRP)</div><div class="v">${thb(retail)}</div></div>
     ${hasStock() ? `<div class="kpi"><div class="l">สั่งเกิน ${overM()} เดือน</div><div class="v ${o.some(i => (cover(i, after(i)) || 0) > overM()) ? 'cov-low' : ''}">${fmt(o.filter(i => (cover(i, after(i)) || 0) > overM()).length)} รุ่น</div></div>` : ''}
     <div class="kpi"><div class="l">CBM${o.some(i => !i.cbm) ? ` <span class="cov-low">(ไม่มีขนาดกล่อง ${o.filter(i => !i.cbm).length} รายการ)</span>` : ''}</div><div class="v big">${fmt(cbm, 2)}</div></div>
-    ${mates.length ? `<div class="kpi ctr"><div class="l">ทั้งตู้ ${esc(plan.container)} (${mates.length + 1} ไฟล์)</div><div class="v">${fc(cFob, 0)} · ${thb(cThb)}</div></div>
+    ${mates.length ? `<div class="kpi ctr"><div class="l">ทั้ง${ctrName(plan.container, plan)} (${mates.length + 1} ไฟล์)</div><div class="v">${fc(cFob, 0)} · ${thb(cThb)}</div></div>
     <div class="kpi"><div class="l">CBM ทั้งตู้${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</div><div class="v big">${fmt(cCbm, 2)}</div></div>` : ''}
     <div class="boxes">${conts.map(([k, cap]) => { const p = (mates.length ? cCbm : cbm) / cap * 100; return `
       <div class="cont ${p > 100 ? 'over' : ''}"><div class="t"><span>ตู้ ${esc(k)} (${cap})</span><span>${fmt(p, 0)}%</span></div><div class="bar"><i style="width:${Math.min(p, 100)}%"></i></div></div>`; }).join('')}</div>${totToggle()}`;

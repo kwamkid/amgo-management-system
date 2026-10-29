@@ -189,6 +189,20 @@ async function push(sb, file, dry) {
     return
   }
 
+  // container no. per brand per year (AGD's "Hape #5"): a round joining an existing container takes its number,
+  // a new container takes the brand's highest number that year + 1 · plan.json `shipNo` overrides
+  if (r.shipNo) roundRow.ship_no = r.shipNo
+  else if (!existing) {
+    const { data: same } = await sb.from('import_rounds').select('ship_no').eq('container', roundRow.container ?? '').not('ship_no', 'is', null).limit(1)
+    if (same?.length) roundRow.ship_no = same[0].ship_no
+    else {
+      const year = String(roundRow.container || '').match(/^(20\d\d)/)?.[1]
+      const { data: prev } = await sb.from('import_rounds').select('ship_no, container').eq('brand', roundRow.brand).not('ship_no', 'is', null)
+      const nums = (prev ?? []).filter((p) => !year || String(p.container || '').startsWith(year)).map((p) => p.ship_no)
+      if (nums.length) roundRow.ship_no = Math.max(...nums) + 1
+    }
+  }
+
   const { data: round, error: rErr } = await sb.from('import_rounds').upsert(roundRow, { onConflict: 'slug' }).select('id').single()
   if (rErr) throw new Error(`round ${slug}: ${rErr.message}`)
 

@@ -1738,6 +1738,7 @@ export type Database = {
           notes: string | null
           over_months: number | null
           round: string
+          ship_no: number | null
           slug: string
           srp_brand: string | null
           status: string
@@ -1761,6 +1762,7 @@ export type Database = {
           notes?: string | null
           over_months?: number | null
           round: string
+          ship_no?: number | null
           slug: string
           srp_brand?: string | null
           status?: string
@@ -1784,6 +1786,7 @@ export type Database = {
           notes?: string | null
           over_months?: number | null
           round?: string
+          ship_no?: number | null
           slug?: string
           srp_brand?: string | null
           status?: string

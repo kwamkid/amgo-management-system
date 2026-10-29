@@ -203,6 +203,11 @@ body.tot-min .wrap{max-height:calc(100vh - 200px)}
 .lb .nav{position:absolute;top:50%;transform:translateY(-50%);font-size:34px;color:#fff;background:none;border:0;cursor:pointer;padding:10px}
 .lb .prev{left:10px}.lb .next{right:10px}
 /* amgo (owner 30 Oct 2026): brand logo next to each round */
+.sum-list{border-top:1px solid var(--line);margin-top:8px;padding-top:8px;display:grid;gap:4px;font-size:13px}
+.sum-list div{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sum-list span{display:flex;align-items:center;gap:7px;color:var(--muted)}.sum-list svg{color:var(--aoo)}
+.sum-list b{font-variant-numeric:tabular-nums;color:var(--ink)}.sum-list .over b{color:var(--accent)}
+.card .row .blogo{height:18px}
 .blogo{height:22px;width:auto;max-width:76px;object-fit:contain;border-radius:4px;background:#fff;vertical-align:middle;margin-right:7px}
 h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
 @media (max-width:700px){header.top,main,footer.tot{padding-left:16px;padding-right:16px}.stick3{min-width:170px}}
@@ -262,6 +267,14 @@ const roundCard = r => `
         <h3>${esc(r.title)}</h3>
         <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${SYM[r.currency] || ''}${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>
       </a>`;
+// amgo (owner 30 Oct 2026): container totals one per line, icon in front
+const svg = d => `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICO = {
+  list: svg('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+  box: svg('<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>'),
+  cash: svg('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>'),
+  ctr: svg('<rect x="2" y="7" width="20" height="11" rx="1"/><path d="M6 7v11M10 7v11M14 7v11M18 7v11"/>'),
+};
 function ctrCard(ctr, rs) {
   rs = [...rs].sort(tabOrder);
   const main = rs[0], st = rs.every(r => r.status === main.status) ? main.status : 'draft';
@@ -271,8 +284,13 @@ function ctrCard(ctr, rs) {
       <a class="card" href="#p=${encodeURIComponent(main.path)}">
         <div class="row"><span>${rs.map(logo).join('')}</span><span class="pill ${st}">${STATUS[st] || st}</span></div>
         <h3>${ctrName(ctr, main)}</h3>
-        ${rs.flatMap(r => r.parts && r.parts.length > 1 ? r.parts : [r]).map(r => `<div class="row"><span>${esc(r.name || r.sub || r.brand)} · ${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">$${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>`).join('')}
-        <div class="row" style="color:var(--ink);font-weight:650;margin-top:4px"><span>รวม ${fmt(sum('lines'))} รายการ · ${fmt(sum('pcs'))} ชิ้น</span><span class="num">$${fmt(sum('fob'), 0)} · ${fmt(sum('cbm'), 1)}${cap ? ` / ${cap}` : ''} CBM</span></div>
+        ${rs.flatMap(r => r.parts && r.parts.length > 1 ? r.parts : [r]).map(r => `<div class="row"><span>${logo1(r.logo)}${esc(r.name || r.sub || r.brand)}</span><span class="num">$${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>`).join('')}
+        <div class="sum-list">
+          <div><span>${ICO.list}รายการ</span><b>${fmt(sum('lines'))}</b></div>
+          <div><span>${ICO.box}ชิ้น</span><b>${fmt(sum('pcs'))}</b></div>
+          <div><span>${ICO.cash}มูลค่า FOB</span><b>$${fmt(sum('fob'), 0)}</b></div>
+          <div class="${cap && sum('cbm') > cap ? 'over' : ''}"><span>${ICO.ctr}CBM${cap ? ` (ตู้ ${cap})` : ''}</span><b>${fmt(sum('cbm'), 1)}${cap ? ` · ${fmt(sum('cbm') / cap * 100, 0)}%` : ''}</b></div>
+        </div>
       </a>`;
 }
 const groupBy = rows => { const m = new Map(); rows.forEach(r => { const k = r.container || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m].sort((a, b) => (b[0] || '').localeCompare(a[0] || '')); };

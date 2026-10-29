@@ -7,7 +7,7 @@
 //
 // Field master (owner, 29 Oct 2026): qty = web, everything else = builder (plan.json).
 //   push never overwrites a qty that was edited on the web (qty_edited_at set).
-//   round status: taken from the file only when the round is created; after that the web owns it.
+//   round status: web owns it after creation, but a file that moved further (draft → approved → sent) wins.
 // Pictures: aoocommerce product image URL when barcode/code matches (no storage used);
 //   otherwise the local picture is resized to webp and uploaded once to
 //   import-images/<brand>/<code>.webp (keyed by brand + code, so later rounds reuse it).
@@ -105,6 +105,8 @@ const ITEM_KEYS = ['code', 'barcode', 'name', 'group', 'sub', 'channel', 'tags',
   'ourPriceSrc', 'qty', 'suggested', 'note', 'blocked', 'casePack', 'qtyPdq', 'pdqPerCase', 'pdqDim', 'ctn', 'cbm', 'nw',
   'gw', 'stock', 'incoming', 'avg', 'edited']
 
+const RANK = { draft: 0, approved: 1, sent: 2 }
+
 // ── push ───────────────────────────────────────────────────────────────────
 async function push(sb, file, dry) {
   const dir = path.dirname(file)
@@ -124,7 +126,8 @@ async function push(sb, file, dry) {
     round: r.round,
     title: r.title || '',
     container: r.container ?? null,
-    ...(existing ? {} : { status: r.status || 'draft' }),
+    // web owns status, except when the file has moved further (PO sent from the local page)
+    ...(!existing || RANK[r.status] > RANK[existing.status] ? { status: r.status || 'draft' } : {}),
     currency: r.currency || 'USD',
     fx: num(r.fx),
     incoterm: r.incoterm ?? null,

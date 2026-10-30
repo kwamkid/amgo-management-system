@@ -9,14 +9,28 @@ import { toast } from 'react-hot-toast'
 
 const running = new Set<string>()
 
-/** fetch → save as `fileName`; JSON error bodies become the toast message */
-export async function bgDownload(url: string, fileName: string, label = fileName): Promise<boolean> {
+export interface BgDownloadText {
+  already: (label: string) => string
+  working: (label: string) => string
+  done: (file: string) => string
+  fail: (msg: string) => string
+}
+
+const TH: BgDownloadText = {
+  already: (l) => `${l} กำลังสร้างอยู่แล้ว`,
+  working: (l) => `กำลังสร้างไฟล์ ${l}… ทำงานอื่นต่อได้ เสร็จแล้วจะบันทึกให้เอง`,
+  done: (f) => `บันทึก ${f} แล้ว`,
+  fail: (m) => `สร้างไฟล์ไม่สำเร็จ: ${m}`,
+}
+
+/** fetch → save as `fileName`; JSON error bodies become the toast message · `text` for pages not in Thai */
+export async function bgDownload(url: string, fileName: string, label = fileName, text: BgDownloadText = TH): Promise<boolean> {
   if (running.has(url)) {
-    toast(`${label} กำลังสร้างอยู่แล้ว`, { position: 'top-right' })
+    toast(text.already(label), { position: 'top-right' })
     return false
   }
   running.add(url)
-  const id = toast.loading(`กำลังสร้างไฟล์ ${label}… ทำงานอื่นต่อได้ เสร็จแล้วจะบันทึกให้เอง`, { position: 'top-right' })
+  const id = toast.loading(text.working(label), { position: 'top-right' })
   try {
     const res = await fetch(url)
     if (!res.ok) {
@@ -32,10 +46,10 @@ export async function bgDownload(url: string, fileName: string, label = fileName
     a.click()
     a.remove()
     setTimeout(() => URL.revokeObjectURL(href), 60_000)
-    toast.success(`บันทึก ${fileName} แล้ว`, { id, duration: 4000 })
+    toast.success(text.done(fileName), { id, duration: 4000 })
     return true
   } catch (e) {
-    toast.error(`สร้างไฟล์ไม่สำเร็จ: ${(e as Error).message}`, { id, duration: 6000 })
+    toast.error(text.fail((e as Error).message), { id, duration: 6000 })
     return false
   } finally {
     running.delete(url)

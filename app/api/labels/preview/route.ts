@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   return new NextResponse(await toSvg(r, 600), {
     headers: {
       'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'private, no-store',
+      // short cache: the factory page tiles the same image ~15× in its A4 preview; edits show within a minute
+      'Cache-Control': 'private, max-age=60',
       'X-Label-Pt': String(r.bodyPt),
       'X-Label-Overflow': String(r.overflow),
       'X-Label-Qr-Module': r.qrModule.toFixed(3),

@@ -29,7 +29,7 @@ export interface LabelData {
 }
 
 /** sizes offered in the UI; anything "WxH" in mm is accepted */
-export const LABEL_SIZES = ['50x50', '40x40', '50x30'] as const
+export const LABEL_SIZES = ['50x50', '40x40', '30x30', '50x30'] as const
 
 export const parseSize = (s: string | null | undefined): { w: number; h: number } => {
   const m = /^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/.exec((s ?? '').trim())
@@ -63,3 +63,10 @@ export const TIS_TYPES: Record<number, string> = {
   5: 'ไม้ พลาสติก สิ่งทอ และ แก้ว — ลูกหิน',
   6: 'ไม้ พลาสติก และ กระดาษ — ของเล่นที่มีแม่เหล็กเป็นส่วนประกอบ',
 }
+
+/** A4 sheet layout (pdf.ts) — shared so the print dialog can count pages before asking for the file */
+export const SHEET_MARGIN = 8
+export const SHEET_GAP = 4
+export const perSheet = (w: number, h: number) =>
+  Math.max(1, Math.floor((210 - 2 * SHEET_MARGIN + SHEET_GAP) / (w + SHEET_GAP))) *
+  Math.max(1, Math.floor((297 - 2 * SHEET_MARGIN - 4 + SHEET_GAP) / (h + SHEET_GAP)))

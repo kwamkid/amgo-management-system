@@ -6,13 +6,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, ClipboardCopy, Copy, Download, Eye, Link2, Save, Settings2, Sticker, Tags } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ClipboardCopy, Copy, Download, Eye, Link2, Printer, Save, Settings2, Sticker, Tags } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, EmptyState, Field, Input, Modal, Pill, Select, Textarea, Toggle } from '@/components/aoo'
-import { DataTable, ListRow, ListRows, PageHeader, Segmented, StatCard, StatGrid, TechLoader } from '@/components/shared'
+import { Alert, Button, Checkbox, Field, Input, Modal, Pill, Select, Textarea, Toggle } from '@/components/aoo'
+import { DataTable, PageHeader, Segmented, StatCard, StatGrid, TechLoader } from '@/components/shared'
 import type { Column } from '@/components/shared'
-import { LABEL_SIZES, MIN_QR_MODULE_MM, MIN_READABLE_PT, TIS_TYPES } from '@/lib/labels/types'
+import { bgDownload } from '@/lib/utils/bgDownload'
+import { fetchPdf, printWithPreOpen } from '@/lib/utils/printPdf'
+import { LABEL_SIZES, parseSize, perSheet, MIN_QR_MODULE_MM, MIN_READABLE_PT, TIS_TYPES } from '@/lib/labels/types'
 
 // ── types (mirror of /api/labels) ──────────────────────────────────────────
 type Field =
@@ -46,7 +48,7 @@ const LAYER: Record<string, string> = {
   all: 'ค่ากลาง', brand: 'แบรนด์', part: 'แบรนด์ย่อย', group: 'หมวด', product: 'สินค้า', srp: 'SRP Calculator',
   agreed: 'ราคาที่ตกลงไว้ในรอบสั่ง', aoo: 'ราคาหน้าร้าน aoo', round: 'ค่าเริ่มต้นของรอบ',
 }
-const SIZE_NAME: Record<string, string> = { '50x50': '5 × 5 ซม.', '40x40': '4 × 4 ซม.', '50x30': '5 × 3 ซม. (แนวนอน)' }
+const SIZE_NAME: Record<string, string> = { '50x50': '5 × 5 ซม.', '40x40': '4 × 4 ซม.', '30x30': '3 × 3 ซม.', '50x30': '5 × 3 ซม. (แนวนอน)' }
 const sizeName = (s: string) => SIZE_NAME[s] ?? `${s.replace('x', ' × ')} มม.`
 const LONG: Field[] = ['warning', 'age', 'usage', 'address']
 
@@ -181,9 +183,15 @@ function RoundLabels({ slug, onBack }: { slug: string; onBack: () => void }) {
   const bad = data.lines.filter((l) => problems(l).length).length
   const missing = data.lines.filter((l) => l.missing.length).length
   const copies = data.lines.reduce((s, l) => s + (l.skip ? 0 : l.copies), 0)
-  const sizes = [...new Set(data.lines.filter((l) => !l.skip).map((l) => l.size))]
   const spec = (brand: string, scope: Scope, key: string) => data.specs.find((s) => s.brand === brand && s.scope === scope && s.key === key)
   const ro = !data.canEdit
+  const sizes = [...new Set(data.lines.filter((l) => !l.skip).map((l) => l.size))]
+  // whole container = A4 sheets, one file per sticker size, built in the background (owner 30 Oct)
+  const downloadAll = () => {
+    for (const size of sizes) {
+      bgDownload(`/api/labels/pdf?r=${encodeURIComponent(slug)}&size=${size}&mode=sheet&dl=1`, `${slug}-${size}mm-A4.pdf`, `ทั้งตู้ ${sizeName(size)}`)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -195,6 +203,7 @@ function RoundLabels({ slug, onBack }: { slug: string; onBack: () => void }) {
         actions={
           <>
             <Button variant="secondary" icon={Settings2} onClick={() => setBrandOpen(true)}>ข้อมูลแบรนด์ / ค่ากลาง</Button>
+            <Button variant="secondary" icon={Download} onClick={downloadAll}>ดาวน์โหลดทั้งตู้</Button>
             <Button variant="primary" icon={Link2} onClick={() => setShareOpen(true)}>ส่งให้โรงงาน</Button>
           </>
         }
@@ -215,7 +224,7 @@ function RoundLabels({ slug, onBack }: { slug: string; onBack: () => void }) {
         ]} />
       </div>
 
-      <LabelGrid lines={rows} specs={data.specs} ro={ro} onOpen={setEditLine} onSave={saveSpecs} />
+      <LabelGrid slug={slug} lines={rows} specs={data.specs} ro={ro} onOpen={setEditLine} onSave={saveSpecs} />
 
       {editLine && (
         <LineModal
@@ -227,7 +236,7 @@ function RoundLabels({ slug, onBack }: { slug: string; onBack: () => void }) {
         />
       )}
       {brandOpen && <BrandModal data={data} ro={ro} onClose={() => setBrandOpen(false)} onSave={saveSpecs} />}
-      {shareOpen && <ShareModal data={data} slug={slug} sizes={sizes} bad={bad} ro={ro} onClose={() => setShareOpen(false)} onShare={(on) => saveRound({ share: on })} />}
+      {shareOpen && <ShareModal data={data} bad={bad} ro={ro} onClose={() => setShareOpen(false)} onShare={(on) => saveRound({ share: on })} />}
     </div>
   )
 }
@@ -243,7 +252,7 @@ const GRID: { f: Field; label: string; w: number }[] = [
   { f: 'age', label: 'อายุผู้เล่น', w: 250 },
   { f: 'usage', label: 'วิธีการใช้', w: 210 },
   { f: 'icon_03', label: 'ไอคอน 0-3', w: 90 },
-  { f: 'size', label: 'ขนาด (มม.)', w: 90 },
+  { f: 'size', label: 'ขนาดสติ๊กเกอร์', w: 170 },
   { f: 'price', label: 'ราคา', w: 80 },
   { f: 'skip', label: 'ไม่ทำฉลาก', w: 90 },
 ]
@@ -274,10 +283,16 @@ function fromCell(f: Field, raw: string): Val | undefined {
   return t
 }
 
-function LabelGrid({ lines, specs, ro, onOpen, onSave }: {
-  lines: Line[]; specs: Spec[]; ro: boolean; onOpen: (l: Line) => void; onSave: (rows: Spec[]) => Promise<void>
+function LabelGrid({ slug, lines, specs, ro, onOpen, onSave }: {
+  slug: string; lines: Line[]; specs: Spec[]; ro: boolean; onOpen: (l: Line) => void; onSave: (rows: Spec[]) => Promise<void>
 }) {
   const { showToast } = useToast()
+  // tick rows → "พิมพ์…" opens PrintDialog (size · layout · qty per code) — owner 30 Oct
+  const [sel, setSel] = useState<Set<string>>(new Set())
+  const [printOpen, setPrintOpen] = useState(false)
+  const toggle = (code: string) => setSel((s) => { const n = new Set(s); if (n.has(code)) n.delete(code); else n.add(code); return n })
+  const printable = lines.filter((l) => !l.skip)
+  const allOn = printable.length > 0 && printable.every((l) => sel.has(l.code))
   const [edits, setEdits] = useState<Record<string, Partial<Record<Field, string>>>>({})
   const [saving, setSaving] = useState(false)
   const dirty = Object.keys(edits).length
@@ -362,8 +377,19 @@ function LabelGrid({ lines, specs, ro, onOpen, onSave }: {
 
   return (
     <div className="space-y-2">
+      {printOpen && (
+        <PrintDialog slug={slug} lines={lines.filter((l) => sel.has(l.code) && !l.skip)} onClose={() => setPrintOpen(false)} />
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-[var(--fg-3)]">ตัวเทา = ใช้ค่าของหมวด/แบรนด์ · วางจาก Excel ได้หลายช่อง · Enter = ลงบรรทัดถัดไป</span>
+        {sel.size > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">เลือก {sel.size} รหัส</span>
+            <Button variant="secondary" size="sm" icon={Printer} onClick={() => setPrintOpen(true)}>พิมพ์…</Button>
+            <Button variant="ghost" size="sm" onClick={() => setSel(new Set())}>ยกเลิกเลือก</Button>
+          </div>
+        ) : (
+          <span className="text-xs text-[var(--fg-3)]">ติ๊กหน้ารหัสเพื่อพิมพ์เอง · ตัวเทา = ค่าของหมวด/แบรนด์ · วางจาก Excel ได้หลายช่อง</span>
+        )}
         <div className="ml-auto flex gap-2">
           <Button variant="secondary" size="sm" icon={ClipboardCopy} onClick={copyAll}>คัดลอกทั้งตาราง</Button>
           {!ro && (
@@ -380,7 +406,12 @@ function LabelGrid({ lines, specs, ro, onOpen, onSave }: {
         <table className="w-max min-w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--bg-sunken)]">
             <tr>
-              <th className="sticky left-0 z-20 min-w-[170px] border-b border-r border-[var(--border-1)] bg-[var(--bg-sunken)] px-2 py-2 text-left font-medium">รหัส</th>
+              <th className="sticky left-0 z-20 min-w-[200px] border-b border-r border-[var(--border-1)] bg-[var(--bg-sunken)] px-2 py-2 text-left font-medium">
+                <label className="flex items-center gap-2">
+                  <Checkbox checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(printable.map((l) => l.code)))} aria-label="เลือกทั้งหมด" />
+                  รหัส
+                </label>
+              </th>
               {GRID.map((g) => (
                 <th key={g.f} style={{ minWidth: g.w }} className="border-b border-r border-[var(--border-1)] px-2 py-2 text-left font-medium">{g.label}</th>
               ))}
@@ -394,17 +425,34 @@ function LabelGrid({ lines, specs, ro, onOpen, onSave }: {
               return (
                 <tr key={l.code} className={l.skip ? 'opacity-50' : undefined}>
                   <td className="sticky left-0 z-[5] border-b border-r border-[var(--border-1)] bg-[var(--bg-surface)] px-2 py-1">
-                    <button type="button" className="flex w-full items-center gap-2 text-left" onClick={() => onOpen(l)} title="ดูตัวอย่างฉลาก">
+                    <div className="flex items-center gap-2">
+                    <Checkbox checked={sel.has(l.code)} disabled={l.skip} onChange={() => toggle(l.code)} aria-label={`เลือก ${l.code}`} />
+                    <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => onOpen(l)} title="ดูตัวอย่างฉลาก">
                       <Eye size={14} className="shrink-0 text-[var(--fg-3)]" />
                       <span className="min-w-0">
                         <span className="block font-medium">{l.code}</span>
                         <span className="block max-w-[140px] truncate text-xs text-[var(--fg-3)]">{l.name}</span>
                       </span>
                     </button>
+                    </div>
                   </td>
                   {GRID.map((g, c) => {
                     const v = shown(l, g.f)
                     const edited = edits[l.code]?.[g.f] !== undefined
+                    if (g.f === 'size') {
+                      // size = dropdown (owner 30 Oct: "ตรงไหนให้เลือกขนาด label")
+                      const inh = inherited(l, g.f)
+                      return (
+                        <td key={g.f} className={`border-b border-r border-[var(--border-1)] p-0 ${edited ? 'bg-[var(--bg-sunken)]' : ''}`}>
+                          <select data-cell={`${r}-${c}`} value={v} disabled={ro} onChange={(e) => set(l, g.f, e.target.value)}
+                            className={`w-full bg-transparent px-1 py-1.5 outline-none ${v ? '' : 'text-[var(--fg-3)]'}`}>
+                            <option value="">{inh ? `${sizeName(inh)} (ค่าตู้)` : 'ตามตู้'}</option>
+                            {LABEL_SIZES.map((x) => <option key={x} value={x}>{sizeName(x)}</option>)}
+                            {v && !(LABEL_SIZES as readonly string[]).includes(v) && <option value={v}>{v}</option>}
+                          </select>
+                        </td>
+                      )
+                    }
                     return (
                       <td key={g.f} className={`border-b border-r border-[var(--border-1)] p-0 ${edited ? 'bg-[var(--bg-sunken)]' : ''}`}>
                         <input
@@ -445,6 +493,104 @@ function LabelGrid({ lines, specs, ro, onOpen, onSave }: {
   )
 }
 
+// ── print dialog (owner 30 Oct: label printer, one label per page; choose size + layout + qty per code) ──
+type PrintMode = 'single' | 'sheet'
+const PRINT_PREF_KEY = 'labels.printPref'
+/** Chrome's print preview renders every page first — beyond this it hangs on "Loading preview" */
+const MAX_PRINT_PAGES = 300
+
+function PrintDialog({ slug, lines, onClose }: { slug: string; lines: Line[]; onClose: () => void }) {
+  const { showToast } = useToast()
+  // last choice is remembered per browser (convenience only)
+  const pref = (() => {
+    try { return JSON.parse(localStorage.getItem(PRINT_PREF_KEY) ?? '{}') as { mode?: PrintMode; size?: string } } catch { return {} }
+  })()
+  const [mode, setMode] = useState<PrintMode>(pref.mode ?? 'single')
+  const [size, setSize] = useState<string>(pref.size ?? '') // '' = each label's saved size
+  const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((l) => [l.code, '1'])))
+  const [all, setAll] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const n = (code: string) => Math.max(1, Math.floor(Number(qty[code]) || 1))
+  const total = lines.reduce((s, l) => s + n(l.code), 0)
+  // jobs per sticker size: one size if chosen here, else grouped by each label's saved size
+  const groups = size ? [{ size, lines }] : [...new Set(lines.map((l) => l.size))].map((s) => ({ size: s, lines: lines.filter((l) => l.size === s) }))
+  const pages = groups.reduce((p, g) => {
+    const c = g.lines.reduce((s, l) => s + n(l.code), 0)
+    const { w, h } = parseSize(g.size)
+    return p + (mode === 'single' ? c : Math.ceil(c / perSheet(w, h)))
+  }, 0)
+
+  const go = async () => {
+    try { localStorage.setItem(PRINT_PREF_KEY, JSON.stringify({ mode, size })) } catch { /* private mode */ }
+    if (groups.length > 1) { showToast('ที่เลือกมีหลายขนาด — เลือก “ขนาดฉลาก” ขนาดเดียว หรือเลือกรหัสทีละขนาด', 'error'); return }
+    const g = groups[0]
+    const q = g.lines.map((l) => `${l.code}:${n(l.code)}`).join(',')
+    const url = `/api/labels/pdf?r=${encodeURIComponent(slug)}&mode=${mode}&size=${g.size}${size ? `&as=${size}` : ''}&qty=${encodeURIComponent(q)}`
+    if (pages > MAX_PRINT_PAGES) {
+      bgDownload(`${url}&dl=1`, `${slug}-${g.size}mm-${mode}.pdf`)
+      onClose()
+      return
+    }
+    setBusy(true)
+    try {
+      await printWithPreOpen(() => fetchPdf(url), 'ฉลาก สคบ.')
+      onClose()
+    } catch (e) {
+      showToast(`สร้างไฟล์ไม่สำเร็จ: ${(e as Error).message}`, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} maxWidth={560} title={`พิมพ์ฉลาก ${lines.length} รหัส`}
+      description={`รวม ${total.toLocaleString()} ดวง · ${pages.toLocaleString()} หน้า`}
+      footer={<>
+        <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" icon={pages > MAX_PRINT_PAGES ? Download : Printer} loading={busy} onClick={go}>
+          {pages > MAX_PRINT_PAGES ? 'บันทึกเป็นไฟล์ (เยอะเกินพิมพ์ตรง)' : 'พิมพ์'}
+        </Button>
+      </>}>
+      <div className="space-y-4">
+        <Segmented className="w-full" value={mode} onChange={(v) => setMode(v as PrintMode)} options={[
+          { value: 'single', label: 'ดวงละหน้า (เครื่องพิมพ์ฉลาก)' },
+          { value: 'sheet', label: 'A4 เรียงหลายดวง' },
+        ]} />
+        <Field label="ขนาดฉลาก" help={mode === 'single' ? 'ตั้งขนาดกระดาษในเครื่องพิมพ์ฉลากให้ตรงกับขนาดนี้ · พิมพ์ที่ 100% / Actual size' : 'พิมพ์ที่ 100% / Actual size (ห้าม Fit to page)'}
+          warning={size && size !== '50x50' ? (size === '30x30' ? 'ขนาดนี้ตัวอักษรปกติเหลือราว 3 pt (คำเตือนราว 4 pt) — ใช้เครื่องพิมพ์ 300 dpi ขึ้นไป' : 'ขนาดนี้ตัวอักษรปกติเหลือราว 3.5–4 pt (คำเตือนราว 5 pt)') + ' — ดูตัวอย่างก่อนพิมพ์เยอะ' : undefined}>
+          <Select value={size} onChange={(e) => setSize(e.target.value)}>
+            <option value="">ตามที่ตั้งไว้ของแต่ละรหัส{groups.length === 1 && !size ? ` (${sizeName(groups[0].size)})` : ''}</option>
+            {LABEL_SIZES.map((x) => <option key={x} value={x}>{sizeName(x)}</option>)}
+          </Select>
+        </Field>
+        <div className="border-t border-[var(--border-1)] pt-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-sm font-medium">จำนวนต่อรหัส</span>
+            <div className="ml-auto flex items-center gap-1">
+              <Input type="number" min={1} value={all} placeholder="เท่ากัน" onChange={(e) => setAll(e.target.value)} style={{ width: 90 }} aria-label="จำนวนเท่ากันทุกรหัส" />
+              <Button variant="ghost" size="sm" disabled={!all} onClick={() => setQty(Object.fromEntries(lines.map((l) => [l.code, all])))}>ใส่ทุกตัว</Button>
+            </div>
+          </div>
+          <div className="max-h-[40vh] space-y-1 overflow-auto">
+            {lines.map((l) => (
+              <div key={l.code} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium">{l.code}</span>
+                  <span className="ml-2 truncate text-xs text-[var(--fg-3)]">{l.name}</span>
+                </div>
+                <span className="text-xs text-[var(--fg-3)]">สั่ง {l.qty.toLocaleString()}</span>
+                <Input type="number" min={1} value={qty[l.code] ?? '1'} onChange={(e) => setQty((q) => ({ ...q, [l.code]: e.target.value }))}
+                  style={{ width: 90 }} aria-label={`จำนวน ${l.code}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── round settings (inline) ────────────────────────────────────────────────
 function RoundSettings({ data, ro, onSave }: { data: Data; ro: boolean; onSave: (b: Record<string, unknown>) => Promise<void> }) {
   const [month, setMonth] = useState(data.settings.import_month)
@@ -457,7 +603,7 @@ function RoundSettings({ data, ro, onSave }: { data: Data; ro: boolean; onSave: 
           onChange={(e) => setMonth(e.target.value)}
           onBlur={() => month !== data.settings.import_month && onSave({ import_month: month })} />
       </Field>
-      <Field label="ขนาดเริ่มต้นของรอบ" help="สินค้าที่ไม่ได้ตั้งขนาดเองใช้ขนาดนี้">
+      <Field label="ขนาดสติ๊กเกอร์ของทั้งตู้" help="ตัวไหนกล่องเล็ก เลือกขนาดแยกได้ที่คอลัมน์ “ขนาดสติ๊กเกอร์” ในตาราง">
         <Select value={data.settings.default_size} disabled={ro} onChange={(e) => onSave({ default_size: e.target.value })}>
           {LABEL_SIZES.map((s) => <option key={s} value={s}>{sizeName(s)}</option>)}
         </Select>
@@ -627,20 +773,18 @@ function BrandModal({ data, ro, onClose, onSave }: { data: Data; ro: boolean; on
 }
 
 // ── share with the factory ─────────────────────────────────────────────────
-function ShareModal({ data, slug, sizes, bad, ro, onClose, onShare }: {
-  data: Data; slug: string; sizes: string[]; bad: number; ro: boolean; onClose: () => void; onShare: (on: boolean) => Promise<void>
+function ShareModal({ data, bad, ro, onClose, onShare }: {
+  data: Data; bad: number; ro: boolean; onClose: () => void; onShare: (on: boolean) => Promise<void>
 }) {
   const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
   const token = data.settings.share_token
   const url = token ? `${window.location.origin}/labels/${token}` : ''
   const toggle = async (on: boolean) => { setBusy(true); await onShare(on); setBusy(false) }
-  const count = (s: string) => data.lines.filter((l) => l.size === s)
-  const pdf = (s: string, mode: string) => `/api/labels/pdf?r=${encodeURIComponent(slug)}&size=${s}&mode=${mode}&dl=1`
 
   return (
     <Modal open onClose={onClose} maxWidth={620} title="ส่งให้โรงงานพิมพ์"
-      description="โรงงานเปิดลิงก์ได้โดยไม่ต้องล็อกอิน หน้าเป็นภาษาอังกฤษ/จีน ดาวน์โหลด PDF ได้เอง · ข้อมูลในไฟล์อัปเดตตามที่แก้ล่าสุดเสมอ"
+      description="โรงงานเปิดลิงก์ได้โดยไม่ต้องล็อกอิน หน้าเป็นภาษาอังกฤษ/จีน ดาวน์โหลด PDF ได้เอง (ชุดปุ่มเดียวกับ “พิมพ์เอง”) · ข้อมูลในไฟล์อัปเดตตามที่แก้ล่าสุดเสมอ"
       footer={<Button variant="ghost" onClick={onClose}>ปิด</Button>}>
       <div className="space-y-4">
         {bad > 0 && <Alert tone="warning" compact>ยังมี {bad} รหัสที่ต้องแก้ — แก้ก่อนส่งดีกว่า (ลิงก์อัปเดตตามที่แก้ ไม่ต้องส่งใหม่)</Alert>}
@@ -654,22 +798,6 @@ function ShareModal({ data, slug, sizes, bad, ro, onClose, onShare }: {
             <Button variant="secondary" icon={Copy} onClick={() => navigator.clipboard.writeText(url).then(() => showToast('คัดลอกลิงก์แล้ว'))}>คัดลอก</Button>
           </div>
         )}
-        <div className="border-t border-[var(--border-1)] pt-4">
-          <div className="mb-2 text-sm font-medium">ดาวน์โหลดเอง</div>
-          <ListRows>
-            {sizes.map((s) => (
-              <ListRow key={s} title={sizeName(s)}
-                meta={`${count(s).length} รหัส · ${count(s).reduce((n, l) => n + l.copies, 0).toLocaleString()} ดวง`}
-                trailing={
-                  <div className="flex flex-wrap justify-end gap-1">
-                    <Button variant="ghost" size="sm" icon={Download} href={pdf(s, 'sheet')}>A4</Button>
-                    <Button variant="ghost" size="sm" icon={Download} href={pdf(s, 'single')}>ดวงละหน้า</Button>
-                    <Button variant="ghost" size="sm" icon={Download} href={pdf(s, 'master')}>รหัสละ 1 ดวง</Button>
-                  </div>
-                } />
-            ))}
-          </ListRows>
-        </div>
       </div>
     </Modal>
   )

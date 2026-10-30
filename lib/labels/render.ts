@@ -89,6 +89,31 @@ function runs(text: string): { text: string; thai: boolean }[] {
 /** text widths in em, shared by all labels (most lines repeat label to label) */
 const widthCache = new Map<string, number>()
 
+/** compounds the ICU dictionary splits but a label must not break ("อุด|ตัน" looked wrong — owner 30 Oct) */
+const NO_BREAK = ['อุดตัน', 'ทางเดินหายใจ', 'ผู้ปกครอง', 'ต่ำกว่า', 'ขึ้นไป', 'แรกเกิด', 'เสริมพัฒนาการ']
+const UNIT = /^(เดือน|ปี|บาท|ชิ้น|ซม\.?|มม\.?)$/
+
+/** merge segments: listed compounds, and a number with its unit ("18 เดือน", "290 บาท") */
+function keepTogether(seg: string[]): string[] {
+  const out: string[] = []
+  for (let i = 0; i < seg.length; i++) {
+    let cur = seg[i]
+    // longest listed compound starting here
+    let joined = cur
+    for (let j = i + 1; j < seg.length && joined.length < 16; j++) {
+      joined += seg[j]
+      if (NO_BREAK.includes(joined)) { cur = joined; i = j }
+    }
+    // number + space + unit
+    if (/^\d[\d,.]*$/.test(cur) && seg[i + 1] === ' ' && UNIT.test(seg[i + 2] ?? '')) {
+      cur += ' ' + seg[i + 2]
+      i += 2
+    }
+    out.push(cur)
+  }
+  return out
+}
+
 class Typesetter {
   private f: Fonts
   constructor(f: Fonts) {
@@ -140,7 +165,7 @@ class Typesetter {
 
   /** word-wrap; Thai has no spaces between words → Intl.Segmenter (ICU dictionary) */
   wrap(text: string, bold: boolean, sizeMm: number, maxW: (lineIndex: number) => number): string[] {
-    const words = [...new Intl.Segmenter('th', { granularity: 'word' }).segment(text)].map((s) => s.segment)
+    const words = keepTogether([...new Intl.Segmenter('th', { granularity: 'word' }).segment(text)].map((s) => s.segment))
     const lines: string[] = []
     let cur = ''
     const push = () => { lines.push(cur.trimEnd()); cur = '' }
@@ -163,15 +188,16 @@ class Typesetter {
 }
 
 // ── layout ─────────────────────────────────────────────────────────────────
-interface Para { text: string; bold?: boolean; big?: boolean }
+/** big = header · warn = warning/age: bold, 1.45× the body so they stay readable (owner 30 Oct: "ใหญ่กว่าตัวอื่น อ่านรู้เรื่อง") */
+interface Para { text: string; bold?: boolean; big?: boolean; warn?: boolean }
 
 const paragraphs = (l: LabelData): Para[] => {
   const p: Para[] = []
   if (l.header) p.push({ text: l.header, big: true })
   p.push({ text: `รหัส : ${l.code}` })
   if (l.typeTh) p.push({ text: `ชื่อสินค้า : ${l.typeTh}` })
-  if (l.warning) p.push({ text: `คำเตือน : ${l.warning}`, bold: true })
-  if (l.age) p.push({ text: `อายุผู้เล่น : ${l.age}`, bold: true })
+  if (l.warning) p.push({ text: `คำเตือน : ${l.warning}`, bold: true, warn: true })
+  if (l.age) p.push({ text: `อายุผู้เล่น : ${l.age}`, bold: true, warn: true })
   if (l.usage) p.push({ text: `วิธีการใช้ : ${l.usage}` })
   if (l.manufacturer) p.push({ text: `ผู้ผลิต : ${l.manufacturer}` })
   if (l.country) p.push({ text: `ประเทศผู้ผลิต : ${l.country}` })
@@ -214,7 +240,8 @@ export async function glyphPath(f: number, g: number): Promise<string> {
 // sample body ≈ 4.8–5 pt at 50×50 with every field filled; labels with less text grow up to this
 // (owner 30 Oct: 5.5 pt looked too small with empty space left)
 const START_PT = 7
-const FLOOR_PT = 2.8
+// 3×3 cm labels (owner 30 Oct) need ~2.3 pt body with every field filled — printable on a 300 dpi label printer
+const FLOOR_PT = 2.2
 
 /**
  * Lay the label out at the largest body size that fits (header = 1.45×, line = 1.42×).
@@ -224,21 +251,24 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
   const ts = new Typesetter(await loadFonts())
   const { w, h } = l
   const k = Math.min(w, h) / 50
-  const m = Math.max(1.5, 1.8 * k)
+  const m = Math.max(1.2, 1.8 * k)
 
   // bottom block, sized off the sample (10 mm mark + 10 mm QR at 50×50) but never under 8 mm
-  const sym = Math.min(Math.max(10 * k, 8), h * 0.32, (w - 2 * m) * 0.3)
+  // floor 6 mm (QR modules ≈ 0.21 mm at 3×3 — the page warns below 0.25 mm)
+  const sym = Math.min(Math.max(10 * k, 6), h * 0.32, (w - 2 * m) * 0.3)
   const gap = Math.max(0.8, 1.1 * k)
   const caption = [l.tisText, l.showLicense && l.tisLicense ? `ใบอนุญาต ${l.tisLicense}` : ''].filter(Boolean)
 
   // QR: medium error correction unless the modules get too small, then low
   let qr = QRCode.create(l.qrUrl || ' ', { errorCorrectionLevel: 'M' })
   if (sym / qr.modules.size < 0.25) qr = QRCode.create(l.qrUrl || ' ', { errorCorrectionLevel: 'L' })
-  const qrModule = sym / qr.modules.size
+  // the QR never goes under 0.26 mm/module (3×3 at 6 mm didn't scan on a 203 dpi printer) — it may outgrow the mark
+  const qrS = Math.max(sym, 0.26 * qr.modules.size)
+  const qrModule = qrS / qr.modules.size
 
   const paras = paragraphs(l)
   const price = priceText(l)
-  const iconS = l.icon03 ? Math.min(Math.max(11 * k, 8), h * 0.3) : 0
+  const iconS = l.icon03 ? Math.min(Math.max(10 * k, 5), h * 0.28) : 0
   const iconX = w - m - iconS
 
   for (let pt = START_PT; ; pt = Math.round((pt - 0.1) * 10) / 10) {
@@ -246,28 +276,30 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
     const lh = s * 1.42
     const asc = s * 1.02
 
-    const capS = Math.min(s, 5 * PT * k)
+    // TIS text under the block: smaller than the body, right-aligned (owner 30 Oct)
+    const capS = Math.min(s * 0.8, 4.2 * PT * k)
     const capLh = capS * 1.35
-    const blockW = sym * 2 + gap
+    const blockW = sym + gap + qrS
     const blockX = w - m - blockW
     const symBottom = h - m - caption.length * capLh - 0.3
-    const symTop = symBottom - sym
+    const symTop = symBottom - qrS // top of the mark + QR block (QR is the taller one)
     // wide labels: the block fills the right side, so the price can drop to the bottom edge
-    const priceBase = w > h * 1.3 ? h - m - s * 0.3 : symTop + sym * 0.62
+    const priceBase = w > h * 1.3 ? h - m - s * 0.3 : symTop + qrS * 0.62
     const flowEnd = priceBase - asc - s * 0.35
     const fullW = w - 2 * m
     const narrowW = blockX - m - 1
     const bigS = Math.min(s * 1.4, 8.5 * PT * k)
-    // the 0-3 pictogram sits on the right just under the header; lines beside it get shorter
-    const iconTop = m + bigS * 1.3 + s * 0.45 + 0.3
+    // the 0-3 pictogram sits in the top-right corner (owner 30 Oct); lines beside it get shorter
+    const iconTop = m
     const iconW = iconX - m - 1
 
     // flow paragraphs top-down; lines whose box reaches the block (or the pictogram) get a narrow width
     let y = m
     const lines: { text: string; bold: boolean; size: number; base: number }[] = []
     for (const p of paras) {
-      const size = p.big ? bigS : s
-      const plh = p.big ? size * 1.3 : lh
+      const size = p.big ? bigS : p.warn ? s * 1.45 : s
+      // line pitch 1.32× (was 1.42 — the 1.45× warning pushed 41 C1 labels under 4.5 pt) · Thai marks still clear
+      const plh = p.big ? size * 1.3 : size * (p.warn ? 1.28 : 1.32)
       const maxW = (i: number) => {
         const top = y + i * plh
         const bottom = top + plh
@@ -277,7 +309,7 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
       }
       const wrapped = ts.wrap(p.text, !!p.bold, size, maxW)
       for (const t of wrapped) {
-        lines.push({ text: t, bold: !!p.bold, size, base: y + (p.big ? size * 1.02 : asc) })
+        lines.push({ text: t, bold: !!p.bold, size, base: y + size * 1.02 })
         y += plh
       }
       if (p.big) y += s * 0.45
@@ -294,7 +326,7 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
     // TIS mark: true circle ring + traced symbol
     const u = sym / 1000
     const cx = blockX + sym / 2
-    const cy = symTop + sym / 2
+    const cy = symTop + qrS / 2
     const ro = (TIS_RING.r + TIS_RING.width / 2) * u
     const ri = (TIS_RING.r - TIS_RING.width / 2) * u
     d += circle(cx, cy, ro, true) + circle(cx, cy, ri, false)
@@ -317,7 +349,7 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
     // caption centred under the block
     caption.forEach((t, i) => {
       const tw = ts.width(t, false, capS)
-      const x = Math.max(m, Math.min(blockX + (blockW - tw) / 2, w - m - tw))
+      const x = Math.max(m, w - m - tw)
       ts.draw(t, false, capS, x, symBottom + 0.3 + capS * 1.02 + i * capLh, glyphs)
     })
 
@@ -337,7 +369,7 @@ export async function renderLabel(l: LabelData): Promise<LabelDrawing> {
       icon03 = { x: iconX, y: iconTop, u: iu, red }
     }
 
-    return { w, h, glyphs, tis: { x: blockX, y: symTop, u }, d, icon03, bodyPt: pt, overflow: !fits, qrModule }
+    return { w, h, glyphs, tis: { x: blockX, y: cy - sym / 2, u }, d, icon03, bodyPt: pt, overflow: !fits, qrModule }
   }
 }
 

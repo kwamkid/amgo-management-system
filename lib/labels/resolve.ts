@@ -138,6 +138,8 @@ export async function loadRoundLabels(sb: Sb, where: { slug: string } | { id: st
         if (a != null) { values.price = a; from.price = 'aoo' }
       }
     }
+    // header = the item's category (PolyM, Railway …), not the brand (owner 30 Oct) — unless a layer sets one
+    if (values.header == null && it.grp) { values.header = it.grp; from.header = 'group' }
     if (values.size == null) { values.size = defaultSize; from.size = 'round' }
 
     const str = (f: SpecField) => (values[f] == null ? '' : String(values[f]))

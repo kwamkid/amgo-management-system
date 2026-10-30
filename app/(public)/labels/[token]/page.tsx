@@ -5,8 +5,10 @@
 // ไฟล์ PDF สร้างสดจากข้อมูลล่าสุดทุกครั้งที่กด — เจ้าของแก้แล้วลิงก์เดิมได้ไฟล์ใหม่เลย
 
 import { use, useEffect, useState } from 'react'
-import { Download, FileText, Sticker } from 'lucide-react'
-import { Alert, Button } from '@/components/aoo'
+import { Sticker } from 'lucide-react'
+import { Toaster } from 'react-hot-toast'
+import { Alert } from '@/components/aoo'
+import { LabelDownloads } from '@/components/labels/LabelDownloads'
 import { DataTable, TechLoader } from '@/components/shared'
 
 interface Share {
@@ -18,11 +20,6 @@ interface Share {
 
 const mm = (s: string) => s.replace('x', ' × ') + ' mm'
 
-const MODES = [
-  { mode: 'sheet', en: 'A4 sheets, all copies (crop marks)', zh: 'A4 排版，全部数量（含裁切线）' },
-  { mode: 'single', en: 'One label per page, all copies (roll / label printer)', zh: '每页一张，全部数量（卷筒标签打印机）' },
-  { mode: 'master', en: 'One page per item code — set copies from the table below', zh: '每个货号一页 — 按下表设置打印份数' },
-]
 
 export default function LabelSharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
@@ -46,10 +43,11 @@ export default function LabelSharePage({ params }: { params: Promise<{ token: st
   if (!data) return <TechLoader />
 
   const total = data.sizes.reduce((s, x) => s + x.copies, 0)
-  const pdf = (size: string, mode: string) => `/api/labels/pdf?t=${encodeURIComponent(token)}&size=${size}&mode=${mode}&dl=1`
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+      {/* print errors (LabelDownloads → toast) — the admin layout has its own Toaster, this page has none */}
+      <Toaster />
       <header className="space-y-1">
         <div className="flex items-center gap-2 text-sm text-[var(--fg-3)]"><Sticker size={16} /> AG Dragon Co., Ltd. · Thailand</div>
         <h1 className="text-2xl font-semibold">Thai product labels · 泰国产品标签</h1>
@@ -63,27 +61,10 @@ export default function LabelSharePage({ params }: { params: Promise<{ token: st
         泰国消费者保护局 (OCPB) 标签。请按 <b>100% 实际尺寸</b> 黑色打印。文字已转曲，无需泰文字体。数量已含备用标签，共 {total.toLocaleString()} 张。
       </Alert>
 
-      {data.sizes.map((s) => (
-        <section key={s.size} className="space-y-3 border-t border-[var(--border-1)] pt-5">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <FileText size={18} /> Label size · 标签尺寸 {mm(s.size)}
-          </h2>
-          <p className="text-sm text-[var(--fg-3)]">
-            {s.lines} item codes · 货号 — {s.copies.toLocaleString()} labels · 张
-          </p>
-          <div className="flex flex-col gap-2">
-            {MODES.map((m) => (
-              <div key={m.mode} className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm">
-                  <div>{m.en}</div>
-                  <div className="text-[var(--fg-3)]">{m.zh}</div>
-                </div>
-                <Button variant={m.mode === 'sheet' ? 'primary' : 'secondary'} icon={Download} href={pdf(s.size, m.mode)}>PDF</Button>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+      <section className="border-t border-[var(--border-1)] pt-5">
+        <LabelDownloads lang="en" fileName="labels" lines={data.lines}
+          pdfUrl={(size, mode, dl) => `/api/labels/pdf?t=${encodeURIComponent(token)}&size=${size}&mode=${mode}${dl ? '&dl=1' : ''}`} />
+      </section>
 
       <section className="space-y-3 border-t border-[var(--border-1)] pt-5">
         <h2 className="text-lg font-semibold">Quantities · 数量</h2>

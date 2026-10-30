@@ -14,16 +14,17 @@ import {
 import { glyphPath, renderLabel } from './render'
 import { ICON03_BLACK, ICON03_RED } from './icon03'
 import { TIS_SYMBOL } from './tisMark'
-import type { LabelData } from './types'
+import { SHEET_GAP, SHEET_MARGIN, type LabelData } from './types'
 
 export type PdfMode = 'single' | 'sheet' | 'master'
 
 const MM = 72 / 25.4 // points per mm
 const A4 = { w: 210, h: 297 }
-const SHEET_MARGIN = 8
-const SHEET_GAP = 4
 
 const f3 = (v: number) => (Math.round(v * 1000) / 1000).toString()
+/** scale factors (glyph k ≈ 0.0018 mm/unit) need significant digits, not 3 decimals — rounding them
+ *  to 0.002 made glyphs 10–25% too big/small while advances stayed right (owner saw letters spread/squashed) */
+const sc = (v: number) => Number(v.toPrecision(7)).toString()
 
 /** SVG path (mm, y down; M L H V C Q Z, absolute or relative) → PDF path operators + fill */
 function pathToOps(d: string): string {
@@ -85,12 +86,12 @@ export async function buildLabelPdf(
   const forms: PDFRef[] = []
   for (const it of items) {
     const r = await renderLabel(it.label)
-    const ops = [`${f3(MM)} 0 0 ${f3(-MM)} 0 ${f3(h * MM)} cm`, '0 g', pathToOps(r.d)]
-    ops.push(`q ${f3(r.tis.u)} 0 0 ${f3(r.tis.u)} ${f3(r.tis.x)} ${f3(r.tis.y)} cm /T Do Q`)
+    const ops = [`${sc(MM)} 0 0 ${sc(-MM)} 0 ${f3(h * MM)} cm`, '0 g', pathToOps(r.d)]
+    ops.push(`q ${sc(r.tis.u)} 0 0 ${sc(r.tis.u)} ${f3(r.tis.x)} ${f3(r.tis.y)} cm /T Do Q`)
     if (r.icon03) {
       const i = r.icon03
       ops.push(`q ${ICON03_RED.join(' ')} rg`, pathToOps(i.red), 'Q')
-      ops.push(`q ${f3(i.u)} 0 0 ${f3(i.u)} ${f3(i.x)} ${f3(i.y)} cm /I Do Q`)
+      ops.push(`q ${sc(i.u)} 0 0 ${sc(i.u)} ${f3(i.x)} ${f3(i.y)} cm /I Do Q`)
     }
     for (const g of r.glyphs) {
       const name = `G${g.f}_${g.g}`
@@ -99,7 +100,7 @@ export async function buildLabelPdf(
         xobjects.set(PDFName.of(name), form(pathToOps(await glyphPath(g.f, g.g)), [-3000, -3000, 6000, 6000]))
       }
       // glyphs are y-up in font units; the label space is y-down → flip back
-      ops.push(`q ${f3(g.k)} 0 0 ${f3(-g.k)} ${f3(g.x)} ${f3(g.y)} cm /${name} Do Q`)
+      ops.push(`q ${sc(g.k)} 0 0 ${sc(-g.k)} ${f3(g.x)} ${f3(g.y)} cm /${name} Do Q`)
     }
     forms.push(form(ops.join('\n'), [0, 0, w * MM, h * MM], resources))
   }
@@ -122,6 +123,8 @@ export async function buildLabelPdf(
   const per = cols * rows
   const ox = (A4.w - (cols * w + (cols - 1) * SHEET_GAP)) / 2
   const font = await doc.embedFont(StandardFonts.Helvetica)
+  // the standard font is WinAnsi only — a Thai round name ("… ตู้ 2026-C1") threw and broke the A4 file
+  const footer = title.replace(/ตู้/g, 'Container').replace(/[^\x20-\x7E]+/g, '').replace(/\s{2,}/g, ' ').trim()
   const total = items.reduce((s, it) => s + it.copies, 0)
   const sheets = Math.ceil(total / per)
 
@@ -135,7 +138,7 @@ export async function buildLabelPdf(
         page = doc.addPage([A4.w * MM, A4.h * MM])
         slot = 0
         sheetNo++
-        page.drawText(`${title} · ${w}x${h} mm · ${sheetNo}/${sheets}`, {
+        page.drawText(`${footer} · ${w}x${h} mm · ${sheetNo}/${sheets}`, {
           x: SHEET_MARGIN * MM, y: (SHEET_MARGIN / 2) * MM, size: 6, font, color: grey,
         })
       }

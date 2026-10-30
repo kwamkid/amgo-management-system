@@ -45,6 +45,10 @@ export const bkkDay = (iso: string) => bangkokDayKey(new Date(iso))
 /** general ดูได้แค่ตัวเอง — ขอดูคนอื่นตอบ 403 */
 export const canSee = (caller: BotCaller, userId: string) => caller.scope === 'superadmin' || userId === caller.user.id
 
+/** จัดการใบลาของคนอื่นได้ (ดูทั้งหมด · อนุมัติ · ปฏิเสธ) — กติกาเดียวกับหน้า /leaves/management: admin · hr · manager (เจ้าของขอ 30 ต.ค. 69 ให้หน่อย/กอล์ฟอนุมัติผ่าน Edith) */
+export const LEAVE_MANAGER_ROLES = ['admin', 'hr', 'manager'] as const
+export const canManageLeave = (caller: BotCaller) => caller.scope === 'superadmin' || LEAVE_MANAGER_ROLES.includes(caller.role as (typeof LEAVE_MANAGER_ROLES)[number])
+
 /* ------------------------------------------------------------------ */
 /*  ใบลา                                                                */
 /* ------------------------------------------------------------------ */

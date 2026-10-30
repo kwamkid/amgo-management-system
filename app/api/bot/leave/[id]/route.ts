@@ -1,14 +1,14 @@
 // GET   /api/bot/leave/:id — ใบลาใบเดียว (general: ของตัวเองเท่านั้น)
 //
 // PATCH /api/bot/leave/:id — ตัดสินใบลา
-//   { action: "approve" }                    superadmin · ใบที่รอ · ตรวจโควต้าอีกรอบ
-//   { action: "reject", reason }             superadmin · ใบที่รอ · ต้องมีเหตุผล
+//   { action: "approve" }                    superadmin หรือ role admin/hr/manager · ใบที่รอ · ตรวจโควต้าอีกรอบ
+//   { action: "reject", reason }             superadmin หรือ role admin/hr/manager · ใบที่รอ · ต้องมีเหตุผล
 //   { action: "cancel", reason? }            general: ใบที่รอของตัวเอง
 //                                            superadmin: ใบที่รอ หรือ ใบที่อนุมัติแล้ว (ต้องมีเหตุผล — โควต้าคืนเอง)
 //   ทุกอย่างกันกดซ้อนด้วยเงื่อนไขสถานะเดิม — ใบถูกตัดสินไปแล้ว = 409
 import { after, type NextRequest } from 'next/server'
 import { UUID, apiError, apiJson, authBotApi, readJson } from '@/lib/services/bot/botApi'
-import { canSee, getLeaveRow, pushLeaveEvent, quotaError, stampAudit, toBotLeave } from '@/lib/services/bot/botHr'
+import { canManageLeave, canSee, getLeaveRow, pushLeaveEvent, quotaError, stampAudit, toBotLeave } from '@/lib/services/bot/botHr'
 import { LEAVE_TYPE_LABELS } from '@/types/leave'
 import type { Database } from '@/types/database'
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const { id } = await params
   if (!UUID.test(id)) return apiError(400, 'id ไม่ถูกต้อง')
   const row = await getLeaveRow(caller.sb, id)
-  if (!row || !canSee(caller, row.user_id)) return apiError(404, 'ไม่พบใบลา')
+  if (!row || !(canSee(caller, row.user_id) || canManageLeave(caller))) return apiError(404, 'ไม่พบใบลา')
   return apiJson({ leave: toBotLeave(row) })
 }
 
@@ -33,10 +33,10 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   if (!UUID.test(id)) return apiError(400, 'id ไม่ถูกต้อง')
   const b = await readJson(request)
   if (!b) return apiError(400, 'body ต้องเป็น JSON object')
-  const admin = caller.scope === 'superadmin'
+  const admin = canManageLeave(caller)
 
   const row = await getLeaveRow(caller.sb, id)
-  if (!row || !canSee(caller, row.user_id)) return apiError(404, 'ไม่พบใบลา')
+  if (!row || !(canSee(caller, row.user_id) || admin)) return apiError(404, 'ไม่พบใบลา')
   const leave = toBotLeave(row)
   const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 500) : ''
   const now = new Date().toISOString()

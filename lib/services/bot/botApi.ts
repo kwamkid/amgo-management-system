@@ -49,6 +49,8 @@ export interface BotCaller {
   /** ผู้ใช้ที่บอทกำลังทำแทน — superadmin = acts_as · general = เจ้าของ Discord id */
   user: BotPerson
   isAdmin: boolean
+  /** role ใน amgo ของคนที่บอททำแทน (superadmin = admin) */
+  role: string
   sb: AdminDb
 }
 
@@ -95,7 +97,7 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     const { data } = await sb.from('users').select(USER_COLS).eq('id', k.acts_as!).maybeSingle()
     row = data
     if (!row) return { error: apiError(500, 'กุญแจ superadmin ผูกกับผู้ใช้ที่ไม่มีอยู่แล้ว') }
-    return { caller: { keyId: k.id, scope: k.scope, user: toPerson(row), isAdmin: true, sb } }
+    return { caller: { keyId: k.id, scope: k.scope, user: toPerson(row), isAdmin: true, role: 'admin', sb } }
   }
 
   const discordId = request.headers.get('x-discord-user-id')?.trim()
@@ -111,7 +113,7 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     .maybeSingle()
   row = data
   if (!row) return { error: apiError(403, 'Discord นี้ยังไม่ได้ผูกกับบัญชีพนักงานใน amgo') }
-  return { caller: { keyId: k.id, scope: k.scope, user: toPerson(row), isAdmin: row.role === 'admin', sb } }
+  return { caller: { keyId: k.id, scope: k.scope, user: toPerson(row), isAdmin: row.role === 'admin', role: row.role, sb } }
 }
 
 /**

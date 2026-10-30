@@ -294,6 +294,7 @@ curl -s -H "Authorization: Bearer $AMGO_JARVIS_KEY" "$BASE/attendance?person=135
 - `absent` = ควรมาแต่ไม่มีเช็คอินและไม่มีใบลาที่อนุมัติ (สูตรเดียวกับกล่องงาน HR หน้าแรก) · ระหว่างวันคนที่ยังไม่มาจะขึ้น `absent` ไปก่อน
 
 ### 6.2 `GET /leave` — รายการใบลา
+> 30 ต.ค. 69: กุญแจ `general` ที่ Discord ผูกกับ role **admin / hr / manager** เห็นใบลาทุกคน และอนุมัติ/ปฏิเสธได้ (6.4) — กติกาเดียวกับหน้า /leaves/management (`canManageLeave` ใน botHr.ts) ใช้ให้หน่อย/กอล์ฟอนุมัติผ่าน Edith
 
 `status` = `pending,approved,rejected,cancelled` หรือ `all` (ค่าเริ่มต้น) · `person` · `type` = `sick|personal|vacation` · `from`/`to` (ใบที่ทับช่วงนี้) · `limit` (50, สูงสุด 200) · ใหม่สุดก่อน
 

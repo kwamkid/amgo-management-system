@@ -1,7 +1,7 @@
 // GET  /api/bot/leave — รายการใบลา (ใหม่สุดก่อน)
 //   ?status=pending,approved,rejected,cancelled | all (ค่าเริ่มต้น all) · person=me|<discord id>|<user id>
 //   ?from=YYYY-MM-DD&to=YYYY-MM-DD (ใบที่ทับช่วงนี้) · type=sick|personal|vacation · limit=50 (สูงสุด 200)
-//   general: เห็นแค่ใบของตัวเอง (ส่ง person คนอื่น = 403)
+//   general: เห็นแค่ใบของตัวเอง (ส่ง person คนอื่น = 403) — ยกเว้น role admin/hr/manager เห็นทุกคน (30 ต.ค. 69)
 //
 // POST /api/bot/leave — ยื่นใบลา
 //   { type, start_date, end_date?, reason?, urgent? }  (end_date ไม่ส่ง = วันเดียว)
@@ -16,6 +16,7 @@ import {
   LEAVE_STATUSES,
   LEAVE_TYPES,
   bkkMidnight,
+  canManageLeave,
   canSee,
   dayDiff,
   getLeaveRow,
@@ -50,12 +51,12 @@ export async function GET(request: NextRequest) {
   if ((from && !isYmd(from)) || (to && !isYmd(to))) return apiError(400, 'วันที่ต้องเป็น YYYY-MM-DD')
   const limit = Math.min(Math.max(Number(p.get('limit')) || 50, 1), MAX_LIMIT)
 
-  let userId: string | null = caller.scope === 'superadmin' ? null : caller.user.id
+  let userId: string | null = canManageLeave(caller) ? null : caller.user.id
   const person = p.get('person')?.trim()
   if (person) {
     const { found } = await resolvePeople(caller.sb, [person], caller.user)
     if (!found.length) return apiError(400, `ไม่พบพนักงาน: ${person}`)
-    if (!canSee(caller, found[0].id)) return apiError(403, 'ดูได้แค่ใบลาของตัวเอง')
+    if (!canSee(caller, found[0].id) && !canManageLeave(caller)) return apiError(403, 'ดูได้แค่ใบลาของตัวเอง')
     userId = found[0].id
   }
 

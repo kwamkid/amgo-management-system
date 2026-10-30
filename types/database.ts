@@ -6449,6 +6449,11 @@ export type Database = {
       hr_inbox: { Args: never; Returns: Json }
       import_can_edit: { Args: never; Returns: boolean }
       import_can_view: { Args: never; Returns: boolean }
+      import_my_brands: { Args: never; Returns: string[] }
+      import_round_visible: {
+        Args: { p_brand: string; p_extra: Json; p_srp: string; p_sub: string }
+        Returns: boolean
+      }
       import_plan: { Args: { p_slug: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_finance: { Args: never; Returns: boolean }

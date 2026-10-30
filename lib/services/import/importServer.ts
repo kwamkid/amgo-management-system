@@ -18,17 +18,30 @@ export interface ImportCtx {
   userId: string
   canEdit: boolean
   seeCost: boolean
+  /** null = ทุกแบรนด์ (import_access) · brand manager = แบรนด์ที่มีสิทธิ์ SRP (ตัวเล็ก) */
+  brands: string[] | null
 }
 
-/** ล็อกอิน + อยู่ใน import_access — ไม่ผ่านคืน response error */
+/**
+ * ล็อกอิน + อยู่ใน import_access หรือเป็น brand manager (มีสิทธิ์ SRP ของแบรนด์ · เจ้าของ 30 ต.ค. 69)
+ * brand manager = ดูอย่างเดียว ไม่เห็นทุน/FOB · เห็นเฉพาะรอบของแบรนด์ตัวเอง (RLS import_round_visible) — ไม่ผ่านคืน response error
+ */
 export async function importGuard(): Promise<ImportCtx | NextResponse> {
   const sb = await createServerSupabase()
   const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { data } = await sb.from('import_access').select('can_edit, see_cost').eq('user_id', user.id).maybeSingle()
-  if (!data) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  return { sb, userId: user.id, canEdit: data.can_edit, seeCost: data.see_cost }
+  if (data) return { sb, userId: user.id, canEdit: data.can_edit, seeCost: data.see_cost, brands: null }
+  const { data: mine } = await sb.rpc('import_my_brands')
+  if (!mine?.length) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  return { sb, userId: user.id, canEdit: false, seeCost: false, brands: mine }
 }
+
+/** brand manager ขอราคาได้เฉพาะแบรนด์ตัวเอง */
+export const brandAllowed = (ctx: ImportCtx, brand: string) => !ctx.brands || ctx.brands.includes(brand.toLowerCase())
+
+/** ไม่มีสิทธิ์ดูทุน → ตัดตัวเลขเงินดอลลาร์ในข้อความด้วย (หมายเหตุบางบรรทัดมี "@ $4.28") */
+const maskCost = (t: string) => t.replace(/(?:US)?\$\s?[\d,.]+/g, '$…')
 
 /** brand logos from the SRP Calculator (srp_brands.logo_url, public bucket) — name = srp_brand ?? sub ?? brand */
 async function brandLogos(): Promise<Map<string, string>> {
@@ -91,7 +104,7 @@ const yearOf = (r: Pick<RoundRow, 'container' | 'arrive' | 'created_at'>) =>
   r.container?.match(/^(20\d\d)/)?.[1] ?? (r.arrive ?? r.created_at).slice(0, 4)
 
 /** รายการรอบ — รูปแบบเดียวกับ /api/rounds ของ serve.mjs (path = slug) */
-export async function listRounds(sb: Sb) {
+export async function listRounds(sb: Sb, seeCost = true) {
   const { data: rounds, error } = await sb.from('import_rounds').select('*')
   if (error) throw error
   const { data: ordered, error: e2 } = await sb
@@ -115,8 +128,8 @@ export async function listRounds(sb: Sb) {
         updated: r.updated_at,
         lines: ord.length,
         pcs: ord.reduce((s, i) => s + i.qty, 0),
-        fob: ord.reduce((s, i) => s + i.qty * (i.fob ?? 0), 0),
-        fx: r.fx ?? 0,
+        fob: seeCost ? ord.reduce((s, i) => s + i.qty * (i.fob ?? 0), 0) : null,
+        fx: seeCost ? r.fx ?? 0 : null,
         container: r.container ?? '',
         shipNo: r.ship_no,
         logo: logoOf(logos, r),
@@ -128,7 +141,7 @@ export async function listRounds(sb: Sb) {
             logo: logos.get(p.srpBrand.toLowerCase()) ?? null,
             lines: o.length,
             pcs: o.reduce((s, i) => s + i.qty, 0),
-            fob: o.reduce((s, i) => s + i.qty * (i.fob ?? 0), 0),
+            fob: seeCost ? o.reduce((s, i) => s + i.qty * (i.fob ?? 0), 0) : null,
             cbm: o.reduce((s, i) => s + ctnsOf(i.qty, i.case_pack) * (i.cbm ?? 0), 0),
           }
         }),
@@ -146,7 +159,7 @@ export async function listRounds(sb: Sb) {
  * รอบเดียวในรูปแบบ plan.json + ทุกอย่างที่หน้าต้องใช้ในคำขอเดียว (เจ้าของ 30 ต.ค. 69: "rpc, server load ได้เลย")
  * RPC import_plan = รอบ + รายการ + โลโก้ + ราคา SRP ทุกแบรนด์ในรอบ (1 รอบเน็ตไป DB) · ราคา aoo มาจากแคช
  */
-export async function getPlan(sb: Sb, slug: string) {
+export async function getPlan(sb: Sb, slug: string, ctx: Pick<ImportCtx, 'canEdit' | 'seeCost'> = { canEdit: true, seeCost: true }) {
   const { data, error } = await sb.rpc('import_plan', { p_slug: slug })
   if (error) throw error
   if (!data) return null
@@ -169,8 +182,12 @@ export async function getPlan(sb: Sb, slug: string) {
   const missing = d.srpBrands.filter((b) => !d.srp.some((x) => x.brand === b))
 
   const extra = (r.extra && typeof r.extra === 'object' && !Array.isArray(r.extra) ? r.extra : {}) as Record<string, Json>
+  const cost = ctx.seeCost
   return {
     ...extra,
+    // หน้าใช้ซ่อนคอลัมน์ทุน/ยอดเงิน และล็อกช่องจำนวน (ตัวเลขทุนถูกตัดที่นี่แล้ว ไม่ถึงเบราว์เซอร์)
+    _seeCost: cost,
+    _canEdit: ctx.canEdit,
     brand: r.brand,
     sub: r.sub,
     srpBrand: r.srp_brand ?? undefined,
@@ -192,13 +209,13 @@ export async function getPlan(sb: Sb, slug: string) {
     _mates: d.mates,
     status: r.status,
     currency: r.currency,
-    fx: r.fx,
+    fx: cost ? r.fx : null,
     incoterm: r.incoterm ?? undefined,
     containers: r.containers,
     overMonths: r.over_months ?? undefined,
     arrive: r.arrive ?? undefined,
     leadMonths: r.lead_months ?? undefined,
-    notes: r.notes ?? undefined,
+    notes: r.notes ? (cost ? r.notes : maskCost(r.notes)) : undefined,
     updated: r.updated_at,
     items: items.map((i) => ({
       ...((i.extra && typeof i.extra === 'object' && !Array.isArray(i.extra) ? i.extra : {}) as Record<string, Json>),
@@ -210,16 +227,16 @@ export async function getPlan(sb: Sb, slug: string) {
       sub: i.sub ?? '',
       channel: i.channel ?? '',
       tags: i.tags,
-      remark: i.remark ?? '',
+      remark: cost ? i.remark ?? '' : maskCost(i.remark ?? ''),
       img: i.img ? (/^https?:/.test(i.img) ? i.img : pub(i.img)) : '',
-      fob: i.fob,
+      fob: cost ? i.fob : null,
       srp: i.srp,
       ourPrice: i.our_price,
       ourPriceSrc: i.our_price_src ?? '',
       qty: i.qty,
       suggested: i.suggested,
       edited: !!i.qty_edited_at,
-      note: i.note ?? '',
+      note: cost ? i.note ?? '' : maskCost(i.note ?? ''),
       blocked: i.blocked ?? '',
       casePack: i.case_pack,
       qtyPdq: i.qty_pdq,

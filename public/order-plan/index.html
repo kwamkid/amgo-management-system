@@ -26,6 +26,8 @@ tr.ordered td.ed{background:color-mix(in srgb,var(--ok-soft) 45%,var(--panel))!i
 td.ed input{background:#fff}
 tr.ordered td.ed input{background:var(--ed-head);border-color:#e3c24f;font-weight:650}
 td.thb{background:var(--thb)!important}
+/* amgo 30 Oct 2026: brand managers (no see_cost) — the API sends no FOB; hide every cost column / total */
+body.no-cost .g-fob,body.no-cost .cost{display:none!important}
 td.g-fob{background:var(--fob)!important}td.g-srp{background:var(--srp)!important}td.g-sell{background:var(--sell)!important}
 td.g-avg{background:var(--avg)!important}td.g-now{background:#f6f1fb!important}
 thead th.g-now{background:#e6dcf3!important;color:#5d3f8a}
@@ -265,7 +267,7 @@ const roundCard = r => `
       <a class="card" href="#p=${encodeURIComponent(r.path)}">
         <div class="row"><span>${logo(r)}${esc(r.brand)}${r.sub ? ' · ' + esc(r.sub) : ''} · ${r.year}</span><span class="pill ${r.status}">${STATUS[r.status] || r.status}</span></div>
         <h3>${esc(r.title)}</h3>
-        <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${SYM[r.currency] || ''}${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>
+        <div class="row"><span>${r.lines} รายการ · ${fmt(r.pcs)} ชิ้น</span><span class="num">${r.fob == null ? '' : `${SYM[r.currency] || ''}${fmt(r.fob, 0)} · `}${fmt(r.cbm, 1)} CBM</span></div>
       </a>`;
 // amgo (owner 30 Oct 2026): container totals one per line, icon in front
 const svg = d => `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -284,11 +286,11 @@ function ctrCard(ctr, rs) {
       <a class="card" href="#p=${encodeURIComponent(main.path)}">
         <div class="row"><span>${rs.map(logo).join('')}</span><span class="pill ${st}">${STATUS[st] || st}</span></div>
         <h3>${ctrName(ctr, main)}</h3>
-        ${rs.flatMap(r => r.parts && r.parts.length > 1 ? r.parts : [r]).map(r => `<div class="row"><span>${logo1(r.logo)}${esc(r.name || r.sub || r.brand)}</span><span class="num">$${fmt(r.fob, 0)} · ${fmt(r.cbm, 1)} CBM</span></div>`).join('')}
+        ${rs.flatMap(r => r.parts && r.parts.length > 1 ? r.parts : [r]).map(r => `<div class="row"><span>${logo1(r.logo)}${esc(r.name || r.sub || r.brand)}</span><span class="num">${r.fob == null ? '' : `$${fmt(r.fob, 0)} · `}${fmt(r.cbm, 1)} CBM</span></div>`).join('')}
         <div class="sum-list">
           <div><span>${ICO.list}รายการ</span><b>${fmt(sum('lines'))}</b></div>
           <div><span>${ICO.box}ชิ้น</span><b>${fmt(sum('pcs'))}</b></div>
-          <div><span>${ICO.cash}มูลค่า FOB</span><b>$${fmt(sum('fob'), 0)}</b></div>
+          ${main.fob == null ? '' : `<div><span>${ICO.cash}มูลค่า FOB</span><b>$${fmt(sum('fob'), 0)}</b></div>`}
           <div class="${cap && sum('cbm') > cap ? 'over' : ''}"><span>${ICO.ctr}CBM${cap ? ` (ตู้ ${cap})` : ''}</span><b>${fmt(sum('cbm'), 1)}${cap ? ` · ${fmt(sum('cbm') / cap * 100, 0)}%` : ''}</b></div>
         </div>
       </a>`;
@@ -301,6 +303,7 @@ async function openPlan(p) {
   const r = await fetch('/api/import/plan?p=' + encodeURIComponent(p));
   if (!r.ok) { $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
   plan = await r.json();
+  document.body.classList.toggle('no-cost', plan._seeCost === false);
   savedQ = new Map(plan.items.map(i => [i.code, qkey(i)]));
   // amgo speed: the server sends the round + prices in one response (RPC import_plan) — no extra calls on open
   srp = plan._srp || { prices: {} }; aoo = plan._aoo || { prices: {} }; pricesAt = Date.now();
@@ -344,7 +347,8 @@ addEventListener('focus', async () => {
   renderSrpLink(); renderRows(); renderTotals();
 });
 
-const locked = () => plan.status === 'sent' && !unlocked;
+// amgo: read-only viewers (brand managers, can_edit false) are always locked
+const locked = () => plan._canEdit === false || (plan.status === 'sent' && !unlocked);
 const cur = () => SYM[plan.currency] || plan.currency + ' ';
 const ctns = i => i.casePack ? Math.ceil((i.qty || 0) / i.casePack) : 0;
 // selling price: ours if we have one, else the brand's SRP converted to baht
@@ -384,23 +388,23 @@ function renderShell() {
   <header class="top">
     <a class="back" href="#">← ทุกรอบ</a>
     <h1>${logo(plan)}${plan.title ? esc(plan.title) : `${esc(plan.brand)}${plan.sub ? ' · ' + esc(plan.sub) : ''} — ${rno(plan)}`}</h1>
-    <label class="ctrl">สถานะ <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${plan.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-    <label class="ctrl">อัตรา ฿/${esc(plan.currency)} ✎ <input style="background:var(--ed)" id="fx" type="number" step="0.01" value="${plan.fx}"></label>
+    <label class="ctrl">สถานะ <select id="status" ${plan._canEdit === false ? 'disabled' : ''}>${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${plan.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <label class="ctrl cost">อัตรา ฿/${esc(plan.currency)} ✎ <input style="background:var(--ed)" id="fx" type="number" step="0.01" value="${plan.fx}" ${plan._canEdit === false ? 'disabled' : ''}></label>
     <label class="ctrl"><input id="only" type="checkbox" ${onlyOrdered ? 'checked' : ''}> เฉพาะที่สั่ง</label>
     <a class="srplink" id="srplink" target="_blank" rel="noopener"></a>
-    <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
+    <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span class="cost"><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
     <span class="spacer"></span><span class="save" id="save"></span>
   </header>
   ${plan.container && mates.length ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
       ? `<a class="tab on"><b>${logo(plan)}${esc(plan.sub || plan.brand)} <span class="pill ${plan.status}">${STATUS[plan.status]}</span></b><span id="tabme"></span></a>`
-      : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${logo(x)}${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>$${fmt(x.fob, 0)} · ${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
+      : `<a class="tab" href="#p=${encodeURIComponent(x.path)}"><b>${logo(x)}${esc(x.sub || x.brand)} <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></b><span>${x.fob == null ? '' : `$${fmt(x.fob, 0)} · `}${fmt(x.cbm, 1)} CBM</span></a>`).join('')}</nav>` : ''}
   <div id="chips"></div>
-  ${plan.status === 'sent' ? `<div class="banner" id="banner">รอบนี้ <b>ส่งแล้ว</b>${plan.sentFile ? ` (${esc(plan.sentFile)})` : ''} — ตัวเลขด้านล่างคือที่ส่งไป ใช้เทียบกับ invoice <button id="unlock">ปลดล็อกเพื่อแก้</button></div>` : ''}
+  ${plan.status === 'sent' ? `<div class="banner" id="banner">รอบนี้ <b>ส่งแล้ว</b>${plan.sentFile ? ` (${esc(plan.sentFile)})` : ''} — ตัวเลขด้านล่างคือที่ส่งไป ใช้เทียบกับ invoice ${plan._canEdit === false ? '' : '<button id="unlock">ปลดล็อกเพื่อแก้</button>'}</div>` : ''}
   <main><div class="wrap"><table>
     <thead>
       <tr class="sup"><th class="stick0"></th><th class="stick1"></th><th class="stick2"></th><th class="stick3"></th>
         <th colspan="2" class="num g-fob">FOB ต่อชิ้น (ต้นทุน)</th><th colspan="2" class="num g-srp">SRP แบรนด์</th><th class="g-sell">ราคาขายเรา</th>
-        <th colspan="2">สั่ง</th>${hasStock() ? `<th colspan="6" class="num">สต็อก (ชิ้น) — ห้ามเกิน ${overM()} เดือน${plan.arrive ? ` · พอขายนับจากของถึง ${esc(plan.arrive)}` : ''}</th>` : ''}<th class="num"></th><th colspan="2">ขนาดกล่อง</th><th colspan="3" class="num">รวมรายการนี้</th></tr>
+        <th colspan="2">สั่ง</th>${hasStock() ? `<th colspan="6" class="num">สต็อก (ชิ้น) — ห้ามเกิน ${overM()} เดือน${plan.arrive ? ` · พอขายนับจากของถึง ${esc(plan.arrive)}` : ''}</th>` : ''}<th class="num"></th><th colspan="2">ขนาดกล่อง</th><th colspan="${plan._seeCost === false ? 1 : 3}" class="num">รวมรายการนี้</th></tr>
       <tr class="sub">
         <th class="stick0">#</th><th class="stick1">รูป</th>${th('code', 'Item code', 'stick2')}${th('name', 'สินค้า', 'stick3')}
         ${th('fob', esc(plan.currency), 'num g-fob')}${th('fob', '฿', 'num g-fob')}
@@ -409,7 +413,7 @@ function renderShell() {
         ${th('ctn', 'กล่อง ✎', 'num ed')}${th('qty', 'ชิ้น', 'num')}${hasStock() ? th('stock', 'ตอนนี้', 'num') + th('nowc', 'พอขายตอนนี้ (ด.)', 'num g-now') + th('inc', 'กำลังเข้า', 'num') + th('avg', 'ขาย/ด.', 'num g-avg') + th('after', 'หลังสั่ง', 'num') + th('cov', 'พอขาย (ด.)', 'num g-cov') : ''}
         ${th('pack', 'บรรจุ', 'num')}
         <th>ซม. (ย×ก×ส)</th>${th('cbm', 'CBM', 'num')}
-        ${th('tfob', esc(plan.currency), 'num')}${th('tfob', '฿', 'num thb')}${th('tcbm', 'CBM', 'num')}
+        ${th('tfob', esc(plan.currency), 'num cost')}${th('tfob', '฿', 'num thb cost')}${th('tcbm', 'CBM', 'num')}
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -603,8 +607,8 @@ function rowHtml(i, idx, no) {
     <td class="num">${i.qtyPdq ? `${fmt(i.qtyPdq)} ชิ้น/PDQ${i.pdqPerCase > 1 ? `<div class="muted small">${fmt(i.pdqPerCase)} PDQ/กล่อง</div>` : ''}` : `${fmt(i.casePack)} ชิ้น/กล่อง`}</td>
     <td class="small">${dims}${i.pdqDim ? `<div class="muted">PDQ ${esc(i.pdqDim)}</div>` : ''}</td>
     <td class="num">${fmt(i.cbm, 3)}</td>
-    <td class="num">${i.qty ? fc(i.qty * i.fob) : ''}</td>
-    <td class="num thb">${i.qty ? thb(i.qty * i.fob * plan.fx) : ''}</td>
+    <td class="num cost">${i.qty ? fc(i.qty * i.fob) : ''}</td>
+    <td class="num thb cost">${i.qty ? thb(i.qty * i.fob * plan.fx) : ''}</td>
     <td class="num">${c ? fmt(c * (i.cbm || 0), 2) : ''}</td>
   </tr>`;
 }
@@ -664,12 +668,12 @@ function renderTotals() {
   const cCbm = cbm + mates.reduce((s, x) => s + x.cbm, 0), cFob = fob + mates.reduce((s, x) => s + x.fob, 0);
   const cThb = fob * plan.fx + mates.reduce((s, x) => s + x.fob * (x.fx || plan.fx), 0);
   const cNo = o.filter(i => !i.cbm).length + mates.reduce((s, x) => s + (x.noCbm || 0), 0);
-  const tm = $('#tabme'); if (tm) tm.textContent = `$${fmt(fob, 0)} · ${fmt(cbm, 1)} CBM`;
+  const tm = $('#tabme'); if (tm) tm.textContent = `${plan._seeCost === false ? '' : `$${fmt(fob, 0)} · `}${fmt(cbm, 1)} CBM`;
   if (totMin) {
     const allC = mates.length ? cCbm : cbm, cap = Math.max(...conts.map(c => c[1])), pct = allC / cap * 100;
-    $('#tot').innerHTML = `<div class="tot-line">${mates.length ? `<span>${ctrName(plan.container, plan)}</span><b>${fc(cFob, 0)}</b><b>${thb(cThb)}</b>` : `<b>${fc(fob, 0)}</b><b>${thb(fob * plan.fx)}</b>`}
+    $('#tot').innerHTML = `<div class="tot-line">${mates.length ? `<span>${ctrName(plan.container, plan)}</span><b class="cost">${fc(cFob, 0)}</b><b class="cost">${thb(cThb)}</b>` : `<b class="cost">${fc(fob, 0)}</b><b class="cost">${thb(fob * plan.fx)}</b>`}
       <span>${fmt(allC, 1)} / ${cap} CBM</span><span class="mini-bar ${pct > 100 ? 'over' : ''}"><i style="width:${Math.min(pct, 100)}%"></i></span><b>${fmt(pct, 0)}%</b>
-      <span class="muted">${esc(plan.sub || plan.brand)}: ${fmt(o.length)} รายการ · ${fc(fob, 0)}</span></div>${totToggle()}`;
+      <span class="muted">${esc(plan.sub || plan.brand)}: ${fmt(o.length)} รายการ<span class="cost"> · ${fc(fob, 0)}</span></span></div>${totToggle()}`;
     return bindTotToggle();
   }
   const split = !mates.length && (plan.parts || []).length > 1;  // amgo: brands inside one round
@@ -686,13 +690,13 @@ function renderTotals() {
     const tr = x => `<tr class="${x.me && !split ? 'me' : ''}" ${x.me ? '' : `data-go="${esc(x.path)}"`}>
       <td>${logo(x)}<b>${esc(x.sub || x.brand)}</b> <span class="pill ${x.status}">${STATUS[x.status] || x.status}</span></td>
       <td class="num">${fmt(x.lines)}</td><td class="num">${fmt(x.pcs)}</td><td class="num">${fmt(x.ctns)}</td>
-      <td class="num">${fc(x.fob, 0)}</td><td class="num">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;
+      <td class="num cost">${fc(x.fob, 0)}</td><td class="num cost">${thb(x.fob * (x.fx || plan.fx))}</td><td class="num sell">${thb(x.retail)}</td><td class="num">${fmt(x.cbm, 2)}</td></tr>`;
     $('#tot').innerHTML = `
     <table class="ctr-sum"><thead><tr><th>${ctrName(plan.container, plan)}</th><th class="num">รายการ</th><th class="num">ชิ้น</th><th class="num">กล่อง</th>
-      <th class="num">${esc(plan.incoterm || 'FOB')}</th><th class="num">ต้นทุน บาท @ ${fmt(plan.fx, 0)}</th><th class="num">มูลค่าขาย (ราคาเรา)</th><th class="num">CBM${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</th></tr></thead>
+      <th class="num cost">${esc(plan.incoterm || 'FOB')}</th><th class="num cost">ต้นทุน บาท @ ${fmt(plan.fx, 0)}</th><th class="num">มูลค่าขาย (ราคาเรา)</th><th class="num">CBM${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</th></tr></thead>
       <tbody>${rows.map(tr).join('')}</tbody>
       <tfoot><tr><td>รวมทั้งตู้</td><td class="num">${fmt(sum('lines'))}</td><td class="num">${fmt(sum('pcs'))}</td><td class="num">${fmt(sum('ctns'))}</td>
-        <td class="num">${fc(cFob, 0)}</td><td class="num">${thb(cThb)}</td><td class="num sell">${thb(sum('retail'))}</td><td class="num">${fmt(cCbm, 2)}</td></tr></tfoot></table>
+        <td class="num cost">${fc(cFob, 0)}</td><td class="num cost">${thb(cThb)}</td><td class="num sell">${thb(sum('retail'))}</td><td class="num">${fmt(cCbm, 2)}</td></tr></tfoot></table>
     <div class="ctr-side">
       <div class="cont big ${pct > 100 ? 'over' : ''}"><div class="t"><span>ตู้ ${esc(conts.find(c => c[1] === cap)[0])} · ${fmt(cCbm, 1)} / ${cap} CBM</span><b>${fmt(pct, 0)}%</b></div><div class="bar"><i style="width:${Math.min(pct, 100)}%"></i></div>
         <div class="t">${pct > 100 ? `<span class="cov-low">เกิน ${fmt(cCbm - cap, 1)} CBM</span>` : `<span>เหลือที่ ${fmt(cap - cCbm, 1)} CBM</span>`}</div></div>
@@ -706,12 +710,12 @@ function renderTotals() {
     <div class="kpi"><div class="l">รายการ</div><div class="v">${fmt(o.length)}</div></div>
     <div class="kpi"><div class="l">ชิ้น</div><div class="v">${fmt(pcs)}</div></div>
     <div class="kpi"><div class="l">กล่อง</div><div class="v">${fmt(ct)}</div></div>
-    <div class="kpi"><div class="l">ยอดที่ต้องจ่าย (${esc(plan.incoterm || 'FOB')})</div><div class="v big">${fc(fob, 2)}</div></div>
-    <div class="kpi"><div class="l">เป็นเงินบาท @ ${fmt(plan.fx, 2)}</div><div class="v big">${thb(fob * plan.fx)}</div></div>
+    <div class="kpi cost"><div class="l">ยอดที่ต้องจ่าย (${esc(plan.incoterm || 'FOB')})</div><div class="v big">${fc(fob, 2)}</div></div>
+    <div class="kpi cost"><div class="l">เป็นเงินบาท @ ${fmt(plan.fx, 2)}</div><div class="v big">${thb(fob * plan.fx)}</div></div>
     <div class="kpi"><div class="l">มูลค่าขาย (ราคาเรา/SRP)</div><div class="v">${thb(retail)}</div></div>
     ${hasStock() ? `<div class="kpi"><div class="l">สั่งเกิน ${overM()} เดือน</div><div class="v ${o.some(i => (cover(i, after(i)) || 0) > overM()) ? 'cov-low' : ''}">${fmt(o.filter(i => (cover(i, after(i)) || 0) > overM()).length)} รุ่น</div></div>` : ''}
     <div class="kpi"><div class="l">CBM${o.some(i => !i.cbm) ? ` <span class="cov-low">(ไม่มีขนาดกล่อง ${o.filter(i => !i.cbm).length} รายการ)</span>` : ''}</div><div class="v big">${fmt(cbm, 2)}</div></div>
-    ${mates.length ? `<div class="kpi ctr"><div class="l">ทั้ง${ctrName(plan.container, plan)} (${mates.length + 1} ไฟล์)</div><div class="v">${fc(cFob, 0)} · ${thb(cThb)}</div></div>
+    ${mates.length ? `<div class="kpi ctr cost"><div class="l">ทั้ง${ctrName(plan.container, plan)} (${mates.length + 1} ไฟล์)</div><div class="v">${fc(cFob, 0)} · ${thb(cThb)}</div></div>
     <div class="kpi"><div class="l">CBM ทั้งตู้${cNo ? ` <span class="cov-low">(ไม่มีขนาด ${cNo})</span>` : ''}</div><div class="v big">${fmt(cCbm, 2)}</div></div>` : ''}
     <div class="boxes">${conts.map(([k, cap]) => { const p = (mates.length ? cCbm : cbm) / cap * 100; return `
       <div class="cont ${p > 100 ? 'over' : ''}"><div class="t"><span>ตู้ ${esc(k)} (${cap})</span><span>${fmt(p, 0)}%</span></div><div class="bar"><i style="width:${Math.min(p, 100)}%"></i></div></div>`; }).join('')}</div>${totToggle()}`;

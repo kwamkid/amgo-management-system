@@ -2,12 +2,13 @@
 // อ่านด้วย service role เพราะสิทธิ์ SRP เป็นรายแบรนด์ แต่คนในโมดูลนำเข้าต้องเห็นราคาทั้งรอบ
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { importGuard } from '@/lib/services/import/importServer'
+import { brandAllowed, importGuard } from '@/lib/services/import/importServer'
 
 export async function GET(req: NextRequest) {
   const ctx = await importGuard()
   if (ctx instanceof NextResponse) return ctx
   const name = req.nextUrl.searchParams.get('brand') ?? ''
+  if (!brandAllowed(ctx, name)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const admin = createAdminClient()
   const { data: brand } = await admin
     .from('srp_brands')

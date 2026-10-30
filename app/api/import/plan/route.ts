@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   if (ctx instanceof NextResponse) return ctx
   const slug = req.nextUrl.searchParams.get('p') ?? ''
   try {
-    const plan = await getPlan(ctx.sb, slug)
+    const plan = await getPlan(ctx.sb, slug, ctx)
     return plan ? NextResponse.json(plan) : NextResponse.json({ error: 'not found' }, { status: 404 })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

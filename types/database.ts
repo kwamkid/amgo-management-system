@@ -1963,6 +1963,123 @@ export type Database = {
           },
         ]
       }
+      label_rounds: {
+        Row: {
+          default_size: string
+          extra_pct: number
+          import_month: string | null
+          round_id: string
+          share_token: string | null
+          shared_at: string | null
+          shared_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_size?: string
+          extra_pct?: number
+          import_month?: string | null
+          round_id: string
+          share_token?: string | null
+          shared_at?: string | null
+          shared_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_size?: string
+          extra_pct?: number
+          import_month?: string | null
+          round_id?: string
+          share_token?: string | null
+          shared_at?: string | null
+          shared_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      label_specs: {
+        Row: {
+          address: string | null
+          age: string | null
+          brand: string
+          contact: string | null
+          country: string | null
+          header: string | null
+          icon_03: boolean | null
+          importer: string | null
+          key: string
+          manufacturer: string | null
+          price: number | null
+          qr_url: string | null
+          scope: string
+          show_license: boolean | null
+          size: string | null
+          skip: boolean | null
+          tis_license: string | null
+          tis_text: string | null
+          tis_type: number | null
+          type_th: string | null
+          updated_at: string
+          updated_by: string | null
+          usage: string | null
+          warning: string | null
+        }
+        Insert: {
+          address?: string | null
+          age?: string | null
+          brand: string
+          contact?: string | null
+          country?: string | null
+          header?: string | null
+          icon_03?: boolean | null
+          importer?: string | null
+          key?: string
+          manufacturer?: string | null
+          price?: number | null
+          qr_url?: string | null
+          scope: string
+          show_license?: boolean | null
+          size?: string | null
+          skip?: boolean | null
+          tis_license?: string | null
+          tis_text?: string | null
+          tis_type?: number | null
+          type_th?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usage?: string | null
+          warning?: string | null
+        }
+        Update: {
+          address?: string | null
+          age?: string | null
+          brand?: string
+          contact?: string | null
+          country?: string | null
+          header?: string | null
+          icon_03?: boolean | null
+          importer?: string | null
+          key?: string
+          manufacturer?: string | null
+          price?: number | null
+          qr_url?: string | null
+          scope?: string
+          show_license?: boolean | null
+          size?: string | null
+          skip?: boolean | null
+          tis_license?: string | null
+          tis_text?: string | null
+          tis_type?: number | null
+          type_th?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usage?: string | null
+          warning?: string | null
+        }
+        Relationships: []
+      }
       leave_days: {
         Row: {
           counts_toward_quota: boolean

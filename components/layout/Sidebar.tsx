@@ -37,6 +37,7 @@ import {
   TrendingUp,
   ListChecks,
   Ship,
+  Sticker,
   ClipboardCheck,
   PanelLeftClose,
   PanelLeftOpen,
@@ -159,6 +160,15 @@ const navSections: NavSection[] = [
         tone: 'warning',
         roles: ['import'],
         href: '/import',
+      },
+      {
+        // ฉลาก สคบ. ของรอบสั่งของ → ลิงก์ให้โรงงานพิมพ์ (30 ต.ค. 69)
+        // ผู้จัดการทุกคน + แอดมิน ดู/แก้/เพิ่มได้ (เจ้าของสั่ง) — ฉลากไม่มีราคาทุน ต่างจากแพลนสั่งของ
+        label: 'ฉลาก สคบ.',
+        icon: icon(Sticker),
+        tone: 'warning',
+        roles: ['import', 'admin', 'manager'],
+        href: '/import/labels',
       },
       {
         label: 'เว็บไซต์',

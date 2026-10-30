@@ -371,3 +371,30 @@ curl -s -X PATCH -H "Authorization: Bearer $AMGO_JARVIS_KEY" -H "Content-Type: a
 เปิดดูตัวเอกสารต้องเข้าเว็บ (ล็อกอิน) — API ส่งแค่รายการ
 
 ยังไม่มีใน API: สลับวันหยุด · เบิกค่าใช้จ่าย · OT/แก้เวลาเช็คเอาท์ · เงินเดือน (เจ้าของยังไม่สั่ง)
+
+## 7. ภาพรวม + เงินเดือน (Jarvis — superadmin เท่านั้น · เพิ่ม 30 ต.ค. 69)
+
+### 7.1 `GET /today` — วันนี้มีอะไรบ้าง ในคำขอเดียว
+`?date=YYYY-MM-DD` (ค่าเริ่มต้นวันนี้ เวลาไทย) · `?days=1` (งานครบกำหนดใน n วัน 1–30)
+รวมผลของ `/attendance` · `/leave?status=pending` · `/tasks/brief?user=team` โดยเรียก handler เดิมตรง ๆ (กติกาสิทธิ์ชุดเดียวกัน)
+```json
+{ "date": "2026-10-30",
+  "attendance": { "summary": {"worked":27,"late":7,"absent":5,…},
+                  "late": [{"name","company","status","late","lateMinutes","checkIn","checkOut","leaveType"}],
+                  "absent": [...], "onLeave": [...], "stillOpen": [...], "needsReview": [...] },
+  "leavePending": { "count": 2, "rows": [ใบลา…] },
+  "tasks": { "until", "counts": {"overdue","dueToday","dueSoon"}, "overdue": [งาน…], "dueSoon": [งาน…] } }
+```
+
+### 7.2 `GET /payroll` — ยอดเงินเดือนที่ต้องจ่าย
+`?month=YYYY-MM` (ค่าเริ่มต้นเดือนนี้) · `?detail=1` = แถวรายคน · กุญแจ `general` ได้ 403 เสมอ
+ตัวเลขจาก `loadPayrollWithReality` + `payrollTotal` (ชุดเดียวกับหน้าเงินเดือน) · ไม่ส่งเลขบัญชี
+```json
+{ "month": "2026-10", "note": "ผ่านวันตัดยอดแล้ว…|ยังไม่ถึงวันตัดยอดของบางรอบ…",
+  "total": 840502.12, "people": 41,
+  "companies": [{ "company": {"id","code":"AGD","name"}, "people": 32, "total", "baseSalary", "otHours", "otPay",
+                  "commission", "extra", "reimbursement", "deduction",
+                  "cycles": { "c28": {"label":"จ่ายวันที่ 28","people","total","payDate":"2026-10-27","cutoffPassed":true}, "c4": {…} } }],
+  "rows": [ (detail=1) {"person":{"id","name","code"},"company","primary","cycle","payDate","baseSalary","workDays","absentDays",
+            "otHours","otPay","commission","extra","reimbursement","deduction","total","note"} ] }
+```

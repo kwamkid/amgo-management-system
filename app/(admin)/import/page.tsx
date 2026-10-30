@@ -49,6 +49,7 @@ export default function ImportPage() {
   const [src, setSrc] = useState<string | null>(null)
   const [hdr, setHdr] = useState<Header | null>(null)
   const [fxText, setFxText] = useState('')
+  const [folded, setFolded] = useState(false)
   const frameRef = useRef<HTMLIFrameElement>(null)
   const fxRef = useRef<HTMLInputElement>(null)
 
@@ -70,9 +71,16 @@ export default function ImportPage() {
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return
-      const d = e.data as ({ orderPlanHash?: string; title?: string } & Partial<Header> & { src?: string; type?: string }) | null
+      const d = e.data as ({ orderPlanHash?: string; title?: string; y?: number } & Partial<Header> & { src?: string; type?: string }) | null
       if (!d) return
+      // เลื่อนรายการลง → หุบหัวให้ตารางเต็มจอ · กลับขึ้นบนสุด → หัวกลับมา (เจ้าของ 30 ต.ค. 69)
+      if (d.src === 'order-plan' && d.type === 'scroll' && typeof d.y === 'number') {
+        const y = d.y
+        setFolded((f) => (y > 60 ? true : y < 8 ? false : f))
+        return
+      }
       if (d.src === 'order-plan' && d.type === 'header') {
+        if (!d.round) setFolded(false)
         setHdr(d as Header)
         // ไม่ทับตอนกำลังพิมพ์อัตราอยู่
         if (typeof d.fx === 'number' && document.activeElement !== fxRef.current) setFxText(String(d.fx))
@@ -119,7 +127,11 @@ export default function ImportPage() {
   // ลบ padding ของ <main> ให้กรอบชิดขอบ · สูงเต็มจอลบแถบบน (h-14) · หัวอยู่บน กรอบกินที่เหลือ
   return (
     <div className="-mx-4 -mb-10 -mt-5 flex h-[calc(100dvh-3.5rem)] flex-col lg:-mx-7">
-      <div className="shrink-0 px-4 pt-5 lg:px-7">
+      <div
+        className={`shrink-0 overflow-hidden px-4 transition-[max-height,padding] duration-200 lg:px-7 ${
+          folded ? 'max-h-0 pt-0' : 'max-h-[480px] pt-5'
+        }`}
+      >
         <PageHeader
           title={title}
           description={round && hdr?.save ? hdr.save : undefined}

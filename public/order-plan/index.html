@@ -218,26 +218,27 @@ h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
 /* amgo 30 Oct 2026: printable A4 list of what is ordered (owner checks it on paper after ordering) */
 .printbtn{border:1px solid var(--line,#ddd);background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
 #print{display:none}
-@page{size:A4 landscape;margin:8mm}
+@page{size:A4 portrait;margin:7mm 6mm}
 @media print{
   body>*:not(#print){display:none!important}
-  #print{display:block;font-size:8.5pt;color:#000}
-  #print h2{font-size:12pt;margin:0 0 2mm}
-  #print h2 img{height:7mm;width:auto;vertical-align:middle;margin-right:2mm}
+  #print{display:block;font-size:7.3pt;line-height:1.2;color:#000}
+  #print h2{font-size:10.5pt;margin:0 0 1mm}
+  #print h2 img{height:5mm;width:auto;vertical-align:middle;margin-right:2mm}
   #print h2>*{display:inline!important;float:none!important;margin-left:0!important}
-  #print .meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;margin-bottom:3mm;color:#333}
+  #print .meta{display:flex;flex-wrap:wrap;gap:1mm 5mm;margin-bottom:1.5mm;color:#333}
   #print table{width:100%;border-collapse:collapse;table-layout:fixed}
   #print thead{display:table-header-group}
-  #print th,#print td{border:.3pt solid #999;padding:1mm 1.2mm;vertical-align:middle;overflow-wrap:anywhere}
+  #print th,#print td{border:.3pt solid #aaa;padding:.4mm .8mm;vertical-align:middle;overflow-wrap:anywhere}
   #print th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600;text-align:left}
   #print tr{break-inside:avoid}
   #print .num{text-align:right;white-space:nowrap}
   #print th.num{white-space:normal}
   #print .grp td{background:#f4f4f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600}
-  #print img{width:13mm;height:13mm;object-fit:contain;display:block;margin:auto}
-  #print .bc{display:block;color:#555;font-size:7pt}
-  #print .tot{margin-top:3mm;display:flex;flex-wrap:wrap;gap:2mm 8mm;font-size:9.5pt}
-  #print .tot b{font-size:11pt}
+  #print img{width:8mm;height:8mm;object-fit:contain;display:block;margin:auto}
+  #print .bc{display:block;color:#555;font-size:6.3pt;white-space:nowrap}
+  #print th{overflow-wrap:normal;word-break:keep-all}
+  #print .tot{margin-top:2mm;display:flex;flex-wrap:wrap;gap:1mm 6mm;font-size:8.5pt}
+  #print .tot b{font-size:9.5pt}
   #print .low{color:#c00}
 }
 </style>
@@ -254,6 +255,21 @@ h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
 // amgo: embedded in /import (iframe) → the parent page owns the round header, talks to us with postMessage
 const EMBED = window.parent !== window;
 if (EMBED) document.documentElement.classList.add('embedded');
+// amgo (owner 30 Oct 2026): in the iframe the table box fills the space left under the filters / banner (the fixed
+// "100vh − 290px" was sized for the old header), and scrolling the list tells the parent to fold its header away
+function fitWrap() {
+  const w = EMBED && $('.wrap'); if (!w) return;
+  const foot = $('footer.tot'), h = innerHeight - w.getBoundingClientRect().top - (foot ? foot.offsetHeight : 0) - 12;
+  w.style.maxHeight = Math.max(240, h) + 'px';
+}
+if (EMBED) {
+  addEventListener('resize', () => requestAnimationFrame(fitWrap));
+  let tick = 0;
+  addEventListener('scroll', e => {
+    const w = e.target; if (!(w instanceof Element) || !w.classList.contains('wrap') || tick) return;
+    tick = requestAnimationFrame(() => { tick = 0; try { parent.postMessage({ src: 'order-plan', type: 'scroll', y: w.scrollTop }, location.origin); } catch {} });
+  }, { capture: true, passive: true });
+}
 const $ = s => document.querySelector(s);
 const fmt = (n, d = 0) => n == null || isNaN(n) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -468,7 +484,7 @@ function renderShell() {
     else { sortKey = 'qty'; sortDir = -1; } // third click: back to the default (biggest order first)
     renderShell(); renderRows(); renderTotals();
   });
-  const u = $('#unlock'); if (u) u.onclick = () => { unlocked = true; $('#banner').remove(); renderRows(); };
+  const u = $('#unlock'); if (u) u.onclick = () => { unlocked = true; $('#banner').remove(); renderRows(); fitWrap(); };
   postHeader();
 }
 
@@ -494,6 +510,7 @@ function setOnly(v) {
 const LEGEND = [['--ed', 'แก้ได้'], ['--fob-head', 'ต้นทุน FOB', true], ['--srp-head', 'SRP แบรนด์'], ['--sell-head', 'ราคาขายเรา'], ['--avg-head', 'ขาย/เดือน'], ['--cov-head', 'พอขาย']];
 function postHeader() {
   if (!EMBED) return;
+  requestAnimationFrame(fitWrap);
   const css = getComputedStyle(document.documentElement), sv = $('#save');
   const msg = !plan ? { src: 'order-plan', type: 'header', round: false } : {
     src: 'order-plan', type: 'header', round: true,
@@ -735,6 +752,7 @@ let totMin = (() => { try { return localStorage.getItem('plan.totMin') === '1'; 
 const totToggle = () => `<button class="tot-tg" id="totTg" title="${totMin ? 'ขยายสรุป' : 'ย่อสรุป'}">${totMin ? '▲ ขยาย' : '▼ ย่อ'}</button>`;
 function bindTotToggle() {
   document.body.classList.toggle('tot-min', totMin);
+  requestAnimationFrame(fitWrap);
   $('#totTg').onclick = () => { totMin = !totMin; try { localStorage.setItem('plan.totMin', totMin ? '1' : '0'); } catch {} renderTotals(); };
 }
 
@@ -758,9 +776,9 @@ async function printPlan() {
       <td class="num cost">${fc(i.fob)}</td>
       <td class="num">${i.srp ? fc(i.srp) : '—'}</td>
       <td class="num"><b>${fmt(ctns(i))}</b> / ${fmt(i.qty)}</td>
-      <td class="num">${fmt(i.stock || 0)}</td>
-      <td class="num ${nc != null && nc < (plan.leadMonths || 0) ? 'low' : ''}">${nc == null ? '—' : fmt(nc, 1)} → ${aft == null ? '—' : fmt(aft, 1)}</td>
-      <td class="num">${i.qtyPdq ? `${fmt(i.qtyPdq)}/PDQ · ${fmt(i.pdqPerCase || 1)} PDQ` : fmt(i.casePack)}</td>
+      <td class="num">${i.stock ? fmt(i.stock) : ''}</td>
+      <td class="num ${nc != null && nc < (plan.leadMonths || 0) ? 'low' : ''}">${nc == null && aft == null ? '' : `${nc == null ? '—' : fmt(nc, 1)}→${aft == null ? '—' : fmt(aft, 1)}`}</td>
+      <td class="num">${i.qtyPdq ? `${fmt(i.qtyPdq)}/PDQ` : fmt(i.casePack)}</td>
       <td class="num cost">${fc(i.qty * (i.fob || 0))}</td>
       <td class="num">${fmt(ctns(i) * (i.cbm || 0), 2)}</td></tr>`;
   }).join('');
@@ -768,11 +786,11 @@ async function printPlan() {
   el.innerHTML = `<h2>${logo(plan)}${head}</h2>
     <div class="meta"><span>สถานะ: ${STATUS[plan.status] || plan.status}</span>${plan.container ? `<span>${ctrName(plan.container, plan)}</span>` : ''}
       <span class="cost">อัตรา ฿/${esc(plan.currency)} ${fmt(plan.fx, 2)}</span><span>พิมพ์ ${new Date().toLocaleString('th-TH')}</span></div>
-    <table><colgroup>${[7, 16, 0, 30, -16, 16, 22, 15, 24, 26, -20, 14].filter(w => w >= 0 || plan._seeCost !== false)
+    <table><colgroup>${[5, 9.5, 0, 22.5, -11, 10.5, 13, 10, 13, 10, -14, 10].filter(w => w >= 0 || plan._seeCost !== false)
       .map(w => `<col${w ? ` style="width:${Math.abs(w)}mm"` : ''}>`).join('')}</colgroup>
-    <thead><tr><th>#</th><th>รูป</th><th>ชื่อ</th><th>Item code / SKU</th><th class="num cost">FOB</th><th class="num">SRP</th>
-      <th class="num">สั่ง กล่อง / ชิ้น</th><th class="num">สต็อกตอนนี้</th><th class="num">พอขาย (ด.) ตอนนี้ → หลังสั่ง</th>
-      <th class="num">บรรจุ ชิ้น/กล่อง</th><th class="num cost">รวม ${esc(plan.currency)}</th><th class="num">CBM</th></tr></thead>
+    <thead><tr><th>#</th><th>รูป</th><th>ชื่อ</th><th>Code / SKU</th><th class="num cost">FOB</th><th class="num">SRP</th>
+      <th class="num">สั่ง กล่อง/ชิ้น</th><th class="num">สต็อก</th><th class="num">พอขาย ด. ตอนนี้→หลัง</th>
+      <th class="num">ชิ้น/กล่อง</th><th class="num cost">รวม ${SYM[plan.currency] || esc(plan.currency)}</th><th class="num">CBM</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="tot"><span>รายการ <b>${fmt(o.length)}</b></span><span>กล่อง <b>${fmt(sum(ctns))}</b></span><span>ชิ้น <b>${fmt(sum(i => i.qty))}</b></span>
       <span>Total CBM <b>${fmt(cbm, 2)}</b></span><span class="cost">Total pay (${esc(plan.incoterm || 'FOB')}) <b>${fc(fob, 2)}</b> · ${thb(fob * plan.fx)}</span></div>`;

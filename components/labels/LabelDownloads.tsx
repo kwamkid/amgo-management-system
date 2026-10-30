@@ -23,7 +23,8 @@ const DL_TEXT: Record<'en' | 'zh', BgDownloadText> = {
   en: { already: (l) => `${l} is already being prepared`, working: (l) => `Preparing ${l}… you can keep working, it saves by itself`, done: (f) => `Saved ${f}`, fail: (m) => `Could not build the PDF: ${m}` },
   zh: { already: (l) => `${l} 正在生成`, working: (l) => `正在生成 ${l}…可继续操作，完成后自动保存`, done: (f) => `已保存 ${f}`, fail: (m) => `无法生成 PDF：${m}` },
 }
-const MODES: LabelPdfMode[] = ['single', 'sheet', 'master']
+// "one of each" first + default — what the factory uses most (owner 30 Oct)
+const MODES: LabelPdfMode[] = ['master', 'single', 'sheet']
 
 const TEXT: Record<UiLang, {
   choose: string; name: Record<LabelPdfMode, string>; desc: Record<LabelPdfMode, (size: string) => string>
@@ -152,7 +153,7 @@ export function LabelDownloads({ lines, pdfUrl, previewUrl, lang = 'en', fileNam
   return (
     <div className="space-y-6 sm:space-y-8">
       {sizes.map((s) => {
-        const mode = pick[s.size] ?? 'single'
+        const mode = pick[s.size] ?? 'master'
         const tooBig = s.pages[mode] > MAX_PRINT_PAGES
         return (
           <section key={s.size} className="space-y-3">

@@ -2,13 +2,14 @@
 //
 // รวมข้อมูลฉลากของรอบสั่งของ 1 รอบ — server only
 // ค่าแต่ละช่องไล่จากกว้างไปแคบ: '*' (ทุกแบรนด์) → แบรนด์ของรอบ → แบรนด์ย่อย (part) → หมวด → รหัสสินค้า
-// ชั้นไหนไม่ได้กรอก (null) ใช้ค่าชั้นก่อนหน้า · ราคา = ที่กรอกไว้ที่สินค้า → SRP Calculator → ราคาที่ตกลงไว้ในรอบสั่ง
+// ชั้นไหนไม่ได้กรอก (null) ใช้ค่าชั้นก่อนหน้า · ราคา = ที่กรอกไว้ที่สินค้า → SRP Calculator (ราคาขายที่ใช้จริง) → ราคาที่ตกลงไว้ในรอบสั่ง
 // → ราคาหน้าร้าน aoo (SRP Calculator มีราคา Hape แค่ ~33 รุ่น ณ 30 ต.ค. 69 — ลำดับเดียวกับ sell() ในหน้าแพลนสั่งของ)
 // ใช้ได้ทั้ง client ของผู้ใช้ (หน้าแอดมิน, RLS) และ admin client (หน้าแชร์ให้โรงงาน — เช็ค token แล้ว)
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { aooPrices } from '@/lib/services/import/importServer'
+import { calculateProduct, type SrpBrand, type SrpProduct } from '@/lib/services/srp/calculator'
 import type { Database } from '@/types/database'
 import { parseSize, type LabelData } from './types'
 
@@ -81,17 +82,36 @@ export async function loadRoundLabels(sb: Sb, where: { slug: string } | { id: st
     sb.from('label_rounds').select('*').eq('round_id', r.id).maybeSingle(),
   ])
 
-  // SRP Calculator prices (our_price_thb by sku) of every part — service role like importServer
+  // SRP Calculator price of every part — the same "ราคาขายที่ใช้จริง" the SRP page shows (calculateProduct:
+  // our_price if typed, else the suggested price from FOB × multiplier). Owner 30 Oct: "ราคาเอาจากใน srp".
+  // Reading only our_price_thb left 87 of 171 C1 codes empty. Service role like importServer.
   const admin = createAdminClient()
-  const { data: srpBrands } = await admin.from('srp_brands').select('id, name').in('name', parts.map((p) => p.srpBrand))
+  const { data: srpBrands } = await admin.from('srp_brands')
+    .select('id, name, usd_to_thb, eur_to_thb, sgd_to_thb, vat, default_multiplier, platform_markup_pct')
+    .in('name', parts.map((p) => p.srpBrand))
   const srpPrice = new Map<string, number>() // `${partKey}|${code}`
   if (srpBrands?.length) {
-    const { data: prods } = await admin.from('srp_products').select('brand_id, sku, our_price_thb')
+    const { data: prods } = await admin.from('srp_products')
+      .select('brand_id, sku, fob_usd, fob_eur, freight_do, import_tax_pct, shipping_cost, srp_usd, srp_eur, srp_sgd, multiplier, our_price_thb, platform_price_thb, platform_markup_pct')
       .in('brand_id', srpBrands.map((b) => b.id)).eq('is_active', true)
     for (const p of prods ?? []) {
       const b = srpBrands.find((x) => x.id === p.brand_id)
       const part = parts.find((x) => x.srpBrand === b?.name)
-      if (part && p.sku && (p.our_price_thb ?? 0) > 0) srpPrice.set(`${partKey(part.source)}|${p.sku.trim()}`, Number(p.our_price_thb))
+      if (!b || !part || !p.sku?.trim()) continue
+      const n = (v: unknown) => Number(v) || 0
+      const price = calculateProduct(
+        {
+          fobUsd: n(p.fob_usd), fobEur: n(p.fob_eur), freightDo: n(p.freight_do), importTaxPct: n(p.import_tax_pct),
+          shippingCost: n(p.shipping_cost), srpUsd: n(p.srp_usd), srpEur: n(p.srp_eur), srpSgd: n(p.srp_sgd),
+          multiplier: n(p.multiplier), ourPriceThb: n(p.our_price_thb), platformPriceThb: n(p.platform_price_thb),
+          platformMarkupPct: n(p.platform_markup_pct),
+        } as SrpProduct,
+        {
+          usdToThb: n(b.usd_to_thb), eurToThb: n(b.eur_to_thb), sgdToThb: n(b.sgd_to_thb), vat: n(b.vat),
+          defaultMultiplier: n(b.default_multiplier), platformMarkupPct: n(b.platform_markup_pct),
+        } as SrpBrand,
+      ).effectivePrice
+      if (price > 0) srpPrice.set(`${partKey(part.source)}|${p.sku.trim()}`, price)
     }
   }
 

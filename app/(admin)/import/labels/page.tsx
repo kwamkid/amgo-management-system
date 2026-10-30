@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { AlertTriangle, CheckCircle2, ClipboardCopy, Copy, Download, Eye, Link2, Printer, Save, Settings2, Sticker, Tags } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, Checkbox, Field, Input, Modal, Pill, Select, Textarea, Toggle } from '@/components/aoo'
+import { Alert, Button, Checkbox, Field, Input, Modal, Pill, SelectMenu, Textarea, Toggle, type SelectOption } from '@/components/aoo'
 import { DataTable, PageHeader, Segmented, StatCard, StatGrid, TechLoader } from '@/components/shared'
 import type { Column } from '@/components/shared'
 import { bgDownload } from '@/lib/utils/bgDownload'
@@ -50,6 +50,11 @@ const LAYER: Record<string, string> = {
 }
 const SIZE_NAME: Record<string, string> = { '50x50': '5 × 5 ซม.', '40x40': '4 × 4 ซม.', '30x30': '3 × 3 ซม.', '50x30': '5 × 3 ซม. (แนวนอน)' }
 const sizeName = (s: string) => SIZE_NAME[s] ?? `${s.replace('x', ' × ')} มม.`
+/** options for the shared SelectMenu (owner 30 Oct: no native dropdowns) — keeps a custom saved size listed */
+const sizeOptions = (cur?: string): SelectOption[] => [
+  ...LABEL_SIZES.map((x) => ({ value: x, label: sizeName(x) })),
+  ...(cur && !(LABEL_SIZES as readonly string[]).includes(cur) ? [{ value: cur, label: sizeName(cur) }] : []),
+]
 const LONG: Field[] = ['warning', 'age', 'usage', 'address']
 
 /** fields editable per level */
@@ -439,17 +444,25 @@ function LabelGrid({ slug, lines, specs, ro, onOpen, onSave }: {
                   {GRID.map((g, c) => {
                     const v = shown(l, g.f)
                     const edited = edits[l.code]?.[g.f] !== undefined
+                    if (BOOL.includes(g.f)) {
+                      // yes/no columns = tick box (owner 30 Oct) · unticking an inherited "yes" stores "ไม่" on the product
+                      const inh = inherited(l, g.f)
+                      const on = (v || inh) === 'ใช่'
+                      return (
+                        <td key={g.f} className={`border-b border-r border-[var(--border-1)] px-2 py-1 ${edited ? 'bg-[var(--bg-sunken)]' : ''}`}>
+                          <Checkbox checked={on} disabled={ro || (g.f === 'icon_03' && l.skip)} aria-label={`${g.label} ${l.code}`}
+                            onChange={(x) => set(l, g.f, x ? (inh === 'ใช่' ? '' : 'ใช่') : inh === 'ใช่' ? 'ไม่' : '')} />
+                        </td>
+                      )
+                    }
                     if (g.f === 'size') {
                       // size = dropdown (owner 30 Oct: "ตรงไหนให้เลือกขนาด label")
                       const inh = inherited(l, g.f)
                       return (
                         <td key={g.f} className={`border-b border-r border-[var(--border-1)] p-0 ${edited ? 'bg-[var(--bg-sunken)]' : ''}`}>
-                          <select data-cell={`${r}-${c}`} value={v} disabled={ro} onChange={(e) => set(l, g.f, e.target.value)}
-                            className={`w-full bg-transparent px-1 py-1.5 outline-none ${v ? '' : 'text-[var(--fg-3)]'}`}>
-                            <option value="">{inh ? `${sizeName(inh)} (ค่าตู้)` : 'ตามตู้'}</option>
-                            {LABEL_SIZES.map((x) => <option key={x} value={x}>{sizeName(x)}</option>)}
-                            {v && !(LABEL_SIZES as readonly string[]).includes(v) && <option value={v}>{v}</option>}
-                          </select>
+                          <SelectMenu size="sm" variant="flat" value={v || null} disabled={ro}
+                            options={sizeOptions(v)} placeholder={inh ? `${sizeName(inh)} (ค่าตู้)` : 'ตามตู้'}
+                            clearable={inh ? `ตามตู้ (${sizeName(inh)})` : 'ตามตู้'} onChange={(x) => set(l, g.f, x ?? '')} />
                         </td>
                       )
                     }
@@ -559,10 +572,9 @@ function PrintDialog({ slug, lines, onClose }: { slug: string; lines: Line[]; on
         ]} />
         <Field label="ขนาดฉลาก" help={mode === 'single' ? 'ตั้งขนาดกระดาษในเครื่องพิมพ์ฉลากให้ตรงกับขนาดนี้ · พิมพ์ที่ 100% / Actual size' : 'พิมพ์ที่ 100% / Actual size (ห้าม Fit to page)'}
           warning={size && size !== '50x50' ? (size === '30x30' ? 'ขนาดนี้ตัวอักษรปกติเหลือราว 3 pt (คำเตือนราว 4 pt) — ใช้เครื่องพิมพ์ 300 dpi ขึ้นไป' : 'ขนาดนี้ตัวอักษรปกติเหลือราว 3.5–4 pt (คำเตือนราว 5 pt)') + ' — ดูตัวอย่างก่อนพิมพ์เยอะ' : undefined}>
-          <Select value={size} onChange={(e) => setSize(e.target.value)}>
-            <option value="">ตามที่ตั้งไว้ของแต่ละรหัส{groups.length === 1 && !size ? ` (${sizeName(groups[0].size)})` : ''}</option>
-            {LABEL_SIZES.map((x) => <option key={x} value={x}>{sizeName(x)}</option>)}
-          </Select>
+          <SelectMenu value={size || null} options={sizeOptions()} onChange={(x) => setSize(x ?? '')}
+            placeholder={`ตามที่ตั้งไว้ของแต่ละรหัส${groups.length === 1 && !size ? ` (${sizeName(groups[0].size)})` : ''}`}
+            clearable="ตามที่ตั้งไว้ของแต่ละรหัส" />
         </Field>
         <div className="border-t border-[var(--border-1)] pt-3">
           <div className="mb-2 flex items-center gap-2">
@@ -604,9 +616,8 @@ function RoundSettings({ data, ro, onSave }: { data: Data; ro: boolean; onSave: 
           onBlur={() => month !== data.settings.import_month && onSave({ import_month: month })} />
       </Field>
       <Field label="ขนาดสติ๊กเกอร์ของทั้งตู้" help="ตัวไหนกล่องเล็ก เลือกขนาดแยกได้ที่คอลัมน์ “ขนาดสติ๊กเกอร์” ในตาราง">
-        <Select value={data.settings.default_size} disabled={ro} onChange={(e) => onSave({ default_size: e.target.value })}>
-          {LABEL_SIZES.map((s) => <option key={s} value={s}>{sizeName(s)}</option>)}
-        </Select>
+        <SelectMenu value={data.settings.default_size} disabled={ro} options={sizeOptions()}
+          onChange={(x) => x && onSave({ default_size: x })} />
       </Field>
       <Field label="เผื่อเสีย (%)" help="จำนวนดวง = จำนวนที่สั่ง + เผื่อ (ปัดขึ้น)">
         <Input type="number" min={0} max={50} value={extra} disabled={ro}
@@ -627,27 +638,25 @@ function SpecInput({ f, value, placeholder, disabled, onChange }: {
   }
   if (f === 'icon_03' || f === 'skip') {
     return (
-      <Select value={value == null ? '' : value ? '1' : '0'} disabled={disabled} onChange={(e) => onChange(e.target.value === '' ? null : e.target.value === '1')}>
-        <option value="">{placeholder ? `ตามชั้นบน (${placeholder === 'true' ? 'ใช่' : 'ไม่'})` : 'ตามชั้นบน'}</option>
-        <option value="1">ใช่</option>
-        <option value="0">ไม่</option>
-      </Select>
+      <SelectMenu value={value == null ? null : value ? '1' : '0'} disabled={disabled}
+        options={[{ value: '1', label: 'ใช่' }, { value: '0', label: 'ไม่' }]}
+        placeholder={placeholder ? `ตามชั้นบน (${placeholder === 'true' ? 'ใช่' : 'ไม่'})` : 'ตามชั้นบน'} clearable="ตามชั้นบน"
+        onChange={(x) => onChange(x == null ? null : x === '1')} />
     )
   }
   if (f === 'size') {
     return (
-      <Select value={v} disabled={disabled} onChange={(e) => onChange(e.target.value || null)}>
-        <option value="">{placeholder ? `ตามชั้นบน (${sizeName(placeholder)})` : 'ตามชั้นบน'}</option>
-        {LABEL_SIZES.map((s) => <option key={s} value={s}>{sizeName(s)}</option>)}
-      </Select>
+      <SelectMenu value={v || null} disabled={disabled} options={sizeOptions(v)}
+        placeholder={placeholder ? `ตามชั้นบน (${sizeName(placeholder)})` : 'ตามชั้นบน'} clearable="ตามชั้นบน"
+        onChange={(x) => onChange(x)} />
     )
   }
   if (f === 'tis_type') {
     return (
-      <Select value={v} disabled={disabled} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
-        <option value="">{placeholder ? `ตามชั้นบน (ประเภท ${placeholder})` : '— ยังไม่เลือก —'}</option>
-        {Object.entries(TIS_TYPES).map(([k, t]) => <option key={k} value={k}>{k}. {t}</option>)}
-      </Select>
+      <SelectMenu value={v || null} disabled={disabled}
+        options={Object.entries(TIS_TYPES).map(([k, t]) => ({ value: k, label: `${k}. ${t}` }))}
+        placeholder={placeholder ? `ตามชั้นบน (ประเภท ${placeholder})` : '— ยังไม่เลือก —'} clearable={placeholder ? 'ตามชั้นบน' : 'ไม่ระบุ'}
+        onChange={(x) => onChange(x ? Number(x) : null)} />
     )
   }
   if (LONG.includes(f)) {

@@ -396,6 +396,20 @@ export async function getActiveCheckIn(userId: string): Promise<CheckInRecord | 
 }
 
 /**
+ * วันนี้มีแถวเช็คอินของคนนี้แล้วหรือยัง (ไม่สนว่าปิดกะแล้วหรือยัง) — ใช้ตัดสินว่าเปิดแอปมาแล้ว
+ * ควรพาไปหน้าเช็คอินเลยไหม (เจ้าของขอ 31 ต.ค. 69: เปิดแอปปุ๊บ ยังไม่เช็คอิน → หน้าเช็คอิน)
+ */
+export async function hasCheckedInToday(userId: string): Promise<boolean> {
+  const { count, error } = await sb()
+    .from('checkins')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('work_date', format(new Date(), 'yyyy-MM-dd'))
+  if (error) throw new Error(`ดูเช็คอินวันนี้ไม่สำเร็จ: ${error.message}`)
+  return (count ?? 0) > 0
+}
+
+/**
  * สถานะหน้าเช็คอินของคนที่ล็อกอินอยู่ในคำขอเดียว (RPC checkin_state — 30 ก.ย. 69)
  * กะที่เปิดอยู่ + ตารางวันของวันนั้น + ยื่นใบสลับไว้หรือยัง
  * (เดิม: หากะ → แล้วค่อยถาม expected_work_mode + ใบสลับ อีกรอบ)

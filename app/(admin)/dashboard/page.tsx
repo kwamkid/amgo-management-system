@@ -2,7 +2,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { getActiveCheckIn } from '@/lib/services/checkinService';
+import { getActiveCheckIn, hasCheckedInToday } from '@/lib/services/checkinService';
 import type { CheckInRecord } from '@/types/checkin';
 import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
@@ -23,11 +23,29 @@ export default function DashboardPage() {
   // ปุ่มบนหัวหน้าต้องรู้แค่ว่าเช็คอินอยู่ไหม — เดิมเรียก useCheckIn() ทั้งก้อน ซึ่งดึง
   // สาขา+กะทั้งหมด และเปิด GPS หาตำแหน่งทุกครั้งที่เปิด Dashboard (30 ก.ย. 69)
   const [currentCheckIn, setCurrentCheckIn] = useState<CheckInRecord | null>(null);
+  const router = useRouter();
   useEffect(() => {
     if (!userData?.id) return;
     getActiveCheckIn(userData.id).then(setCurrentCheckIn).catch(() => {});
   }, [userData?.id]);
-  const router = useRouter();
+
+  // เปิดแอปมา (PWA เริ่มที่ /dashboard) ยังไม่ได้เช็คอินวันนี้ → พาไปหน้าเช็คอินเลย
+  // หน้านั้นอ่าน GPS เองทันที เหลือกดปุ่มเดียว (เจ้าของขอ 31 ต.ค. 69)
+  // พาแค่ครั้งแรกของวันต่อการเปิดแอป (sessionStorage) — กดกลับมา Dashboard แล้วไม่เด้งซ้ำ
+  // คนที่ตั้งไว้ว่า "ไม่ต้องเช็คอิน" (requiresCheckin = false เกณฑ์เดียวกับรายงานขาดงาน) ไม่พาไป
+  useEffect(() => {
+    if (!userData?.id || userData.requiresCheckin === false) return;
+    const key = `amgo:checkin-nudge:${new Date().toDateString()}`;
+    let nudged = false;
+    try { nudged = sessionStorage.getItem(key) === '1'; } catch {}
+    if (nudged) return;
+    hasCheckedInToday(userData.id)
+      .then((done) => {
+        try { sessionStorage.setItem(key, '1'); } catch {}
+        if (!done) router.replace('/checkin');
+      })
+      .catch(() => {});
+  }, [userData?.id, userData?.requiresCheckin, router]);
 
   if (loading) {
     return <TechLoader />;

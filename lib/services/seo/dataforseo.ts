@@ -109,6 +109,27 @@ export async function getSerpTask(taskId: string): Promise<SerpResult> {
 export const isOurDomain = (domain: string | undefined, ours: string) =>
   !!domain && (domain === ours || domain.endsWith(`.${ours}`))
 
+/**
+ * โดเมนจริงของผลลัพธ์ — ตั้งแต่ ต.ค. 69 Google ห่อลิงก์เป็น https://google.com/goto?url=… ทำให้
+ * DataForSEO คืน domain = "google.com" ทั้งแถว ของจริงเหลืออยู่ใน breadcrumb ("https://www.adayfresh.com › …")
+ * ถ้าไม่แก้ เราจะถูกบันทึกว่า "ไม่ติด" ทั้งที่อยู่อันดับ 1–2 (เจอจริง 30 ต.ค. 69)
+ */
+export function realDomain(item: { domain?: string; url?: string; breadcrumb?: string; website_name?: string }): string {
+  const d = (item.domain ?? '').toLowerCase()
+  const wrapped = d === 'google.com' || d === 'www.google.com' || (item.url ?? '').startsWith('https://google.com/goto')
+  if (!wrapped) return d
+  const crumb = (item.breadcrumb ?? '').trim()
+  const m = crumb.match(/^https?:\/\/([^\s›/]+)/i)
+  if (m) return m[1].toLowerCase()
+  // breadcrumb ของโซเชียลเป็นข้อความ ("ผู้ติดตามกว่า 12.4K คน") → เดาจาก website_name ("Facebook · ชื่อเพจ")
+  const name = (item.website_name ?? '').toLowerCase()
+  if (/^facebook/.test(name)) return 'www.facebook.com'
+  if (/^instagram/.test(name)) return 'www.instagram.com'
+  if (/^tiktok/.test(name)) return 'www.tiktok.com'
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/.test(name)) return name
+  return d
+}
+
 export type ParsedSerp = {
   position: number | null
   rankedUrl: string | null
@@ -142,7 +163,9 @@ function mentionsDomain(node: any, ours: string): boolean {
 
 /** แปลงผล SERP เป็นสิ่งที่เก็บ — อันดับ = rank_group ของผลแบบ organic */
 export function parseSerp(items: any[], ourDomain: string): ParsedSerp {
-  const organic = items.filter((i) => i.type === 'organic')
+  const organic = items
+    .filter((i) => i.type === 'organic')
+    .map((i) => ({ ...i, domain: realDomain(i) }))
   const mine = organic.find((i) => isOurDomain(i.domain, ourDomain))
 
   const refs: { domain: string; url: string }[] = []

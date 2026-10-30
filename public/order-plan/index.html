@@ -232,9 +232,9 @@ h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
   #print th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600;text-align:left}
   #print tr{break-inside:avoid}
   #print .num{text-align:right;white-space:nowrap}
-  #print th.num{white-space:normal}
+  #print th.num{white-space:nowrap}
   #print .grp td{background:#f4f4f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600}
-  #print img{width:8mm;height:8mm;object-fit:contain;display:block;margin:auto}
+  #print img{width:13mm;height:13mm;object-fit:contain;display:block;margin:auto}
   #print .bc{display:block;color:#555;font-size:6.3pt;white-space:nowrap}
   #print th{overflow-wrap:normal;word-break:keep-all}
   #print .tot{margin-top:2mm;display:flex;flex-wrap:wrap;gap:1mm 6mm;font-size:8.5pt}
@@ -786,11 +786,11 @@ async function printPlan() {
   el.innerHTML = `<h2>${logo(plan)}${head}</h2>
     <div class="meta"><span>สถานะ: ${STATUS[plan.status] || plan.status}</span>${plan.container ? `<span>${ctrName(plan.container, plan)}</span>` : ''}
       <span class="cost">อัตรา ฿/${esc(plan.currency)} ${fmt(plan.fx, 2)}</span><span>พิมพ์ ${new Date().toLocaleString('th-TH')}</span></div>
-    <table><colgroup>${[5, 9.5, 0, 22.5, -11, 10.5, 13, 10, 13, 10, -14, 10].filter(w => w >= 0 || plan._seeCost !== false)
+    <table><colgroup>${[5, 15, 0, 22.5, -11, 10.5, 15, 10, 17, 12, -14, 10].filter(w => w >= 0 || plan._seeCost !== false)
       .map(w => `<col${w ? ` style="width:${Math.abs(w)}mm"` : ''}>`).join('')}</colgroup>
     <thead><tr><th>#</th><th>รูป</th><th>ชื่อ</th><th>Code / SKU</th><th class="num cost">FOB</th><th class="num">SRP</th>
-      <th class="num">สั่ง กล่อง/ชิ้น</th><th class="num">สต็อก</th><th class="num">พอขาย ด. ตอนนี้→หลัง</th>
-      <th class="num">ชิ้น/กล่อง</th><th class="num cost">รวม ${SYM[plan.currency] || esc(plan.currency)}</th><th class="num">CBM</th></tr></thead>
+      <th class="num">สั่ง<br>กล่อง/ชิ้น</th><th class="num">สต็อก</th><th class="num">พอขาย (ด.)<br>ตอนนี้→หลัง</th>
+      <th class="num">ชิ้น<br>ต่อกล่อง</th><th class="num cost">รวม ${SYM[plan.currency] || esc(plan.currency)}</th><th class="num">CBM</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="tot"><span>รายการ <b>${fmt(o.length)}</b></span><span>กล่อง <b>${fmt(sum(ctns))}</b></span><span>ชิ้น <b>${fmt(sum(i => i.qty))}</b></span>
       <span>Total CBM <b>${fmt(cbm, 2)}</b></span><span class="cost">Total pay (${esc(plan.incoterm || 'FOB')}) <b>${fc(fob, 2)}</b> · ${thb(fob * plan.fx)}</span></div>`;

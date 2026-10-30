@@ -233,6 +233,7 @@ h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
   #print tr{break-inside:avoid}
   #print .num{text-align:right;white-space:nowrap}
   #print th.num{white-space:nowrap}
+  #print td.no{font-size:6.5pt;padding:.4mm .5mm;color:#444}
   #print th{font-size:6.3pt;line-height:1.15;padding:.6mm .8mm;text-align:center!important;vertical-align:bottom}
   #print .grp td{background:#f4f4f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600}
   #print img{width:13mm;height:13mm;object-fit:contain;display:block;margin:auto}
@@ -770,7 +771,7 @@ async function printPlan() {
   const rows = o.map((i, n) => {
     const g = i.group || '', gh = g !== grp ? (grp = g, g ? `<tr class="grp"><td colspan="${plan._seeCost === false ? 10 : 12}">${esc(g)}</td></tr>` : '') : '';
     const nc = i.avg > 0 ? (i.stock || 0) / i.avg : null, aft = cover(i, after(i));
-    return gh + `<tr><td class="num">${n + 1}</td>
+    return gh + `<tr><td class="num no">${n + 1}</td>
       <td>${i.img ? `<img src="${esc(i.img)}" alt="">` : ''}</td>
       <td>${esc(i.name)}</td>
       <td>${esc(i.code)}${i.barcode ? `<span class="bc">${esc(i.barcode)}</span>` : ''}</td>
@@ -787,7 +788,7 @@ async function printPlan() {
   el.innerHTML = `<h2>${logo(plan)}${head}</h2>
     <div class="meta"><span>สถานะ: ${STATUS[plan.status] || plan.status}</span>${plan.container ? `<span>${ctrName(plan.container, plan)}</span>` : ''}
       <span class="cost">อัตรา ฿/${esc(plan.currency)} ${fmt(plan.fx, 2)}</span><span>พิมพ์ ${new Date().toLocaleString('th-TH')}</span></div>
-    <table><colgroup>${[5, 15, 0, 22.5, -11, 10.5, 15, 10, 17, 12, -14, 10].filter(w => w >= 0 || plan._seeCost !== false)
+    <table><colgroup>${[8, 15, 0, 22.5, -11, 10.5, 15, 10, 17, 12, -14, 10].filter(w => w >= 0 || plan._seeCost !== false)
       .map(w => `<col${w ? ` style="width:${Math.abs(w)}mm"` : ''}>`).join('')}</colgroup>
     <thead><tr><th>#</th><th>รูป</th><th>ชื่อ</th><th>Code / SKU</th><th class="num cost">FOB</th><th class="num">SRP</th>
       <th class="num">สั่ง<br>กล่อง/ชิ้น</th><th class="num">สต็อก</th><th class="num">พอขาย (ด.)<br>ตอนนี้→หลัง</th>

@@ -3,8 +3,11 @@
 //
 //   node scripts/import-sync.mjs push <plan.json | round folder> [...]   file → amgo
 //   node scripts/import-sync.mjs pull <plan.json | round folder> [...]   amgo → file (web-edited qty + status)
+//   node scripts/import-sync.mjs rules push|pull <brand> <do-not-order.json>   model rules (import_model_rules)
 //   add --dry to print what would change without writing
 //
+// Round writer: a plan JSON anywhere with "slug": "<round>" (e.g. "C2-hape") pushes like a round folder — that is how
+// Claude creates a new order round from live data without a local plan.json (recipe: AGD brand-system.md §9).
 // amgo is the single master (owner, 30 Oct 2026) — the local page is retired; plan.json is only the builder's
 // working copy. Order of work: pull → build → push (AGD: `npm run plan:hape`).
 //   qty: the owner's own edits (qty_edited_at, or `edited` in the file) are kept; other lines take the builder's.
@@ -112,9 +115,10 @@ const RANK = { draft: 0, approved: 1, sent: 2 }
 // ── push ───────────────────────────────────────────────────────────────────
 async function push(sb, file, dry) {
   const dir = path.dirname(file)
-  const slug = path.basename(dir)
   const plan = JSON.parse(await fs.readFile(file, 'utf8'))
-  const { items = [], ...r } = plan
+  // `slug` in the JSON wins → Claude can write a round from any temp file (no AGD folder needed)
+  const slug = plan.slug || path.basename(dir)
+  const { items = [], slug: _s, ...r } = plan
   const known = ['brand', 'sub', 'srpBrand', 'round', 'title', 'container', 'status', 'currency', 'fx', 'incoterm',
     'containers', 'overMonths', 'arrive', 'leadMonths', 'notes', 'updated', 'mergeInto']
   const extra = Object.fromEntries(Object.entries(r).filter(([k]) => !known.includes(k)))
@@ -291,8 +295,8 @@ async function push(sb, file, dry) {
 // amgo is the master (owner 30 Oct 2026): every line's qty + `edited`, and the round status, go into plan.json
 // so the builder starts from what the owner set on the web.
 async function pull(sb, file, dry) {
-  const slug = path.basename(path.dirname(file))
   const plan = JSON.parse(await fs.readFile(file, 'utf8'))
+  const slug = plan.slug || path.basename(path.dirname(file))
   const round = plan.mergeInto ? await findRound(sb, plan.mergeInto, { ...plan, sub: '' }) : await findRound(sb, slug, plan)
   if (!round) return console.log(`  ${slug}: not in amgo yet — push first`)
   const source = plan.mergeInto ? plan.sub || slug : ''
@@ -343,17 +347,76 @@ async function findRound(sb, slug, plan) {
   return data?.length === 1 ? data[0] : null
 }
 
+// ── model rules (import_model_rules) ⇄ the builder's do-not-order.json shape ──
+const RULE_KINDS = ['replaced', 'discontinued', 'lastStock', 'skippedThisRound', 'waitForForm']
+
+/** file → amgo: upsert every rule of the file; rules of this brand missing from the file are deleted */
+async function rulesPush(sb, brand, file, dry) {
+  const json = JSON.parse(await fs.readFile(file, 'utf8'))
+  const rows = RULE_KINDS.flatMap((kind) =>
+    (json[kind] ?? []).map((r) => ({
+      brand, kind,
+      code: kind === 'replaced' ? r.old : r.code,
+      name: (kind === 'replaced' ? r.oldName : r.name) ?? null,
+      new_code: kind === 'replaced' ? r.new : null,
+      new_name: kind === 'replaced' ? r.newName ?? null : null,
+      round: r.round ?? null, note: r.note ?? null, since: r.since ?? null, set_by: r.by ?? null,
+      updated_at: new Date().toISOString(),
+    }))
+  )
+  const { data: have, error } = await sb.from('import_model_rules').select('id, code, kind').eq('brand', brand)
+  if (error) throw error
+  const keep = new Set(rows.map((r) => `${r.code}|${r.kind}`))
+  const gone = have.filter((h) => !keep.has(`${h.code}|${h.kind}`))
+  console.log(`rules ${brand}: ${rows.length} in file · ${have.length} in amgo · delete ${gone.length}${dry ? ' (dry)' : ''}`)
+  if (dry) return
+  if (rows.length) {
+    const { error: e } = await sb.from('import_model_rules').upsert(rows, { onConflict: 'brand,code,kind' })
+    if (e) throw e
+  }
+  if (gone.length) {
+    const { error: e } = await sb.from('import_model_rules').delete().in('id', gone.map((g) => g.id))
+    if (e) throw e
+  }
+}
+
+/** amgo → file (the builder reads it; amgo is the master — edit rules in amgo, not in the file) */
+async function rulesPull(sb, brand, file) {
+  const { data, error } = await sb.from('import_model_rules').select('*').eq('brand', brand).order('kind').order('code')
+  if (error) throw error
+  const out = {
+    _about: `Export of amgo import_model_rules for ${brand} — amgo is the only copy; this file is rewritten on every pull.`,
+    updated: new Date().toISOString().slice(0, 10),
+  }
+  for (const k of RULE_KINDS) out[k] = []
+  for (const r of data) {
+    const base = { note: r.note ?? undefined, since: r.since ?? undefined, by: r.set_by ?? undefined, round: r.round ?? undefined }
+    out[r.kind].push(
+      r.kind === 'replaced'
+        ? { old: r.code, oldName: r.name ?? undefined, new: r.new_code, newName: r.new_name ?? undefined, ...base }
+        : { code: r.code, name: r.name ?? undefined, ...base }
+    )
+  }
+  await fs.writeFile(file, JSON.stringify(out, null, 1) + '\n')
+  console.log(`rules ${brand}: ${data.length} → ${file}`)
+}
+
 // ── main ───────────────────────────────────────────────────────────────────
 const [cmd, ...rest] = process.argv.slice(2)
 const dry = rest.includes('--dry')
 const targets = rest.filter((a) => a !== '--dry')
-if (!['push', 'pull'].includes(cmd) || !targets.length) {
-  console.log('usage: node scripts/import-sync.mjs push|pull <plan.json | round folder> [...] [--dry]')
-  process.exit(1)
-}
 const env = await readEnv(path.join(ROOT, '.env.local'))
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } })
-for (const t of targets) {
-  const file = await resolvePlan(t)
-  await (cmd === 'push' ? push : pull)(sb, file, dry)
+if (cmd === 'rules' && ['push', 'pull'].includes(targets[0]) && targets.length === 3) {
+  const [dir, brand, file] = targets
+  await (dir === 'push' ? rulesPush(sb, brand, path.resolve(file), dry) : rulesPull(sb, brand, path.resolve(file)))
+} else if (['push', 'pull'].includes(cmd) && targets.length) {
+  for (const t of targets) {
+    const file = await resolvePlan(t)
+    await (cmd === 'push' ? push : pull)(sb, file, dry)
+  }
+} else {
+  console.log('usage: node scripts/import-sync.mjs push|pull <plan.json | round folder> [...] [--dry]')
+  console.log('       node scripts/import-sync.mjs rules push|pull <brand> <do-not-order.json> [--dry]')
+  process.exit(1)
 }

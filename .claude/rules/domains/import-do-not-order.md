@@ -8,9 +8,10 @@ paths:
 
 # Import — models we must never order again (owner rule, 29 Oct 2026)
 
-**Source of truth:** `~/Dropbox/99.1-CoWork-Project/01-AGD/02-hape/2026/99-data/hape/do-not-order.json`.
-The AGD plan builder (`build-c1-plan.py`) reads `replaced` from it. Read the file; don't copy the lists into code.
-New entries go in that JSON only, in the AGD project.
+**Source of truth (30 Oct 2026): amgo table `import_model_rules`** (brand · code · kind · new_code · round · note).
+`node scripts/import-sync.mjs rules pull <brand> <file>` exports it in the old do-not-order.json shape (AGD `npm run plan:pull`
+rewrites `02-hape/2026/99-data/hape/do-not-order.json`, which the builder reads); `rules push <brand> <file>` writes a
+changed file back (rules missing from the file are deleted). Don't copy the lists into code.
 
 ## Rules for any new order / round / suggestion
 1. **`replaced`: old code → new code.** Never order the old code; put the quantity on the new code instead.

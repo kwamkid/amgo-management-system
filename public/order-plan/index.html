@@ -36,6 +36,8 @@ thead th.g-fob{background:var(--fob-head)!important;color:var(--fob-ink)}thead t
 thead th.g-sell{background:var(--sell-head)!important;color:var(--sell-ink)}thead th.g-avg{background:var(--avg-head)!important;color:var(--avg-ink)}
 thead th.g-cov{background:var(--cov-head)!important;color:var(--cov-ink)}
 header.top{border-top:4px solid var(--aoo)}
+/* amgo: inside /import the React parent draws the header (status · fx · print …) — hide ours, strip included */
+html.embedded header.top{display:none}html.embedded #chips{top:0}
 .b-aoo{background:var(--aoo-soft);color:var(--aoo-deep)}
 thead th.ed{background:var(--ed-head)!important;color:#7a5a00}
 thead th.thb{background:var(--thb-head)!important;color:#1e4b8f}
@@ -249,6 +251,9 @@ h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
   <button class="nav next" aria-label="ถัดไป">›</button>
 </div>
 <script>
+// amgo: embedded in /import (iframe) → the parent page owns the round header, talks to us with postMessage
+const EMBED = window.parent !== window;
+if (EMBED) document.documentElement.classList.add('embedded');
 const $ = s => document.querySelector(s);
 const fmt = (n, d = 0) => n == null || isNaN(n) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -279,6 +284,7 @@ addEventListener('hashchange', () => { try { parent.postMessage({ orderPlanHash:
 async function showList() {
   plan = null;
   document.title = 'แผนสั่งของ';
+  postHeader();
   const rows = await (await fetch('/api/import/rounds')).json();
   $('#app').innerHTML = `
     <header class="top"><h1>แผนสั่งของ — ทุกแบรนด์</h1></header>
@@ -326,7 +332,7 @@ const groupBy = rows => { const m = new Map(); rows.forEach(r => { const k = r.c
 async function openPlan(p) {
   planPath = p; dir = p.replace(/plan\.json$/, ''); unlocked = false;
   const r = await fetch('/api/import/plan?p=' + encodeURIComponent(p));
-  if (!r.ok) { $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
+  if (!r.ok) { plan = null; postHeader(); $('#app').innerHTML = `<main><div class="empty">เปิดไม่ได้: ${esc(p)}</div></main>`; return; }
   plan = await r.json();
   document.body.classList.toggle('no-cost', plan._seeCost === false);
   savedQ = new Map(plan.items.map(i => [i.code, qkey(i)]));
@@ -406,6 +412,7 @@ function renderSrpLink() {
   el.className = 'srplink' + (srp.error ? ' err' : '');
   el.textContent = srp.error || 'แก้ราคาขาย → SRP Calculator ↗';
   el.href = srp.link || '/srp';
+  postHeader();
 }
 
 function renderShell() {
@@ -446,10 +453,10 @@ function renderShell() {
   </table></div><div class="pager" id="pagerBot"></div></main>
   <footer class="tot" id="tot"></footer>`;
 
-  $('#status').onchange = e => { plan.status = e.target.value; unlocked = false; renderShell(); renderRows(); renderTotals(); save(); };
+  $('#status').onchange = e => setStatus(e.target.value);
   $('#printbtn').onclick = printPlan;
-  $('#fx').oninput = e => { plan.fx = parseFloat(e.target.value) || 0; renderRows(); renderTotals(); save(); };
-  $('#only').onchange = e => { onlyOrdered = e.target.checked; page = 1; renderRows(); };
+  $('#fx').oninput = e => setFx(e.target.value);
+  $('#only').onchange = e => setOnly(e.target.checked);
   renderChips();
   // the sticky filter bar sits right under the sticky header — follow the header's real height (it wraps on narrow windows)
   new ResizeObserver(([e]) => document.documentElement.style.setProperty('--hdr', e.target.offsetHeight + 'px')).observe($('header.top'));
@@ -462,7 +469,55 @@ function renderShell() {
     renderShell(); renderRows(); renderTotals();
   });
   const u = $('#unlock'); if (u) u.onclick = () => { unlocked = true; $('#banner').remove(); renderRows(); };
+  postHeader();
 }
+
+// header actions — the old controls and the amgo parent (postMessage) both land here
+function setStatus(v) {
+  if (!plan || plan._canEdit === false || !STATUS[v]) return;
+  plan.status = v; unlocked = false; renderShell(); renderRows(); renderTotals(); save();
+}
+function setFx(v) {
+  if (!plan || plan._canEdit === false) return;
+  plan.fx = parseFloat(v) || 0;
+  const f = $('#fx'); if (f && f !== document.activeElement) f.value = plan.fx;
+  renderRows(); renderTotals(); save(); postHeader();
+}
+function setOnly(v) {
+  if (!plan) return;
+  onlyOrdered = !!v; page = 1;
+  const o = $('#only'); if (o) o.checked = onlyOrdered;
+  renderRows(); postHeader();
+}
+
+/* ---------- amgo: header bridge with the /import parent ---------- */
+const LEGEND = [['--ed', 'แก้ได้'], ['--fob-head', 'ต้นทุน FOB', true], ['--srp-head', 'SRP แบรนด์'], ['--sell-head', 'ราคาขายเรา'], ['--avg-head', 'ขาย/เดือน'], ['--cov-head', 'พอขาย']];
+function postHeader() {
+  if (!EMBED) return;
+  const css = getComputedStyle(document.documentElement), sv = $('#save');
+  const msg = !plan ? { src: 'order-plan', type: 'header', round: false } : {
+    src: 'order-plan', type: 'header', round: true,
+    title: plan.title || `${plan.brand}${plan.sub ? ' · ' + plan.sub : ''} — ${plan.shipNo ? '#' + plan.shipNo : plan.round}`,
+    brand: plan.brand, sub: plan.sub || '',
+    logos: (plan.parts && plan.parts.length > 1 ? plan.parts.map(p => p.logo) : [plan.logo]).filter(Boolean),
+    status: plan.status, fx: plan.fx, currency: plan.currency, onlyOrdered,
+    canEdit: plan._canEdit !== false, seeCost: plan._seeCost !== false,
+    srpLink: srp.link || '/srp', srpError: srp.error || '',
+    save: sv ? sv.textContent : '', saveError: !!(sv && sv.classList.contains('err')),
+    legend: LEGEND.filter(([, , cost]) => !cost || plan._seeCost !== false).map(([v, label]) => ({ label, color: css.getPropertyValue(v).trim() })),
+  };
+  try { parent.postMessage(msg, location.origin); } catch {}
+}
+addEventListener('message', e => {
+  if (e.origin !== location.origin || e.source !== parent) return;
+  const d = e.data;
+  if (!d || d.src !== 'amgo-import') return;
+  if (d.cmd === 'setStatus') setStatus(d.value);
+  else if (d.cmd === 'setFx') setFx(d.value);
+  else if (d.cmd === 'setOnly') setOnly(d.value);
+  else if (d.cmd === 'print') { if (plan) printPlan(); }
+  else if (d.cmd === 'hello') postHeader();  // parent (re)mounted — send the current state
+});
 
 // [category, items, ordered] in the plan's own order — the category filter
 const tally = (items, key) => { const m = new Map(); items.forEach(i => { const g = i[key]; if (!g) return; const c = m.get(g) || [g, 0, 0]; c[1]++; if (i.qty > 0) c[2]++; m.set(g, c); }); return [...m.values()]; };
@@ -829,7 +884,7 @@ document.addEventListener('click', e => {
 let savedQ = new Map();
 const qkey = i => `${i.qty || 0}|${!!i.edited}`;
 function save() {
-  const el = $('#save'); el.className = 'save'; el.textContent = 'กำลังบันทึก…';
+  const el = $('#save'); el.className = 'save'; el.textContent = 'กำลังบันทึก…'; postHeader();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
@@ -841,7 +896,8 @@ function save() {
       dirty.forEach(i => savedQ.set(i.code, qkey(i)));
       el.textContent = 'บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     } catch (err) { el.className = 'save err'; el.textContent = 'บันทึกไม่ได้ — ลองใหม่'; }
-    saveTimer = null;  // nothing pending — safe for checkVersion() to reload
+    saveTimer = null;
+    postHeader();  // nothing pending — safe for checkVersion() to reload
   }, 500);
 }
 

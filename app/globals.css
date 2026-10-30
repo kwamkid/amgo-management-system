@@ -1012,6 +1012,10 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 .aoo-status--sm { font-size: 12px; gap: 4px; }
 /* แถบคำอธิบายสัญลักษณ์ใต้ตัวกรอง */
 .aoo-legend { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: var(--fg-3); }
+/* ตัวใหญ่อ่านง่าย (หัวหน้าแผนสั่งของ) · ช่องสีของแต่ละข้อ = --swatch */
+.aoo-legend--md { margin-top: 0; gap: 6px 16px; font-size: var(--fs-meta); color: var(--fg-2); }
+.aoo-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.aoo-legend__swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; background: var(--swatch); border: 1px solid var(--border-1); }
 /* จำนวนคำติดหน้าแรก (หน้ารายการ SEO) */
 .aoo-kw-top { color: var(--trend-up); font-weight: 700; }
 /* รายการคำถาม/คำค้นใน modal AI อ้างเรา — bullet ทีละบรรทัด · สีตามกลุ่ม (ยังไม่พูดถึงเรา = แดง) */

@@ -32,11 +32,9 @@ import {
   Clock,
   ChevronDown,
   Truck,
-  FlaskConical,
   Calculator,
   Globe,
   TrendingUp,
-  Receipt,
   ListChecks,
   Ship,
   ClipboardCheck,
@@ -89,7 +87,6 @@ const navSections: NavSection[] = [
           { label: 'คำขอลา', href: '/leaves/management', roles: ['hr', 'admin', 'manager'] },
           { label: 'ใบสลับวันหยุด', href: '/leaves/swap/management', roles: ['hr', 'admin', 'manager'] },
           // 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
-          { label: 'ใบเบิก', href: '/expenses/manage', roles: ['hr', 'admin', 'manager', 'finance'] },
           { label: 'พนักงานใหม่', href: '/employees/pending', roles: ['hr', 'admin', 'manager'] },
         ],
       },
@@ -119,8 +116,8 @@ const navSections: NavSection[] = [
           { label: 'สลับวันหยุด', href: '/leaves/swap' },
         ],
       },
-      // ใบเบิกค่าใช้จ่าย (30 ก.ย. 69) — ฝั่งจัดการอยู่ในกลุ่มรออนุมัติ
-      { label: 'เบิกค่าใช้จ่าย', href: '/expenses', icon: icon(Receipt), tone: 'success' },
+      // เบิกค่าใช้จ่าย /expenses + ใบเบิกในรออนุมัติ และการผลิต /production — ซ่อนจากเมนู (เจ้าของ 30 ต.ค. 69: ยังไม่ได้ใช้จริง,
+      // expense_claims / production_batches = 0 แถว) หน้ายังอยู่ เปิดเมนูคืนเมื่อเริ่มใช้
     ],
   },
   {
@@ -140,18 +137,13 @@ const navSections: NavSection[] = [
           { label: 'คนขับตอนนี้ (สด)', href: '/delivery/live', roles: ['admin', 'hr'] },
         ],
       },
-      {
-        label: 'การผลิต',
-        icon: icon(FlaskConical),
-        tone: 'danger',
-        // 'production' = ตำแหน่งพนักงานฝ่ายผลิต (ADAY FRESH) — เจ้าของสั่งให้ HR ไม่เห็น
-        roles: ['admin', 'production'],
-        subItems: [
-          { label: 'ผสมวันนี้', href: '/production' },
-          { label: 'สูตรน้ำ', href: '/production/recipes' },
-          { label: 'ประวัติการผลิต', href: '/production/history' },
-        ],
-      },
+    ],
+  },
+  {
+    // งานแบรนด์ — ของเจ้าของ + brand manager เท่านั้น (เจ้าของ 30 ต.ค. 69: แยกออกจากงานพนักงานจะได้ไม่งง)
+    // สิทธิ์ยังเป็นรายเมนูเหมือนเดิม (srp / import / website) — คนที่ไม่มีสักตัวจะไม่เห็นหัวข้อนี้
+    title: 'แบรนด์',
+    items: [
       {
         label: 'SRP Calculator',
         icon: icon(Calculator),
@@ -162,7 +154,7 @@ const navSections: NavSection[] = [
       },
       {
         // แผนสั่งของนำเข้าตามตู้ — ต้องมีชื่อใน import_access (เจ้าของคนเดียวก่อน · 29 ต.ค. 69)
-        label: 'นำเข้า',
+        label: 'แพลนสั่งของ',
         icon: icon(Ship),
         tone: 'warning',
         roles: ['import'],

@@ -213,6 +213,31 @@ body.tot-min .wrap{max-height:calc(100vh - 200px)}
 .blogo{height:22px;width:auto;max-width:76px;object-fit:contain;border-radius:4px;background:#fff;vertical-align:middle;margin-right:7px}
 h1 .blogo{height:26px}.ctr-sum .blogo{height:18px}
 @media (max-width:700px){header.top,main,footer.tot{padding-left:16px;padding-right:16px}.stick3{min-width:170px}}
+/* amgo 30 Oct 2026: printable A4 list of what is ordered (owner checks it on paper after ordering) */
+.printbtn{border:1px solid var(--line,#ddd);background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+#print{display:none}
+@page{size:A4 landscape;margin:8mm}
+@media print{
+  body>*:not(#print){display:none!important}
+  #print{display:block;font-size:8.5pt;color:#000}
+  #print h2{font-size:12pt;margin:0 0 2mm}
+  #print h2 img{height:7mm;width:auto;vertical-align:middle;margin-right:2mm}
+  #print h2>*{display:inline!important;float:none!important;margin-left:0!important}
+  #print .meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;margin-bottom:3mm;color:#333}
+  #print table{width:100%;border-collapse:collapse;table-layout:fixed}
+  #print thead{display:table-header-group}
+  #print th,#print td{border:.3pt solid #999;padding:1mm 1.2mm;vertical-align:middle;overflow-wrap:anywhere}
+  #print th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600;text-align:left}
+  #print tr{break-inside:avoid}
+  #print .num{text-align:right;white-space:nowrap}
+  #print th.num{white-space:normal}
+  #print .grp td{background:#f4f4f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:600}
+  #print img{width:13mm;height:13mm;object-fit:contain;display:block;margin:auto}
+  #print .bc{display:block;color:#555;font-size:7pt}
+  #print .tot{margin-top:3mm;display:flex;flex-wrap:wrap;gap:2mm 8mm;font-size:9.5pt}
+  #print .tot b{font-size:11pt}
+  #print .low{color:#c00}
+}
 </style>
 </head>
 <body>
@@ -393,6 +418,7 @@ function renderShell() {
     <label class="ctrl"><input id="only" type="checkbox" ${onlyOrdered ? 'checked' : ''}> เฉพาะที่สั่ง</label>
     <a class="srplink" id="srplink" target="_blank" rel="noopener"></a>
     <span class="legend"><span><i style="background:var(--ed)"></i>แก้ได้</span><span class="cost"><i style="background:var(--fob-head)"></i>ต้นทุน FOB</span><span><i style="background:var(--srp-head)"></i>SRP แบรนด์</span><span><i style="background:var(--sell-head)"></i>ราคาขายเรา</span><span><i style="background:var(--avg-head)"></i>ขาย/เดือน</span><span><i style="background:var(--cov-head)"></i>พอขาย</span></span>
+    <button class="printbtn" id="printbtn" title="รายการที่สั่ง · A4 · บันทึกเป็น PDF ได้จากหน้าพิมพ์">🖨 พิมพ์ / PDF</button>
     <span class="spacer"></span><span class="save" id="save"></span>
   </header>
   ${plan.container && mates.length ? `<nav class="tabs"><span class="lab">${ctrName(plan.container, plan)}:</span>${[{ path: planPath, me: true, sub: plan.sub }, ...mates].sort(tabOrder).map(x => x.me
@@ -421,6 +447,7 @@ function renderShell() {
   <footer class="tot" id="tot"></footer>`;
 
   $('#status').onchange = e => { plan.status = e.target.value; unlocked = false; renderShell(); renderRows(); renderTotals(); save(); };
+  $('#printbtn').onclick = printPlan;
   $('#fx').oninput = e => { plan.fx = parseFloat(e.target.value) || 0; renderRows(); renderTotals(); save(); };
   $('#only').onchange = e => { onlyOrdered = e.target.checked; page = 1; renderRows(); };
   renderChips();
@@ -656,6 +683,48 @@ function bindTotToggle() {
   $('#totTg').onclick = () => { totMin = !totMin; try { localStorage.setItem('plan.totMin', totMin ? '1' : '0'); } catch {} renderTotals(); };
 }
 
+// amgo (owner 30 Oct 2026): A4 print / PDF of the ordered lines — picture · name · code/SKU · FOB · SRP · cartons/pcs ·
+// stock now · months of cover now → after · pack (PDQ) · line USD · CBM, totals at the end. Cost columns carry class
+// `cost` so brand managers (body.no-cost) print without them.
+async function printPlan() {
+  // grouped like the page's default view: brand part → category → code
+  const o = plan.items.filter(i => i.qty > 0).sort((a, b) => (a.source || '').localeCompare(b.source || '') || (a.group || '').localeCompare(b.group || '') || String(a.code).localeCompare(String(b.code)));
+  const sum = f => o.reduce((s, i) => s + f(i), 0);
+  const fob = sum(i => i.qty * (i.fob || 0)), cbm = sum(i => ctns(i) * (i.cbm || 0));
+  const head = plan.title ? esc(plan.title) : `${esc(plan.brand)}${plan.sub ? ' · ' + esc(plan.sub) : ''} — ${rno(plan)}`;
+  let grp = null;
+  const rows = o.map((i, n) => {
+    const g = i.group || '', gh = g !== grp ? (grp = g, g ? `<tr class="grp"><td colspan="${plan._seeCost === false ? 10 : 12}">${esc(g)}</td></tr>` : '') : '';
+    const nc = i.avg > 0 ? (i.stock || 0) / i.avg : null, aft = cover(i, after(i));
+    return gh + `<tr><td class="num">${n + 1}</td>
+      <td>${i.img ? `<img src="${esc(i.img)}" alt="">` : ''}</td>
+      <td>${esc(i.name)}</td>
+      <td>${esc(i.code)}${i.barcode ? `<span class="bc">${esc(i.barcode)}</span>` : ''}</td>
+      <td class="num cost">${fc(i.fob)}</td>
+      <td class="num">${i.srp ? fc(i.srp) : '—'}</td>
+      <td class="num"><b>${fmt(ctns(i))}</b> / ${fmt(i.qty)}</td>
+      <td class="num">${fmt(i.stock || 0)}</td>
+      <td class="num ${nc != null && nc < (plan.leadMonths || 0) ? 'low' : ''}">${nc == null ? '—' : fmt(nc, 1)} → ${aft == null ? '—' : fmt(aft, 1)}</td>
+      <td class="num">${i.qtyPdq ? `${fmt(i.qtyPdq)}/PDQ · ${fmt(i.pdqPerCase || 1)} PDQ` : fmt(i.casePack)}</td>
+      <td class="num cost">${fc(i.qty * (i.fob || 0))}</td>
+      <td class="num">${fmt(ctns(i) * (i.cbm || 0), 2)}</td></tr>`;
+  }).join('');
+  let el = $('#print'); if (!el) { el = document.createElement('div'); el.id = 'print'; document.body.appendChild(el); }
+  el.innerHTML = `<h2>${logo(plan)}${head}</h2>
+    <div class="meta"><span>สถานะ: ${STATUS[plan.status] || plan.status}</span>${plan.container ? `<span>${ctrName(plan.container, plan)}</span>` : ''}
+      <span class="cost">อัตรา ฿/${esc(plan.currency)} ${fmt(plan.fx, 2)}</span><span>พิมพ์ ${new Date().toLocaleString('th-TH')}</span></div>
+    <table><colgroup>${[7, 16, 0, 30, -16, 16, 22, 15, 24, 26, -20, 14].filter(w => w >= 0 || plan._seeCost !== false)
+      .map(w => `<col${w ? ` style="width:${Math.abs(w)}mm"` : ''}>`).join('')}</colgroup>
+    <thead><tr><th>#</th><th>รูป</th><th>ชื่อ</th><th>Item code / SKU</th><th class="num cost">FOB</th><th class="num">SRP</th>
+      <th class="num">สั่ง กล่อง / ชิ้น</th><th class="num">สต็อกตอนนี้</th><th class="num">พอขาย (ด.) ตอนนี้ → หลังสั่ง</th>
+      <th class="num">บรรจุ ชิ้น/กล่อง</th><th class="num cost">รวม ${esc(plan.currency)}</th><th class="num">CBM</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="tot"><span>รายการ <b>${fmt(o.length)}</b></span><span>กล่อง <b>${fmt(sum(ctns))}</b></span><span>ชิ้น <b>${fmt(sum(i => i.qty))}</b></span>
+      <span>Total CBM <b>${fmt(cbm, 2)}</b></span><span class="cost">Total pay (${esc(plan.incoterm || 'FOB')}) <b>${fc(fob, 2)}</b> · ${thb(fob * plan.fx)}</span></div>`;
+  // pictures must be loaded before the print dialog takes its snapshot
+  await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+  window.print();
+}
 function renderTotals() {
   renderChips(); // ordered counts on the chips follow qty edits
   const o = plan.items.filter(i => i.qty > 0);

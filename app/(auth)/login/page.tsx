@@ -2,9 +2,11 @@
 
 // หน้าเข้าสู่ระบบ — หน้าแรกที่ทุกคนเห็น
 //
-// โทนมืด "high-tech" ตามที่เจ้าของขอ (4 ก.ย. 69): พื้นเกือบดำอุ่น + ตารางเส้นจาง +
-// แสงส้มแบรนด์ + การ์ดกระจก · ปุ่ม LINE สูง 56px ใช้โลโก้ LINE จริง สีเขียวทางการ
-// #06C755 · ตัวอักษรเล็กสุด 14px ทั้งหน้า
+// หน้าตาตามที่เจ้าของขอ (30 ต.ค. 69): รูปถ่ายท้องฟ้าทางช้างเผือก + กระท่อมไม้
+// (public/images/login-night-sky.jpg · เจ้าของส่งมาเอง) · จอใหญ่แบ่งซ้าย-ขวา: รูปซ้าย
+// ฝั่งล็อกอินขวาโทนสว่าง · มือถือ: รูปเป็นพื้นหลังเต็มจอ การ์ดขาวซ้อนทับ · การ์ดไม่มีเงา
+// ปุ่ม LINE สูง 56px ใช้โลโก้ LINE จริง สีเขียวทางการ #06C755 · ตัวอักษรเล็กสุด 14px
+// (โทนมืด 4 ก.ย. 69 และฉากดาวเคราะห์ SVG เลิกใช้แล้ว)
 //
 // ── ล็อกอินจากแอปที่ติดตั้ง (PWA) ───────────────────────────────────────
 // แอป LINE ยิง callback ไปที่เบราว์เซอร์หลักของเครื่อง ไม่ใช่แอป (เจอจริง 4 ก.ย. 69:
@@ -240,8 +242,8 @@ function LoginForm() {
   return (
     <>
       {error && (
-        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-300" />
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-[#F03D0E]/30 bg-[#F03D0E]/[0.07] px-4 py-3 text-sm text-[#9E2206]">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-[#F03D0E]" />
           <span>{error}</span>
         </div>
       )}
@@ -260,7 +262,7 @@ function LoginForm() {
         <button
           onClick={() => handleLineLogin(false)}
           disabled={isLoading}
-          className="mt-3 w-full text-center text-sm text-gray-400 underline-offset-2 hover:text-white hover:underline disabled:opacity-60"
+          className="mt-3 w-full text-center text-sm text-gray-500 underline-offset-2 hover:text-[#F03D0E] hover:underline disabled:opacity-60"
         >
           ใช้หน้าเข้าสู่ระบบของ LINE แทน
         </button>
@@ -270,17 +272,17 @@ function LoginForm() {
         <button
           onClick={() => handleLineLogin(true)}
           disabled={isLoading}
-          className="mt-3 w-full text-center text-sm text-gray-400 underline-offset-2 hover:text-white hover:underline disabled:opacity-60"
+          className="mt-3 w-full text-center text-sm text-gray-500 underline-offset-2 hover:text-[#F03D0E] hover:underline disabled:opacity-60"
         >
           เข้าสู่ระบบโดยไม่ออกจากแอป (กรอกอีเมล LINE)
         </button>
       )}
 
       {pending && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-gray-300">
-          <Loader2 size={16} className="-mt-0.5 mr-2 inline animate-spin text-amber-400" />
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-6 text-gray-700">
+          <Loader2 size={16} className="-mt-0.5 mr-2 inline animate-spin text-[#F03D0E]" />
           รอการยืนยัน — ยืนยันใน LINE หรือ Discord เสร็จแล้วกลับมาหน้านี้ ระบบจะเข้าให้เอง
-          <button onClick={cancelPending} className="ml-2 text-gray-400 underline underline-offset-2 hover:text-white">
+          <button onClick={cancelPending} className="ml-2 text-gray-500 underline underline-offset-2 hover:text-[#F03D0E]">
             ยกเลิก
           </button>
         </div>
@@ -290,7 +292,7 @@ function LoginForm() {
         <button
           onClick={handleDevLogin}
           disabled={devLoading}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-400/10 disabled:opacity-60"
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#F03D0E]/50 text-sm font-medium text-[#9E2206] transition-colors hover:bg-[#F03D0E]/[0.06] disabled:opacity-60"
         >
           🛠️ {devLoading ? 'กำลังเข้าสู่ระบบ…' : 'Dev Login (Admin)'}
         </button>
@@ -304,7 +306,7 @@ function LoginForm() {
           disabled={isLoading}
           aria-label="เข้าสู่ระบบด้วย Discord"
           title="เข้าสู่ระบบด้วย Discord"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-[#5865F2] disabled:opacity-50"
         >
           <DiscordIcon size={18} />
         </button>
@@ -315,92 +317,75 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="lg-root relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 text-white">
+    <div className="relative min-h-screen bg-[#FFFCFA] text-[#1A120E] lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <style>{`
-        .lg-root {
-          background:
-            radial-gradient(60% 50% at 15% 10%, rgba(240, 61, 14, 0.22), transparent 70%),
-            radial-gradient(50% 45% at 90% 90%, rgba(239, 74, 34, 0.18), transparent 70%),
-            #0f0b09;
-        }
-        /* ตารางเส้นจาง ๆ ให้ความรู้สึก "แผงควบคุม" */
-        .lg-grid {
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-          background-size: 36px 36px;
-          mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
-          -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
-        }
-        /* เส้นสแกนวิ่งลงช้า ๆ */
-        .lg-scan {
-          background: linear-gradient(180deg, transparent, rgba(240, 61, 14, 0.10), transparent);
-          height: 28vh;
-          animation: lg-scan 9s linear infinite;
-        }
-        @keyframes lg-scan { from { transform: translateY(-40vh); } to { transform: translateY(120vh); } }
-        /* วงแหวนหมุนรอบโลโก้ */
-        .lg-ring::before {
-          content: '';
-          position: absolute;
-          inset: -3px;
-          border-radius: 9999px;
-          background: conic-gradient(from 0deg, transparent 0 60%, rgba(240, 61, 14, 0.9) 85%, transparent 100%);
-          animation: lg-spin 6s linear infinite;
-        }
-        @keyframes lg-spin { to { transform: rotate(360deg); } }
         .lg-dot { animation: lg-pulse 2s ease-in-out infinite; }
-        @keyframes lg-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(6, 199, 85, 0.5); } 50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(6, 199, 85, 0); } }
-        .lg-line-btn { box-shadow: 0 0 0 1px rgba(6, 199, 85, 0.35), 0 10px 32px rgba(6, 199, 85, 0.30); }
-        .lg-line-btn:hover { box-shadow: 0 0 0 1px rgba(6, 199, 85, 0.5), 0 12px 36px rgba(6, 199, 85, 0.42); }
-        @media (prefers-reduced-motion: reduce) {
-          .lg-scan, .lg-ring::before, .lg-dot { animation: none; }
-        }
+        @keyframes lg-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(6, 199, 85, 0.45); } 50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(6, 199, 85, 0); } }
+        /* รูปค่อย ๆ ซูมเข้าช้า ๆ ให้รู้สึกมีชีวิต */
+        .lg-photo { animation: lg-zoom 40s ease-in-out infinite alternate; }
+        @keyframes lg-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+        @media (prefers-reduced-motion: reduce) { .lg-dot, .lg-photo { animation: none; } }
       `}</style>
 
-      {/* ฉากหลัง */}
-      <div className="lg-grid pointer-events-none absolute inset-0" aria-hidden />
-      <div className="lg-scan pointer-events-none absolute inset-x-0 top-0" aria-hidden />
-
-      <div className="relative w-full max-w-md">
-        {/* การ์ดกระจก */}
-        <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-10">
-          {/* โลโก้ + ชื่อ */}
-          <div className="mb-8 flex flex-col items-center text-center">
-            <div className="lg-ring relative mb-5 h-24 w-24 rounded-full">
-              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-[#0f0b09]">
-                <Image src="/amgo-logo.svg" alt="AMGO" width={72} height={72} priority className="h-[72px] w-[72px]" />
-              </div>
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight">AMGO</h1>
-            <p className="mt-1 font-mono text-sm uppercase tracking-[0.22em] text-amber-400">Management System</p>
-            <p className="mt-3 text-base text-gray-300">ระบบบริหารจัดการพนักงาน</p>
-          </div>
-
-          <Suspense
-            fallback={
-              <div className="flex h-14 items-center justify-center">
-                <Loader2 size={24} className="animate-spin text-gray-400" />
-              </div>
-            }
-          >
-            <LoginForm />
-          </Suspense>
-
-          <p className="mt-5 text-center text-sm text-gray-400">
-            ใช้บัญชี LINE ส่วนตัว · สำหรับพนักงาน AMGO เท่านั้น
-          </p>
-
-          <div className="mt-6 flex items-center justify-center gap-2 border-t border-white/10 pt-5 font-mono text-sm text-gray-500">
-            <span className="lg-dot inline-block h-2 w-2 rounded-full bg-[#06C755]" />
-            SECURE · LINE LOGIN
-          </div>
+      {/* รูปท้องฟ้า — จอใหญ่: แผงซ้ายเต็มความสูง · มือถือ: พื้นหลังเต็มจอ */}
+      <div className="absolute inset-0 overflow-hidden lg:relative lg:inset-auto lg:min-h-screen">
+        <Image
+          src="/images/login-night-sky.jpg"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 55vw, 100vw"
+          className="lg-photo object-cover object-[50%_100%] lg:object-[50%_80%]"
+        />
+        {/* ไล่เงาด้านล่างให้ตัวหนังสือบนรูปอ่านออก */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10 lg:from-black/60 lg:via-transparent lg:to-black/5" />
+        <div className="absolute inset-x-0 bottom-0 hidden p-10 text-white lg:block xl:p-14">
+          <p className="font-mono text-sm uppercase tracking-[0.22em] text-white/70">AMGO Management System</p>
+          <p className="mt-3 max-w-md text-2xl font-semibold leading-snug xl:text-3xl">ระบบบริหารจัดการพนักงาน</p>
+          <p className="mt-2 max-w-md text-base text-white/75">เช็คอิน · ลางาน · ส่งของ · งานของทีม — ครบในที่เดียว</p>
         </div>
+      </div>
 
-        <p className="mt-6 px-2 text-center text-sm leading-6 text-gray-500">
-          <ShieldCheck size={16} className="-mt-0.5 mr-1.5 inline" />
-          การเชื่อมต่อเข้ารหัส · ยังเข้าไม่ได้ ติดต่อ HR เพื่อขออนุมัติบัญชี
-        </p>
+      {/* ฝั่งล็อกอิน */}
+      <div className="relative flex min-h-screen items-center justify-center px-4 py-10 lg:min-h-0 lg:px-12">
+        <div className="w-full max-w-md">
+          {/* การ์ดขาว (บนมือถือเป็นกระจกฝ้าทับรูป · บนจอใหญ่กลืนไปกับพื้นขาว) */}
+          <div className="rounded-3xl border border-[#F03D0E]/15 bg-white/90 p-8 backdrop-blur-xl sm:p-10 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-0">
+            {/* โลโก้ + ชื่อ */}
+            <div className="mb-8 flex flex-col items-center text-center lg:items-start lg:text-left">
+              <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#F03D0E]/20 bg-white">
+                <Image src="/amgo-logo.svg" alt="AMGO" width={64} height={64} priority className="h-16 w-16" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-[#1A120E]">AMGO</h1>
+              <p className="mt-1 font-mono text-sm uppercase tracking-[0.22em] text-[#F03D0E]">Management System</p>
+              <p className="mt-3 text-base text-gray-600">เข้าสู่ระบบเพื่อเริ่มงานวันนี้</p>
+            </div>
+
+            <Suspense
+              fallback={
+                <div className="flex h-14 items-center justify-center">
+                  <Loader2 size={24} className="animate-spin text-gray-400" />
+                </div>
+              }
+            >
+              <LoginForm />
+            </Suspense>
+
+            <p className="mt-5 text-center text-sm text-gray-500 lg:text-left">
+              ใช้บัญชี LINE ส่วนตัว · สำหรับพนักงาน AMGO เท่านั้น
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-2 border-t border-gray-200 pt-5 font-mono text-sm text-gray-500 lg:justify-start">
+              <span className="lg-dot inline-block h-2 w-2 rounded-full bg-[#06C755]" />
+              SECURE · LINE LOGIN
+            </div>
+          </div>
+
+          <p className="mt-6 px-2 text-center text-sm leading-6 text-white/80 lg:px-0 lg:text-left lg:text-gray-500">
+            <ShieldCheck size={16} className="-mt-0.5 mr-1.5 inline" />
+            การเชื่อมต่อเข้ารหัส · ยังเข้าไม่ได้ ติดต่อ HR เพื่อขออนุมัติบัญชี
+          </p>
+        </div>
       </div>
     </div>
   )

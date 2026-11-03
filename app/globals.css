@@ -2310,6 +2310,11 @@ button:disabled,
   padding: 10px; transition: border-color .15s, background-color .15s;
 }
 @media (min-width: 1024px) { .aoo-kanban__col { max-width: none; } }
+/* บอร์ด UAT (dev tracker) 5 คอลัมน์ — เจ้าของ 3 พ.ย. 69: การ์ดกว้างขึ้น เห็น 4.5 คอลัมน์พอ (รู้ว่ามีต่อ) เลื่อนซ้ายขวาได้ */
+@media (min-width: 1024px) {
+  .aoo-kanban--5 { display: flex; overflow-x: auto; scroll-snap-type: x proximity; align-items: flex-start; }
+  .aoo-kanban--5 .aoo-kanban__col { flex: 0 0 calc((100% - 4 * 12px) / 4.5); max-width: none; }
+}
 .aoo-kanban__col[data-over] { border-color: var(--tone); }
 .aoo-kanban__head {
   display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;

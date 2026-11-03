@@ -399,3 +399,36 @@ curl -s -X PATCH -H "Authorization: Bearer $AMGO_JARVIS_KEY" -H "Content-Type: a
   "rows": [ (detail=1) {"person":{"id","name","code"},"company","primary","cycle","payDate","baseSalary","workDays","absentDays",
             "otHours","otPay","commission","extra","reimbursement","deduction","total","note"} ] }
 ```
+
+## 8. Dev tracker — UAT (เพิ่ม 3 พ.ย. 69)
+
+Claude ในแชทของแต่ละโปรเจกต์เขียนเคส UAT (`/memo`) และอ่านผล (`/uat`) ผ่าน `scripts/dev.mjs` ซึ่งเรียก endpoint กลุ่มนี้
+ด้วยกุญแจ scope **`dev`** (ทำแทนเจ้าของ · ใช้ได้เฉพาะ `/api/bot/dev/*` — endpoint อื่นตอบ 403) · กุญแจ superadmin (Jarvis) ใช้ได้เหมือนกัน
+สิทธิ์: แอดมิน หรือสมาชิกโปรเจกต์ role `manager` (ผู้เทสใช้หน้าเว็บ `/dev/uat`) · เลขเคส `no` ต่อเนื่องทั้งระบบ (UAT-0001 …)
+
+### 8.1 `GET /dev/projects` — โปรเจกต์ที่จัดการได้
+```json
+{ "projects": [{ "slug": "aoocommerce", "name": "AooCommerce", "production_url": "…", "staging_url": "…", "is_active": true, "open_cases": 87 }] }
+```
+
+### 8.2 `GET /dev/cases?project=<slug>` — เคส + ผลล่าสุด
+`status=open` (ค่าเริ่มต้น) | `all` | `pending,failed,…` · `limit=200` (≤ 500) · `brief=1` = `{no, code, title, status, priority, round}` อย่างเดียว
+```json
+{ "project": "aoocommerce", "cases": [{ "no": 2, "code": "UAT-0002", "title": "…", "status": "failed", "round": 2, "fix_note": null, "steps": [{ "action": "…", "expected": "…" }],
+  "result_count": 1, "latest": { "round": 1, "result": "failed", "failed_step": 3, "note": "…", "tester_name": "ไกด์", "shots": 2, "created_at": "…" } }] }
+```
+
+### 8.3 `POST /dev/cases` — เพิ่มเคส (≤ 50 ต่อครั้ง) → 201
+```json
+{ "project": "aoocommerce", "cases": [{ "title": "สร้างโปรลด 10%", "steps": [{ "action": "เปิดเมนูโปรโมชัน", "expected": "เห็นปุ่มเพิ่ม" }, "กดบันทึก"],
+  "module": "โปรโมชัน", "priority": 2, "environment": "production|staging", "shop": "…", "login_as": "…", "menu_path": "…", "page_url": "/promotions/new", "device": "any|mobile|desktop", "preparation": "…", "source": "commit abc123" }] }
+→ { "project": "aoocommerce", "added": [{ "no": 89, "code": "UAT-0089", "title": "…" }] }
+```
+
+### 8.4 `GET /dev/cases/{no}` · `PATCH /dev/cases/{no}`
+GET → `{ case, results: [{ round, result, failed_step, note, tester_name, shots: [{ path, url }], created_at }] }` (url = signed 1 ชม.)
+PATCH `{ "action": "retest", "fix_note": "แก้ … แล้ว" }` (รอบ + 1) · `{ "action": "close" }` · `{ "action": "update", "title": "…", "steps": [...] }`
+`{no}` รับทั้ง `89` และ `UAT-0089`
+
+### 8.5 `GET /dev/cases/{no}/shots` — รูปผลเทสทุกรอบ
+`{ "code": "UAT-0089", "shots": [{ "round": 1, "result": "failed", "path": "…", "url": "…" }] }`

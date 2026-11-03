@@ -45,7 +45,7 @@ export interface BotPerson {
 
 export interface BotCaller {
   keyId: string
-  scope: 'superadmin' | 'general'
+  scope: 'superadmin' | 'general' | 'dev'
   /** ผู้ใช้ที่บอทกำลังทำแทน — superadmin = acts_as · general = เจ้าของ Discord id */
   user: BotPerson
   isAdmin: boolean
@@ -85,15 +85,20 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     .select('id, scope, acts_as, last_used_at')
     .eq('key_hash', hashBotKey(key))
     .is('revoked_at', null)
-    .maybeSingle<{ id: string; scope: 'superadmin' | 'general'; acts_as: string | null; last_used_at: string | null }>()
+    .maybeSingle<{ id: string; scope: 'superadmin' | 'general' | 'dev'; acts_as: string | null; last_used_at: string | null }>()
   if (!k) return { error: apiError(401, 'API key ไม่ถูกต้องหรือถูกเพิกถอนแล้ว') }
 
   // บันทึกว่าใช้ล่าสุดเมื่อไหร่ — ไม่เกินนาทีละครั้ง
   if (!k.last_used_at || Date.now() - new Date(k.last_used_at).getTime() > 60_000)
     await untyped(sb).from('bot_api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', k.id)
 
+  // กุญแจ dev (CLI ของ Claude · 3 พ.ย. 69): ทำแทนเจ้าของเหมือน superadmin แต่ใช้ได้เฉพาะ /api/bot/dev/*
+  if (k.scope === 'dev' && !request.nextUrl.pathname.startsWith('/api/bot/dev')) {
+    return { error: apiError(403, 'กุญแจนี้ใช้ได้เฉพาะ dev tracker (/api/bot/dev)') }
+  }
+
   let row: UserRow | null = null
-  if (k.scope === 'superadmin') {
+  if (k.scope === 'superadmin' || k.scope === 'dev') {
     const { data } = await sb.from('users').select(USER_COLS).eq('id', k.acts_as!).maybeSingle()
     row = data
     if (!row) return { error: apiError(500, 'กุญแจ superadmin ผูกกับผู้ใช้ที่ไม่มีอยู่แล้ว') }

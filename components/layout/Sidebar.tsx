@@ -41,6 +41,7 @@ import {
   ClipboardCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  FlaskConical,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -196,6 +197,13 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    // Dev tracker (เจ้าของ 3 พ.ย. 69): เคส UAT ให้คนเทส · บั๊ก (ทำทีหลัง) — เห็นเฉพาะแอดมินและคนที่ถูกเพิ่มในโปรเจกต์
+    title: 'Dev Management',
+    items: [
+      { label: 'UAT', href: '/dev/uat', icon: icon(FlaskConical), tone: 'grape', roles: ['dev'] },
+    ],
+  },
+  {
     title: 'จัดการ',
     items: [
       {
@@ -297,6 +305,7 @@ export default function Sidebar({ userData, onNavigate, collapsible = false }: S
     ...(userData?.hasSrpAccess ? ['srp'] : []),
     ...(userData?.hasWebAccess ? ['website'] : []),
     ...(userData?.importAccess ? ['import'] : []),
+    ...(userData?.hasDevAccess ? ['dev'] : []),
   ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 

@@ -82,6 +82,11 @@ export default function UatBoard({
   const [cols, setCols] = useState<Columns>(() => toColumns(cases))
   const [activeId, setActiveId] = useState<string | null>(null)
   const fromColumn = useRef<ColumnKey | null>(null)
+  // เปิดมาต้องเห็นคอลัมน์รอเทสก่อนเสมอ — บางเบราว์เซอร์จำ/เลื่อนตำแหน่งไปสุดขวาเอง (ไกด์เจอ 3 พ.ย. 69)
+  const boardRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (boardRef.current) boardRef.current.scrollLeft = 0
+  }, [])
 
   // ข้อมูลจากข้างนอกเปลี่ยน — ไม่ทับระหว่างกำลังลาก
   useEffect(() => {
@@ -160,7 +165,7 @@ export default function UatBoard({
         setCols(toColumns(cases))
       }}
     >
-      <div className="aoo-kanban aoo-kanban--5">
+      <div ref={boardRef} className="aoo-kanban aoo-kanban--5">
         {COLUMNS.map((col) => (
           <Column key={col.key} col={col} locked={col.managerOnly && !canManage} ids={cols[col.key]} byId={byId} onOpen={onOpen} />
         ))}

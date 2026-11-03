@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Dev tracker CLI — Claude ในแชทของทุกโปรเจกต์เขียนเคส UAT (/memo) และอ่านผล (/uat) ผ่าน bot API ของ amgo
-// คำสั่ง/อาร์กิวเมนต์/รูปแบบ JSON เหมือน /Users/ampstark/aoo-uat/scripts/uat.mjs ทุกประการ (สกิล uat สลับมาใช้ไฟล์นี้เอง
-// เมื่อ scripts/dev.mjs มีอยู่ — ไฟล์นี้ชื่อ dev-cli.mjs จนถึงวัน cutover แล้วค่อย rename เป็น dev.mjs)
+// คำสั่ง/อาร์กิวเมนต์/รูปแบบ JSON เหมือน aoo-uat/scripts/uat.mjs เดิมทุกประการ (สกิล /uat /memo ของทุกโปรเจกต์เรียกไฟล์นี้ · cutover 3 พ.ย. 69)
 //
 //   node scripts/dev.mjs summary [project]          open cases + latest result (JSON)
 //   node scripts/dev.mjs list [project]             open case numbers and titles (dedupe before adding)

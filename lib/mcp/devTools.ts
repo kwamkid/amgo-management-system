@@ -201,12 +201,18 @@ export const DEV_TOOLS: DevTool[] = [
     readOnly: false,
     async run(caller, args) {
       const r = await unwrap(devCaseByNo(caller, caseNo(args)))
-      const { no: _no, ...fields } = args
-      const parsed = parseCaseInput({ title: r.c.title, steps: r.c.steps, ...fields })
+      // fields at top level (schema) — a nested `fields` object is accepted too; anything else is an error, never ignored
+      const { no: _no, fields: nested, ...top } = args
+      const sent: Json = { ...(nested && typeof nested === 'object' ? (nested as Json) : {}), ...top }
+      const unknown = Object.keys(sent).filter((k) => !(k in (CASE_SCHEMA.properties as Json)))
+      if (unknown.length) throw new DevToolError(`unknown field(s): ${unknown.join(', ')} — allowed: ${Object.keys(CASE_SCHEMA.properties as Json).join(', ')}`)
+      if (Object.keys(sent).length === 0) throw new DevToolError('nothing to update — send at least one field')
+      const parsed = parseCaseInput({ title: r.c.title, steps: r.c.steps, ...sent })
       if ('error' in parsed) throw new DevToolError(parsed.error)
-      const { error } = await untyped(caller.sb).from('dev_uat_cases').update(parsed.row).eq('id', r.c.id)
+      const patch = Object.fromEntries(Object.entries(parsed.row).filter(([k]) => k in sent))
+      const { error } = await untyped(caller.sb).from('dev_uat_cases').update(patch).eq('id', r.c.id)
       if (error) throw new DevToolError(error.message)
-      return { ok: true, code: uatCode(r.c.no), updated: Object.keys(parsed.row) }
+      return { ok: true, code: uatCode(r.c.no), updated: Object.keys(patch) }
     },
   },
   {

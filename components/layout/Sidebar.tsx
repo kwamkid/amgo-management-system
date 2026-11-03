@@ -42,6 +42,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FlaskConical,
+  Receipt,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -90,6 +91,7 @@ const navSections: NavSection[] = [
           { label: 'ใบสลับวันหยุด', href: '/leaves/swap/management', roles: ['hr', 'admin', 'manager'] },
           // 'finance' = ตำแหน่งบัญชี (role employee) ดู roleKeys
           { label: 'พนักงานใหม่', href: '/employees/pending', roles: ['hr', 'admin', 'manager'] },
+          { label: 'ใบเบิก / จ่าย supplier', href: '/expenses/manage', roles: ['hr', 'admin', 'manager', 'finance'] },
         ],
       },
     ],
@@ -118,8 +120,8 @@ const navSections: NavSection[] = [
           { label: 'สลับวันหยุด', href: '/leaves/swap' },
         ],
       },
-      // เบิกค่าใช้จ่าย /expenses + ใบเบิกในรออนุมัติ และการผลิต /production — ซ่อนจากเมนู (เจ้าของ 30 ต.ค. 69: ยังไม่ได้ใช้จริง,
-      // expense_claims / production_batches = 0 แถว) หน้ายังอยู่ เปิดเมนูคืนเมื่อเริ่มใช้
+      // เปิดคืน 3 พ.ย. 69 — เบิกคืน + ขอจ่าย supplier · การผลิต /production ยังซ่อน (เจ้าของ 30 ต.ค. 69: ยังไม่ได้ใช้จริง)
+      { label: 'เบิกค่าใช้จ่าย', href: '/expenses', icon: icon(Receipt), tone: 'success' },
     ],
   },
   {

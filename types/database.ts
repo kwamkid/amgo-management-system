@@ -764,6 +764,7 @@ export type Database = {
       }
       companies: {
         Row: {
+          scb_debit_account: string | null
           address: string | null
           branch_label: string
           code: string
@@ -777,6 +778,7 @@ export type Database = {
           registration_no: string | null
         }
         Insert: {
+          scb_debit_account?: string | null
           address?: string | null
           branch_label?: string
           code: string
@@ -790,6 +792,7 @@ export type Database = {
           registration_no?: string | null
         }
         Update: {
+          scb_debit_account?: string | null
           address?: string | null
           branch_label?: string
           code?: string
@@ -1228,6 +1231,18 @@ export type Database = {
       }
       expense_claims: {
         Row: {
+          attendees: string | null
+          distance_km: number | null
+          exported_at: string | null
+          exported_by: string | null
+          kind: string
+          payee_account_no: string | null
+          payee_bank: string | null
+          payee_name: string | null
+          purpose: string | null
+          route_from: string | null
+          route_to: string | null
+          vat_amount: number
           amount: number
           category: string
           company_id: string | null
@@ -1256,6 +1271,18 @@ export type Database = {
           user_name: string
         }
         Insert: {
+          attendees?: string | null
+          distance_km?: number | null
+          exported_at?: string | null
+          exported_by?: string | null
+          kind?: string
+          payee_account_no?: string | null
+          payee_bank?: string | null
+          payee_name?: string | null
+          purpose?: string | null
+          route_from?: string | null
+          route_to?: string | null
+          vat_amount?: number
           amount: number
           category: string
           company_id?: string | null
@@ -1284,6 +1311,18 @@ export type Database = {
           user_name?: string
         }
         Update: {
+          attendees?: string | null
+          distance_km?: number | null
+          exported_at?: string | null
+          exported_by?: string | null
+          kind?: string
+          payee_account_no?: string | null
+          payee_bank?: string | null
+          payee_name?: string | null
+          purpose?: string | null
+          route_from?: string | null
+          route_to?: string | null
+          vat_amount?: number
           amount?: number
           category?: string
           company_id?: string | null
@@ -6553,6 +6592,10 @@ export type Database = {
           p_payroll_month?: string
           p_reason?: string
         }
+        Returns: undefined
+      }
+      set_company_scb_debit_account: {
+        Args: { p_account: string; p_company_id: string }
         Returns: undefined
       }
       expense_manager_decide: {

@@ -115,8 +115,7 @@ export default function HrInbox() {
             sub={
               expensePending || expenses.toPay
                 ? [
-                    expenses.manager && `รอผู้จัดการ ${expenses.manager}`,
-                    expenses.finance && `รอบัญชี ${expenses.finance}`,
+                    expenses.finance && `รออนุมัติ ${expenses.finance}`,
                     expenses.toPay && `รอโอน ${expenses.toPay}`,
                   ]
                     .filter(Boolean)

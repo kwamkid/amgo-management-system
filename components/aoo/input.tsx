@@ -14,13 +14,14 @@ import { ChevronDown } from "lucide-react";
 /*  Inputs, Selects, and Textareas align in a grid.                    */
 /* ------------------------------------------------------------------ */
 
-const CONTROL_HEIGHT = 40;
-const CONTROL_PADDING_X = 12;
+export const CONTROL_HEIGHT = 40;
+export const CONTROL_PADDING_X = 12;
 // Body size (16px). Form controls read at the same size as body text — and
 // ≥16px also stops iOS Safari from auto-zooming when an input is focused.
-const CONTROL_FONT_SIZE = "var(--fs-body)";
+export const CONTROL_FONT_SIZE = "var(--fs-body)";
 
-function controlSurface(focused: boolean, error: boolean): CSSProperties {
+/** กรอบ/พื้นของช่องกรอก — MoneyInput ใช้ร่วมให้หน้าตาเหมือน Input */
+export function controlSurface(focused: boolean, error: boolean): CSSProperties {
   return {
     background: "var(--bg-surface)",
     border: `1px solid ${

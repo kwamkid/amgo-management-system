@@ -187,17 +187,47 @@ export async function listClaims(statuses: ExpenseStatus[], limit = 200): Promis
 }
 
 /** จำนวนใบที่รอแต่ละขั้น — กล่องหน้าแรก HR */
-export async function countPending(): Promise<{ manager: number; finance: number; toPay: number }> {
-  // คำขอเดียว นับเอง — ใบที่ยังเปิดอยู่มีไม่กี่ใบ (เดิมยิง count แยก 3 ครั้ง)
-  const { data } = await sb()
-    .from('expense_claims')
-    .select('status, payout')
-    .in('status', ['pending_manager', 'pending_finance', 'approved'])
+export async function countPending(): Promise<{
+  manager: number
+  finance: number
+  toPay: number
+  toPayAmount: number
+  /** รอส่งไฟล์ธนาคาร = อนุมัติแล้ว โอน ยังไม่ export · exported = ส่งไฟล์แล้ว รอโอน */
+  toExport: number
+  toExportAmount: number
+  exported: number
+  exportedAmount: number
+  payroll: number
+  paidThisMonth: number
+}> {
+  // ใบที่ยังเปิดอยู่มีไม่กี่ใบ — ดึงมานับเอง · จ่ายแล้วเดือนนี้นับแยก (head count)
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  const [{ data }, { count }] = await Promise.all([
+    sb()
+      .from('expense_claims')
+      .select('status, payout, amount, exported_at')
+      .in('status', ['pending_manager', 'pending_finance', 'approved']),
+    sb()
+      .from('expense_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'paid')
+      .gte('paid_at', monthStart.toISOString()),
+  ])
   const rows = data ?? []
+  const toPay = rows.filter((r) => r.status === 'approved' && r.payout === 'transfer')
   return {
     manager: rows.filter((r) => r.status === 'pending_manager').length,
     finance: rows.filter((r) => r.status === 'pending_finance').length,
-    toPay: rows.filter((r) => r.status === 'approved' && r.payout === 'transfer').length,
+    toPay: toPay.length,
+    toPayAmount: toPay.reduce((s, r) => s + Number(r.amount), 0),
+    toExport: toPay.filter((r) => !r.exported_at).length,
+    toExportAmount: toPay.filter((r) => !r.exported_at).reduce((s, r) => s + Number(r.amount), 0),
+    exported: toPay.filter((r) => r.exported_at).length,
+    exportedAmount: toPay.filter((r) => r.exported_at).reduce((s, r) => s + Number(r.amount), 0),
+    payroll: rows.filter((r) => r.status === 'approved' && r.payout === 'payroll').length,
+    paidThisMonth: count ?? 0,
   }
 }
 
@@ -215,6 +245,25 @@ export interface ClaimExtras {
 }
 
 const blankToNull = (s: string | undefined) => (s && s.trim() ? s.trim() : null)
+
+/** อัปโหลดไฟล์ใบเสร็จ/ใบแจ้งหนี้ของใบหนึ่งใบ → path ใน bucket (รูปย่อเป็น JPEG · PDF คงเดิม) */
+async function uploadReceipts(userId: string, claimId: string, files: File[], prefix: string): Promise<string[]> {
+  const client = sb()
+  const paths: string[] = []
+  for (const [i, file] of files.entries()) {
+    const isImage = file.type.startsWith('image/')
+    const blob = isImage ? await resizeImage(file) : file
+    const ext = isImage ? 'jpg' : (file.name.split('.').pop() || 'bin')
+    const path = `${userId}/${claimId}/${prefix}${i + 1}.${ext}`
+    const { error } = await client.storage.from(BUCKET).upload(path, blob, {
+      contentType: isImage ? 'image/jpeg' : file.type,
+      upsert: false,
+    })
+    if (error) throw new Error(`อัปโหลดไฟล์ไม่สำเร็จ: ${error.message}`)
+    paths.push(path)
+  }
+  return paths
+}
 
 export async function createClaim(params: ClaimExtras & {
   userId: string
@@ -249,21 +298,9 @@ export async function createClaim(params: ClaimExtras & {
 
   const id = crypto.randomUUID()
   const client = sb()
-
   // อัปโหลดใบเสร็จก่อน — ใบเบิกที่บันทึกแล้วต้องมีรูปครบเสมอ
   // (ไฟล์กำพร้าถ้าบันทึกใบพังเสียแค่ที่เก็บเล็กน้อย ดีกว่าใบที่อ้างรูปที่ไม่มีอยู่)
-  const paths: string[] = []
-  for (const [i, file] of params.receipts.entries()) {
-    const blob = file.type.startsWith('image/') ? await resizeImage(file) : file
-    const ext = file.type.startsWith('image/') ? 'jpg' : (file.name.split('.').pop() || 'bin')
-    const path = `${params.userId}/${id}/${i + 1}.${ext}`
-    const { error } = await client.storage.from(BUCKET).upload(path, blob, {
-      contentType: file.type.startsWith('image/') ? 'image/jpeg' : file.type,
-      upsert: false,
-    })
-    if (error) throw new Error(`อัปโหลดใบเสร็จไม่สำเร็จ: ${error.message}`)
-    paths.push(path)
-  }
+  const paths = await uploadReceipts(params.userId, id, params.receipts, '')
 
   const supplier = params.kind === 'supplier'
   const { error } = await client.from('expense_claims').insert({
@@ -276,8 +313,8 @@ export async function createClaim(params: ClaimExtras & {
     category: params.category,
     description: params.description.trim(),
     amount: params.amount,
-    // supplier โอนเสมอ (constraint ใน DB ตรวจซ้ำ)
-    payout: supplier ? 'transfer' : params.payout,
+    // โอนเสมอ — เลิก "รวมกับเงินเดือน" แล้ว (เจ้าของ 3 พ.ย. 69) · supplier มี constraint ใน DB ตรวจซ้ำ
+    payout: 'transfer',
     receipt_paths: paths,
     no_receipt_reason: paths.length ? null : params.noReceiptReason.trim(),
     vat_amount: params.vatAmount || 0,
@@ -289,7 +326,8 @@ export async function createClaim(params: ClaimExtras & {
     distance_km: params.distanceKm ?? null,
     purpose: blankToNull(params.purpose),
     attendees: blankToNull(params.attendees),
-    status: 'pending_manager',
+    // อนุมัติรอบเดียวโดยบัญชี (เจ้าของ 3 พ.ย. 69 · migration 20261103160000)
+    status: 'pending_finance',
   })
   if (error) throw new Error(`ยื่นใบเบิกไม่สำเร็จ: ${error.message}`)
 }
@@ -299,7 +337,7 @@ export async function cancelClaim(id: string): Promise<void> {
     .from('expense_claims')
     .update({ status: 'cancelled' })
     .eq('id', id)
-    .eq('status', 'pending_manager')
+    .eq('status', 'pending_finance')
   if (error) throw new Error(`ยกเลิกไม่สำเร็จ: ${error.message}`)
 }
 
@@ -394,10 +432,14 @@ export interface ClaimEdit {
   payeeName: string
   payeeBank: string
   payeeAccountNo: string
+  /** ไฟล์เดิมที่เก็บไว้ (ลบออกจากใบได้ — ไฟล์ใน storage ไม่ลบ เผื่อย้อนดู) */
+  keepPaths: string[]
+  /** ไฟล์ที่บัญชีเพิ่ม */
+  newFiles: File[]
 }
 
 /**
- * บัญชีแก้หมวด/รายละเอียดก่อนอนุมัติหรือก่อนโอน (เจ้าของ 3 พ.ย. 69) — RLS expense_claims_finance_update
+ * บัญชีแก้หมวด/รายละเอียด/ไฟล์ ก่อนอนุมัติหรือก่อนโอน (เจ้าของ 3 พ.ย. 69) — RLS expense_claims_finance_update
  * ยอดเงินแก้ได้เฉพาะตอนรอบัญชี (อนุมัติแล้วอาจผูกงวดเงินเดือนไปแล้ว) · แก้บัญชีปลายทาง/ยอด = ล้างตราส่งออก
  */
 export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Promise<void> {
@@ -412,8 +454,7 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
       category: e.category,
       description: e.description,
       amount,
-      // ไฟล์แนบไม่ได้แก้ตรงนี้ — นับของเดิม
-      receiptCount: claim.receiptPaths.length,
+      receiptCount: e.keepPaths.length + e.newFiles.length,
       noReceiptReason: claim.noReceiptReason ?? '',
       vatAmount: e.vatAmount,
       payeeName: e.payeeName,
@@ -423,6 +464,10 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
     '9999-12-31'
   )
   if (problem) throw new Error(problem)
+
+  // บัญชีอัปโหลดได้ทุกโฟลเดอร์ (policy "ใบเสร็จ: บัญชีแนบสลิป") — ตั้งชื่อไม่ชนไฟล์เดิม
+  const added = e.newFiles.length ? await uploadReceipts(claim.userId, claim.id, e.newFiles, `add-${Date.now()}-`) : []
+  const receiptPaths = [...e.keepPaths, ...added]
 
   const supplier = claim.kind === 'supplier'
   const acc = e.payeeAccountNo.replace(/\D/g, '')
@@ -442,6 +487,8 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
       distance_km: e.distanceKm,
       purpose: blankToNull(e.purpose),
       attendees: blankToNull(e.attendees),
+      receipt_paths: receiptPaths,
+      ...(receiptPaths.length ? { no_receipt_reason: null } : {}),
       ...(supplier ? { payee_name: e.payeeName.trim(), payee_bank: e.payeeBank, payee_account_no: acc } : {}),
       ...(payeeChanged || amount !== claim.amount ? { exported_at: null, exported_by: null } : {}),
     })

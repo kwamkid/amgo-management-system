@@ -11,7 +11,8 @@
 // ตัวเลขตัวเดิมในข้อความที่จัดรูปแล้ว — พิมพ์กลางตัวเลขได้ไม่โดนดูดไปท้ายช่อง
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { InputHTMLAttributes } from 'react'
+import type { CSSProperties, InputHTMLAttributes } from 'react'
+import { CONTROL_FONT_SIZE, CONTROL_HEIGHT, CONTROL_PADDING_X, controlSurface } from './input'
 
 /** เก็บเฉพาะตัวเลขกับจุดทศนิยมจุดแรก — "1,234.5.6" → "1234.5 6→ตัดทิ้ง" */
 const bare = (s: string) => {
@@ -42,10 +43,32 @@ export interface MoneyInputProps
   onValueChange: (value: number, text: string) => void
   /** ทศนิยมสูงสุดที่ให้พิมพ์ (ปริยาย 2) */
   decimals?: number
+  /**
+   * หน้าตากำหนดที่ตัวกลางเท่านั้น (เจ้าของ 3 พ.ย. 69 — เดิมเป็น <input> เปล่า แต่ละหน้าใส่สไตล์เอง
+   * ฟอร์มที่ลืมใส่จึงไม่มีกรอบ คนไม่รู้ว่ากรอกได้)
+   *   boxed (ปริยาย) = กรอบแบบ Input สูง 40 · ใช้ในฟอร์ม
+   *   cell           = ช่องในตาราง สูง 32 ชิดขวา ตัวเลขเรียงตรง (.aoo-money-cell)
+   * className = ความกว้าง/ระยะเท่านั้น (boxed ใส่ที่กรอบ · cell ใส่ที่ช่อง) — ห้ามใส่สีหรือกรอบเอง
+   */
+  variant?: 'boxed' | 'cell'
+  /** cell: ไม่โชว์กรอบจนกว่าจะชี้/กด — ตารางที่มีหลายสิบช่อง จะได้ไม่ลายตา */
+  flat?: boolean
+  /** กรอบแดง (ค่าที่ต้องกรอกแต่ยังว่าง/ไม่ถูก) */
+  error?: boolean
+  /** ชิดขวา — ปริยาย: cell ชิดขวา · boxed ชิดซ้าย */
+  alignRight?: boolean
+  /** ข้อความหลังตัวเลข เช่น "บาท" (เฉพาะ boxed) */
+  suffix?: React.ReactNode
 }
 
 export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
-  function MoneyInput({ value, onValueChange, decimals = 2, onBlur, ...rest }, forwardedRef) {
+  function MoneyInput(
+    { value, onValueChange, decimals = 2, onBlur, variant = 'boxed', flat, error, alignRight, suffix, className, ...rest },
+    forwardedRef
+  ) {
+    const isBoxed = variant === 'boxed'
+    const right = alignRight ?? !isBoxed
+    const [focused, setFocused] = useState(false)
     const propText = value == null ? '' : String(value)
     const [text, setText] = useState(() => format(propText, decimals))
     const innerRef = useRef<HTMLInputElement | null>(null)
@@ -91,7 +114,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
       caretRef.current = null
     }, [text])
 
-    return (
+    const input = (
       <input
         {...rest}
         ref={setRef}
@@ -100,12 +123,54 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
         autoComplete="off"
         value={text}
         onChange={handleChange}
+        className={isBoxed ? undefined : ['aoo-money-cell', className].filter(Boolean).join(' ')}
+        data-flat={!isBoxed && flat ? '' : undefined}
+        data-error={!isBoxed && error ? '' : undefined}
+        style={isBoxed ? { ...BARE_IN_BOX, textAlign: right ? 'right' : 'left' } : rest.style}
+        onFocus={(e) => {
+          setFocused(true)
+          rest.onFocus?.(e)
+        }}
         onBlur={(e) => {
+          setFocused(false)
           // จุดค้างท้าย ("1,500.") เก็บกวาดตอนออกจากช่อง
           if (text.endsWith('.')) setText(text.slice(0, -1))
           onBlur?.(e)
         }}
       />
     )
+    if (!isBoxed) return input
+    return (
+      <div
+        className={className}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          height: CONTROL_HEIGHT,
+          paddingInline: CONTROL_PADDING_X,
+          opacity: rest.disabled ? 0.6 : 1,
+          ...controlSurface(focused, !!error),
+        }}
+      >
+        {input}
+        {suffix && <span style={{ color: 'var(--fg-3)', fontSize: 14, flexShrink: 0 }}>{suffix}</span>}
+      </div>
+    )
   }
 )
+
+const BARE_IN_BOX: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  width: '100%',
+  padding: 0,
+  border: 'none',
+  outline: 'none',
+  background: 'transparent',
+  fontFamily: 'var(--font-sans)',
+  fontSize: CONTROL_FONT_SIZE,
+  color: 'var(--fg-1)',
+  lineHeight: 1,
+  fontVariantNumeric: 'tabular-nums',
+}

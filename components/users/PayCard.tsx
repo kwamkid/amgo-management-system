@@ -87,10 +87,6 @@ const today = () => new Date().toISOString().slice(0, 10)
 const thaiDate = (iso: string) =>
   new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
 
-// ⚠️ ไม่ใส่ความกว้างใน FIELD — เคยใส่ w-full แล้วชนกับ w-36/w-28 รายช่อง
-// ใช้กับ MoneyInput (เป็น <input> ดิบ) — สูง 40 เท่า Input/SelectMenu ในแถวเดียวกัน
-const FIELD =
-  'h-10 rounded-lg border border-gray-300 bg-white px-3 outline-none focus:border-red-400'
 
 const calcOf = (kind: string) =>
   kind === 'commission' ? 'tiered_percent' : kind === 'piece' ? 'per_piece' : 'fixed'
@@ -740,7 +736,8 @@ function SalaryForm({
             value={amount}
             onValueChange={(_, text) => setAmount(text)}
             autoFocus
-            className={`${FIELD} w-full text-right font-mono tabular-nums`}
+            className="w-full"
+            alignRight
           />
         </Field>
         <Field label="มีผลตั้งแต่">
@@ -993,7 +990,8 @@ function ItemRow({
             value={amount}
             onValueChange={(_, text) => setAmount(text)}
             placeholder={calc === 'per_piece' ? 'บาท/ชิ้น' : '0'}
-            className={`${FIELD} w-28 shrink-0 text-right font-mono tabular-nums`}
+            className="w-28 shrink-0"
+            alignRight
           />
         )}
 
@@ -1015,7 +1013,8 @@ function ItemRow({
                   setSteps(steps.map((x, j) => (j === i ? { ...x, upTo: text } : x)))
                 }
                 placeholder="100,000"
-                className={`${FIELD} w-32 text-right font-mono tabular-nums`}
+                className="w-32"
+                alignRight
               />
               <span className="shrink-0">บาท ได้</span>
               <Input

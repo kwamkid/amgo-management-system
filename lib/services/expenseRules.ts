@@ -40,7 +40,7 @@ export const PAYOUT_LABEL: Record<ExpensePayout, string> = {
 
 export const STATUS_LABEL: Record<ExpenseStatus, string> = {
   pending_manager: 'รอผู้จัดการ',
-  pending_finance: 'รอบัญชี',
+  pending_finance: 'รอบัญชีอนุมัติ',
   approved: 'อนุมัติแล้ว รอจ่าย',
   paid: 'จ่ายแล้ว',
   rejected: 'ไม่อนุมัติ',
@@ -225,5 +225,12 @@ export const SECTION_SHORT: Record<FormSection, string> = {
   entertain: 'รับรอง',
   phone: 'โทรศัพท์',
   other: 'อื่น ๆ',
-  other_vat: 'อื่น ๆ VAT 7%',
+  other_vat: 'อื่นๆ/VAT',
 }
+
+/**
+ * ลำดับหมวดบนหน้าจอ = ฮิตสุดก่อน (เจ้าของ 3 พ.ย. 69) — นับจากประวัติ Reimbursement.xlsx 1,218 รายการ
+ * Taxi 645 · อื่นๆ 346 · ทางด่วน 140 · รับรอง 62 · น้ำมัน 10 · อื่นๆ VAT 8 · โทรศัพท์ 7
+ */
+export const SECTION_BY_POPULARITY: FormSection[] = ['taxi', 'other', 'toll', 'entertain', 'gas', 'other_vat', 'phone']
+

@@ -6,53 +6,57 @@
 // กติกาเจ้าของ: ต้องแนบรูปใบเสร็จทุกใบ ไม่มีวงเงิน (ไม่มีใบเสร็จ เช่น ค่าวิน =
 // เขียนเหตุผลแทน) · เลือกได้ทีละใบว่าจะรับคืนกับเงินเดือนหรือให้โอนแยก
 // ขั้นอนุมัติ: ผู้จัดการ → บัญชี/HR · รูปใบเสร็จเลือกจากคลังได้ (ถ่ายเก็บไว้ก่อนได้)
+// ฟอร์ม (เจ้าของ 3 พ.ย. 69): เลือกบริษัทก่อน (รู้ว่าเบิกจากบัญชีไหน) · การ์ดไอคอนแทน dropdown · กระชับ
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Receipt } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, Clock, Receipt, Store, Wallet } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
 import { THAI_BANKS, getBank } from '@/lib/constants/banks'
 import {
   Button,
+  ChoiceTiles,
   DatePicker,
   EmptyState,
   Field,
   FileDropzone,
+  IconChip,
   Input,
   Modal,
   MoneyInput,
-  Pill,
-  RadioCardGroup,
   SelectMenu,
 } from '@/components/aoo'
-import { ListRow, ListRows, PageHeader, SectionCard, Skeleton } from '@/components/shared'
+import { ListRow, ListRows, PageHeader, SectionCard, Skeleton, StatCard, StatGrid } from '@/components/shared'
 import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
 import ReceiptThumbs from '@/components/expenses/ReceiptThumbs'
 import ExpenseSectionField from '@/components/expenses/ExpenseSectionField'
+import { KIND_VISUAL, SECTION_VISUAL, thb } from '@/components/expenses/expenseVisuals'
 import {
   PAYOUT_LABEL,
   SECTION_CATEGORY,
   SECTION_SHORT,
   cancelClaim,
   createClaim,
-  listMyClaims,
   formSectionOf,
+  listMyClaims,
   suggestSection,
   vatIncluded,
   type ExpenseClaim,
-  type FormSection,
   type ExpenseKind,
-  type ExpensePayout,
+  type FormSection,
 } from '@/lib/services/expenseService'
 
-const baht = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const thaiDate = (iso: string) => format(new Date(`${iso}T00:00:00`), 'd MMM yyyy', { locale: th })
+const thaiDate = (iso: string) => format(new Date(`${iso}T00:00:00`), 'd MMM yy', { locale: th })
 const todayIso = () => format(new Date(), 'yyyy-MM-dd')
-
 const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.nameTh, hint: b.code }))
+/** 038-4-69974-1 → •••9741 (บอกว่าตัดจากบัญชีไหน โดยไม่โชว์เลขเต็ม) */
+const maskAcc = (acc: string) => `•••${acc.slice(-4)}`
+
+type Company = { id: string; code: string; name_th: string; logo_url: string | null; scb_debit_account: string | null }
 
 /** supplier ที่เคยขอจ่าย — เลือกซ้ำได้ไม่ต้องพิมพ์เลขบัญชีใหม่ */
 function recentPayees(rows: ExpenseClaim[]) {
@@ -68,14 +72,17 @@ function recentPayees(rows: ExpenseClaim[]) {
 export default function MyExpensesPage() {
   const { userData } = useAuth()
   const { showToast } = useToast()
+  // อนุมัติ/โอนจ่าย = ฝ่ายบัญชี (HR · แอดมิน · ตำแหน่งบัญชี) — ผู้จัดการไม่อนุมัติแล้ว
+  const canManage = ['admin', 'hr'].includes(userData?.role ?? '') || userData?.jobFunctionCode === 'accountant'
 
   const [rows, setRows] = useState<ExpenseClaim[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [companies, setCompanies] = useState<{ value: string; label: string }[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
 
   // ฟอร์ม
+  const [companyId, setCompanyId] = useState<string | null>(null)
   const [kind, setKind] = useState<ExpenseKind>('reimburse')
   const [expenseDate, setExpenseDate] = useState(todayIso())
   // หมวดตามฟอร์มบัญชี · auto = ระบบเดาให้จากรายละเอียด (พนักงานยังไม่ได้เลือกเอง)
@@ -83,8 +90,6 @@ export default function MyExpensesPage() {
   const [sectionAuto, setSectionAuto] = useState<'history' | 'words' | null>(null)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState(0)
-  const [payout, setPayout] = useState<ExpensePayout>('payroll')
-  const [companyId, setCompanyId] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [noReceipt, setNoReceipt] = useState(false)
   const [noReceiptReason, setNoReceiptReason] = useState('')
@@ -113,13 +118,15 @@ export default function MyExpensesPage() {
     reload()
     createClient()
       .from('companies')
-      .select('id, code')
+      .select('id, code, name_th, logo_url, scb_debit_account')
+      .eq('is_active', true)
       .order('code')
-      .then(({ data }) => setCompanies((data ?? []).map((c) => ({ value: c.id, label: c.code }))))
+      .then(({ data }) => setCompanies((data ?? []) as Company[]))
   }, [reload])
 
   const openForm = (k: ExpenseKind) => {
     setKind(k)
+    setCompanyId(userData?.companyId ?? (companies.length === 1 ? companies[0].id : null))
     setRouteFrom('')
     setRouteTo('')
     setDistanceKm('')
@@ -133,14 +140,11 @@ export default function MyExpensesPage() {
     setSectionAuto(null)
     setDescription('')
     setAmount(0)
-    setPayout('payroll')
-    setCompanyId(userData?.companyId ?? null)
     setFiles([])
     setNoReceipt(false)
     setNoReceiptReason('')
     setOpen(true)
   }
-
 
   // พิมพ์รายละเอียด → ระบบเดาหมวดให้ จนกว่าพนักงานจะเลือกเอง (ใบเก่าของตัวเองที่บัญชีตรวจแล้วชนะกติกาคำ)
   const onDescription = (text: string) => {
@@ -156,6 +160,10 @@ export default function MyExpensesPage() {
 
   const submit = async () => {
     if (!userData?.id) return
+    if (!companyId) {
+      showToast('เลือกบริษัทที่จะเบิก', 'error')
+      return
+    }
     if (!section) {
       showToast('เลือกหมวดค่าใช้จ่าย', 'error')
       return
@@ -172,7 +180,8 @@ export default function MyExpensesPage() {
         category: SECTION_CATEGORY[section],
         description,
         amount,
-        payout,
+        // เลิกรวมกับเงินเดือน (เจ้าของ 3 พ.ย. 69) — โอนคืนอย่างเดียว
+        payout: 'transfer',
         receipts: noReceipt && !supplier ? [] : files,
         noReceiptReason: noReceipt && !supplier ? noReceiptReason : '',
         today: todayIso(),
@@ -187,7 +196,7 @@ export default function MyExpensesPage() {
         purpose,
         attendees,
       })
-      showToast(supplier ? 'ส่งขอจ่าย supplier แล้ว รอผู้จัดการอนุมัติ' : 'ยื่นใบเบิกแล้ว รอผู้จัดการอนุมัติ', 'success')
+      showToast(supplier ? 'ส่งขอจ่าย supplier แล้ว รอบัญชีอนุมัติ' : 'ยื่นใบเบิกแล้ว รอบัญชีอนุมัติ', 'success')
       setOpen(false)
       reload()
     } catch (e) {
@@ -208,11 +217,15 @@ export default function MyExpensesPage() {
   }
 
   // supplier ไม่ใช่เงินที่พนักงานรอรับคืน
-  const waiting = rows
-    .filter((r) => r.kind !== 'supplier' && ['pending_manager', 'pending_finance', 'approved'].includes(r.status))
-    .reduce((s, r) => s + r.amount, 0)
+  const mine = rows.filter((r) => r.kind !== 'supplier')
+  const sum = (list: ExpenseClaim[]) => list.reduce((s, r) => s + r.amount, 0)
+  const waiting = sum(mine.filter((r) => ['pending_manager', 'pending_finance', 'approved'].includes(r.status)))
+  const pendingCount = rows.filter((r) => r.status === 'pending_manager' || r.status === 'pending_finance').length
+  const monthKey = format(new Date(), 'yyyy-MM')
+  const paidThisMonth = sum(mine.filter((r) => r.status === 'paid' && (r.paidAt ?? '').startsWith(monthKey)))
   const payees = recentPayees(rows)
   const supplier = kind === 'supplier'
+  const company = companies.find((c) => c.id === companyId)
 
   return (
     <div className="space-y-4">
@@ -222,7 +235,14 @@ export default function MyExpensesPage() {
         icon={Receipt}
         actions={
           <>
-            <Button size="sm" variant="secondary" icon="Building2" onClick={() => openForm('supplier')}>
+            {canManage && (
+              <Link href="/expenses/manage">
+                <Button size="sm" variant="ghost" icon={ClipboardCheck}>
+                  อนุมัติ / โอนจ่าย
+                </Button>
+              </Link>
+            )}
+            <Button size="sm" variant="secondary" icon={Store} onClick={() => openForm('supplier')}>
               ขอจ่าย supplier
             </Button>
             <Button size="sm" icon="Plus" onClick={() => openForm('reimburse')}>
@@ -232,9 +252,13 @@ export default function MyExpensesPage() {
         }
       />
 
-      <SectionCard
-        title={waiting > 0 ? `ใบของคุณ · รอรับคืน ${baht.format(waiting)} บาท` : 'ใบของคุณ'}
-      >
+      <StatGrid cols={3} compact>
+        <StatCard label="รอรับเงินคืน" value={thb(waiting)} icon={Wallet} tone="accent" />
+        <StatCard label="รออนุมัติ" value={pendingCount} unit="ใบ" icon={Clock} tone="warning" />
+        <StatCard label="ได้คืนเดือนนี้" value={thb(paidThisMonth)} icon={CheckCircle2} tone="success" />
+      </StatGrid>
+
+      <SectionCard title="ใบของคุณ">
         {loading ? (
           <Skeleton rows={3} />
         ) : rows.length === 0 ? (
@@ -245,49 +269,48 @@ export default function MyExpensesPage() {
           />
         ) : (
           <ListRows variant="divided">
-            {rows.map((c) => (
-              <ListRow
-                key={c.id}
-                title={
-                  <span className="whitespace-normal text-sm">
-                    <span className="font-semibold">{baht.format(c.amount)} บาท</span>
-                    <span className="text-gray-500">
-                      {' '}· {c.kind === 'supplier' ? `จ่าย ${c.payeeName} · ` : ''}
-                      {c.description}
+            {rows.map((c) => {
+              const sec = formSectionOf(c.category, c.vatAmount)
+              return (
+                <ListRow
+                  key={c.id}
+                  leading={<IconChip icon={SECTION_VISUAL[sec].icon} tone={SECTION_VISUAL[sec].tone} size={36} />}
+                  title={
+                    <span className="whitespace-normal text-base">
+                      <span className="font-semibold">{thb(c.amount)}</span>
+                      <span className="text-gray-500">
+                        {' '}· {c.kind === 'supplier' ? `จ่าย ${c.payeeName} · ` : ''}
+                        {c.description}
+                      </span>
                     </span>
-                  </span>
-                }
-                meta={
-                  <>
-                    <p className="text-xs">
-                      {thaiDate(c.expenseDate)} · {SECTION_SHORT[formSectionOf(c.category, c.vatAmount)]} ·{' '}
-                      {c.kind === 'supplier' ? 'บริษัทโอนให้ supplier' : PAYOUT_LABEL[c.payout]}
-                      {c.vatAmount > 0 && ` · VAT ${baht.format(c.vatAmount)}`}
-                      {c.payout === 'payroll' && c.payrollMonth && (
-                        <> งวด {format(new Date(`${c.payrollMonth}T00:00:00`), 'MMM yyyy', { locale: th })}</>
+                  }
+                  meta={
+                    <>
+                      <p className="text-sm">
+                        {thaiDate(c.expenseDate)} · {SECTION_SHORT[sec]} ·{' '}
+                        {c.kind === 'supplier' ? 'บริษัทโอนให้ร้าน' : c.payout === 'payroll' ? PAYOUT_LABEL.payroll : 'โอนคืนเข้าบัญชีคุณ'}
+                                                {c.payout === 'payroll' && c.payrollMonth && (
+                          <> งวด {format(new Date(`${c.payrollMonth}T00:00:00`), 'MMM yyyy', { locale: th })}</>
+                        )}
+                      </p>
+                      {c.noReceiptReason && <p className="text-xs text-gray-500">ไม่มีใบเสร็จ: {c.noReceiptReason}</p>}
+                      {c.rejectedReason && <p className="text-xs text-red-600">ไม่อนุมัติ: {c.rejectedReason}</p>}
+                      <ReceiptThumbs paths={c.receiptPaths} slipPath={c.slipPath} size={40} />
+                    </>
+                  }
+                  trailing={
+                    <>
+                      <ExpenseStatusPill status={c.status} payout={c.payout} exportedAt={c.exportedAt} />
+                      {c.status === 'pending_finance' && (
+                        <Button variant="ghost" size="sm" icon="X" onClick={() => cancel(c.id)}>
+                          ยกเลิก
+                        </Button>
                       )}
-                    </p>
-                    {c.noReceiptReason && (
-                      <p className="text-xs text-gray-500">ไม่มีใบเสร็จ: {c.noReceiptReason}</p>
-                    )}
-                    {c.rejectedReason && (
-                      <p className="text-xs text-red-600">ไม่อนุมัติ: {c.rejectedReason}</p>
-                    )}
-                    <ReceiptThumbs paths={c.slipPath ? [...c.receiptPaths, c.slipPath] : c.receiptPaths} />
-                  </>
-                }
-                trailing={
-                  <>
-                    <ExpenseStatusPill status={c.status} />
-                    {c.status === 'pending_manager' && (
-                      <Button variant="ghost" size="sm" icon="X" onClick={() => cancel(c.id)}>
-                        ยกเลิก
-                      </Button>
-                    )}
-                  </>
-                }
-              />
-            ))}
+                    </>
+                  }
+                />
+              )
+            })}
           </ListRows>
         )}
       </SectionCard>
@@ -296,7 +319,7 @@ export default function MyExpensesPage() {
         open={open}
         onClose={() => setOpen(false)}
         title={supplier ? 'ขอให้บริษัทโอนจ่าย supplier' : 'ยื่นใบเบิกค่าใช้จ่าย'}
-        maxWidth={560}
+        maxWidth={640}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)} disabled={saving}>
@@ -309,67 +332,88 @@ export default function MyExpensesPage() {
         }
       >
         <div className="space-y-4">
-          <RadioCardGroup
-            name="kind"
+          {/* 1. บริษัท — เลือกก่อน จะได้รู้ว่าเบิกออกจากบัญชีไหน */}
+          <Field
+            label="เบิกจากบริษัท"
+            help={company?.scb_debit_account ? `ตัดจากบัญชี SCB ${maskAcc(company.scb_debit_account)} ของ ${company.name_th}` : undefined}
+            asDiv
+          >
+            <ChoiceTiles
+              options={companies.map((c) => ({
+                value: c.id,
+                label: c.code,
+                hint: c.name_th,
+                image: c.logo_url,
+                icon: c.logo_url ? undefined : KIND_VISUAL.supplier.icon,
+                tone: 'neutral',
+              }))}
+              value={companyId}
+              onChange={setCompanyId}
+              columns={Math.min(Math.max(companies.length, 1), 3)}
+              mobileColumns={companies.length > 2 ? 3 : 2}
+              stacked={companies.length > 2}
+              ariaLabel="บริษัท"
+            />
+          </Field>
+
+          {/* 2. ใครจ่าย */}
+          <ChoiceTiles
+            options={[
+              { value: 'reimburse', label: 'ฉันออกเงินไปก่อน', hint: 'แนบใบเสร็จ แล้วรับเงินคืน', ...KIND_VISUAL.reimburse },
+              { value: 'supplier', label: 'ให้บริษัทจ่าย supplier', hint: 'แนบใบแจ้งหนี้ บัญชีโอนให้ร้าน', ...KIND_VISUAL.supplier },
+            ]}
             value={kind}
             onChange={(v) => setKind(v as ExpenseKind)}
-            options={[
-              { value: 'reimburse', label: 'ฉันออกเงินไปก่อน', description: 'แนบใบเสร็จ/สลิปที่ฉันโอน แล้วรับเงินคืน' },
-              { value: 'supplier', label: 'ให้บริษัทจ่าย supplier', description: 'แนบใบวางบิล/ใบแจ้งหนี้ บัญชีโอนให้ร้าน' },
-            ]}
+            columns={2}
+            mobileColumns={2}
+            ariaLabel="แบบใบเบิก"
           />
 
           {supplier && (
-            <>
+            <div className="space-y-3 border-t border-gray-100 pt-3">
               {payees.length > 0 && (
-                <Field label="เคยจ่ายร้านนี้แล้ว?" help="เลือกแล้วกรอกบัญชีให้เอง" asDiv>
-                  <SelectMenu
-                    value={null}
-                    placeholder="เลือก supplier ที่เคยจ่าย"
-                    options={payees.map((p) => ({
-                      value: p.key,
-                      label: p.name,
-                      hint: `${getBank(p.bank)?.code ?? p.bank} ${p.account}`,
-                    }))}
-                    onChange={(v) => {
-                      const p = payees.find((x) => x.key === v)
-                      if (!p) return
-                      setPayeeName(p.name)
-                      setPayeeBank(p.bank)
-                      setPayeeAccountNo(p.account)
-                    }}
-                  />
-                </Field>
+                <SelectMenu
+                  value={null}
+                  placeholder="เลือก supplier ที่เคยจ่าย (กรอกบัญชีให้เอง)"
+                  options={payees.map((p) => ({
+                    value: p.key,
+                    label: p.name,
+                    hint: `${getBank(p.bank)?.code ?? p.bank} ${p.account}`,
+                  }))}
+                  onChange={(v) => {
+                    const p = payees.find((x) => x.key === v)
+                    if (!p) return
+                    setPayeeName(p.name)
+                    setPayeeBank(p.bank)
+                    setPayeeAccountNo(p.account)
+                  }}
+                />
               )}
-              <Field label="ชื่อบัญชีผู้รับเงิน" help="ตามชื่อบัญชีธนาคารของ supplier">
-                <Input value={payeeName} onChange={(e) => setPayeeName(e.target.value)} placeholder="เช่น บจก. ปริ้นท์ดี" />
+              <Field label="ชื่อบัญชีผู้รับเงิน">
+                <Input value={payeeName} onChange={(e) => setPayeeName(e.target.value)} placeholder="ตามชื่อบัญชีธนาคาร เช่น บจก. ปริ้นท์ดี" />
               </Field>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="ธนาคาร" asDiv>
-                  <SelectMenu value={payeeBank} options={BANK_OPTIONS} onChange={setPayeeBank} placeholder="เลือกธนาคาร" />
+                  <SelectMenu value={payeeBank} options={BANK_OPTIONS} onChange={setPayeeBank} placeholder="เลือก" />
                 </Field>
                 <Field label="เลขบัญชี">
-                  <Input
-                    value={payeeAccountNo}
-                    onChange={(e) => setPayeeAccountNo(e.target.value)}
-                    inputMode="numeric"
-                    placeholder="xxx-x-xxxxx-x"
-                  />
+                  <Input value={payeeAccountNo} onChange={(e) => setPayeeAccountNo(e.target.value)} inputMode="numeric" placeholder="xxx-x-xxxxx-x" />
                 </Field>
               </div>
-            </>
+            </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* 3. รายละเอียด */}
+          <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
             <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'จ่ายเงินวันที่'} asDiv>
               <DatePicker value={expenseDate} onChange={setExpenseDate} />
             </Field>
-            <Field label={supplier ? 'ยอดที่ต้องโอน (บาท)' : 'ยอดเงิน (บาท)'}>
-              <MoneyInput value={amount || ''} onValueChange={(n) => setAmount(n)} placeholder="0.00" />
+            <Field label={supplier ? 'ยอดที่ต้องโอน' : 'ยอดเงิน'}>
+              <MoneyInput value={amount || ''} onValueChange={(n) => setAmount(n)} placeholder="0.00" suffix="฿" />
             </Field>
           </div>
 
-          <Field label={supplier ? 'จ่ายค่าอะไร' : section === 'entertain' ? 'ร้าน/สถานที่' : 'จ่ายค่าอะไร'}>
+          <Field label={section === 'entertain' && !supplier ? 'ร้าน/สถานที่' : 'จ่ายค่าอะไร'}>
             <Input
               value={description}
               onChange={(e) => onDescription(e.target.value)}
@@ -387,50 +431,47 @@ export default function MyExpensesPage() {
               sectionAuto === 'history'
                 ? 'ระบบเลือกให้ตามใบเก่าที่คล้ายกัน — เปลี่ยนได้'
                 : sectionAuto === 'words'
-                  ? 'ระบบเดาให้จากรายละเอียด — ไม่ตรงก็เปลี่ยนได้ บัญชีตรวจอีกรอบ'
+                  ? 'ระบบเดาให้ — ไม่ตรงก็เปลี่ยนได้ บัญชีตรวจอีกรอบ'
                   : undefined
             }
           />
           {section === 'other_vat' && amount > 0 && (
-            <p className="-mt-2 text-xs text-gray-500">VAT 7% ในยอดนี้ {baht.format(vatIncluded(amount))} บาท — แนบใบกำกับภาษีด้วย</p>
+            <p className="-mt-2 text-xs text-gray-500">VAT 7% ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
           )}
 
           {!supplier && (section === 'taxi' || section === 'gas') && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-3">
               <Field label="จาก">
-                <Input value={routeFrom} onChange={(e) => setRouteFrom(e.target.value)} placeholder="เช่น ออฟฟิศ" />
+                <Input value={routeFrom} onChange={(e) => setRouteFrom(e.target.value)} placeholder="ออฟฟิศ" />
               </Field>
               <Field label="ถึง">
-                <Input value={routeTo} onChange={(e) => setRouteTo(e.target.value)} placeholder="เช่น ไบเทค บางนา" />
+                <Input value={routeTo} onChange={(e) => setRouteTo(e.target.value)} placeholder="ไบเทค" />
               </Field>
-              <Field label="ระยะทาง (กม.)">
-                <Input value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} inputMode="decimal" placeholder="ไม่บังคับ" />
+              <Field label="กม.">
+                <Input value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} inputMode="decimal" placeholder="-" />
               </Field>
             </div>
           )}
 
           {!supplier && section === 'entertain' && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="วัตถุประสงค์">
-                <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="เช่น ประชุมลูกค้า แฟร์ Amarin" />
+                <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="ประชุมลูกค้า" />
               </Field>
               <Field label="รับรองใคร / กี่คน">
-                <Input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="เช่น ทีมบูธ 10 คน" />
+                <Input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="ทีมบูธ 10 คน" />
               </Field>
             </div>
           )}
 
+          {/* 4. หลักฐาน */}
           <Field
             label={supplier ? 'ใบวางบิล / ใบแจ้งหนี้' : 'ใบเสร็จ / สลิปที่โอนไปก่อน'}
-            help={supplier ? 'ต้องแนบ · รูปหรือ PDF สูงสุด 6 ไฟล์' : noReceipt ? undefined : 'ถ่ายหรือเลือกจากคลังได้ สูงสุด 6 ไฟล์'}
+            help={supplier ? 'ต้องแนบ · เลือกได้หลายไฟล์ (รูปหรือ PDF สูงสุด 10)' : noReceipt ? undefined : 'เลือกได้หลายไฟล์ (รูปหรือ PDF สูงสุด 10)'}
             asDiv
             labelExtra={
               supplier ? undefined : (
-                <button
-                  type="button"
-                  onClick={() => setNoReceipt((v) => !v)}
-                  className="text-xs text-blue-700 hover:underline"
-                >
+                <button type="button" onClick={() => setNoReceipt((v) => !v)} className="text-xs text-red-600 hover:underline">
                   {noReceipt ? 'มีใบเสร็จ' : 'ไม่มีใบเสร็จ?'}
                 </button>
               )
@@ -446,37 +487,16 @@ export default function MyExpensesPage() {
               <FileDropzone
                 files={files}
                 onChange={setFiles}
-                maxItems={6}
+                maxItems={10}
                 allowPdf
                 size="sm"
-                label={supplier ? 'ลากใบวางบิล/ใบแจ้งหนี้มาวาง หรือกดเพื่อเลือก' : 'ลากรูปใบเสร็จ/PDF มาวาง หรือกดเพื่อเลือก'}
+                label={supplier ? 'ลากใบแจ้งหนี้มาวาง หรือกดเพื่อเลือก' : 'ลากรูปใบเสร็จ/PDF มาวาง หรือกดเพื่อเลือก'}
               />
             )}
           </Field>
 
-          {!supplier && (
-          <Field label="รับเงินคืนแบบไหน" asDiv>
-            <RadioCardGroup
-              name="payout"
-              value={payout}
-              onChange={(v) => setPayout(v as ExpensePayout)}
-              options={[
-                { value: 'payroll', label: 'รวมกับเงินเดือน', description: 'ได้พร้อมเงินเดือนงวดถัดไป' },
-                { value: 'transfer', label: 'โอนแยก', description: 'บัญชีโอนให้หลังอนุมัติ' },
-              ]}
-            />
-          </Field>
-          )}
-
-          {companies.length > 1 && (
-            <Field label={supplier ? 'บริษัทที่จ่าย' : 'บริษัทที่จ่ายคืน'} help="ค่าใช้จ่ายของงานบริษัทไหน" asDiv>
-              <SelectMenu value={companyId} options={companies} onChange={setCompanyId} />
-            </Field>
-          )}
-
-          <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Pill tone="neutral">ขั้นตอน</Pill> ผู้จัดการอนุมัติ → บัญชีตรวจเอกสาร →{' '}
-            {supplier ? 'บัญชีโอนให้ supplier' : 'จ่ายคืน'}
+          <p className="text-xs text-gray-500">
+            ขั้นตอน: บัญชีตรวจเอกสารและอนุมัติ → {supplier ? 'โอนให้ร้าน' : 'โอนคืนเข้าบัญชีของคุณ'}
           </p>
         </div>
       </Modal>

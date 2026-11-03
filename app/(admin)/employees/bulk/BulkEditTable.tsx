@@ -883,9 +883,10 @@ function Cell({
             {...inputShared}
             value={row.base_salary ?? ''}
             onValueChange={(_, text) => onChange({ base_salary: text ? Number(text) : null })}
-            className={`${base} text-right font-mono tabular-nums ${
-              row.base_salary === null ? 'border-red-300 bg-red-50' : 'border-transparent'
-            }`}
+            variant="cell"
+            flat
+            error={row.base_salary === null}
+            className="w-full"
           />
         </td>
       )

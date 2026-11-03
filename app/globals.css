@@ -2483,6 +2483,89 @@ button:disabled,
 .aoo-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--fg-on-brand); font-weight: 600; }
 .aoo-chip:disabled { opacity: .5; cursor: not-allowed; }
 
+/* การ์ดเลือก 1 ตัวมีไอคอน/โลโก้ (<ChoiceTiles>) — ตัวที่เลือก = กรอบแบรนด์ + พื้นอ่อน ตัวหนังสือไม่เปลี่ยนสี */
+.aoo-tiles { display: grid; gap: 8px; grid-template-columns: repeat(var(--tiles-cols-sm, 2), minmax(0, 1fr)); }
+@media (min-width: 640px) { .aoo-tiles { grid-template-columns: repeat(var(--tiles-cols, 3), minmax(0, 1fr)); } }
+.aoo-tile {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  padding: 8px 10px; border: 1px solid var(--border-1); border-radius: var(--r-lg);
+  background: var(--bg-surface); text-align: left; cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.aoo-tile:hover:not([aria-pressed="true"]) { border-color: var(--border-3); }
+.aoo-tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.aoo-tile--stacked { flex-direction: column; justify-content: center; gap: 6px; padding: 12px 8px; text-align: center; }
+/* แถวเดียวเลื่อนซ้าย-ขวา — การ์ดกว้างคงที่ กดง่าย · ซ่อน scrollbar แต่ยังปัดได้ */
+.aoo-tiles--scroll { display: flex; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 2px; scrollbar-width: none; }
+.aoo-tiles--scroll::-webkit-scrollbar { display: none; }
+.aoo-tiles--scroll > .aoo-tile { flex: 0 0 96px; scroll-snap-align: start; border-color: transparent; padding: 8px 4px; }
+.aoo-tiles--scroll > .aoo-tile:hover:not([aria-pressed="true"]) { border-color: transparent; background: var(--bg-sunken); }
+.aoo-tiles--scroll > .aoo-tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.aoo-tile__text { display: flex; flex-direction: column; min-width: 0; }
+.aoo-tile__label { font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--fg-1); }
+.aoo-tile__hint { font-size: 13px; line-height: 1.35; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; }
+.aoo-tile:not(.aoo-tile--stacked) .aoo-tile__hint { white-space: nowrap; }
+.aoo-tile__image { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-md); object-fit: contain; background: var(--bg-sunken); }
+
+/* แท็บสถานะกะทัดรัด (<StatusTabs>) — ยกจาก aoocommerce หน้าคำสั่งซื้อ */
+.aoo-status-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.aoo-status-tabs::-webkit-scrollbar { display: none; }
+.aoo-status-tabs--fill > .aoo-status-tab { flex: 1 1 0; }
+.aoo-status-tab {
+  flex-shrink: 0; min-width: 88px; padding: 8px 16px; border: 0; border-radius: var(--r-lg);
+  background: var(--tone-soft); color: var(--tone-ink); text-align: center; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), filter var(--dur-fast) var(--ease-out);
+}
+.aoo-status-tab:hover:not([aria-pressed="true"]) { filter: brightness(.97); }
+.aoo-status-tab[aria-pressed="true"] { background: var(--tone); color: var(--tone-on); }
+.aoo-status-tab[aria-pressed="true"]:hover { filter: brightness(.95); }
+.aoo-status-tab__label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.aoo-status-tab__count { display: block; font-size: 20px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.aoo-status-tab__hint { display: block; font-size: 12px; opacity: .85; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aoo-status-tab__image { width: 18px; height: 18px; border-radius: 4px; object-fit: contain; background: var(--bg-surface); }
+.aoo-status-tab--compact { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 12px; border-radius: var(--r-pill); }
+.aoo-status-tab__badge {
+  min-width: 22px; padding: 0 7px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .55);
+  font-size: 13px; font-weight: 700; line-height: 20px; font-variant-numeric: tabular-nums;
+}
+.aoo-status-tab[aria-pressed="true"] .aoo-status-tab__badge { background: rgba(255, 255, 255, .25); }
+
+/* ช่องเงินในตาราง (<MoneyInput variant="cell">) — หน้าเงินเดือน · แก้ข้อมูลหลายคน */
+.aoo-money-cell {
+  height: 32px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: var(--r-md);
+  background: var(--bg-surface); color: var(--fg-1); font-family: var(--font-sans); font-size: 14px;
+  font-variant-numeric: tabular-nums; text-align: right; outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.aoo-money-cell[data-flat] { border-color: transparent; background: transparent; }
+.aoo-money-cell[data-flat]:hover:not(:disabled) { border-color: var(--border-2); }
+.aoo-money-cell:focus { border-color: var(--border-brand); background: var(--bg-surface); box-shadow: var(--shadow-focus); }
+.aoo-money-cell[data-error] { border-color: var(--ruby-500); background: var(--ruby-50); }
+.aoo-money-cell:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ดูรูปเต็มจอ (<Lightbox>) — ยกจาก aoosocial · ไม่มีเงา */
+.aoo-lightbox {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: clamp(16px, 4vw, 48px); background: rgba(0, 0, 0, .88);
+  animation: aooFadeIn var(--dur-med) var(--ease-out);
+}
+.aoo-lightbox__content { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; max-height: 100%; }
+.aoo-lightbox__media { display: block; max-width: 100%; max-height: calc(100dvh - 96px); object-fit: contain; border-radius: var(--r-md); }
+.aoo-lightbox__note { padding: 6px 14px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .92); font-size: 13px; text-align: center; }
+.aoo-lightbox__btn {
+  position: absolute; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); color: #fff; cursor: pointer;
+}
+.aoo-lightbox__btn:hover { background: rgba(255, 255, 255, .22); }
+.aoo-lightbox__close { top: 16px; right: 16px; width: 40px; height: 40px; }
+.aoo-lightbox__nav { top: 50%; transform: translateY(-50%); width: 44px; height: 44px; }
+.aoo-lightbox__nav--prev { left: 16px; }
+.aoo-lightbox__nav--next { right: 16px; }
+.aoo-lightbox__counter {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 600;
+}
+
 /* ไทม์ไลน์ความคืบหน้า (components/tasks/TaskTimeline.tsx) */
 /* ฟอร์มเพิ่มรายการ — ไม่มีกล่องซ้อน (การ์ดในการ์ดเบียดบนมือถือ) ปุ่มบันทึกอยู่ท้ายหน้าต่างเหมือนแท็บรายละเอียด */
 .aoo-timeline__composer { display: flex; flex-direction: column; gap: 14px; }

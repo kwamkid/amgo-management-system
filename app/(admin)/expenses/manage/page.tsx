@@ -11,51 +11,49 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Receipt } from 'lucide-react'
+import Link from 'next/link'
+import { FileSpreadsheet, FileUp, Receipt } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { getBank } from '@/lib/constants/banks'
 import { SCB_PRODUCT_LABEL, isScbAccount, type ScbProduct } from '@/lib/services/bankTransferFile'
 import { createClient } from '@/lib/supabase/client'
 import {
   Alert,
   Button,
   Checkbox,
+  IconChip,
+  StatusTabs,
   DatePicker,
   EmptyState,
   Field,
   FileDropzone,
   Input,
   Modal,
-  Pill,
-  RadioCardGroup,
   SelectMenu,
-  TabBar,
-  TabItem,
 } from '@/components/aoo'
-import { ListRow, ListRows, PageHeader, SectionCard, Skeleton } from '@/components/shared'
+import { FilterBar, FilterSelect, PageHeader, SectionCard, Skeleton } from '@/components/shared'
+import { SECTION_VISUAL, thb } from '@/components/expenses/expenseVisuals'
 import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
-import ReceiptThumbs from '@/components/expenses/ReceiptThumbs'
 import ClaimEditModal from '@/components/expenses/ClaimEditModal'
+import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
+import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThumb'
 import {
+  SECTION_BY_POPULARITY,
+  SECTION_LABEL,
   SECTION_SHORT,
-  formSectionOf,
-  PAYOUT_LABEL,
   clearExported,
+  formSectionOf,
+  countPending,
   financeDecide,
   listClaims,
   listClaimsForMonth,
-  managerDecide,
   markExported,
   markTransferred,
   type ExpenseClaim,
-  type ExpensePayout,
   type ExpenseStatus,
 } from '@/lib/services/expenseService'
 
-const baht = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const thaiDate = (iso: string) => format(new Date(`${iso}T00:00:00`), 'd MMM yyyy', { locale: th })
-const monthLabel = (iso: string) => format(new Date(`${iso}T00:00:00`), 'MMM yyyy', { locale: th })
 
 /** 12 เดือนล่าสุด (เดือนนี้ก่อน) — ตัวเลือกสรุปสิ้นเดือน */
 const recentMonths = () =>
@@ -67,15 +65,18 @@ const recentMonths = () =>
     return { value, label: format(d, 'MMMM yyyy', { locale: th }) }
   })
 
-type Company = { id: string; code: string; name_th: string; name_en: string | null; scb_debit_account: string | null }
+type Company = { id: string; code: string; name_th: string; name_en: string | null; logo_url: string | null; scb_debit_account: string | null }
 
-type Tab = 'manager' | 'finance' | 'transfer' | 'payroll' | 'done'
+// ขั้นโอน (เจ้าของ 3 พ.ย. 69): บัญชีอนุมัติ → รอส่งไฟล์ธนาคาร (เลือกบริษัท/คน/ใบ → export ไฟล์ SCB)
+// → รอโอน (ส่งไฟล์แล้ว รอเจ้าของ approve ในแอปธนาคาร) → บัญชีแนบสลิป กดโอนแล้ว
+// เจ้าของ 3 พ.ย. 69: เลิก "รวมกับเงินเดือน" — เบิกคืนโอนคืนอย่างเดียว (พนักงานอยากได้ไวสุด)
+// อนุมัติรอบเดียวโดยบัญชี — ไม่มีขั้นผู้จัดการแล้ว (migration 20261103160000)
+type Tab = 'finance' | 'export' | 'transfer' | 'done'
 
 const TAB_STATUSES: Record<Tab, ExpenseStatus[]> = {
-  manager: ['pending_manager'],
   finance: ['pending_finance'],
+  export: ['approved'],
   transfer: ['approved'],
-  payroll: ['approved'],
   done: ['paid', 'rejected'],
 }
 
@@ -84,11 +85,10 @@ export default function ExpenseManagePage() {
   const { showToast } = useToast()
 
   const role = userData?.role ?? ''
-  const isManagerStep = role === 'manager' || role === 'admin'
   const isFinance = role === 'hr' || role === 'admin' || userData?.jobFunctionCode === 'accountant'
-  const canView = isManagerStep || isFinance
+  const canView = isFinance
 
-  const [tab, setTab] = useState<Tab>(isFinance && !isManagerStep ? 'finance' : 'manager')
+  const [tab, setTab] = useState<Tab>('finance')
   const [rows, setRows] = useState<ExpenseClaim[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -102,27 +102,35 @@ export default function ExpenseManagePage() {
   const [reportOpen, setReportOpen] = useState(false)
   const [reportMonth, setReportMonth] = useState<string | null>(null)
   const [reportCompany, setReportCompany] = useState<string | null>(null)
-  // ส่งออกไฟล์ SCB: 1 ไฟล์ = 1 บริษัท (บัญชีตัดเงินของบริษัทนั้น)
+  // ส่งออกไฟล์ SCB: 1 ไฟล์ = 1 บริษัท (บัญชีตัดเงินของบริษัทนั้น) · กรองบริษัท/คนในแท็บรอส่งไฟล์
   const [exportOpen, setExportOpen] = useState(false)
   const [exportCompany, setExportCompany] = useState<string | null>(null)
+  // ตัวกรองด้านบน (FilterBar ตัวกลาง) — ใช้ได้ทุกช่อง · กดชื่อคนในแถว = กรองคนนั้น
+  const [q, setQ] = useState('')
+  const [fPerson, setFPerson] = useState<string | null>(null)
+  const [fCompany, setFCompany] = useState<string | null>(null)
+  const [fSection, setFSection] = useState<string | null>(null)
   const [debitAccount, setDebitAccount] = useState('')
   const [valueDate, setValueDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [product, setProduct] = useState<ScbProduct>('OAT')
   const [text, setText] = useState('')
   const [slip, setSlip] = useState<File | null>(null)
   // บัญชีเลือกวิธีจ่ายใหม่ได้ตอนอนุมัติ
-  const [payoutOf, setPayoutOf] = useState<Record<string, ExpensePayout>>({})
+  const [counts, setCounts] = useState<Awaited<ReturnType<typeof countPending>> | null>(null)
   // บัญชีแก้หมวด/รายละเอียดก่อนอนุมัติ/ก่อนโอน
   const [editing, setEditing] = useState<ExpenseClaim | null>(null)
+  // กดแถว → ดูรายละเอียด + รูป ก่อนอนุมัติ
+  const [viewing, setViewing] = useState<ExpenseClaim | null>(null)
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
       let list = await listClaims(TAB_STATUSES[tab], tab === 'done' ? 100 : 300)
-      if (tab === 'transfer') list = list.filter((c) => c.payout === 'transfer')
-      if (tab === 'payroll') list = list.filter((c) => c.payout === 'payroll')
+      if (tab === 'export') list = list.filter((c) => c.payout === 'transfer' && !c.exportedAt)
+      if (tab === 'transfer') list = list.filter((c) => c.payout === 'transfer' && !!c.exportedAt)
       setRows(list)
       setPicked(new Set())
+      countPending().then(setCounts).catch(() => {})
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
@@ -136,15 +144,14 @@ export default function ExpenseManagePage() {
   }, [canView, load])
 
   useEffect(() => {
-    if (!isFinance) return
+    if (!canView) return
     createClient()
       .from('companies')
-      .select('id, code, name_th, name_en, scb_debit_account')
+      .select('id, code, name_th, name_en, logo_url, scb_debit_account')
       .order('code')
       .then(({ data }) => setCompanies((data ?? []) as Company[]))
-  }, [isFinance])
+  }, [canView])
 
-  const total = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows])
 
   const run = async (id: string, fn: () => Promise<void>, done: string) => {
     try {
@@ -170,7 +177,7 @@ export default function ExpenseManagePage() {
       }
       run(
         c.id,
-        () => (c.status === 'pending_manager' ? managerDecide(c.id, false, text) : financeDecide(c, false, { reason: text })),
+        () => financeDecide(c, false, { reason: text }),
         'ไม่อนุมัติใบเบิกแล้ว'
       )
     } else {
@@ -182,8 +189,32 @@ export default function ExpenseManagePage() {
     }
   }
 
-  // ── แท็บรอโอน: ส่งออกไฟล์ SCB / บันทึกจ่ายทั้งชุด ──
-  const pickedRows = rows.filter((r) => picked.has(r.id))
+  // ── แท็บรอส่งไฟล์ / รอโอน ──
+  const companyOf = (id: string | null) => companies.find((c) => c.id === id)
+  // ผู้รับเงิน = supplier หรือพนักงานเจ้าของใบ — ใช้กรอง "ใบของใคร"
+  const payeeOf = (c: ExpenseClaim) => (c.kind === 'supplier' ? c.payeeName ?? '' : c.userName)
+  // แท็บรอส่งไฟล์: เห็นทีละบริษัท (1 ไฟล์ = 1 บริษัท) + กรองคนได้
+  const matches = (c: ExpenseClaim) => {
+    if (fPerson && c.userId !== fPerson) return false
+    // ช่องรอส่งไฟล์เลือกบริษัทจากการ์ดโลโก้ (1 ไฟล์ = 1 บริษัท) — ไม่ใช้ตัวกรองบริษัทด้านบน
+    if (tab !== 'export' && fCompany && c.companyId !== fCompany) return false
+    if (fSection && formSectionOf(c.category, c.vatAmount) !== fSection) return false
+    const t = q.trim().toLowerCase()
+    if (t && ![c.description, c.userName, c.payeeName ?? ''].some((x) => x.toLowerCase().includes(t))) return false
+    return true
+  }
+  const visible = rows.filter((c) => matches(c) && (tab !== 'export' || c.companyId === exportCompany))
+  const people = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of rows) m.set(c.userId, c.userName)
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'th')).map(([value, label]) => ({ value, label }))
+  }, [rows])
+  // คนที่กรองไว้ไม่มีใบในช่องนี้ → ล้างตัวกรอง (เดิมช่องโชว์ "ทุกคน" แต่ยังกรองอยู่ รายการเลยว่าง — 3 พ.ย. 69)
+  useEffect(() => {
+    if (!loading && fPerson && !people.some((p) => p.value === fPerson)) setFPerson(null)
+  }, [loading, fPerson, people])
+  const pickedRows = visible.filter((r) => picked.has(r.id))
+  const thumbUrls = useFirstReceiptUrls(visible)
   const togglePick = (id: string) =>
     setPicked((p) => {
       const n = new Set(p)
@@ -191,36 +222,37 @@ export default function ExpenseManagePage() {
       else n.add(id)
       return n
     })
+  const allPicked = visible.length > 0 && visible.every((r) => picked.has(r.id))
+  const togglePickAll = () => setPicked(allPicked ? new Set() : new Set(visible.map((r) => r.id)))
 
-  // ไม่ได้เลือก = ทุกใบที่ยังไม่เคยส่งออก
-  const exportPool = pickedRows.length ? pickedRows : rows.filter((r) => !r.exportedAt)
-  const poolOf = (companyId: string | null) => exportPool.filter((c) => c.companyId === companyId)
-
-  const pickCompany = (id: string | null) => {
-    setExportCompany(id)
-    setDebitAccount(companies.find((c) => c.id === id)?.scb_debit_account ?? '')
-  }
+  // บริษัทที่มีใบรอส่งไฟล์ (เรียงมากไปน้อย) — เปิดแท็บแล้วเลือกบริษัทแรกให้เอง
+  const exportCompanies = useMemo(() => {
+    const m = new Map<string | null, { count: number; amount: number }>()
+    for (const c of rows) {
+      const v = m.get(c.companyId) ?? { count: 0, amount: 0 }
+      m.set(c.companyId, { count: v.count + 1, amount: v.amount + c.amount })
+    }
+    return [...m.entries()].sort((a, b) => b[1].count - a[1].count)
+  }, [rows])
+  useEffect(() => {
+    if (tab !== 'export') return
+    if (!exportCompanies.some(([id]) => id === exportCompany)) setExportCompany(exportCompanies[0]?.[0] ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, exportCompanies])
 
   const openExport = () => {
-    if (!exportPool.length) {
-      showToast('ไม่มีใบที่ยังไม่ส่งออก — ติ๊กเลือกใบที่จะส่งออกซ้ำ', 'error')
+    if (!pickedRows.length) {
+      showToast('ติ๊กเลือกใบที่จะส่งออกก่อน', 'error')
       return
     }
-    // เริ่มที่บริษัทที่มีใบมากสุด
-    const counts = new Map<string | null, number>()
-    for (const c of exportPool) counts.set(c.companyId, (counts.get(c.companyId) ?? 0) + 1)
-    pickCompany([...counts.entries()].sort((a, b) => b[1] - a[1])[0][0])
+    setDebitAccount(companyOf(exportCompany)?.scb_debit_account ?? '')
     setValueDate(format(new Date(), 'yyyy-MM-dd'))
     setExportOpen(true)
   }
 
   const exportTransfer = async () => {
-    const target = poolOf(exportCompany)
+    const target = pickedRows
     const account = debitAccount.replace(/\D/g, '')
-    if (!target.length) {
-      showToast('บริษัทนี้ไม่มีใบรอโอน', 'error')
-      return
-    }
     if (!isScbAccount(account)) {
       showToast('บัญชีตัดเงินต้องเป็นเลขบัญชี SCB 10 หลักที่ถูกต้อง', 'error')
       return
@@ -228,7 +260,7 @@ export default function ExpenseManagePage() {
     try {
       setBusy('export')
       // จำบัญชีตัดเงินไว้กับบริษัท — ครั้งหน้าไม่ต้องกรอก
-      const company = companies.find((c) => c.id === exportCompany)
+      const company = companyOf(exportCompany)
       if (company && company.scb_debit_account !== account) {
         const { error } = await createClient().rpc('set_company_scb_debit_account', {
           p_company_id: company.id,
@@ -241,10 +273,7 @@ export default function ExpenseManagePage() {
       const res = await downloadTransferFile(target, { product, debitAccount: account, valueDate })
       if (res.includedIds.length) await markExported(res.includedIds, userData!.id!)
       if (res.problems.length) {
-        const name = (id: string) => {
-          const c = rows.find((r) => r.id === id)
-          return c?.kind === 'supplier' ? c.payeeName : c?.userName
-        }
+        const name = (id: string) => payeeOf(rows.find((r) => r.id === id)!)
         showToast(
           `ไม่ได้ใส่ไฟล์ ${res.problems.length} ใบ: ${res.problems.map((p) => `${name(p.claimId)} (${p.reason})`).join(', ')}`,
           'error'
@@ -252,12 +281,11 @@ export default function ExpenseManagePage() {
       }
       setExportOpen(false)
       if (res.includedIds.length) {
-        showToast(`ส่งออก ${res.includedIds.length} ใบ รวม ${baht.format(res.total)} บาท — อัปโหลดเข้า SCB ได้เลย`, 'success')
-        // ไม่ต้องรอสิ้นเดือน: อัปโหลดเข้าธนาคารเสร็จ กดบันทึกจ่ายชุดนี้ได้ทันที (ปิดไว้ก่อนแล้วค่อยมาติ๊กบันทึกทีหลังก็ได้)
-        const included = new Set(res.includedIds)
-        setText('')
-        setSlip(null)
-        setDialog({ mode: 'paid', claims: target.filter((c) => included.has(c.id)) })
+        // ใบที่ส่งไฟล์แล้วย้ายไป "รอโอน" — รอเจ้าของ approve ในแอปธนาคาร แล้วบัญชีค่อยแนบสลิป
+        showToast(
+          `ส่งออก ${res.includedIds.length} ใบ รวม ${thb(res.total)} — อัปโหลดเข้า SCB แล้วรอ approve · ใบย้ายไป "รอโอน"`,
+          'success'
+        )
       }
       load()
     } catch (e) {
@@ -267,8 +295,27 @@ export default function ExpenseManagePage() {
     }
   }
 
+  // อนุมัติหลายใบทีเดียว — ข้ามใบของตัวเอง (SQL ห้ามอนุมัติใบตัวเองอยู่แล้ว)
+  const approvePicked = async () => {
+    const list = pickedRows.filter((c) => c.userId !== userData?.id)
+    if (!list.length) {
+      showToast('ใบที่เลือกเป็นของคุณเอง — ให้คนอื่นอนุมัติ', 'error')
+      return
+    }
+    try {
+      setBusy('bulk')
+      for (const c of list) await financeDecide(c, true, { payout: 'transfer' })
+      showToast(`อนุมัติแล้ว ${list.length} ใบ — ไปที่ "รอส่งไฟล์ธนาคาร" เพื่อ export`, 'success')
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setBusy(null)
+      load()
+    }
+  }
+
   const resetExported = () =>
-    run('export', () => clearExported(pickedRows.map((r) => r.id)), 'ล้างตราส่งออกแล้ว ส่งออกใหม่ได้')
+    run('export', () => clearExported(pickedRows.map((r) => r.id)), 'ย้ายกลับไป "รอส่งไฟล์" แล้ว ส่งออกใหม่ได้')
 
   const downloadReport = async () => {
     if (!reportMonth) {
@@ -302,7 +349,7 @@ export default function ExpenseManagePage() {
     return (
       <Alert tone="error">
         <p className="font-semibold">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-        <div>เฉพาะผู้จัดการ ฝ่ายบัญชี HR และผู้ดูแลระบบ</div>
+        <div>เฉพาะฝ่ายบัญชี HR และผู้ดูแลระบบ</div>
       </Alert>
     )
   }
@@ -312,15 +359,21 @@ export default function ExpenseManagePage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="จัดการใบเบิก"
-        description="ผู้จัดการอนุมัติ → บัญชีตรวจเอกสารและเลือกวิธีจ่าย → โอน (ไฟล์ SCB) / รวมเงินเดือน"
+        title="อนุมัติ / โอนจ่าย"
+        description="บัญชีอนุมัติ → ส่งไฟล์ SCB → เจ้าของ approve ในแอปธนาคาร → บัญชีแนบสลิป"
         icon={Receipt}
         actions={
-          isFinance ? (
+          <>
+          <Link href="/expenses">
+            <Button size="sm" variant="ghost" icon={Receipt}>
+              ใบเบิกของฉัน
+            </Button>
+          </Link>
+          {isFinance && (
             <Button
               size="sm"
               variant="secondary"
-              icon="FileSpreadsheet"
+              icon={FileSpreadsheet}
               onClick={() => {
                 setReportMonth(recentMonths()[1].value)
                 setReportCompany(null)
@@ -329,173 +382,198 @@ export default function ExpenseManagePage() {
             >
               สรุปสิ้นเดือน
             </Button>
-          ) : undefined
+          )}
+          </>
         }
       />
 
-      <TabBar ariaLabel="สถานะใบเบิก" className="flex-wrap">
-        <TabItem active={tab === 'manager'} onClick={() => setTab('manager')} label="รอผู้จัดการ" />
-        <TabItem active={tab === 'finance'} onClick={() => setTab('finance')} label="รอบัญชี" />
-        <TabItem active={tab === 'transfer'} onClick={() => setTab('transfer')} label="รอโอน" />
-        <TabItem active={tab === 'payroll'} onClick={() => setTab('payroll')} label="รวมเงินเดือน" />
-        <TabItem active={tab === 'done'} onClick={() => setTab('done')} label="เสร็จแล้ว" />
-      </TabBar>
+      {/* แท็บขั้นตอน + จำนวน (แบบหน้าคำสั่งซื้อ aoo) — เห็นทันทีว่าขั้นไหนค้างกี่ใบ */}
+      <StatusTabs
+        fill
+        ariaLabel="ขั้นตอน"
+        activeKey={tab}
+        onSelect={(k) => setTab(k as Tab)}
+        tabs={[
+          { key: 'finance', label: 'รออนุมัติ', count: counts?.finance ?? '–', tone: 'warning' },
+          {
+            key: 'export',
+            label: 'รอส่งไฟล์ธนาคาร',
+            count: counts?.toExport ?? '–',
+            tone: 'accent',
+          },
+          {
+            key: 'transfer',
+            label: 'รอโอน (ส่งไฟล์แล้ว)',
+            count: counts?.exported ?? '–',
+            tone: 'danger',
+          },
+          { key: 'done', label: 'จ่ายแล้วเดือนนี้', count: counts?.paidThisMonth ?? '–', tone: 'success' },
+        ]}
+      />
 
-      <SectionCard
-        title={rows.length ? `${rows.length} ใบ · รวม ${baht.format(total)} บาท` : undefined}
+      <FilterBar
+        search={q}
+        onSearch={setQ}
+        placeholder="ค้นหาค่าใช้จ่าย / ชื่อคน / ร้าน"
+        sticky={false}
+        activeCount={[fPerson, fCompany, fSection].filter(Boolean).length}
       >
-        {tab === 'transfer' && isFinance && rows.length > 0 ? (
-            <div className="mb-3 flex flex-wrap items-center justify-end gap-1.5">
-              {pickedRows.some((r) => r.exportedAt) && (
-                <Button size="sm" variant="ghost" onClick={resetExported} disabled={!!busy}>
-                  ล้างตราส่งออก
-                </Button>
-              )}
-              <Button size="sm" variant="secondary" icon="Download" loading={busy === 'export'} onClick={openExport}>
-                {pickedRows.length ? `ส่งออกไฟล์ SCB (${pickedRows.length})` : 'ส่งออกไฟล์ SCB (ที่ยังไม่ส่งออก)'}
-              </Button>
-              <Button
-                size="sm"
-                disabled={!pickedRows.length}
-                onClick={() => {
-                  setText('')
-                  setSlip(null)
-                  setDialog({ mode: 'paid', claims: pickedRows })
+        <FilterSelect label="ทุกคน" value={fPerson} options={people} onChange={setFPerson} width={200} />
+        {tab !== 'export' && (
+          <FilterSelect
+            label="ทุกบริษัท"
+            value={fCompany}
+            options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name_th }))}
+            onChange={setFCompany}
+          />
+        )}
+        <FilterSelect
+          label="ทุกหมวด"
+          value={fSection}
+          options={SECTION_BY_POPULARITY.map((k) => ({ value: k, label: SECTION_SHORT[k] }))}
+          onChange={setFSection}
+        />
+      </FilterBar>
+
+      <SectionCard>
+        {/* แถบเดียว: เลือกทั้งหมด · บริษัท (รอส่งไฟล์) · ยอดรวม · ปุ่มของขั้นนั้น (เจ้าของ 3 พ.ย. 69: หัวการ์ดกินที่เกิน) */}
+        {!loading && (rows.length > 0 || tab === 'export') && (
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 pb-3">
+            {isFinance && tab !== 'done' && visible.length > 0 && (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <Checkbox checked={allPicked} onChange={togglePickAll} aria-label="เลือกทั้งหมด" />
+                เลือกทั้งหมด
+              </label>
+            )}
+            {tab === 'export' && exportCompanies.length > 0 && (
+              // 1 ไฟล์ = 1 บริษัท
+              <StatusTabs
+                compact
+                ariaLabel="บริษัทที่จ่าย"
+                activeKey={exportCompany ?? ''}
+                onSelect={(v) => {
+                  setExportCompany(v || null)
+                  setPicked(new Set())
                 }}
-              >
-                บันทึกจ่ายแล้ว{pickedRows.length ? ` (${pickedRows.length})` : ''}
-              </Button>
-            </div>
-          ) : null}
+                tabs={exportCompanies.map(([id, v]) => ({
+                  key: id ?? '',
+                  image: companyOf(id)?.logo_url,
+                  label: companyOf(id)?.code ?? 'ไม่ระบุบริษัท',
+                  count: v.count,
+                  tone: 'neutral',
+                }))}
+              />
+            )}
+            <span className="text-sm text-gray-500">
+              {tab === 'export' && rows.length === 0
+                ? 'ยังไม่มีใบ — อนุมัติในช่อง "รออนุมัติ" ก่อน'
+                : `${visible.length} ใบ · รวม ${thb(visible.reduce((s, r) => s + r.amount, 0))}`}
+            </span>
+            {isFinance && (
+              <div className="ml-auto flex flex-wrap gap-1.5">
+                {tab === 'finance' && (
+                  <Button size="sm" icon="Check" disabled={!pickedRows.length || !!busy} loading={busy === 'bulk'} onClick={approvePicked}>
+                    อนุมัติที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
+                  </Button>
+                )}
+                {tab === 'export' && rows.length > 0 && (
+                  <Button size="sm" icon={FileUp} disabled={!pickedRows.length} onClick={openExport}>
+                    ส่งออกไฟล์ SCB{pickedRows.length ? ` (${pickedRows.length} ใบ · ${thb(pickedRows.reduce((s, c) => s + c.amount, 0))})` : ''}
+                  </Button>
+                )}
+                {tab === 'transfer' && (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={resetExported} disabled={!pickedRows.length || !!busy}>
+                      ย้ายกลับไปรอส่งไฟล์
+                    </Button>
+                    <Button
+                      size="sm"
+                      icon="Check"
+                      disabled={!pickedRows.length}
+                      onClick={() => {
+                        setText('')
+                        setSlip(null)
+                        setDialog({ mode: 'paid', claims: pickedRows })
+                      }}
+                    >
+                      โอนแล้ว · แนบสลิป{pickedRows.length ? ` (${pickedRows.length})` : ''}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {loading ? (
           <Skeleton rows={4} />
-        ) : rows.length === 0 ? (
+        ) : visible.length === 0 ? (
           <EmptyState icon={<Receipt size={28} />} title="ไม่มีใบในช่องนี้" />
         ) : (
-          <ListRows variant="divided">
-            {rows.map((c) => {
-              const payout = payoutOf[c.id] ?? c.payout
+          <div className="divide-y divide-gray-100">
+            {/* หัวคอลัมน์ (จอกว้าง) — มือถือย่อบริษัท/วันที่ไว้ใต้ชื่อ */}
+            <div className="hidden grid-cols-[28px_52px_minmax(0,1fr)_120px_88px_100px_130px_150px] items-center gap-3 pb-2 text-sm font-medium text-gray-500 sm:grid">
+              <span />
+              <span />
+              <span>รายการ</span>
+              <span>หมวด</span>
+              <span>บริษัท</span>
+              <span>วันที่</span>
+              <span className="text-right">ยอด</span>
+              <span>สถานะ</span>
+            </div>
+            {visible.map((c) => {
+              const sec = formSectionOf(c.category, c.vatAmount)
+              const selectable = (tab === 'finance' || tab === 'export' || tab === 'transfer') && isFinance
+              const files = c.receiptPaths.length + (c.slipPath ? 1 : 0)
               return (
-                <ListRow
+                <div
                   key={c.id}
-                  leading={
-                    tab === 'transfer' && isFinance ? (
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setViewing(c)}
+                  onKeyDown={(e) => e.key === 'Enter' && setViewing(c)}
+                  className="grid cursor-pointer grid-cols-[28px_52px_minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-gray-50 sm:grid-cols-[28px_52px_minmax(0,1fr)_120px_88px_100px_130px_150px]"
+                >
+                  <span onClick={(e) => e.stopPropagation()}>
+                    {selectable && (
                       <Checkbox checked={picked.has(c.id)} onChange={() => togglePick(c.id)} aria-label="เลือกใบนี้" />
-                    ) : undefined
-                  }
-                  title={
-                    <span className="whitespace-normal text-sm">
-                      <span className="font-semibold">
-                        {c.kind === 'supplier' ? `จ่าย ${c.payeeName}` : c.userName}
-                      </span>
-                      <span className="text-gray-500"> · {baht.format(c.amount)} บาท</span>
-                      {c.kind === 'supplier' && <span className="text-gray-500"> · ขอโดย {c.userName}</span>}
+                    )}
+                  </span>
+                  <ClaimThumb claim={c} url={thumbUrls.get(c.id)} size={52} />
+                  <span className="min-w-0">
+                    {/* ชื่อค่าใช้จ่ายเด่นสุด · ชื่อคนกดแล้วกรองเฉพาะคนนั้น */}
+                    <span className="block truncate text-base font-semibold text-gray-900">{c.description}</span>
+                    <span className="block truncate text-sm">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setFPerson(c.userId)
+                        }}
+                        className="font-semibold text-red-700 hover:underline"
+                        title="ดูเฉพาะคนนี้"
+                      >
+                        {c.userName}
+                      </button>
+                      {c.kind === 'supplier' && <span className="text-gray-500"> · จ่ายร้าน {c.payeeName}</span>}
+                      {files === 0 && <span className="text-amber-700"> · ไม่มีใบเสร็จ</span>}
+                      <span className="text-gray-500 sm:hidden"> · {companyOf(c.companyId)?.code ?? '—'} · {thaiDate(c.expenseDate)}</span>
                     </span>
-                  }
-                  meta={
-                    <>
-                      <p className="text-xs">
-                        {thaiDate(c.expenseDate)} ·{' '}
-                        <span className="font-medium text-gray-700">{SECTION_SHORT[formSectionOf(c.category, c.vatAmount)]}</span> ·{' '}
-                        {c.description}
-                        {c.routeFrom || c.routeTo ? ` (${c.routeFrom ?? ''} → ${c.routeTo ?? ''}${c.distanceKm != null ? ` ${c.distanceKm} กม.` : ''})` : ''}
-                        {c.purpose || c.attendees ? ` · ${[c.purpose, c.attendees].filter(Boolean).join(' · ')}` : ''}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {c.kind === 'supplier' ? 'โอนให้ supplier' : PAYOUT_LABEL[c.payout]}
-                        {c.vatAmount > 0 && ` · VAT ${baht.format(c.vatAmount)}`}
-                        {c.payout === 'payroll' && c.payrollMonth && ` งวด ${monthLabel(c.payrollMonth)}`}
-                        {c.paidNote && ` · ${c.paidNote}`}
-                      </p>
-                      {c.noReceiptReason && (
-                        <p className="text-xs text-amber-700">ไม่มีใบเสร็จ: {c.noReceiptReason}</p>
-                      )}
-                      {c.rejectedReason && <p className="text-xs text-red-600">ไม่อนุมัติ: {c.rejectedReason}</p>}
-                      {(tab === 'transfer' || c.kind === 'supplier') && (
-                        <p className="text-xs font-medium text-gray-700">
-                          โอนเข้า:{' '}
-                          {c.kind === 'supplier'
-                            ? `${getBank(c.payeeBank)?.nameTh ?? c.payeeBank ?? ''} ${c.payeeAccountNo ?? ''} (${c.payeeName})`
-                            : `${getBank(c.bankName)?.nameTh ?? c.bankName ?? 'ยังไม่มีข้อมูลธนาคาร'} ${c.bankAccountNo ?? ''}`}
-                        </p>
-                      )}
-                      <ReceiptThumbs paths={c.slipPath ? [...c.receiptPaths, c.slipPath] : c.receiptPaths} />
-                      {tab === 'finance' && isFinance && !mine(c) && c.kind !== 'supplier' && (
-                        <div className="mt-2 max-w-md">
-                          <RadioCardGroup
-                            name={`payout-${c.id}`}
-                            value={payout}
-                            onChange={(v) => setPayoutOf((p) => ({ ...p, [c.id]: v as ExpensePayout }))}
-                            options={[
-                              { value: 'payroll', label: 'รวมกับเงินเดือน' },
-                              { value: 'transfer', label: 'โอนแยก' },
-                            ]}
-                          />
-                        </div>
-                      )}
-                    </>
-                  }
-                  trailing={
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
-                      <ExpenseStatusPill status={c.status} />
-                      {c.status === 'approved' && c.exportedAt && (
-                        <Pill tone="neutral">ส่งออกไฟล์แล้ว {format(new Date(c.exportedAt), 'd MMM HH:mm', { locale: th })}</Pill>
-                      )}
-                      {isFinance && (c.status === 'pending_finance' || c.status === 'approved') && (
-                        <Button size="sm" variant="ghost" icon="Pencil" onClick={() => setEditing(c)}>
-                          แก้ไข
-                        </Button>
-                      )}
-                      {mine(c) && (tab === 'manager' || tab === 'finance') ? (
-                        <span className="text-xs text-gray-400">ใบของคุณ — ให้คนอื่นอนุมัติ</span>
-                      ) : tab === 'manager' && isManagerStep ? (
-                        <>
-                          <Button
-                            size="sm"
-                            loading={busy === c.id}
-                            onClick={() => run(c.id, () => managerDecide(c.id, true), 'อนุมัติแล้ว ส่งต่อบัญชี')}
-                          >
-                            อนุมัติ
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setText(''); setDialog({ mode: 'reject', claims: [c] }) }}>
-                            ไม่อนุมัติ
-                          </Button>
-                        </>
-                      ) : tab === 'finance' && isFinance ? (
-                        <>
-                          <Button
-                            size="sm"
-                            loading={busy === c.id}
-                            onClick={() =>
-                              run(
-                                c.id,
-                                () => financeDecide(c, true, { payout: c.kind === 'supplier' ? 'transfer' : payout }),
-                                c.kind !== 'supplier' && payout === 'payroll' ? 'อนุมัติแล้ว จะรวมจ่ายกับเงินเดือน' : 'อนุมัติแล้ว รอโอน'
-                              )
-                            }
-                          >
-                            อนุมัติ
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setText(''); setDialog({ mode: 'reject', claims: [c] }) }}>
-                            ไม่อนุมัติ
-                          </Button>
-                        </>
-                      ) : tab === 'transfer' && isFinance ? (
-                        <Button size="sm" variant="secondary" onClick={() => { setText(''); setSlip(null); setDialog({ mode: 'paid', claims: [c] }) }}>
-                          โอนแล้ว
-                        </Button>
-                      ) : null}
-                    </div>
-                  }
-                />
+                  </span>
+                  <span className="hidden min-w-0 items-center gap-2 sm:flex" title={SECTION_LABEL[sec]}>
+                    <IconChip icon={SECTION_VISUAL[sec].icon} tone={SECTION_VISUAL[sec].tone} size={32} />
+                    <span className="truncate text-sm text-gray-700">{SECTION_SHORT[sec]}</span>
+                  </span>
+                  <span className="hidden truncate text-[15px] text-gray-700 sm:block">{companyOf(c.companyId)?.code ?? '—'}</span>
+                  <span className="hidden text-[15px] text-gray-700 sm:block">{thaiDate(c.expenseDate)}</span>
+                  <span className="text-right text-lg font-bold tabular-nums text-gray-900">{thb(c.amount)}</span>
+                  <span className="hidden sm:block">
+                    <ExpenseStatusPill status={c.status} payout={c.payout} exportedAt={c.exportedAt} />
+                  </span>
+                </div>
               )
             })}
-          </ListRows>
-        )}
-        {tab === 'payroll' && rows.length > 0 && (
-          <p className="mt-3 text-xs text-gray-500">
-            ใบเหล่านี้ขึ้นช่อง &quot;เบิกคืน&quot; ในหน้าสรุปเงินเดือนของงวดนั้นเอง — บันทึกงวดแล้วจะเปลี่ยนเป็นจ่ายแล้วให้อัตโนมัติ
-          </p>
+          </div>
         )}
       </SectionCard>
 
@@ -526,11 +604,11 @@ export default function ExpenseManagePage() {
             {dialog.claims.length === 1 ? (
               <p className="text-sm text-gray-700">
                 {dialog.claims[0].kind === 'supplier' ? dialog.claims[0].payeeName : dialog.claims[0].userName} ·{' '}
-                {baht.format(dialog.claims[0].amount)} บาท · {dialog.claims[0].description}
+                {thb(dialog.claims[0].amount)} · {dialog.claims[0].description}
               </p>
             ) : (
               <p className="text-sm text-gray-700">
-                {dialog.claims.length} ใบ · รวม {baht.format(dialog.claims.reduce((s, c) => s + c.amount, 0))} บาท —
+                {dialog.claims.length} ใบ · รวม {thb(dialog.claims.reduce((s, c) => s + c.amount, 0))} —
                 สลิป/รายงานโอนใบเดียวใช้กับทุกใบ
               </p>
             )}
@@ -591,6 +669,33 @@ export default function ExpenseManagePage() {
         </div>
       </Modal>
 
+      <ClaimDetailModal
+        claim={viewing}
+        company={viewing ? companyOf(viewing.companyId) : undefined}
+        canApprove={!!viewing && isFinance && viewing.status === 'pending_finance' && !mine(viewing)}
+        canMarkPaid={!!viewing && isFinance && viewing.status === 'approved' && !!viewing.exportedAt}
+        busy={!!viewing && busy === viewing.id}
+        onClose={() => setViewing(null)}
+        onApprove={() => {
+          const c = viewing!
+          run(c.id, () => financeDecide(c, true, { payout: 'transfer' }), 'อนุมัติแล้ว ย้ายไปรอส่งไฟล์ธนาคาร').then(() => setViewing(null))
+        }}
+        onReject={() => {
+          setText('')
+          setDialog({ mode: 'reject', claims: [viewing!] })
+          setViewing(null)
+        }}
+        onEdit={() => {
+          setEditing(viewing)
+          setViewing(null)
+        }}
+        onMarkPaid={() => {
+          setText('')
+          setSlip(null)
+          setDialog({ mode: 'paid', claims: [viewing!] })
+          setViewing(null)
+        }}
+      />
       <ClaimEditModal
         claim={editing}
         onClose={() => setEditing(null)}
@@ -617,21 +722,10 @@ export default function ExpenseManagePage() {
         }
       >
         <div className="space-y-4">
-          <Field label="บริษัทที่จ่าย" help="1 ไฟล์ต่อ 1 บริษัท — ตัดเงินจากบัญชีของบริษัทนั้น" asDiv>
-            <SelectMenu
-              value={exportCompany}
-              options={[...new Set(exportPool.map((c) => c.companyId))].map((id) => {
-                const co = companies.find((c) => c.id === id)
-                const list = poolOf(id)
-                return {
-                  value: id ?? '',
-                  label: co?.code ?? 'ไม่ระบุบริษัท',
-                  hint: `${list.length} ใบ · ${baht.format(list.reduce((s, c) => s + c.amount, 0))} บาท`,
-                }
-              })}
-              onChange={(v) => pickCompany(v || null)}
-            />
-          </Field>
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold">{companyOf(exportCompany)?.code ?? 'ไม่ระบุบริษัท'}</span> · {pickedRows.length} ใบ · รวม{' '}
+            {thb(pickedRows.reduce((s, c) => s + c.amount, 0))}
+          </p>
           <Field label="บัญชีตัดเงิน (SCB ของบริษัท)" help="ใช้หักค่าธรรมเนียมด้วย · กรอกครั้งเดียว ระบบจำไว้กับบริษัท">
             <Input
               value={debitAccount}

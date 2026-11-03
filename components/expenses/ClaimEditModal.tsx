@@ -5,12 +5,14 @@
 // ยอดเงินแก้ได้เฉพาะตอนรอบัญชี · ตรวจซ้ำใน updateClaimDetails
 
 import { useEffect, useState } from 'react'
-import { Button, DatePicker, Field, Input, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
+import { X } from 'lucide-react'
+import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import ExpenseSectionField from './ExpenseSectionField'
 import {
   SECTION_CATEGORY,
   formSectionOf,
+  receiptUrls,
   updateClaimDetails,
   vatIncluded,
   type ExpenseClaim,
@@ -41,6 +43,10 @@ export default function ClaimEditModal({
   const [payeeName, setPayeeName] = useState('')
   const [payeeBank, setPayeeBank] = useState<string | null>(null)
   const [payeeAccountNo, setPayeeAccountNo] = useState('')
+  // ไฟล์แนบ: เดิมที่เก็บไว้ + ที่เพิ่มใหม่
+  const [keepPaths, setKeepPaths] = useState<string[]>([])
+  const [newFiles, setNewFiles] = useState<File[]>([])
+  const [thumbs, setThumbs] = useState<Map<string, string>>(new Map())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -59,6 +65,9 @@ export default function ClaimEditModal({
     setPayeeName(claim.payeeName ?? '')
     setPayeeBank(claim.payeeBank)
     setPayeeAccountNo(claim.payeeAccountNo ?? '')
+    setKeepPaths(claim.receiptPaths)
+    setNewFiles([])
+    if (claim.receiptPaths.length) receiptUrls(claim.receiptPaths).then(setThumbs)
     setError('')
   }, [claim])
 
@@ -92,6 +101,8 @@ export default function ClaimEditModal({
         payeeName,
         payeeBank: payeeBank ?? '',
         payeeAccountNo,
+        keepPaths,
+        newFiles,
       })
       onSaved()
     } catch (e) {
@@ -106,7 +117,7 @@ export default function ClaimEditModal({
       open
       onClose={onClose}
       title={`แก้ไขใบของ ${claim.userName}`}
-      maxWidth={560}
+      maxWidth={640}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
@@ -125,20 +136,54 @@ export default function ClaimEditModal({
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className={`grid grid-cols-2 gap-3 ${section === 'other_vat' ? 'sm:grid-cols-3' : ''}`}>
           <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv>
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
           </Field>
-          <Field label="ยอดเงิน (บาท)" help={amountEditable ? undefined : 'อนุมัติแล้ว แก้ยอดไม่ได้'}>
-            <MoneyInput value={amount || ''} onValueChange={setAmount} disabled={!amountEditable} />
+          <Field label="ยอดเงิน" help={amountEditable ? undefined : 'อนุมัติแล้ว แก้ยอดไม่ได้'}>
+            <MoneyInput value={amount || ''} onValueChange={setAmount} disabled={!amountEditable} suffix="฿" />
           </Field>
+          {section === 'other_vat' && (
+            <Field label="VAT 7% ในยอด" help={`คิดจากยอด ${vatIncluded(amount).toFixed(2)}`}>
+              <MoneyInput value={vat || ''} onValueChange={setVat} suffix="฿" />
+            </Field>
+          )}
         </div>
 
-        {section === 'other_vat' && (
-          <Field label="VAT 7% ที่รวมอยู่ในยอด" help={`คิดจากยอด = ${vatIncluded(amount).toFixed(2)} · แก้ได้ถ้าใบกำกับภาษีไม่ตรง`}>
-            <MoneyInput value={vat || ''} onValueChange={setVat} />
-          </Field>
-        )}
+        <Field label={supplier ? 'ใบวางบิล / ใบแจ้งหนี้' : 'ใบเสร็จ / สลิป'} help="ลบไฟล์ที่ไม่ใช่ หรือเพิ่มไฟล์ได้ · เลือกได้หลายไฟล์" asDiv>
+          <div className="space-y-2">
+            {keepPaths.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {keepPaths.map((p) => (
+                  <div key={p} className="relative h-20 w-20 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200">
+                    {thumbs.get(p) && !p.toLowerCase().endsWith('.pdf') ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumbs.get(p)} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-xs text-gray-500">PDF</span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label="เอาไฟล์นี้ออก"
+                      onClick={() => setKeepPaths((list) => list.filter((x) => x !== p))}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <FileDropzone
+              files={newFiles}
+              onChange={setNewFiles}
+              maxItems={Math.max(1, 10 - keepPaths.length)}
+              allowPdf
+              size="sm"
+              label="ลากไฟล์มาวางเพิ่ม หรือกดเพื่อเลือก"
+            />
+          </div>
+        </Field>
 
         {(section === 'taxi' || section === 'gas') && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -166,7 +211,8 @@ export default function ClaimEditModal({
         )}
 
         {supplier && (
-          <>
+          <div className="space-y-3 border-t border-gray-100 pt-3">
+            <p className="text-xs font-semibold text-gray-500">บัญชีที่จะโอนเข้า (ร้าน)</p>
             <Field label="ชื่อบัญชีผู้รับเงิน">
               <Input value={payeeName} onChange={(e) => setPayeeName(e.target.value)} />
             </Field>
@@ -175,10 +221,10 @@ export default function ClaimEditModal({
                 <SelectMenu value={payeeBank} options={BANK_OPTIONS} onChange={setPayeeBank} />
               </Field>
               <Field label="เลขบัญชี">
-                <Input value={payeeAccountNo} onChange={(e) => setPayeeAccountNo(e.target.value)} inputMode="numeric" />
+                <Input value={payeeAccountNo} onChange={(e) => setPayeeAccountNo(e.target.value)} inputMode="numeric" mono />
               </Field>
             </div>
-          </>
+          </div>
         )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}

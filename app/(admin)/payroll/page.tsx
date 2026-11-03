@@ -259,8 +259,8 @@ export default function PayrollPage() {
   if (loading && rows.length === 0) return <TechLoader />
 
   const num = (v: number) => (Number.isFinite(v) ? v : 0)
-  const cell =
-    'w-24 rounded-md border border-gray-200 px-2 py-1 text-right font-mono text-sm tabular-nums focus:border-red-300 focus:outline-none'
+  // ช่องเงินในตาราง — หน้าตาอยู่ที่ MoneyInput variant="cell" (ตัวกลาง) · ที่นี่กำหนดแค่ความกว้าง
+  const cell = 'w-24'
 
   return (
     <div className="space-y-5">
@@ -451,6 +451,7 @@ export default function PayrollPage() {
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
+                    variant="cell"
                     className={cell}
                     value={r.baseSalary || ''}
                     disabled={!r.isPrimary}
@@ -459,19 +460,20 @@ export default function PayrollPage() {
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right">
-                  <input
-                    type="number"
-                    className={`${cell} w-20`}
+                  <MoneyInput
+                    variant="cell"
+                    className="w-20"
                     value={r.otHours || ''}
                     disabled={!r.isPrimary}
                     title={r.isPrimary ? undefined : 'OT อยู่ที่งวดบริษัทต้นสังกัด'}
-                    onChange={(e) => patch(rowKey(r), 'otHours', num(e.target.valueAsNumber))}
+                    onValueChange={(n) => patch(rowKey(r), 'otHours', num(n))}
                   />
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
                     decimals={3}
-                    className={`${cell} w-20`}
+                    variant="cell"
+                    className="w-20"
                     value={r.otRate || ''}
                     disabled={!r.isPrimary}
                     onValueChange={(n) => patch(rowKey(r), 'otRate', n)}
@@ -493,7 +495,8 @@ export default function PayrollPage() {
                       </button>
                     )}
                     <MoneyInput
-                      className={cell}
+                      variant="cell"
+                    className={cell}
                       value={r.commission || ''}
                       onValueChange={(n) => patch(rowKey(r), 'commission', n)}
                     />
@@ -501,7 +504,8 @@ export default function PayrollPage() {
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
-                    className={`${cell} w-20`}
+                    variant="cell"
+                    className="w-20"
                     value={r.extra || ''}
                     onValueChange={(n) => patch(rowKey(r), 'extra', n)}
                   />
@@ -514,7 +518,8 @@ export default function PayrollPage() {
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <MoneyInput
-                    className={`${cell} w-20`}
+                    variant="cell"
+                    className="w-20"
                     value={r.deduction || ''}
                     onValueChange={(n) => patch(rowKey(r), 'deduction', n)}
                   />
@@ -649,7 +654,8 @@ export default function PayrollPage() {
                         decimals={it.calc === 'per_piece' ? 0 : 2}
                         disabled={salesMonthFuture}
                         onValueChange={(n) => setCalcDraft((d) => ({ ...d, [it.id]: n }))}
-                        className="w-36 rounded-md border border-gray-200 px-2 py-1.5 text-right font-mono text-sm tabular-nums focus:border-red-300 focus:outline-none"
+                        variant="cell"
+                        className="w-36"
                       />
                       <span className="ml-auto font-mono text-sm tabular-nums text-gray-900">
                         = {baht.format(pay)}

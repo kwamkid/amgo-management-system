@@ -432,3 +432,10 @@ PATCH `{ "action": "retest", "fix_note": "แก้ … แล้ว" }` (รอ
 
 ### 8.5 `GET /dev/cases/{no}/shots` — รูปผลเทสทุกรอบ
 `{ "code": "UAT-0089", "shots": [{ "round": 1, "result": "failed", "path": "…", "url": "…" }] }`
+
+## 9. MCP server — `POST /api/mcp/dev` (เพิ่ม 3 พ.ย. 69)
+
+dev tracker แบบ MCP (Streamable HTTP, stateless JSON-RPC) ให้ Claude ในทุกโปรเจกต์ใช้เป็น tool แทนการรัน `scripts/dev.mjs`
+ลงทะเบียนครั้งเดียวระดับผู้ใช้: `claude mcp add --scope user --transport http amgo-dev https://app.amgovenger.com/api/mcp/dev --header "Authorization: Bearer <AMGO_DEV_KEY>"`
+กุญแจ = กุญแจ bot API scope `dev` หรือ `superadmin` (general ตอบ 403) · สิทธิ์เท่ากับข้อ 8 · method: `initialize` · `ping` · `tools/list` · `tools/call` · batch ได้ · GET/DELETE = 405
+Tools (ชื่อ · อาร์กิวเมนต์): `uat_projects` · `uat_summary(project, status?, limit?)` · `uat_list(project, status?, limit?)` · `uat_case(no)` (รูปเป็น signed URL 1 ชม.) · `uat_add(project, cases[])` · `uat_update(no, …fields)` · `uat_retest(no, fix_note)` · `uat_close(no)` — เนื้อหาเหมือน 8.1–8.5 · โค้ด `lib/mcp/devTools.ts` + `app/api/mcp/dev/route.ts`

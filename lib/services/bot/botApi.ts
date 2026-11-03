@@ -93,8 +93,9 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     await untyped(sb).from('bot_api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', k.id)
 
   // กุญแจ dev (CLI ของ Claude · 3 พ.ย. 69): ทำแทนเจ้าของเหมือน superadmin แต่ใช้ได้เฉพาะ /api/bot/dev/*
-  if (k.scope === 'dev' && !request.nextUrl.pathname.startsWith('/api/bot/dev')) {
-    return { error: apiError(403, 'กุญแจนี้ใช้ได้เฉพาะ dev tracker (/api/bot/dev)') }
+  const path = request.nextUrl.pathname
+  if (k.scope === 'dev' && !path.startsWith('/api/bot/dev') && !path.startsWith('/api/mcp/dev')) {
+    return { error: apiError(403, 'กุญแจนี้ใช้ได้เฉพาะ dev tracker (/api/bot/dev · /api/mcp/dev)') }
   }
 
   let row: UserRow | null = null

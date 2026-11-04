@@ -32,8 +32,8 @@
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 1 | 0 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
-| [platforms.md](features/platforms.md) | 1 | 0 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 1 | 1 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
 | File | KB | Sections | About |
@@ -42,7 +42,7 @@
 | [followups.md](jobs/followups.md) | 1 | 0 | Never block closing a topic. `/todo` lists the ones due. Format: `- [ ] YYYY-MM-DD · <topic> · <check> → <acti |
 | [ideas.md](jobs/ideas.md) | 5 | 4 | Quick thoughts that don't fit devplan / learning / rules / component. |
 | [owner-checks.md](jobs/owner-checks.md) | 1 | 1 | Checks only the owner can do (real shop · real money · real device). Never block closing a topic. |
-| [todo.md](jobs/todo.md) | 1 | 0 | Starting a topic = move its section to `doing/<topic>.md`. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ป |
+| [todo.md](jobs/todo.md) | 1 | 1 | Starting a topic = move its section to `doing/<topic>.md`. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ป |
 
 ### jobs/doing/
 | File | KB | Sections | About |

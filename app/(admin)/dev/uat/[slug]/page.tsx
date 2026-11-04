@@ -84,6 +84,10 @@ export default function DevUatBoardPage({ params }: { params: Promise<{ slug: st
     else if (d.column === 'closed') setOpen({ c, retest: false, sortOrder: d.sortOrder })
   }
 
+  const search = (width: number | string) => (
+    <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="เลข / ชื่อเคส" prefix={<Search size={16} />} style={{ width }} />
+  )
+
   if (loading || !userData || project === undefined) return <TechLoader />
   if (!project) return <EmptyState icon={<FlaskConical />} title="ไม่พบโปรเจกต์" body="หรือคุณยังไม่ได้อยู่ในโปรเจกต์นี้" />
 
@@ -96,11 +100,13 @@ export default function DevUatBoardPage({ params }: { params: Promise<{ slug: st
         backHref="/dev/uat"
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="เลข / ชื่อเคส" prefix={<Search size={16} />} style={{ width: 200 }} />
+            <div className="hidden sm:block">{search(200)}</div>
             {canManage && <Button icon={Plus} onClick={() => setAdding(true)}>เพิ่มเคส</Button>}
           </div>
         }
       />
+      {/* mobile: search gets its own row so the project name isn't squeezed to "A…" */}
+      <div className="-mt-2 sm:hidden">{search('100%')}</div>
 
       {cases === null ? (
         <TechLoader />

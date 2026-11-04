@@ -24,6 +24,8 @@ export interface DiscordSettings {
     birthday: string
     /** ห้อง "ลูกค้าให้ติดต่อกลับ" — iOS Shortcut ยิงเบอร์ลูกค้าเข้ามาที่นี่ */
     callback: string
+    /** ผลใบเบิก (โอนคืนแล้ว / ไม่อนุมัติ) @แท็กคนยื่น — ว่าง = ใช้ห้องการลา (4 พ.ย. 69) */
+    expense: string
   }
   notifications: {
     checkIn: boolean
@@ -35,6 +37,8 @@ export interface DiscordSettings {
     dailySummary: boolean
     campaignUpdates: boolean
     birthday: boolean
+    /** ผลใบเบิก: โอนคืนแล้ว / ไม่อนุมัติ */
+    expense: boolean
   }
   /** เวลาส่งสรุปประจำวัน (HH:mm) */
   dailySummaryTime: string
@@ -42,7 +46,7 @@ export interface DiscordSettings {
 }
 
 export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
-  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '', birthday: '', callback: '' },
+  webhooks: { checkIn: '', leave: '', hr: '', alerts: '', campaign: '', birthday: '', callback: '', expense: '' },
   notifications: {
     checkIn: true,
     checkOut: true,
@@ -53,6 +57,7 @@ export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
     dailySummary: true,
     campaignUpdates: true,
     birthday: true,
+    expense: true,
   },
   dailySummaryTime: '18:00',
 }

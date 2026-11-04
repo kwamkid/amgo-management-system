@@ -350,6 +350,19 @@ export async function managerDecide(id: string, approve: boolean, reason?: strin
   if (error) throw new Error(error.message)
 }
 
+/**
+ * แจ้งผลใบเบิกเข้า Discord @แท็กคนยื่น (เจ้าของ 4 พ.ย. 69: โอนคืนแล้ว / ไม่อนุมัติ เท่านั้น)
+ * server ตรวจสิทธิ์ + อ่านใบเอง (app/api/expenses/notify) · ไม่รอผล ไม่ throw — แจ้งพลาดต้องไม่ล้มงานบันทึก
+ */
+function notifyResult(claimIds: string[], event: 'paid' | 'rejected') {
+  if (!claimIds.length) return
+  fetch('/api/expenses/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ claimIds, event }),
+  }).catch(() => {})
+}
+
 /** บัญชีอนุมัติ — รวมเงินเดือนจะผูกงวดที่ยังไม่ตัดยอดตามรอบจ่ายของเจ้าของใบ */
 export async function financeDecide(
   claim: ExpenseClaim,
@@ -369,6 +382,7 @@ export async function financeDecide(
     p_payroll_month: payrollMonth,
   })
   if (error) throw new Error(error.message)
+  if (!approve) notifyResult([claim.id], 'rejected')
 }
 
 /**
@@ -416,6 +430,7 @@ export async function markTransferred(
       .eq('payout', 'transfer')
     if (error) throw new Error(`บันทึกไม่สำเร็จ: ${error.message}`)
   }
+  notifyResult(claims.map((c) => c.id), 'paid')
 }
 
 export interface ClaimEdit {

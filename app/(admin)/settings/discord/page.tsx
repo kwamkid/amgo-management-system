@@ -45,6 +45,7 @@ const WEBHOOK_FIELDS: { key: keyof DiscordSettings['webhooks']; label: string; h
   { key: 'campaign', label: 'Influencer Campaign Channel', help: 'แจ้งเตือน Campaign, Submission และ Review ของ Influencer' },
   { key: 'alerts', label: 'System Alerts Channel', help: 'การแจ้งเตือนระบบ เช่น พนักงานมาสาย, ทำงานเกินเวลา' },
   { key: 'birthday', label: 'Birthday Channel', help: 'อวยพรวันเกิดพนักงานอัตโนมัติทุกเช้า' },
+  { key: 'expense', label: 'Expense Channel', help: 'ผลใบเบิก: โอนคืนแล้ว / ไม่อนุมัติ (@แท็กคนยื่น) · ว่าง = ส่งเข้าห้อง Leave' },
 ]
 
 export default function DiscordSettingsPage() {
@@ -228,7 +229,8 @@ export default function DiscordSettingsPage() {
               leaveRequest: 'แจ้งเตือนคำขอลา',
               overtime: 'แจ้งเตือนทำงานเกินเวลา',
               dailySummary: 'ส่งสรุปประจำวัน',
-              campaignUpdates: 'แจ้งเตือน Campaign และ Submission' // เพิ่มใหม่
+              campaignUpdates: 'แจ้งเตือน Campaign และ Submission', // เพิ่มใหม่
+              expense: 'แจ้งผลใบเบิก (โอนคืนแล้ว / ไม่อนุมัติ)',
             }).map(([key, label]) => (
               <label key={key} className="flex items-center gap-3">
                 <Checkbox

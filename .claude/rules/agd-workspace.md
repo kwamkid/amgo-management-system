@@ -8,5 +8,5 @@ The owner works on AGD (AG Dragon: Hape · GB · Stokke · Taf Toys · Tommee Ti
   - `01-AGD/.claude/rules/brand-system.md` — routing owner updates/emails, owe lists, INDEX, ordering (plan page)
   - `01-AGD/.claude/rules/aoo-data.md` — live sales/stock · `01-AGD/.claude/rules/domains/hermes-bots.md` — VPS, bots, keys
 - Links inside those files are relative to `01-AGD/`. Tools resolve their own root, so run them by absolute path, e.g. `python3 /Users/ampstark/Dropbox/99.1-CoWork-Project/01-AGD/00-system/tools/reindex.py`.
-- AGD notes are English; AGD's `memo/` (todo.md, tbc history) stays in `01-AGD/memo/`. New tbc notes for AGD/Hermes topics go in this repo's `memo/tbc/`.
+- AGD notes are English; AGD's `memo/` (project/jobs/todo.md, tbc history) stays in `01-AGD/memo/`. New tbc notes for AGD/Hermes topics go in this repo's `project/jobs/doing/`.
 - AGD is not git — no commits there. Never commit AGD content into this repo.

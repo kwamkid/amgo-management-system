@@ -14,12 +14,16 @@
 - [ ] Cross-link bugs ↔ UAT cases (owner: "ทำเป็น link ให้แจ้งกัน เอาไว้ทำทีหลัง").
 - [ ] Add `dev_*` tables to types/database.ts (MCP generate_typescript_types) and drop the `as unknown as` casts in lib/services/devService.ts, botDev.ts, app/api/bot/dev/*.
 - [ ] Archive /Users/ampstark/aoo-uat (never deployed) once the old tables are dropped.
+- [x] 2026-11-04 UAT board header on mobile: search moved to its own full-width row so the project name isn't cut to "A…" — 3db85ef (UAT-0140)
+- [x] 2026-11-04 ไกด์ set to `manager` in all 3 dev projects (DB data, not a migration) — can add/edit cases, cannot create projects (UAT-0141)
+- [ ] รอคุณแอม: want a comment thread on UAT cases? Today only the result "หมายเหตุ" exists (offered 4 Nov, no answer).
+- [ ] รอคุณแอม: auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
 
 ## Resume note
 Resume at: build bug reports (project/jobs/todo.md) — MCP server is live (e09334b + 6674334 pushed).
 
 ### State
-- UAT live on prod (09d689f), 88 cases moved (next UAT-0089), CLI `scripts/dev.mjs` tested on prod. MCP `amgo-dev` live and registered at user scope. tsc clean. Projects: aoocommerce, aoosite, amgo-management-system (owner manager, ไกด์ tester).
+- UAT live on prod (09d689f), 88 cases moved (next UAT-0089), CLI `scripts/dev.mjs` tested on prod. MCP `amgo-dev` live and registered at user scope. tsc clean. Projects: aoocommerce, aoosite, amgo-management-system (owner manager, ไกด์ manager since 4 Nov).
 - Owner 3 Nov: testers = แอม + ไกด์ · notify owner (push to project managers) · bug numbers per project · UAT first · desktop board shows 4.5 columns.
 
 ### Gotchas

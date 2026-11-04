@@ -470,6 +470,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
 
         <div className="w-36">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ ตั้งบริษัท"
@@ -480,6 +481,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         </div>
         <div className="w-40">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ ตั้งหน้าที่"
@@ -490,6 +492,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         </div>
         <div className="w-36">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ ตั้งประเภท"
@@ -500,6 +503,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         </div>
         <div className="w-36">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ ตั้งสถานะ"
@@ -537,6 +541,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         </Button>
         <div className="w-40">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ นอกสถานที่ได้?"
@@ -558,6 +563,7 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
         </div>
         <div className="w-36">
           <SelectMenu
+            size="sm"
             disabled={!selected.size}
             value={null}
             placeholder="→ WFH ได้?"

@@ -158,7 +158,7 @@ export function TimePicker({
           background: invalid ? 'var(--ruby-50)' : 'var(--bg-surface)',
           boxShadow: open ? 'var(--shadow-focus)' : 'none',
           fontFamily: 'var(--font-sans)',
-          fontSize: 14,
+          fontSize: size === 'md' ? 'var(--fs-body)' : 14,
           color: value ? 'var(--fg-1)' : 'var(--fg-4)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,

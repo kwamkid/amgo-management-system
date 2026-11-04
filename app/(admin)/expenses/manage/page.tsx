@@ -48,6 +48,10 @@ import {
   listClaims,
   listClaimsForMonth,
   markExported,
+  saveExportFile,
+  listExportFiles,
+  downloadExportFile,
+  type ExportFile,
   markTransferred,
   type ExpenseClaim,
   type ExpenseStatus,
@@ -119,6 +123,9 @@ export default function ExpenseManagePage() {
   const [counts, setCounts] = useState<Awaited<ReturnType<typeof countPending>> | null>(null)
   // บัญชีแก้หมวด/รายละเอียดก่อนอนุมัติ/ก่อนโอน
   const [editing, setEditing] = useState<ExpenseClaim | null>(null)
+  // ไฟล์โอนที่ส่งออกแล้ว (ดาวน์โหลดซ้ำ)
+  const [filesOpen, setFilesOpen] = useState(false)
+  const [exportFiles, setExportFiles] = useState<{ companyId: string | null; files: ExportFile[] }[]>([])
   // กดแถว → ดูรายละเอียด + รูป ก่อนอนุมัติ
   const [viewing, setViewing] = useState<ExpenseClaim | null>(null)
 
@@ -272,6 +279,8 @@ export default function ExpenseManagePage() {
       const { downloadTransferFile } = await import('@/lib/services/expenseExport')
       const res = await downloadTransferFile(target, { product, debitAccount: account, valueDate })
       if (res.includedIds.length) await markExported(res.includedIds, userData!.id!)
+      // เก็บสำเนาไว้ดาวน์โหลดซ้ำ — เก็บไม่สำเร็จไม่ล้มทั้งงาน (ไฟล์ดาวน์โหลดไปแล้ว)
+      if (res.file) saveExportFile(exportCompany, res.file).catch((e) => showToast((e as Error).message, 'error'))
       if (res.problems.length) {
         const name = (id: string) => payeeOf(rows.find((r) => r.id === id)!)
         showToast(
@@ -311,6 +320,17 @@ export default function ExpenseManagePage() {
     } finally {
       setBusy(null)
       load()
+    }
+  }
+
+  const openFiles = async () => {
+    setFilesOpen(true)
+    try {
+      const ids: (string | null)[] = [...companies.map((c) => c.id), null]
+      const lists = await Promise.all(ids.map(async (id) => ({ companyId: id, files: await listExportFiles(id) })))
+      setExportFiles(lists.filter((l) => l.files.length))
+    } catch (e) {
+      showToast((e as Error).message, 'error')
     }
   }
 
@@ -474,6 +494,11 @@ export default function ExpenseManagePage() {
                 {tab === 'finance' && (
                   <Button size="sm" icon="Check" disabled={!pickedRows.length || !!busy} loading={busy === 'bulk'} onClick={approvePicked}>
                     อนุมัติที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
+                  </Button>
+                )}
+                {(tab === 'export' || tab === 'transfer') && (
+                  <Button size="sm" variant="ghost" icon="Download" onClick={openFiles}>
+                    ไฟล์ที่ส่งออกแล้ว
                   </Button>
                 )}
                 {tab === 'export' && rows.length > 0 && (
@@ -669,6 +694,42 @@ export default function ExpenseManagePage() {
         </div>
       </Modal>
 
+      <Modal open={filesOpen} onClose={() => setFilesOpen(false)} title="ไฟล์โอน SCB ที่ส่งออกแล้ว" maxWidth={560}>
+        {exportFiles.length === 0 ? (
+          <p className="text-sm text-gray-500">ยังไม่มีไฟล์ — ไฟล์ที่ส่งออกตั้งแต่วันนี้ไปจะเก็บไว้ที่นี่</p>
+        ) : (
+          <div className="space-y-4">
+            {exportFiles.map(({ companyId, files }) => (
+              <div key={companyId ?? 'none'}>
+                <p className="mb-1 text-sm font-semibold text-gray-700">{companyOf(companyId)?.code ?? 'ไม่ระบุบริษัท'}</p>
+                <div className="divide-y divide-gray-100">
+                  {files.map((f) => (
+                    <div key={f.path} className="flex items-center gap-3 py-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm text-gray-900">
+                          {f.createdAt ? format(new Date(f.createdAt), 'd MMM yyyy HH:mm', { locale: th }) : f.filename}
+                        </span>
+                        <span className="block text-xs text-gray-500">
+                          {f.count} รายการ · {thb(f.total)} · {f.filename}
+                        </span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon="Download"
+                        onClick={() => downloadExportFile(f).catch((e) => showToast((e as Error).message, 'error'))}
+                      >
+                        ดาวน์โหลด
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       <ClaimDetailModal
         claim={viewing}
         company={viewing ? companyOf(viewing.companyId) : undefined}
@@ -749,6 +810,10 @@ export default function ExpenseManagePage() {
           <p className="text-xs text-gray-500">
             ได้ไฟล์ SCB_file_reference_….txt แบบเดียวกับปุ่ม Export ของ CPX Toolkit — อัปโหลดเข้า SCB Business Anywhere ได้เลย ·
             ไฟล์นี้โอนได้เฉพาะบัญชี SCB (บัญชีธนาคารอื่นจะแจ้งว่าข้ามไป)
+          </p>
+          <p className="text-xs text-amber-700">
+            กดดาวน์โหลดแล้ว ใบจะย้ายไป &quot;รอโอน&quot; และเก็บไฟล์ไว้ที่ปุ่ม &quot;ไฟล์ที่ส่งออกแล้ว&quot; · ถ้าแค่ลอง ย้ายกลับได้ที่แท็บรอโอน →
+            ติ๊กใบ → &quot;ย้ายกลับไปรอส่งไฟล์&quot;
           </p>
         </div>
       </Modal>

@@ -326,7 +326,7 @@ export function DateRangePicker({
         disabled={disabled}
         aria-label={aria['aria-label'] ?? placeholder}
         aria-expanded={open}
-        className={`flex h-10 w-full items-center gap-2 rounded-lg border bg-white px-3 text-left text-sm transition-colors ${
+        className={`flex h-10 w-full items-center gap-2 rounded-lg border bg-white px-3 text-left text-[length:var(--fs-body)] transition-colors ${
           open ? 'border-red-300 ring-2 ring-red-100' : 'border-gray-200 hover:border-gray-300'
         } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
       >

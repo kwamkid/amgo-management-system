@@ -508,6 +508,64 @@ export async function markExported(ids: string[], byId: string): Promise<void> {
   if (error) throw new Error(`บันทึกการส่งออกไม่สำเร็จ: ${error.message}`)
 }
 
+// ── ไฟล์โอนที่ส่งออกแล้ว — เก็บสำเนาไว้ดาวน์โหลดซ้ำ (เจ้าของ 4 พ.ย. 69: "ไฟล์เก่าดาวน์โหลดได้จากไหน") ──
+// bucket expense-receipts โฟลเดอร์ exports/<companyId>/ · ชื่อ <stamp>_<จำนวนบรรทัด>_<ยอดเป็นสตางค์>.txt
+// (ชื่อไฟล์จริงตอนดาวน์โหลด = SCB_file_reference_<stamp>.txt แบบ toolkit) · บัญชีอัปโหลด/อ่านได้ตาม storage policy เดิม
+
+export interface ExportFile {
+  path: string
+  /** ชื่อไฟล์ที่ได้ตอนดาวน์โหลด */
+  filename: string
+  createdAt: string
+  count: number
+  total: number
+}
+
+const exportFolder = (companyId: string | null) => `exports/${companyId ?? 'none'}`
+
+export async function saveExportFile(
+  companyId: string | null,
+  file: { filename: string; content: string; count: number; total: number }
+): Promise<void> {
+  const stamp = file.filename.replace(/^SCB_file_reference_/, '').replace(/\.txt$/, '')
+  const path = `${exportFolder(companyId)}/${stamp}_${file.count}_${Math.round(file.total * 100)}.txt`
+  const { error } = await sb()
+    .storage.from(BUCKET)
+    .upload(path, new Blob([new TextEncoder().encode(file.content)], { type: 'text/plain' }), {
+      contentType: 'text/plain',
+      upsert: true,
+    })
+  if (error) throw new Error(`เก็บสำเนาไฟล์ไม่สำเร็จ: ${error.message}`)
+}
+
+export async function listExportFiles(companyId: string | null): Promise<ExportFile[]> {
+  const folder = exportFolder(companyId)
+  const { data, error } = await sb()
+    .storage.from(BUCKET)
+    .list(folder, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
+  if (error) throw new Error(`โหลดรายการไฟล์ไม่สำเร็จ: ${error.message}`)
+  return (data ?? [])
+    .filter((f) => f.name.endsWith('.txt'))
+    .map((f) => {
+      const [stamp, count, cents] = f.name.replace(/\.txt$/, '').split('_')
+      return {
+        path: `${folder}/${f.name}`,
+        filename: `SCB_file_reference_${stamp}.txt`,
+        createdAt: f.created_at ?? '',
+        count: Number(count) || 0,
+        total: (Number(cents) || 0) / 100,
+      }
+    })
+}
+
+/** ดาวน์โหลดไฟล์เดิมซ้ำ — เนื้อไฟล์เหมือนตอนส่งออกทุกตัวอักษร */
+export async function downloadExportFile(f: ExportFile): Promise<void> {
+  const { data, error } = await sb().storage.from(BUCKET).download(f.path)
+  if (error || !data) throw new Error(`ดาวน์โหลดไม่สำเร็จ: ${error?.message ?? ''}`)
+  const { saveAs } = await import('file-saver')
+  saveAs(data, f.filename)
+}
+
 /** ล้างตราส่งออก — ไฟล์ที่ส่งออกไปแล้วไม่ได้ใช้ (เช่น ธนาคารตีกลับ) จะได้ส่งออกใหม่ */
 export async function clearExported(ids: string[]): Promise<void> {
   if (!ids.length) return

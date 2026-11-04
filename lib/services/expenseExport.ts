@@ -46,7 +46,13 @@ export interface TransferFileOptions {
 export async function downloadTransferFile(
   claims: ExpenseClaim[],
   opts: TransferFileOptions
-): Promise<{ includedIds: string[]; total: number; problems: TransferProblem[] }> {
+): Promise<{
+  includedIds: string[]
+  total: number
+  problems: TransferProblem[]
+  /** ไฟล์ที่ดาวน์โหลด — เก็บสำเนาไว้ดาวน์โหลดซ้ำ (saveExportFile) */
+  file?: { filename: string; content: string; count: number; total: number }
+}> {
   const { lines, problems } = buildTransferLines(claims)
   if (!lines.length) return { includedIds: [], total: 0, problems }
 
@@ -55,7 +61,7 @@ export async function downloadTransferFile(
   // UTF-8 ไม่มี BOM — toolkit เขียนแบบนี้ (ตัด BOM ทิ้งก่อนเซฟ)
   saveAs(new Blob([new TextEncoder().encode(file.content)], { type: 'text/plain' }), file.filename)
 
-  return { includedIds: lines.flatMap((l) => l.claimIds), total: file.total, problems }
+  return { includedIds: lines.flatMap((l) => l.claimIds), total: file.total, problems, file }
 }
 
 // ── 2. สรุปสิ้นเดือน ─────────────────────────────────────────────────────

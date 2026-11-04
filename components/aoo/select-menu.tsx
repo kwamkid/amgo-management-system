@@ -53,7 +53,10 @@ export interface SelectMenuProps {
    */
   onCreate?: (label: string) => void
   disabled?: boolean
-  /** compact = สูง 32px สำหรับใช้ในตาราง */
+  /**
+   * md (ปริยาย) = สูง 40 ตัวหนังสือเท่า Input — ฟอร์ม/ตัวกรอง · sm = สูง 32 สำหรับในตารางหรือแถบเครื่องมือเล็ก
+   * (4 พ.ย. 69: เดิมปริยายเป็น sm ฟอร์มที่ลืมส่ง md ได้ช่องเตี้ยกว่าช่องอื่นในแถวเดียวกัน)
+   */
   size?: 'sm' | 'md'
   /**
    * boxed = มีกรอบเห็นชัดเหมือนช่องกรอก (ค่าเริ่มต้น — ใช้ในฟอร์ม)
@@ -82,7 +85,7 @@ export function SelectMenu({
   clearable = false,
   searchThreshold = 8,
   disabled,
-  size = 'sm',
+  size = 'md',
   variant = 'boxed',
   invalid,
   className,
@@ -267,7 +270,7 @@ export function SelectMenu({
           gap: 6,
           width: '100%',
           height: H[size],
-          padding: '0 8px 0 10px',
+          padding: size === 'md' ? '0 10px 0 12px' : '0 8px 0 10px',
           borderRadius: 'var(--r-md)',
           // boxed เห็นกรอบตลอด · flat โปร่งจนกว่าจะชี้หรือกด
           border: `1px solid ${
@@ -291,7 +294,7 @@ export function SelectMenu({
           boxShadow: open ? 'var(--shadow-focus)' : 'none',
           transition: 'border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)',
           fontFamily: 'var(--font-sans)',
-          fontSize: 14,
+          fontSize: size === 'md' ? 'var(--fs-body)' : 14,
           color: selected ? 'var(--fg-1)' : 'var(--fg-4)',
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',

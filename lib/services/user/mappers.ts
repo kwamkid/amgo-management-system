@@ -57,6 +57,8 @@ export interface UserData {
   hasWebAccess?: boolean
   /** แอดมิน หรืออยู่ในโปรเจกต์ dev tracker อย่างน้อย 1 โปรเจกต์ (my_profile) — เมนู Dev Management */
   hasDevAccess?: boolean
+  /** แอดมิน หรือได้สิทธิ์ดูบัญชีอย่างน้อย 1 บัญชีใน /vault (my_profile) — แค่เปิดเมนู สิทธิ์จริงตรวจที่ /api/vault */
+  hasVaultAccess?: boolean
   /** อยู่ในรายชื่อ import_access — เมนูนำเข้า (เจ้าของคนเดียวก่อน · 29 ต.ค. 69) · canEdit แก้จำนวน · seeCost เห็นทุน/FOB */
   importAccess?: { canEdit: boolean; seeCost: boolean } | null
   inviteLinkId?: string

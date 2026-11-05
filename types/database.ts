@@ -5652,6 +5652,102 @@ export type Database = {
           },
         ]
       }
+      vault_access: {
+        Row: {
+          account_id: string
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vault_accounts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          platform: string
+          secret: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          platform: string
+          secret: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          platform?: string
+          secret?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      vault_logs: {
+        Row: {
+          account_id: string | null
+          account_label: string
+          action: string
+          created_at: string
+          detail: Json | null
+          id: number
+          ip: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          account_label: string
+          action: string
+          created_at?: string
+          detail?: Json | null
+          id?: number
+          ip?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          account_label?: string
+          action?: string
+          created_at?: string
+          detail?: Json | null
+          id?: number
+          ip?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       web_bills: {
         Row: {
           bill_domain: boolean

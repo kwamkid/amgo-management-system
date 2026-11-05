@@ -43,6 +43,7 @@ import {
   PanelLeftOpen,
   FlaskConical,
   Receipt,
+  KeyRound,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -217,6 +218,8 @@ const navSections: NavSection[] = [
   {
     title: 'จัดการ',
     items: [
+      // รหัสบัญชีร้านค้า (5 พ.ย. 69) — โผล่เฉพาะคนที่ได้สิทธิ์อย่างน้อย 1 บัญชี ไม่ผูกกับ role
+      { label: 'รหัสบัญชี', href: '/vault', icon: icon(KeyRound), tone: 'grape', roles: ['vault'] },
       {
         // รวมงาน HR ที่เกี่ยวกับคน (เดิม พนักงาน · สรุปเงินเดือน · เอกสารบริษัท แยกกัน 3 แถว)
         label: 'พนักงาน',
@@ -317,6 +320,7 @@ export default function Sidebar({ userData, onNavigate, collapsible = false }: S
     ...(userData?.hasWebAccess ? ['website'] : []),
     ...(userData?.importAccess ? ['import'] : []),
     ...(userData?.hasDevAccess ? ['dev'] : []),
+    ...(userData?.hasVaultAccess ? ['vault'] : []),
   ]
   const allowed = (roles?: string[]) => !roles || roles.some((r) => roleKeys.includes(r))
 

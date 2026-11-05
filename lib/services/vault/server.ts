@@ -38,20 +38,30 @@ export async function permFor(actor: VaultActor, accountId: string): Promise<Vau
   return data ? { canView: data.can_view, canEdit: data.can_edit, canDelete: data.can_delete } : NO_ACCESS
 }
 
+interface VaultLogEntry {
+  accountId: string
+  label: string
+  action: VaultAction
+  detail?: Record<string, string[]>
+}
+
 /** Throws on failure: callers log before handing anything out, so no log means no secret. */
 export async function writeVaultLog(
   actor: VaultActor,
   request: NextRequest,
-  entry: { accountId: string; label: string; action: VaultAction; detail?: Record<string, string[]> }
+  entries: VaultLogEntry | VaultLogEntry[]
 ) {
-  const { error } = await actor.db.from('vault_logs').insert({
-    account_id: entry.accountId,
-    account_label: entry.label,
-    user_id: actor.id,
-    action: entry.action,
-    detail: entry.detail ?? null,
-    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
-  })
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+  const { error } = await actor.db.from('vault_logs').insert(
+    [entries].flat().map((entry) => ({
+      account_id: entry.accountId,
+      account_label: entry.label,
+      user_id: actor.id,
+      action: entry.action,
+      detail: entry.detail ?? null,
+      ip,
+    }))
+  )
   if (error) throw new Error(error.message)
 }
 
@@ -72,14 +82,14 @@ export function parseAccount(body: unknown):
   const s = (b.secret ?? {}) as Record<string, unknown>
   const text = (v: unknown) => (typeof v === 'string' ? v : '')
   const platform = text(b.platform).trim()
-  const name = text(b.name).trim()
   const secret: VaultSecret = {
     username: text(s.username).trim(),
     password: text(s.password), // spaces can be part of a password
     otpPhone: text(s.otpPhone).trim(),
     note: text(s.note).trim(),
   }
-  if (!platform || !name) return { ok: false, error: 'กรอกแพลตฟอร์มและชื่อบัญชีก่อน' }
+  const name = text(b.name).trim() || secret.username // an account with no shop is named by its login
+  if (!platform || !name) return { ok: false, error: 'เลือกแพลตฟอร์ม แล้วกรอกชื่อร้านหรือ User ก่อน' }
   if (platform.length > LIMITS.label || name.length > LIMITS.label) return { ok: false, error: 'ชื่อยาวเกินไป' }
   if ([secret.username, secret.password, secret.otpPhone].some((v) => v.length > LIMITS.field)) {
     return { ok: false, error: 'ข้อมูลยาวเกินไป' }

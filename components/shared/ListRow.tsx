@@ -27,6 +27,7 @@ export default function ListRow({
   trailing,
   onClick,
   href,
+  aside,
 }: {
   leading?: ReactNode
   title: ReactNode
@@ -34,6 +35,8 @@ export default function ListRow({
   trailing?: ReactNode
   onClick?: () => void
   href?: string
+  /** ปุ่ม/ช่องติ๊กท้ายแถวที่กดแยกจากตัวแถว — อยู่นอก <button> เพราะ HTML ห้ามซ้อน control ในปุ่ม */
+  aside?: ReactNode
 }) {
   const inner = (
     <>
@@ -45,6 +48,16 @@ export default function ListRow({
       {trailing && <div className="aoo-row__trail">{trailing}</div>}
     </>
   )
+  if (onClick && aside) {
+    return (
+      <div className="aoo-row !py-0">
+        <button type="button" onClick={onClick} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2.5 text-left">
+          {inner}
+        </button>
+        {aside}
+      </div>
+    )
+  }
   if (href) return <Link href={href} className="aoo-row">{inner}</Link>
   if (onClick) return <button type="button" onClick={onClick} className="aoo-row">{inner}</button>
   return <div className="aoo-row">{inner}</div>

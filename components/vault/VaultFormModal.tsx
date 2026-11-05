@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Button, Field, Input, Modal, Textarea } from '@/components/aoo'
+import { useEffect, useMemo, useState } from 'react'
+import { Button, Field, Input, Modal, SelectMenu, Textarea } from '@/components/aoo'
 import { EMPTY_SECRET, type VaultSecret } from '@/lib/vault/types'
 import type { VaultForm } from '@/lib/services/vaultService'
 
@@ -37,6 +37,11 @@ export default function VaultFormModal({
     setError('')
   }, [open, initial])
 
+  const options = useMemo(
+    () => [...new Set([...platforms, platform].filter(Boolean))].map((p) => ({ value: p, label: p })),
+    [platforms, platform]
+  )
+
   const set = (key: keyof VaultSecret) => (e: { target: { value: string } }) =>
     setSecret((s) => ({ ...s, [key]: e.target.value }))
 
@@ -61,22 +66,25 @@ export default function VaultFormModal({
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>ยกเลิก</Button>
-          <Button onClick={submit} loading={saving} disabled={!platform.trim() || !name.trim()}>บันทึก</Button>
+          <Button onClick={submit} loading={saving} disabled={!platform || (!name.trim() && !secret.username.trim())}>บันทึก</Button>
         </>
       }
     >
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="แพลตฟอร์ม">
-            <Input list="vault-platforms" value={platform} onChange={(e) => setPlatform(e.target.value)} placeholder="Shopee" autoComplete="off" />
+          <Field label="แพลตฟอร์ม" asDiv>
+            <SelectMenu
+              value={platform || null}
+              options={options}
+              onChange={(v) => setPlatform(v ?? '')}
+              onCreate={setPlatform}
+              placeholder="เลือกหรือพิมพ์เพิ่ม"
+            />
           </Field>
-          <Field label="ชื่อบัญชี">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="abcthebaby" autoComplete="off" />
+          <Field label="ชื่อร้าน / แบรนด์">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ABC" autoComplete="off" />
           </Field>
         </div>
-        <datalist id="vault-platforms">
-          {platforms.map((p) => <option key={p} value={p} />)}
-        </datalist>
         <Field label="User">
           <Input value={secret.username} onChange={set('username')} autoComplete="off" name="vault-user" data-1p-ignore data-lpignore="true" />
         </Field>

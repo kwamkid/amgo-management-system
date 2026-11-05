@@ -1,5 +1,6 @@
 // Browser calls to /api/vault. The tables cannot be read from the browser at all.
 
+import type { ImportRow } from '@/lib/vault/import'
 import type { VaultGrant, VaultItem, VaultLogRow, VaultPerson, VaultSecret } from '@/lib/vault/types'
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -24,6 +25,9 @@ export const listVault = () => call<{ isAdmin: boolean; items: VaultItem[] }>(''
 export const addVault = (form: VaultForm) =>
   call<{ id: string }>('', { method: 'POST', body: JSON.stringify(form) })
 
+export const importVault = (rows: ImportRow[]) =>
+  call<{ added: number; skipped: number }>('/import', { method: 'POST', body: JSON.stringify({ rows }) })
+
 export const saveVault = (id: string, form: VaultForm) =>
   call(`/${id}`, { method: 'PATCH', body: JSON.stringify(form) })
 
@@ -34,6 +38,12 @@ export const revealVault = async (id: string) =>
 
 export const saveVaultAccess = (id: string, grants: VaultGrant[]) =>
   call(`/${id}/access`, { method: 'PUT', body: JSON.stringify({ grants }) })
+
+export const saveVaultAccessBulk = (accountIds: string[], grants: VaultGrant[]) =>
+  call('/access-bulk', { method: 'PUT', body: JSON.stringify({ accountIds, grants }) })
+
+export const deleteVaultBulk = (accountIds: string[]) =>
+  call<{ deleted: number }>('/delete-bulk', { method: 'POST', body: JSON.stringify({ accountIds }) })
 
 export const vaultLogs = async (id: string) => (await call<{ logs: VaultLogRow[] }>(`/${id}/logs`)).logs
 

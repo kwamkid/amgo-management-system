@@ -5,16 +5,21 @@
 // ทุกการเปิดดูรหัสถูกบันทึก · ความลับออกจาก server ทีละบัญชีผ่าน /api/vault/[id]/reveal เท่านั้น
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { KeyRound, Plus, Search } from 'lucide-react'
+import { ClipboardPaste, KeyRound, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, Input } from '@/components/aoo'
-import { ListRow, ListRows, PageHeader, SectionCard, TechLoader } from '@/components/shared'
+import { Button, Checkbox, EmptyState, Input, StatusTabs, useConfirm, type StatusTab } from '@/components/aoo'
+import { BrandLogo, ListRow, ListRows, PageHeader, SectionCard, TechLoader } from '@/components/shared'
+import PlatformLogo from '@/components/vault/PlatformLogo'
+import VaultBulkAccessModal from '@/components/vault/VaultBulkAccessModal'
 import VaultDetailModal from '@/components/vault/VaultDetailModal'
 import VaultFormModal from '@/components/vault/VaultFormModal'
+import VaultImportModal from '@/components/vault/VaultImportModal'
 import { permLabel } from '@/components/vault/vaultLabels'
-import { addVault, listVault, type VaultForm } from '@/lib/services/vaultService'
-import type { VaultItem } from '@/lib/vault/types'
+import { addVault, deleteVaultBulk, importVault, listVault, saveVaultAccessBulk, type VaultForm } from '@/lib/services/vaultService'
+import type { ImportRow } from '@/lib/vault/import'
+import { groupByPlatform, matchesSearch, PLATFORM_NAMES, toVaultRow } from '@/lib/vault/platforms'
+import type { VaultGrant, VaultItem } from '@/lib/vault/types'
 
 export default function VaultPage() {
   const { userData, loading } = useAuth()
@@ -23,7 +28,12 @@ export default function VaultPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const { confirm, dialog } = useConfirm()
 
   const load = useCallback(async () => {
     try {
@@ -40,13 +50,25 @@ export default function VaultPage() {
     if (userData) load()
   }, [userData, load])
 
-  const groups = useMemo(() => {
-    const term = q.trim().toLowerCase()
-    const hit = (items ?? []).filter((i) => `${i.platform} ${i.name}`.toLowerCase().includes(term))
-    const byPlatform = new Map<string, VaultItem[]>()
-    hit.forEach((i) => byPlatform.set(i.platform, [...(byPlatform.get(i.platform) ?? []), i]))
-    return [...byPlatform.entries()]
-  }, [items, q])
+  const rows = useMemo(() => (items ?? []).map(toVaultRow), [items])
+
+  const platformTabs = useMemo<StatusTab[]>(() => {
+    const counts = new Map(groupByPlatform(rows).map((g) => [g[0].platform.key, g]))
+    return [
+      { key: 'all', label: 'ทั้งหมด', count: rows.length },
+      ...[...counts.values()].map((g) => ({ key: g[0].platform.key, label: g[0].platform.label, count: g.length, image: g[0].platform.logo })),
+    ]
+  }, [rows])
+
+  const groups = useMemo(
+    () => groupByPlatform(rows.filter((r) => (filter === 'all' || r.platform.key === filter) && matchesSearch(r, q))),
+    [rows, filter, q]
+  )
+
+  const platformNames = useMemo(
+    () => [...new Set([...PLATFORM_NAMES, ...rows.map((r) => r.platform.label)])],
+    [rows]
+  )
 
   const open = items?.find((i) => i.id === openId) ?? null
 
@@ -57,6 +79,46 @@ export default function VaultPage() {
     setOpenId(id) // ต่อไปคือเลือกคนที่เข้าถึงได้
   }
 
+  const pick = (ids: string[], on: boolean) =>
+    setPicked((current) => {
+      const next = new Set(current)
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)))
+      return next
+    })
+
+  const removeBulk = async () => {
+    const ok = await confirm({
+      title: `ลบ ${picked.size} บัญชี?`,
+      description: 'รหัสที่เก็บไว้จะหายถาวร กู้คืนไม่ได้',
+      confirmLabel: 'ลบบัญชี',
+      tone: 'danger',
+    })
+    if (!ok) return
+    try {
+      await deleteVaultBulk([...picked])
+      setPicked(new Set())
+      await load()
+      showToast('ลบแล้ว')
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    }
+  }
+
+  const saveBulk = async (grants: VaultGrant[]) => {
+    await saveVaultAccessBulk([...picked], grants)
+    await load()
+    setBulkOpen(false)
+    setPicked(new Set())
+    showToast('บันทึกสิทธิ์แล้ว')
+  }
+
+  const bulk = async (rows: ImportRow[]) => {
+    const { added, skipped } = await importVault(rows)
+    await load()
+    setImporting(false)
+    showToast(skipped ? `นำเข้า ${added} บัญชี ข้าม ${skipped} บัญชีที่มีอยู่แล้ว` : `นำเข้า ${added} บัญชีแล้ว`)
+  }
+
   if (loading || !userData || items === null) return <TechLoader />
 
   return (
@@ -65,16 +127,27 @@ export default function VaultPage() {
         title="รหัสบัญชี"
         description="ล็อกทีละบัญชี เห็นเฉพาะบัญชีที่ได้รับสิทธิ์ และทุกการเปิดดูมีบันทึก"
         icon={KeyRound}
-        actions={isAdmin ? <Button icon={Plus} onClick={() => setAdding(true)}>เพิ่มบัญชี</Button> : undefined}
+        actions={
+          isAdmin ? (
+            <>
+              <Button variant="secondary" icon={ClipboardPaste} onClick={() => setImporting(true)}>นำเข้าจาก Sheet</Button>
+              <Button icon={Plus} onClick={() => setAdding(true)}>เพิ่มบัญชี</Button>
+            </>
+          ) : undefined
+        }
       />
 
       {items.length > 0 && (
         <Input
           prefix={<Search size={16} />}
-          placeholder="ค้นหาแพลตฟอร์มหรือชื่อบัญชี"
+          placeholder="ค้นหาแพลตฟอร์มหรือแบรนด์ เช่น shopee abc"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+      )}
+
+      {items.length > 0 && (
+        <StatusTabs compact ariaLabel="แพลตฟอร์ม" activeKey={filter} onSelect={setFilter} tabs={platformTabs} />
       )}
 
       {groups.length === 0 ? (
@@ -84,46 +157,95 @@ export default function VaultPage() {
           body={isAdmin ? 'เพิ่มบัญชีแรก แล้วเลือกคนที่ดูหรือแก้ได้' : 'ให้แอดมินเพิ่มสิทธิ์ให้คุณก่อน'}
         />
       ) : (
-        groups.map(([platform, rows]) => (
-          <SectionCard key={platform} title={platform}>
-            <ListRows>
-              {rows.map((item) => (
-                <ListRow
-                  key={item.id}
-                  title={item.name}
-                  meta={
-                    isAdmin
-                      ? item.access?.length
-                        ? `เข้าถึงได้: ${item.access.map((g) => g.name).join(', ')}`
-                        : 'เฉพาะแอดมิน'
-                      : `สิทธิ์ของคุณ: ${permLabel(item.perm)}`
-                  }
-                  onClick={() => setOpenId(item.id)}
-                />
-              ))}
-            </ListRows>
-          </SectionCard>
-        ))
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {groups.map((group) => (
+            <SectionCard
+              key={group[0].platform.key}
+              title={
+                <span className="flex items-center gap-2.5 text-base">
+                  <PlatformLogo platform={group[0].platform} />
+                  {group[0].platform.label}
+                  <span className="font-normal text-gray-400">{group.length}</span>
+                  {isAdmin && (
+                    <Checkbox
+                      className="ml-auto"
+                      size={18}
+                      aria-label={`เลือกทุกบัญชีใน ${group[0].platform.label}`}
+                      checked={group.every((r) => picked.has(r.item.id))}
+                      indeterminate={group.some((r) => picked.has(r.item.id)) && !group.every((r) => picked.has(r.item.id))}
+                      onChange={(on) => pick(group.map((r) => r.item.id), on)}
+                    />
+                  )}
+                </span>
+              }
+            >
+              <ListRows>
+                {group.map(({ item, shop, brand }) => {
+                  const who = isAdmin
+                    ? item.access?.length
+                      ? `เข้าถึงได้: ${item.access.map((g) => g.name).join(', ')}`
+                      : 'เฉพาะแอดมิน'
+                    : `สิทธิ์ของคุณ: ${permLabel(item.perm)}`
+                  return (
+                    <ListRow
+                      key={item.id}
+                      leading={brand ? <BrandLogo brand={brand} /> : <span className="aoo-brand-logo" aria-hidden />}
+                      title={shop || item.name}
+                      meta={shop ? `${item.name} · ${who}` : who}
+                      onClick={() => setOpenId(item.id)}
+                      aside={
+                        isAdmin ? (
+                          <Checkbox
+                            size={18}
+                            aria-label={`เลือก ${item.platform} ${item.name}`}
+                            checked={picked.has(item.id)}
+                            onChange={(on) => pick([item.id], on)}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  )
+                })}
+              </ListRows>
+            </SectionCard>
+          ))}
+        </div>
       )}
+
+      {picked.size > 0 && (
+        <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+          <span className="font-medium">เลือก {picked.size} บัญชี</span>
+          <span className="flex gap-2">
+            <Button variant="ghost" onClick={() => setPicked(new Set())}>ล้าง</Button>
+            <Button variant="danger" icon={Trash2} onClick={removeBulk}>ลบ</Button>
+            <Button icon={ShieldCheck} onClick={() => setBulkOpen(true)}>ตั้งสิทธิ์</Button>
+          </span>
+        </div>
+      )}
+
+      <VaultBulkAccessModal open={bulkOpen} count={picked.size} onClose={() => setBulkOpen(false)} onSave={saveBulk} />
 
       <VaultFormModal
         open={adding}
         title="เพิ่มบัญชี"
-        platforms={[...new Set(items.map((i) => i.platform))]}
+        platforms={platformNames}
         onClose={() => setAdding(false)}
         onSubmit={add}
       />
+
+      <VaultImportModal open={importing} existing={items} onClose={() => setImporting(false)} onImport={bulk} />
 
       {open && (
         <VaultDetailModal
           key={open.id}
           item={open}
           isAdmin={isAdmin}
-          platforms={[...new Set(items.map((i) => i.platform))]}
+          platforms={platformNames}
           onClose={() => setOpenId(null)}
           onChanged={load}
         />
       )}
+      {dialog}
     </div>
   )
 }

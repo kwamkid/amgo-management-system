@@ -44,7 +44,7 @@ export interface SelectMenuProps {
   placeholder?: string
   /** ให้เลือก "ไม่ระบุ" ได้ไหม — ถ้าใส่ จะมีแถวแรกเป็นการล้างค่า */
   clearable?: string | false
-  /** โชว์ช่องค้นหาเมื่อตัวเลือกเยอะกว่านี้ (ค่าเริ่มต้น 8) */
+  /** โชว์ช่องค้นหาเมื่อตัวเลือกเยอะกว่านี้ (ค่าเริ่มต้น 7 — เจ้าของ 5 พ.ย. 69) */
   searchThreshold?: number
   /**
    * เพิ่มตัวเลือกใหม่ได้ — พิมพ์ในช่องค้นหาแล้วไม่ตรงกับอันไหน จะมีแถว
@@ -69,6 +69,23 @@ export interface SelectMenuProps {
   onKeyDown?: (e: React.KeyboardEvent) => void
   onFocus?: () => void
   triggerRef?: (el: HTMLElement | null) => void
+  /** ใช้ผ่าน MultiSelectMenu เท่านั้น */
+  multi?: { values: string[]; onChange: (values: string[]) => void; summary?: (count: number) => string }
+}
+
+/** เลือกได้หลายตัว เมนูค้างไว้จนกดข้างนอก · ช่องค้นหาและหน้าตาเหมือน SelectMenu ทุกอย่าง */
+export function MultiSelectMenu({
+  values,
+  onChange,
+  summary,
+  ...rest
+}: Omit<SelectMenuProps, 'value' | 'onChange' | 'multi' | 'onCreate' | 'clearable'> & {
+  values: string[]
+  onChange: (values: string[]) => void
+  /** ข้อความบนปุ่มเมื่อมีตัวเลือกแล้ว ปริยาย = รายชื่อคั่นจุลภาค */
+  summary?: (count: number) => string
+}) {
+  return <SelectMenu {...rest} value={null} onChange={() => {}} multi={{ values, onChange, summary }} />
 }
 
 const H = { sm: 32, md: 40 }
@@ -83,7 +100,7 @@ export function SelectMenu({
   onChange,
   placeholder = 'เลือก',
   clearable = false,
-  searchThreshold = 8,
+  searchThreshold = 7,
   disabled,
   size = 'md',
   variant = 'boxed',
@@ -92,6 +109,7 @@ export function SelectMenu({
   onKeyDown,
   onFocus,
   triggerRef,
+  multi,
 }: SelectMenuProps) {
   const [open, setOpen] = useState(false)
   const [hover, setHover] = useState(false)
@@ -106,6 +124,16 @@ export function SelectMenu({
   const searchRef = useRef<HTMLInputElement | null>(null)
 
   const selected = options.find((o) => o.value === value) ?? null
+  const isPicked = (v: string | null) => (multi ? !!v && multi.values.includes(v) : v === value)
+  const picked = multi ? options.filter((o) => multi.values.includes(o.value)) : []
+  const hasValue = multi ? picked.length > 0 : !!selected
+  const buttonText = multi
+    ? picked.length
+      ? (multi.summary?.(picked.length) ?? picked.map((o) => o.label).join(', '))
+      : placeholder
+    : selected
+      ? selected.label
+      : placeholder
   // มี onCreate = ช่องค้นหาต้องมีเสมอ มันคือช่องพิมพ์ชื่อหมวดใหม่ไปในตัว
   const showSearch = !!onCreate || options.length > searchThreshold
 
@@ -209,6 +237,10 @@ export function SelectMenu({
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (v: string | null) => {
+    if (multi) {
+      if (v) multi.onChange(multi.values.includes(v) ? multi.values.filter((x) => x !== v) : [...multi.values, v])
+      return
+    }
     if (v === CREATE) {
       onCreate?.(query.trim())
       close()
@@ -295,7 +327,7 @@ export function SelectMenu({
           transition: 'border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)',
           fontFamily: 'var(--font-sans)',
           fontSize: size === 'md' ? 'var(--fs-body)' : 14,
-          color: selected ? 'var(--fg-1)' : 'var(--fg-4)',
+          color: hasValue ? 'var(--fg-1)' : 'var(--fg-4)',
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
@@ -312,7 +344,7 @@ export function SelectMenu({
             whiteSpace: 'nowrap',
           }}
         >
-          {selected ? selected.label : placeholder}
+          {buttonText}
         </span>
         <ChevronDown size={15} style={{ color: 'var(--fg-3)', flexShrink: 0 }} />
       </button>
@@ -323,6 +355,7 @@ export function SelectMenu({
           <div
             ref={panelRef}
             role="listbox"
+            aria-multiselectable={!!multi}
             onKeyDown={onPanelKey}
             style={{
               position: 'fixed',
@@ -400,7 +433,7 @@ export function SelectMenu({
               )}
 
               {rows.map((row, i) => {
-                const isSel = row.value === value
+                const isSel = isPicked(row.value)
                 const isCur = i === cursor
                 const opt = row as SelectOption
                 return (

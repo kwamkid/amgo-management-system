@@ -32,7 +32,7 @@
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 1 | 1 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 2 | 2 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
 | [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
@@ -49,12 +49,12 @@
 |---|---|---|---|
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 5 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
-| [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 2 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
+| [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
 
 ### jobs/done/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [2026-11.md](jobs/done/2026-11.md) | 1 | 1 | Finished topics, newest first. History only. |
+| [2026-11.md](jobs/done/2026-11.md) | 1 | 2 | Finished topics, newest first. History only. |
 
 ### knowledge/
 | File | KB | Sections | About |

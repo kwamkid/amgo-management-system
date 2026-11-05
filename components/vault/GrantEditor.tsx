@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { Checkbox, IconButton, MultiSelectMenu } from '@/components/aoo'
-import { ListRow, ListRows, PersonChip } from '@/components/shared'
+import { ListRow, ListRows, PersonChip, UserAvatar } from '@/components/shared'
 import { vaultPeople } from '@/lib/services/vaultService'
 import { normalizeGrant, type VaultGrant, type VaultPerson } from '@/lib/vault/types'
 
@@ -33,7 +33,10 @@ export default function GrantEditor({
     vaultPeople().then(setPeople).catch((e) => showToast(e.message, 'error'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const options = useMemo(() => people.map((p) => ({ value: p.id, label: p.name })), [people])
+  const options = useMemo(
+    () => people.map((p) => ({ value: p.id, label: p.name, icon: <UserAvatar userId={p.id} name={p.name} size="xs" /> })),
+    [people]
+  )
 
   // เลือกเพิ่ม = เริ่มที่ดูอย่างเดียว · เอาออกจากเมนู = ออกจากรายการ คนเดิมคงสิทธิ์ที่ติ๊กไว้
   const setPicked = (ids: string[]) => {

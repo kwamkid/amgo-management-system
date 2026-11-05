@@ -119,7 +119,7 @@ export function TabItem({
           : disabled
             ? "var(--fg-4)"
             : "var(--fg-3)",
-        fontSize: 14,
+        fontSize: 'var(--fs-caption)',
         fontWeight: active ? 600 : 500,
         cursor: disabled ? "not-allowed" : "pointer",
         whiteSpace: "nowrap",
@@ -134,7 +134,7 @@ export function TabItem({
       {sub && (
         <span
           style={{
-            fontSize: 12,
+            fontSize: 'var(--fs-caption)',
             fontWeight: 500,
             color: active ? "var(--fg-on-brand)" : "var(--fg-3)",
             opacity: active ? 0.85 : 1,

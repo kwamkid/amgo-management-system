@@ -58,8 +58,8 @@ export default function DevUatProjectsPage() {
             <Card key={p.id} padding={16}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <Link href={`/dev/uat/${p.slug}`} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--fg-3)' }}>{p.slug}{!p.isActive && ' · ปิดแล้ว'}</div>
+                  <div style={{ fontSize: 'var(--fs-h4)', fontWeight: 700 }}>{p.name}</div>
+                  <div style={{ fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>{p.slug}{!p.isActive && ' · ปิดแล้ว'}</div>
                 </Link>
                 {p.myRole === 'manager' && (
                   <Button variant="ghost" size="sm" icon={Settings2} aria-label="ตั้งค่าโปรเจกต์" onClick={() => setEditing(p)} />
@@ -204,7 +204,7 @@ function ProjectModal({ project, onClose, onSaved }: { project?: DevProject; onC
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Toggle checked={isActive} onChange={setIsActive} /><span>{isActive ? 'ใช้งานอยู่' : 'ปิดโปรเจกต์'}</span></div>
             </Field>
             <div style={{ borderTop: '1px solid var(--border-1)', paddingTop: 12 }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>สมาชิก</h4>
+              <h4 style={{ margin: '0 0 8px', fontSize: 'var(--fs-caption)', fontWeight: 700 }}>สมาชิก</h4>
               <div style={{ display: 'grid', gap: 6 }}>
                 {members.map((m) => (
                   <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -217,7 +217,7 @@ function ProjectModal({ project, onClose, onSaved }: { project?: DevProject; onC
                     <Button variant="ghost" size="sm" icon={X} aria-label="เอาออก" onClick={() => remove(m.userId)} />
                   </div>
                 ))}
-                {members.length === 0 && <p style={{ margin: 0, color: 'var(--fg-3)', fontSize: 14 }}>ยังไม่มีสมาชิก</p>}
+                {members.length === 0 && <p style={{ margin: 0, color: 'var(--fg-3)', fontSize: 'var(--fs-caption)' }}>ยังไม่มีสมาชิก</p>}
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center' }}>
                 <Select value={pick} onChange={(e) => setPick(e.target.value)} style={{ flex: 1 }}>

@@ -326,7 +326,7 @@ export function SelectMenu({
           boxShadow: open ? 'var(--shadow-focus)' : 'none',
           transition: 'border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)',
           fontFamily: 'var(--font-sans)',
-          fontSize: size === 'md' ? 'var(--fs-body)' : 14,
+          fontSize: size === 'md' ? 'var(--fs-body)' : 'var(--fs-caption)',
           color: hasValue ? 'var(--fg-1)' : 'var(--fg-4)',
           textAlign: 'left',
           cursor: disabled ? 'not-allowed' : 'pointer',
@@ -410,7 +410,7 @@ export function SelectMenu({
                     transition:
                       'border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out)',
                     fontFamily: 'var(--font-sans)',
-                    fontSize: 14,
+                    fontSize: 'var(--fs-body)', // ต่ำกว่า 16px iPhone จะซูมจอตอนแตะช่อง
                     color: 'var(--fg-1)',
                     outline: 'none',
                   }}
@@ -423,7 +423,7 @@ export function SelectMenu({
                 <p
                   style={{
                     padding: '10px 12px',
-                    fontSize: 13,
+                    fontSize: 'var(--fs-caption)',
                     color: 'var(--fg-3)',
                     margin: 0,
                   }}
@@ -461,7 +461,7 @@ export function SelectMenu({
                             ? 'var(--fg-3)'
                             : 'var(--fg-1)',
                       fontFamily: 'var(--font-sans)',
-                      fontSize: 14,
+                      fontSize: 'var(--fs-body)',
                       fontWeight: isSel ? 600 : 400,
                       textAlign: 'left',
                       cursor: 'pointer',

@@ -251,7 +251,7 @@ function MenuItem({
     background: "transparent",
     color: item.disabled ? "var(--fg-4)" : color,
     borderRadius: "var(--r-sm)",
-    fontSize: 13,
+    fontSize: 'var(--fs-caption)',
     fontWeight: 500,
     cursor: item.disabled ? "not-allowed" : "pointer",
     textAlign: "left",

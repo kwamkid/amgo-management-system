@@ -20,7 +20,7 @@ export interface VaultForm {
   secret: VaultSecret
 }
 
-export const listVault = () => call<{ isAdmin: boolean; items: VaultItem[] }>('')
+export const listVault = () => call<{ isAdmin: boolean; items: VaultItem[]; admins: VaultPerson[] }>('')
 
 export const addVault = (form: VaultForm) =>
   call<{ id: string }>('', { method: 'POST', body: JSON.stringify(form) })

@@ -93,12 +93,12 @@ export default function UatCaseModal({
       title={
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-3)' }}>{uatCode(c.no)}</span>
+            <span style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, color: 'var(--fg-3)' }}>{uatCode(c.no)}</span>
             <Pill tone={STATUS_TONE[c.status]}>{STATUS_LABELS[c.status]}</Pill>
             {c.priority === 1 && <Pill tone="danger">{PRIORITY_LABELS[1]}</Pill>}
             {c.round > 1 && <Pill>รอบที่ {c.round}</Pill>}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>{c.title}</div>
+          <div style={{ fontSize: 'var(--fs-h4)', fontWeight: 700, lineHeight: 1.3 }}>{c.title}</div>
         </div>
       }
     >
@@ -112,7 +112,7 @@ export default function UatCaseModal({
               <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{c.fixNote}</p>
             </div>
           )}
-          <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '6px 12px', margin: 0, fontSize: 14 }}>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '6px 12px', margin: 0, fontSize: 'var(--fs-caption)' }}>
             <Info label="ระบบ" value={ENV_LABELS[c.environment]} />
             <Info label="ร้าน" value={c.shop} />
             <Info label="ล็อกอินเป็น" value={c.loginAs} />
@@ -129,17 +129,17 @@ export default function UatCaseModal({
             </a>
           )}
           <div>
-            <h4 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>ขั้นตอน</h4>
+            <h4 style={{ margin: '0 0 8px', fontSize: 'var(--fs-caption)', fontWeight: 700 }}>ขั้นตอน</h4>
             <ol style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 10 }}>
               {c.steps.map((s, i) => (
                 <li key={i}>
                   <div style={{ fontWeight: 600 }}>{s.action}</div>
-                  {s.expected && <div style={{ color: 'var(--fg-2)', fontSize: 14 }}>ควรเห็น: {s.expected}</div>}
+                  {s.expected && <div style={{ color: 'var(--fg-2)', fontSize: 'var(--fs-caption)' }}>ควรเห็น: {s.expected}</div>}
                 </li>
               ))}
             </ol>
           </div>
-          {c.source && <p style={{ margin: 0, fontSize: 12, color: 'var(--fg-3)' }}>ที่มา: {c.source}</p>}
+          {c.source && <p style={{ margin: 0, fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>ที่มา: {c.source}</p>}
         </div>
       )}
 
@@ -289,12 +289,12 @@ function History({ results }: { results: UatResult[] | null }) {
           <div key={r.id} style={{ paddingBottom: 14, borderBottom: '1px solid var(--border-1)' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <Pill tone={STATUS_TONE[r.result]}>{STATUS_LABELS[r.result]}</Pill>
-              <span style={{ fontSize: 13, color: 'var(--fg-3)' }}>
+              <span style={{ fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>
                 รอบที่ {r.round} · {r.testerName || 'ไม่ระบุชื่อ'} ·{' '}
                 {new Date(r.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
               </span>
             </div>
-            {r.failedStep && <p style={{ margin: '6px 0 0', fontSize: 14 }}>เกิดที่ขั้นตอน {r.failedStep}</p>}
+            {r.failedStep && <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-caption)' }}>เกิดที่ขั้นตอน {r.failedStep}</p>}
             {r.note && <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.note}</p>}
             {urls.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -307,7 +307,7 @@ function History({ results }: { results: UatResult[] | null }) {
               </div>
             )}
             {urls.length === 0 && r.shots.length > 0 && (
-              <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--fg-3)', display: 'flex', gap: 4, alignItems: 'center' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-caption)', color: 'var(--fg-3)', display: 'flex', gap: 4, alignItems: 'center' }}>
                 <ImageIcon size={14} /> รูป {r.shots.length} รูป (ไฟล์ไม่อยู่แล้ว)
               </p>
             )}

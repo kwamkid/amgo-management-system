@@ -426,7 +426,7 @@ export default function ProductionMixPage() {
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-600">
                   {i + 1}
                 </span>
-                <span className="text-[15px] leading-6 text-gray-800">{step}</span>
+                <span className="text-sm leading-6 text-gray-800">{step}</span>
               </li>
             ))}
           </ol>

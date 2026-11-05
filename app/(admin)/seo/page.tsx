@@ -553,7 +553,7 @@ function AiPill({ engine, count, site }: { engine: string; count: AiCount; site:
                 </p>
                 <p className="mb-2 text-xs text-gray-500">{g.help}</p>
                 {/* bullet ด้วย utility ของ Tailwind (ไม่พึ่ง globals.css — dev server ชอบค้าง CSS เก่า) */}
-                <ul className="list-disc space-y-1.5 pl-6 text-[15px] leading-snug marker:text-[var(--tone)]" data-tone={g.tone}>
+                <ul className="list-disc space-y-1.5 pl-6 text-sm leading-snug marker:text-[var(--tone)]" data-tone={g.tone}>
                   {items.map((i, n) => (
                     <li key={n} className={g.tone === 'danger' ? 'text-[var(--tone-ink)]' : 'text-gray-800'}>
                       {i.text}

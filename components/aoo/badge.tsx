@@ -89,7 +89,7 @@ export function Badge({ status, className, style: styleProp }: BadgeProps) {
     borderRadius: 999,
     background: t.bg,
     color: t.fg,
-    fontSize: 12,
+    fontSize: 'var(--fs-caption)',
     fontWeight: 600,
     lineHeight: 1,
     whiteSpace: "nowrap",

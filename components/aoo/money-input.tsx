@@ -154,7 +154,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
         }}
       >
         {input}
-        {suffix && <span style={{ color: 'var(--fg-3)', fontSize: 14, flexShrink: 0 }}>{suffix}</span>}
+        {suffix && <span style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-caption)', flexShrink: 0 }}>{suffix}</span>}
       </div>
     )
   }

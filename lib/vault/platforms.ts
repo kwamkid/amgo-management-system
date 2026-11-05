@@ -81,8 +81,8 @@ export interface VaultRow {
 export function toVaultRow(item: VaultItem): VaultRow {
   const platform = PLATFORMS.find((p) => p.match?.test(item.platform)) ?? customPlatform(item.platform)
   const shop = platform.match ? item.platform.replace(platform.match, '').trim() : ''
-  const brand = brandOf(shop) ?? brandOf(item.name)
-  const search = [item.platform, item.name, platform.label, platform.aliases, brand, brand && brandLabel(brand)]
+  const brand = brandOf(shop) ?? brandOf(item.name) ?? brandOf(item.username ?? '')
+  const search = [item.platform, item.name, item.username, item.otpPhone, platform.label, platform.aliases, brand, brand && brandLabel(brand)]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()

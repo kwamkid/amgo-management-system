@@ -2,13 +2,15 @@
 
 // รหัสบัญชี (5 พ.ย. 69) — แทน Google Sheet ที่เก็บ user/pass ร้านค้า
 // ล็อกทีละบัญชี: แอดมินทุกคนทำได้ทุกอย่าง และเลือกได้ว่าคนอื่นใคร ดู/แก้/ลบ บัญชีไหน · คนไม่มีสิทธิ์มองไม่เห็นว่าบัญชีนั้นมีอยู่
-// ทุกการเปิดดูรหัสถูกบันทึก · ความลับออกจาก server ทีละบัญชีผ่าน /api/vault/[id]/reveal เท่านั้น
+// รายการแสดง User + เบอร์ OTP · รหัสผ่านและโน้ตออกจาก server ทีละบัญชีผ่าน /api/vault/[id]/reveal และมีบันทึก
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ClipboardPaste, KeyRound, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { ClipboardPaste, KeyRound, LayoutGrid, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Checkbox, EmptyState, Input, StatusTabs, useConfirm, type StatusTab } from '@/components/aoo'
+import { Button, Checkbox, EmptyState, Input, useConfirm } from '@/components/aoo'
+import AvatarStack from '@/components/shared/AvatarStack'
+import IconFilter from '@/components/shared/IconFilter'
 import { BrandLogo, ListRow, ListRows, PageHeader, SectionCard, TechLoader } from '@/components/shared'
 import PlatformLogo from '@/components/vault/PlatformLogo'
 import VaultBulkAccessModal from '@/components/vault/VaultBulkAccessModal'
@@ -19,13 +21,14 @@ import { permLabel } from '@/components/vault/vaultLabels'
 import { addVault, deleteVaultBulk, importVault, listVault, saveVaultAccessBulk, type VaultForm } from '@/lib/services/vaultService'
 import type { ImportRow } from '@/lib/vault/import'
 import { groupByPlatform, matchesSearch, PLATFORM_NAMES, toVaultRow } from '@/lib/vault/platforms'
-import type { VaultGrant, VaultItem } from '@/lib/vault/types'
+import type { VaultGrant, VaultItem, VaultPerson } from '@/lib/vault/types'
 
 export default function VaultPage() {
   const { userData, loading } = useAuth()
   const { showToast } = useToast()
   const [items, setItems] = useState<VaultItem[] | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [admins, setAdmins] = useState<VaultPerson[]>([])
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -40,6 +43,7 @@ export default function VaultPage() {
       const data = await listVault()
       setItems(data.items)
       setIsAdmin(data.isAdmin)
+      setAdmins(data.admins)
     } catch (e) {
       showToast((e as Error).message, 'error')
       setItems([])
@@ -52,13 +56,17 @@ export default function VaultPage() {
 
   const rows = useMemo(() => (items ?? []).map(toVaultRow), [items])
 
-  const platformTabs = useMemo<StatusTab[]>(() => {
-    const counts = new Map(groupByPlatform(rows).map((g) => [g[0].platform.key, g]))
-    return [
-      { key: 'all', label: 'ทั้งหมด', count: rows.length },
-      ...[...counts.values()].map((g) => ({ key: g[0].platform.key, label: g[0].platform.label, count: g.length, image: g[0].platform.logo })),
-    ]
-  }, [rows])
+  const platformFilters = useMemo(
+    () => [
+      { key: 'all', label: 'ทั้งหมด', icon: <LayoutGrid size={20} /> },
+      ...groupByPlatform(rows).map((g) => ({
+        key: g[0].platform.key,
+        label: g[0].platform.label,
+        icon: <PlatformLogo platform={g[0].platform} size={26} />,
+      })),
+    ],
+    [rows]
+  )
 
   const groups = useMemo(
     () => groupByPlatform(rows.filter((r) => (filter === 'all' || r.platform.key === filter) && matchesSearch(r, q))),
@@ -140,14 +148,14 @@ export default function VaultPage() {
       {items.length > 0 && (
         <Input
           prefix={<Search size={16} />}
-          placeholder="ค้นหาแพลตฟอร์มหรือแบรนด์ เช่น shopee abc"
+          placeholder="ค้นหาแพลตฟอร์ม แบรนด์ อีเมล หรือเบอร์"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       )}
 
       {items.length > 0 && (
-        <StatusTabs compact ariaLabel="แพลตฟอร์ม" activeKey={filter} onSelect={setFilter} tabs={platformTabs} />
+        <IconFilter ariaLabel="แพลตฟอร์ม" items={platformFilters} value={filter} onChange={setFilter} />
       )}
 
       {groups.length === 0 ? (
@@ -157,12 +165,12 @@ export default function VaultPage() {
           body={isAdmin ? 'เพิ่มบัญชีแรก แล้วเลือกคนที่ดูหรือแก้ได้' : 'ให้แอดมินเพิ่มสิทธิ์ให้คุณก่อน'}
         />
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="aoo-masonry">
           {groups.map((group) => (
             <SectionCard
               key={group[0].platform.key}
               title={
-                <span className="flex items-center gap-2.5 text-base">
+                <span className="flex items-center gap-2.5">
                   <PlatformLogo platform={group[0].platform} />
                   {group[0].platform.label}
                   <span className="font-normal text-gray-400">{group.length}</span>
@@ -181,17 +189,27 @@ export default function VaultPage() {
             >
               <ListRows>
                 {group.map(({ item, shop, brand }) => {
-                  const who = isAdmin
-                    ? item.access?.length
-                      ? `เข้าถึงได้: ${item.access.map((g) => g.name).join(', ')}`
-                      : 'เฉพาะแอดมิน'
-                    : `สิทธิ์ของคุณ: ${permLabel(item.perm)}`
+                  const login = item.username !== (shop || item.name) ? item.username : ''
                   return (
                     <ListRow
                       key={item.id}
                       leading={brand ? <BrandLogo brand={brand} /> : <span className="aoo-brand-logo" aria-hidden />}
                       title={shop || item.name}
-                      meta={shop ? `${item.name} · ${who}` : who}
+                      meta={
+                        <>
+                          {(login || item.otpPhone) && (
+                            <span className="block">{[login, item.otpPhone].filter(Boolean).join(' · ')}</span>
+                          )}
+                          {!isAdmin && `สิทธิ์ของคุณ: ${permLabel(item.perm)}`}
+                        </>
+                      }
+                      trailing={
+                        isAdmin ? (
+                          <AvatarStack
+                            people={[...admins, ...(item.access ?? []).map((g) => ({ id: g.userId, name: g.name ?? '' }))]}
+                          />
+                        ) : undefined
+                      }
                       onClick={() => setOpenId(item.id)}
                       aside={
                         isAdmin ? (

@@ -589,8 +589,8 @@ export default function ExpenseManagePage() {
                     <IconChip icon={SECTION_VISUAL[sec].icon} tone={SECTION_VISUAL[sec].tone} size={32} />
                     <span className="truncate text-sm text-gray-700">{SECTION_SHORT[sec]}</span>
                   </span>
-                  <span className="hidden truncate text-[15px] text-gray-700 sm:block">{companyOf(c.companyId)?.code ?? '—'}</span>
-                  <span className="hidden text-[15px] text-gray-700 sm:block">{thaiDate(c.expenseDate)}</span>
+                  <span className="hidden truncate text-sm text-gray-700 sm:block">{companyOf(c.companyId)?.code ?? '—'}</span>
+                  <span className="hidden text-sm text-gray-700 sm:block">{thaiDate(c.expenseDate)}</span>
                   <span className="text-right text-lg font-bold tabular-nums text-gray-900">{thb(c.amount)}</span>
                   <span className="hidden sm:block">
                     <ExpenseStatusPill status={c.status} payout={c.payout} exportedAt={c.exportedAt} />

@@ -120,7 +120,7 @@ export function ImageCropper({
               onClick={() => onAspectChange(opt.aspect)}
               style={{
                 padding: '5px 12px',
-                fontSize: 13,
+                fontSize: 'var(--fs-caption)',
                 fontWeight: 500,
                 border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border-2)'}`,
                 background: isActive ? 'var(--accent-soft)' : 'var(--bg-surface)',
@@ -170,7 +170,7 @@ export function ImageCropper({
       </div>
 
       {/* zoom */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--fg-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 'var(--fs-caption)', color: 'var(--fg-2)' }}>
         <span>ซูม</span>
         <Button
           variant="secondary"

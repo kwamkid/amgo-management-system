@@ -1,13 +1,24 @@
 // app/api/vault/route.ts
 //
-//   GET  → accounts this person can view, names and permissions only (admin: all + who has access)
+//   GET  → accounts this person can view, with login + OTP phone for the list and search
+//          (admin: all + who has access). Password and note stay on the server: those go
+//          through reveal, which logs. A row that cannot be decrypted still lists, without them.
 //   POST → add an account (admin only)
 
 import { NextRequest } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { encryptVault } from '@/lib/services/vault/crypto'
+import { decryptVault, encryptVault } from '@/lib/services/vault/crypto'
 import { parseAccount, vaultActor, vaultError, vaultJson, vaultLabel, writeVaultLog } from '@/lib/services/vault/server'
-import type { VaultGrant, VaultItem, VaultPerm } from '@/lib/vault/types'
+import type { VaultGrant, VaultItem, VaultPerm, VaultPerson } from '@/lib/vault/types'
+
+function listFields(id: string, blob: string) {
+  try {
+    const { username, otpPhone } = decryptVault(id, blob)
+    return { username, otpPhone }
+  } catch {
+    return {}
+  }
+}
 
 export async function GET() {
   const actor = await vaultActor()
@@ -19,7 +30,7 @@ export async function GET() {
   const { data: access, error: accessError } = await grants
   if (accessError) return vaultError(accessError.message, 500)
 
-  let accounts = actor.db.from('vault_accounts').select('id, platform, name, updated_at').order('platform').order('name')
+  let accounts = actor.db.from('vault_accounts').select('id, platform, name, secret, updated_at').order('platform').order('name')
   if (!actor.isAdmin) accounts = accounts.in('id', (access ?? []).map((a) => a.account_id))
   const { data, error } = await accounts
   if (error) return vaultError(error.message, 500)
@@ -51,11 +62,24 @@ export async function GET() {
       name: a.name,
       updatedAt: a.updated_at,
       perm,
+      ...listFields(a.id, a.secret),
       ...(actor.isAdmin ? { access: list } : {}),
     }
   })
 
-  return vaultJson({ isAdmin: actor.isAdmin, items })
+  let admins: VaultPerson[] = []
+  if (actor.isAdmin) {
+    const { data: rows } = await actor.db
+      .from('users')
+      .select('id, nickname, full_name')
+      .eq('role', 'admin')
+      .eq('is_active', true)
+      .eq('is_system', false)
+      .is('deleted_at', null)
+    admins = (rows ?? []).map((u) => ({ id: u.id, name: u.nickname || u.full_name }))
+  }
+
+  return vaultJson({ isAdmin: actor.isAdmin, items, admins })
 }
 
 export async function POST(request: NextRequest) {

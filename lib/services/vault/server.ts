@@ -1,8 +1,8 @@
 // lib/services/vault/server.ts
 //
 // Who may do what in the vault. Every /api/vault route starts here. The tables have no RLS
-// policies, so these checks are the only gate: use the service-role client from vaultActor()
-// and never select `secret` outside reveal/update.
+// policies, so these checks are the only gate: use the service-role client from vaultActor().
+// Password and note may only leave through reveal; the list route returns login + phone only.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'

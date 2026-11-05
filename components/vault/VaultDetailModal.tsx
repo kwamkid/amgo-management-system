@@ -33,8 +33,8 @@ function SecretRow({ label, value, masked }: { label: string; value: string; mas
 
   return (
     <div className="grid min-h-9 grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2 border-b border-gray-100 py-1 last:border-b-0">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span className="break-all font-mono text-sm whitespace-pre-wrap">
+      <span className="text-gray-500">{label}</span>
+      <span className="break-all font-mono whitespace-pre-wrap">
         {!value ? '—' : masked && !show ? '••••••••••' : value}
       </span>
       {value ? (

@@ -502,7 +502,7 @@ export default function DocumentEditorPage({
                 '- STOKKE : Sleepi ชิ้นละ 500 บาท'
               }
             />
-            <div className="mt-2 space-y-0.5 text-[11.5px] leading-5 text-gray-400">
+            <div className="mt-2 space-y-0.5 text-xs leading-5 text-gray-400">
               <p>
                 ขึ้นต้นด้วย <Key>-</Key> = หัวข้อย่อย (ติดกันหลายบรรทัด =
                 รายการเดียวกัน)

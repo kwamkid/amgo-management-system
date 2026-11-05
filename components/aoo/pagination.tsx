@@ -86,7 +86,7 @@ export function Pagination({
     background: active ? "var(--accent)" : "transparent",
     color: active ? "var(--fg-on-brand, #fff)" : "var(--fg-2)",
     fontFamily: "var(--font-sans)",
-    fontSize: 13,
+    fontSize: 'var(--fs-caption)',
     fontWeight: active ? 600 : 500,
     cursor: active || disabled ? "default" : "pointer",
   });
@@ -106,7 +106,7 @@ export function Pagination({
           style={{
             padding: "0 10px",
             fontFamily: "var(--font-sans)",
-            fontSize: 13,
+            fontSize: 'var(--fs-caption)',
             color: "var(--fg-3)",
           }}
         >
@@ -121,7 +121,7 @@ export function Pagination({
                 minWidth: 24,
                 textAlign: "center",
                 color: "var(--fg-4)",
-                fontSize: 13,
+                fontSize: 'var(--fs-caption)',
               }}
             >
               …

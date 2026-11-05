@@ -449,7 +449,7 @@ export default function DeliveryMapPage() {
           label={{
             text: String(seqByPoint.get(point.id) ?? ''),
             color: '#ffffff',
-            fontSize: '12px',
+            fontSize: 'var(--fs-caption)',
             fontWeight: 'bold',
           }}
           onClick={() => setSelectedPoint(point)}

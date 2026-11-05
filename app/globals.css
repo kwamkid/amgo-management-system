@@ -268,20 +268,28 @@
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
 
-  /* ── ขนาดตัวอักษรเล็กสุด 14px (เจ้าของสั่ง 4 ก.ย. 69: "ฟอนต์เล็กมาก") ──
-     text-xs ของ Tailwind = 12px → ยกเป็น 14px เท่า text-sm · ทุกที่ที่ใช้ text-xs
-     จึงโตขึ้นเองโดยไม่ต้องไล่แก้ 400 จุด · ห้ามใช้ text-[10px]/[11px]/[12px] อีก */
-  --text-xs: 0.875rem;
-  --text-xs--line-height: 1.25rem;
-  --fs-display: 60px;
-  --fs-h1:      44px;
-  --fs-h2:      32px;
-  --fs-h3:      22px;
-  --fs-h4:      18px;
+  /* ── ขนาดตัวอักษร: ตั้งที่นี่ที่เดียว (เจ้าของ 5 พ.ย. 69) ──
+     caption 14 ป้าย/คำอธิบาย/หัวตาราง · body 16 ตัวปกติ ปุ่ม ช่องกรอก เนื้อหา
+     h4 18 หัวข้อย่อย · h3 22 หัวข้อ · stat 26 ตัวเลขสถิติ · h2 32 · h1 44 · display 60
+     ห้ามเขียนขนาดเองในหน้า ใช้ token นี้หรือ text-xs (14) text-sm/base (16) ที่ผูกกับ token แล้ว */
+  --fs-caption: 14px;
   --fs-body:    16px;
-  --fs-small:   14px;
-  --fs-meta:    14px; /* เล็กสุด 14 (เดิม 13) */
-  --fs-micro:   14px; /* เล็กสุด 14 (เดิม 12) */
+  --fs-h4:      18px;
+  --fs-h3:      22px;
+  --fs-stat:    26px;
+  --fs-h2:      32px;
+  --fs-h1:      44px;
+  --fs-display: 60px;
+  --fs-small:   var(--fs-caption);
+  --fs-meta:    var(--fs-caption);
+  --fs-micro:   var(--fs-caption);
+
+  --text-xs: var(--fs-caption);
+  --text-xs--line-height: 1.25rem;
+  --text-sm: var(--fs-body);
+  --text-sm--line-height: 1.5rem;
+  --text-base: var(--fs-body);
+  --text-lg: var(--fs-h4);
 
   --lh-tight:  1.15;
   --lh-snug:   1.3;
@@ -768,7 +776,7 @@ input, textarea { font-family: var(--font-sans); }
 .aoo-segmented__opt {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 12px; border: 0; border-radius: 6px; background: transparent;
-  font-size: 14px; color: var(--fg-3); white-space: nowrap; cursor: pointer;
+  font-size: var(--fs-body); color: var(--fg-3); white-space: nowrap; cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .aoo-segmented__opt:hover:not(:disabled) { color: var(--fg-1); }
@@ -783,7 +791,7 @@ input, textarea { font-family: var(--font-sans); }
   --notch: 12px;
   flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 44px; padding: 0 calc(var(--notch) + 6px); margin-left: calc(var(--notch) * -1 + 3px);
-  border: 0; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  border: 0; font-size: var(--fs-body); font-weight: 600; white-space: nowrap; cursor: pointer;
   clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
@@ -841,10 +849,10 @@ input, textarea { font-family: var(--font-sans); }
   color: var(--tone-on);
   text-align: left;
 }
-.aoo-stat__label { font-size: 14px; font-weight: 500; opacity: 0.9; }
-.aoo-stat__value { font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.aoo-stat__label { font-size: var(--fs-caption); font-weight: 500; opacity: 0.9; }
+.aoo-stat__value { font-size: var(--fs-stat); font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .aoo-stat__unit,
-.aoo-stat__hint { font-size: 13px; opacity: 0.8; }
+.aoo-stat__hint { font-size: var(--fs-caption); opacity: 0.8; }
 .aoo-stat__icon {
   display: flex;
   align-items: center;
@@ -863,8 +871,8 @@ input, textarea { font-family: var(--font-sans); }
   .aoo-stat-grid[data-compact] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
   .aoo-stat-grid[data-compact] .aoo-stat { padding: 10px 12px; }
   .aoo-stat-grid[data-compact] .aoo-stat__icon { display: none; }
-  .aoo-stat-grid[data-compact] .aoo-stat__label { font-size: 12px; }
-  .aoo-stat-grid[data-compact] .aoo-stat__value { font-size: 22px; }
+  .aoo-stat-grid[data-compact] .aoo-stat__label { font-size: var(--fs-caption); }
+  .aoo-stat-grid[data-compact] .aoo-stat__value { font-size: var(--fs-h3); }
 }
 .aoo-stat[data-variant="soft"] .aoo-stat__icon { background: var(--bg-surface); color: var(--tone-ink); }
 button.aoo-stat { cursor: pointer; transition: filter var(--dur-fast) var(--ease-out); }
@@ -884,17 +892,17 @@ button.aoo-stat:active { filter: brightness(0.88); }
 .aoo-trend__line { fill: none; stroke: var(--tone); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 .aoo-trend__raw { fill: none; stroke: var(--tone); stroke-width: 1.25; opacity: 0.4; vector-effect: non-scaling-stroke; }
 .aoo-trend__guide { stroke: var(--fg-3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
-.aoo-trend__ymax { position: absolute; left: 0; top: -2px; font-size: 12px; color: var(--fg-3); }
-.aoo-trend__axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__ymax { position: absolute; left: 0; top: -2px; font-size: var(--fs-caption); color: var(--fg-3); }
+.aoo-trend__axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--fs-caption); color: var(--fg-3); }
 .aoo-trend__tip {
   position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
   padding: 4px 8px; border-radius: var(--r-sm); background: var(--fg-1); color: var(--bg-surface);
-  font-size: 12px; line-height: 1.4; box-shadow: var(--shadow-md); z-index: 2;
+  font-size: var(--fs-caption); line-height: 1.4; box-shadow: var(--shadow-md); z-index: 2;
 }
-.aoo-trend__legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
+.aoo-trend__legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 6px; font-size: var(--fs-caption); color: var(--fg-3); }
 .aoo-trend__swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; background: var(--tone); flex-shrink: 0; }
 /* ป้ายช่วงใน legend — ชื่อหนา อ่านง่าย · วันที่ตัวเล็กจางต่อท้าย (เจ้าของบอกเดิมดูไม่ออก 8 ต.ค. 69) */
-.aoo-trend__key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--fg-1); }
+.aoo-trend__key { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--fg-1); }
 .aoo-trend__key b { font-weight: 700; }
 /* ชื่อปีเป็นสีเดียวกับแท่งของปีนั้น — ปีนี้ = สีเรื่อง · ปีที่แล้ว/ก่อนหน้า = เทา */
 .aoo-trend__key b[data-kind="cur"] { color: var(--tone-ink); }
@@ -902,7 +910,7 @@ button.aoo-stat:active { filter: brightness(0.88); }
 /* วันที่ก็สีเดียวกับปีของมัน (เจ้าของ: ปีนี้วันที่สีแดงเลย) */
 .aoo-trend__dates[data-kind="cur"] { color: var(--tone-ink); }
 .aoo-trend__dates[data-kind="cmp"] { color: var(--warm-600); }
-.aoo-trend__dates { font-size: 12px; color: var(--fg-3); }
+.aoo-trend__dates { font-size: var(--fs-caption); color: var(--fg-3); }
 .aoo-trend__swatch[data-kind="raw"] { opacity: 0.35; }
 /* ช่วงเทียบ (ช่วงก่อน / ปีก่อน) — แท่งคู่: เทียบ = เทา (เจ้าของเลือก 8 ต.ค. 69) · ช่วงนี้ = สีของเรื่อง */
 .aoo-trend__bar--cmp { fill: var(--warm-400); opacity: 0.55; }
@@ -919,41 +927,41 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 .aoo-trend__toggles { display: inline-flex; gap: 6px; margin-left: auto; }
 .aoo-trend__toggle {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px;
-  border: 1px solid var(--border-1); background: var(--bg-surface); color: var(--fg-3); font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border-1); background: var(--bg-surface); color: var(--fg-3); font-size: var(--fs-caption); cursor: pointer;
 }
 .aoo-trend__toggle[aria-pressed="true"] { border-color: var(--tone); color: var(--tone-ink); background: var(--tone-soft); font-weight: 600; }
 /* ตัวเลขขึ้น/ลงเล็ก ๆ ใต้ค่าในตาราง — <span class="aoo-delta" data-tone="success|danger|muted"> */
-.aoo-delta { font-size: 12px; color: var(--tone-ink); }
+.aoo-delta { font-size: var(--fs-caption); color: var(--tone-ink); }
 .aoo-delta[data-tone="muted"] { color: var(--fg-3); }
 .aoo-delta[data-tone="success"] { color: var(--trend-up); font-weight: 600; }
 .aoo-delta[data-tone="danger"]  { color: var(--trend-down); font-weight: 600; }
 /* ตัวเลขอันดับ "#4" — สีตามทิศ: ขึ้น = เขียวสด · ลง = แดง · เท่าเดิม = สีปกติ */
-.aoo-rank { font-size: 16px; font-weight: 700; color: var(--fg-1); }
+.aoo-rank { font-size: var(--fs-body); font-weight: 700; color: var(--fg-1); }
 .aoo-rank[data-tone="success"] { color: var(--trend-up); }
 .aoo-rank[data-tone="danger"]  { color: var(--trend-down); }
 /* ยังไม่ติดจริง (โผล่บางครั้ง / ไม่ติด) — สีจาง ให้รู้ว่าเลขนี้ยังเชื่อไม่ได้ */
 .aoo-rank[data-tone="muted"], .aoo-delta[data-tone="muted"] { color: var(--fg-3); font-weight: 600; }
 /* เนื้อหา popover ของป้าย AI / หลักฐานอันดับ */
-.aoo-pop { font-size: 13px; line-height: 1.55; color: var(--fg-2); }
+.aoo-pop { font-size: var(--fs-body); line-height: 1.55; color: var(--fg-2); }
 .aoo-pop__title { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--fg-1); margin-bottom: 4px; }
 .aoo-pop__row { display: flex; gap: 6px; }
 .aoo-pop__label { flex-shrink: 0; width: 64px; color: var(--fg-3); }
 .aoo-pop__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-.aoo-pop__chip { padding: 1px 6px; border-radius: 6px; background: var(--warm-100); font-size: 12px; }
+.aoo-pop__chip { padding: 1px 6px; border-radius: 6px; background: var(--warm-100); font-size: var(--fs-caption); }
 .aoo-pop__chip[data-ours] { background: var(--leaf-100); color: var(--leaf-700); font-weight: 700; }
 
 /* คิวงานลอยมุมขวาล่าง (เช็คอันดับ SEO) — พื้นเข้มแบบ toast ไม่ใช้เงา · ปิดแล้วย่อเป็นปุ่มกลม */
 .aoo-queue {
   position: fixed; right: 24px; bottom: 24px; z-index: 900;
   width: min(360px, calc(100vw - 32px)); padding: 12px 14px;
-  border-radius: var(--r-lg); background: var(--warm-900); color: var(--fg-on-dark); font-size: 13px;
+  border-radius: var(--r-lg); background: var(--warm-900); color: var(--fg-on-dark); font-size: var(--fs-caption);
 }
 .aoo-queue__head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.aoo-queue__meta { margin-top: 6px; font-size: 12px; opacity: 0.72; line-height: 1.5; }
+.aoo-queue__meta { margin-top: 6px; font-size: var(--fs-caption); opacity: 0.72; line-height: 1.5; }
 .aoo-queue__foot { margin-top: 8px; display: flex; justify-content: flex-end; }
 .aoo-queue__close { margin-left: auto; padding: 4px; border-radius: 6px; color: inherit; opacity: 0.7; }
 .aoo-queue__close:hover { opacity: 1; background: rgba(255, 255, 255, 0.1); }
-.aoo-queue__link { font-size: 12px; font-weight: 600; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.aoo-queue__link { font-size: var(--fs-caption); font-weight: 600; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .aoo-queue-fab {
   position: fixed; right: 24px; bottom: 24px; z-index: 900;
   width: 48px; height: 48px; border-radius: 9999px; display: grid; place-items: center;
@@ -961,7 +969,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 }
 .aoo-queue-fab__badge {
   position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px;
-  border-radius: 9999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+  border-radius: 9999px; background: var(--accent); color: #fff; font-size: var(--fs-caption); font-weight: 700;
   display: grid; place-items: center;
 }
 @media (max-width: 640px) {
@@ -983,11 +991,11 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 }
 .aoo-people-strip__count {
   position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px;
-  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  display: grid; place-items: center; font-size: var(--fs-caption); font-weight: 700;
   background: var(--warm-600); color: #fff; border: 2px solid var(--bg-surface);
 }
 .aoo-people-strip__count[data-overdue] { background: var(--accent); }
-.aoo-people-strip__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-2); }
+.aoo-people-strip__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); color: var(--fg-2); }
 .aoo-people-strip__item[aria-checked="true"] .aoo-people-strip__name { color: var(--fg-1); font-weight: 700; }
 
 /* ตัวกรองในหน้าต่างมือถือ (FilterBar) — เรียงลงทีละช่อง เต็มความกว้าง (FilterSelect กำหนด width เป็น inline) */
@@ -1004,14 +1012,14 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 .aoo-answer {
   max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
   padding: 10px 12px; border-radius: var(--r-md); background: var(--warm-50); border: 1px solid var(--warm-150);
-  font-size: 13px; line-height: 1.6; color: var(--fg-2);
+  font-size: var(--fs-caption); line-height: 1.6; color: var(--fg-2);
 }
 /* ป้ายสถานะมีไอคอน (SEO: ติดจริงไหม · AI อ้างเราไหม) — สีตาม data-tone · ไม่มีพื้น อ่านง่ายในตาราง */
-.aoo-status { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; color: var(--tone-ink); }
+.aoo-status { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--tone-ink); }
 .aoo-status[data-tone="neutral"] { color: var(--fg-3); font-weight: 500; }
-.aoo-status--sm { font-size: 12px; gap: 4px; }
+.aoo-status--sm { font-size: var(--fs-caption); gap: 4px; }
 /* แถบคำอธิบายสัญลักษณ์ใต้ตัวกรอง */
-.aoo-legend { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: var(--fg-3); }
+.aoo-legend { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: var(--fs-caption); color: var(--fg-3); }
 /* ตัวใหญ่อ่านง่าย (หัวหน้าแผนสั่งของ) · ช่องสีของแต่ละข้อ = --swatch */
 .aoo-legend--md { margin-top: 0; gap: 6px 16px; font-size: var(--fs-meta); color: var(--fg-2); }
 .aoo-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -1019,12 +1027,12 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 /* จำนวนคำติดหน้าแรก (หน้ารายการ SEO) */
 .aoo-kw-top { color: var(--trend-up); font-weight: 700; }
 /* รายการคำถาม/คำค้นใน modal AI อ้างเรา — bullet ทีละบรรทัด · สีตามกลุ่ม (ยังไม่พูดถึงเรา = แดง) */
-.aoo-ai-list { list-style: disc; padding-left: 22px; display: grid; gap: 4px; font-size: 14px; line-height: 1.5; color: var(--fg-1); }
+.aoo-ai-list { list-style: disc; padding-left: 22px; display: grid; gap: 4px; font-size: var(--fs-body); line-height: 1.5; color: var(--fg-1); }
 .aoo-ai-list li::marker { color: var(--tone); }
 .aoo-ai-list[data-tone="danger"] li { color: var(--tone-ink); }
-.aoo-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--fg-1); margin-bottom: 2px; }
+.aoo-section-title { display: flex; align-items: center; gap: 8px; font-size: var(--fs-body); font-weight: 700; color: var(--fg-1); margin-bottom: 2px; }
 /* ป้ายแหล่งข้อมูลข้างหัวข้อ (เช่น Search Console) */
-.aoo-source-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--border-1); background: var(--bg-surface); font-size: 12px; font-weight: 600; color: var(--fg-2); }
+.aoo-source-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--border-1); background: var(--bg-surface); font-size: var(--fs-caption); font-weight: 600; color: var(--fg-2); }
 .aoo-favicon { display: inline-block; flex-shrink: 0; border-radius: 4px; vertical-align: middle; }
 .aoo-spark { display: block; width: 100%; height: 36px; }
 .aoo-spark polyline { fill: none; stroke: var(--tone); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
@@ -1046,7 +1054,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
  * แต่ละเมนูมี data-tone ของตัวเอง (เช็คอิน=ฟ้า · ลา=ม่วง · เบิก=เขียว …) ไอคอนอยู่ในชิปสีอ่อน
  * หน้าที่เปิดอยู่ = พื้นสีเต็มของเรื่องนั้น ตัวหนังสือขาว · เมนูย่อยไม่มีไอคอน เป็นรายการบาง ๆ บนเส้นสีเดียวกัน
  * ห้ามใส่ box-shadow — เจ้าของบอกเงาทำให้ดูหม่น */
-.aoo-nav-section { padding: 0 10px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--fg-4); }
+.aoo-nav-section { padding: 0 10px 6px; font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.04em; color: var(--fg-4); }
 .aoo-nav-item {
   display: flex;
   align-items: center;
@@ -1057,7 +1065,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   border-radius: 12px;
   background: transparent;
   color: var(--fg-1);
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -1084,7 +1092,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
 .aoo-nav-sub { margin: 2px 0 6px 23px; padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--tone, var(--accent)) 25%, transparent); display: grid; gap: 1px; }
 .aoo-nav-sub__item {
   display: block; padding: 6px 10px; border-radius: 9px;
-  color: var(--fg-3); font-size: 14px; text-decoration: none;
+  color: var(--fg-3); font-size: var(--fs-caption); text-decoration: none;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .aoo-nav-sub__item:hover:not([aria-current="page"]) { color: var(--fg-1); background: color-mix(in srgb, var(--tone, var(--accent)) 8%, transparent); }
@@ -1127,7 +1135,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   position: fixed; z-index: 60; transform: translateY(-50%);
   padding: 5px 10px; border-radius: 8px;
   background: var(--bg-inverse); color: var(--bg-surface);
-  font-size: 13px; font-weight: 500; white-space: nowrap;
+  font-size: var(--fs-caption); font-weight: 500; white-space: nowrap;
   pointer-events: none;
 }
 
@@ -1159,7 +1167,7 @@ button.aoo-row, a.aoo-row { cursor: pointer; text-decoration: none; transition: 
 button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
 .aoo-row__body { flex: 1; min-width: 0; }
 .aoo-row__title { font-weight: 500; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aoo-row__meta { font-size: 13px; color: var(--fg-3); }
+.aoo-row__meta { font-size: var(--fs-body); color: var(--fg-3); }
 .aoo-row__trail { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* ==========================================================================
@@ -1207,7 +1215,7 @@ button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
   width: 100%;
   text-align: left;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--fs-body);
   color: var(--fg-1);
   background: transparent;
   border: none;
@@ -1344,19 +1352,19 @@ button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
 .aoo-btn--sm {
   height: 32px;
   padding-inline: 12px;
-  font-size: 14px;
+  font-size: var(--fs-caption);
   gap: 6px;
 }
 .aoo-btn--md {
   height: 40px;
   padding-inline: 16px;
-  font-size: 16px; /* = --fs-body, the regular/standard control size */
+  font-size: var(--fs-body); /* = --fs-body, the regular/standard control size */
   gap: 8px;
 }
 .aoo-btn--lg {
   height: 48px;
   padding-inline: 20px;
-  font-size: 18px;
+  font-size: var(--fs-h4);
   gap: 10px;
 }
 
@@ -1648,7 +1656,7 @@ div.aoo-accounts-grid {
 
 /* Small-caps section heading. Use on a <div> or <span> above a list/card. */
 .t-eyebrow {
-  font-size: 14px; /* เล็กสุด 14 */
+  font-size: var(--fs-caption); /* เล็กสุด 14 */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2235,9 +2243,9 @@ div.aoo-accounts-grid {
 
 /* คลาส .ty-* ใช้อยู่หลายหน้า — ผูกเข้ากับสเกลใหม่ให้เปลี่ยนตามอัตโนมัติ */
 .ty-h1 { font-size: var(--fs-h2); font-weight: 700; line-height: var(--lh-snug); letter-spacing: -0.01em; }
-.ty-h2 { font-size: 28px; font-weight: 600; line-height: var(--lh-snug); }
+.ty-h2 { font-size: var(--fs-stat); font-weight: 600; line-height: var(--lh-snug); }
 .ty-h3 { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-snug); }
-.ty-h4 { font-size: 20px; font-weight: 600; line-height: var(--lh-snug); }
+.ty-h4 { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-snug); }
 .ty-h5 { font-size: var(--fs-h4); font-weight: 600; line-height: var(--lh-snug); }
 
 .ty-body-lg { font-size: var(--fs-h4); font-weight: 400; line-height: var(--lh-loose); }
@@ -2320,10 +2328,10 @@ button:disabled,
 .aoo-kanban__col[data-over] { border-color: var(--tone); }
 .aoo-kanban__head {
   display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;
-  font-size: 14px; font-weight: 700; color: var(--tone-ink);
+  font-size: var(--fs-caption); font-weight: 700; color: var(--tone-ink);
 }
 .aoo-kanban__head > svg { color: var(--tone); }
-.aoo-kanban__count { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--fg-3); }
+.aoo-kanban__count { margin-left: auto; font-size: var(--fs-caption); font-weight: 600; color: var(--fg-3); }
 .aoo-kanban__list { display: flex; flex-direction: column; gap: 8px; min-height: 72px; }
 /* มือถือ/แท็บเล็ต: บอร์ดเต็มกรอบที่แม่ให้ คอลัมน์เลื่อนขึ้นลงในตัว — ไม่ลากทั้งหน้าเลื่อนตาม */
 @media (max-width: 1023px) {
@@ -2332,7 +2340,7 @@ button:disabled,
   .aoo-kanban__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px 4px; }
 }
 .aoo-kanban__empty {
-  margin: 0; padding: 20px 0; text-align: center; font-size: 13px; color: var(--fg-3);
+  margin: 0; padding: 20px 0; text-align: center; font-size: var(--fs-caption); color: var(--fg-3);
   border: 1px dashed var(--border-1); border-radius: var(--r-md);
 }
 
@@ -2348,7 +2356,7 @@ button:disabled,
 /* การ์ดที่ลอยตามนิ้ว */
 .aoo-task-card[data-overlay] { cursor: grabbing; border-color: var(--accent); transform: rotate(2deg) scale(1.03); }
 .aoo-task-card__title {
-  margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--fg-1);
+  margin: 0; font-size: var(--fs-body); font-weight: 600; line-height: 1.35; color: var(--fg-1);
   overflow-wrap: anywhere;
 }
 .aoo-task-card[data-done] .aoo-task-card__title { text-decoration: line-through; color: var(--fg-3); }
@@ -2358,7 +2366,7 @@ button:disabled,
 /* คน: รูป + ชื่อเล่น (components/tasks/taskUi.tsx) */
 .aoo-person {
   display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 2px;
-  border-radius: 999px; background: var(--bg-sunken); font-size: 12px; font-weight: 600; color: var(--fg-2);
+  border-radius: 999px; background: var(--bg-sunken); font-size: var(--fs-caption); font-weight: 600; color: var(--fg-2);
 }
 .aoo-person__name { white-space: nowrap; }
 .aoo-person__remove {
@@ -2377,7 +2385,7 @@ button:disabled,
 .aoo-dropzone__box[data-readonly] { border: 0; padding: 0; background: transparent; }
 .aoo-dropzone__empty {
   width: 100%; min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  border: 0; background: transparent; color: var(--fg-3); font-size: 13px; cursor: pointer;
+  border: 0; background: transparent; color: var(--fg-3); font-size: var(--fs-caption); cursor: pointer;
 }
 .aoo-dropzone[data-size="sm"] .aoo-dropzone__empty { min-height: 0; flex-direction: row; padding: 8px; }
 .aoo-dropzone__empty:hover:not(:disabled) { color: var(--fg-1); }
@@ -2394,11 +2402,11 @@ button:disabled,
 .aoo-dropzone__tile img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
 .aoo-dropzone__cover {
   position: absolute; left: 4px; bottom: 4px; padding: 1px 6px; border-radius: 999px;
-  background: var(--accent); color: var(--fg-on-brand); font-size: 11px; font-weight: 600;
+  background: var(--accent); color: var(--fg-on-brand); font-size: var(--fs-caption); font-weight: 600;
 }
 .aoo-dropzone__file {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  width: 100%; height: 100%; padding: 6px; color: var(--fg-2); font-size: 11px; text-align: center;
+  width: 100%; height: 100%; padding: 6px; color: var(--fg-2); font-size: var(--fs-caption); text-align: center;
 }
 .aoo-dropzone__file > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aoo-dropzone__pending { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg-surface); opacity: .8; }
@@ -2413,10 +2421,10 @@ button:disabled,
   border: 1.5px dashed var(--border-2); border-radius: var(--r-md); background: var(--bg-surface); color: var(--fg-3);
 }
 .aoo-dropzone__add:hover { border-color: var(--fg-3); color: var(--fg-1); }
-.aoo-dropzone__hint { margin: 4px 0 0; font-size: 12px; color: var(--fg-3); }
+.aoo-dropzone__hint { margin: 4px 0 0; font-size: var(--fs-caption); color: var(--fg-3); }
 
 /* ข้อความมีรูปแบบ (components/aoo/rich-text.tsx) — หน้าตาตอนพิมพ์ = ตอนอ่าน */
-.aoo-rich { font-size: 14px; line-height: 1.6; color: var(--fg-1); overflow-wrap: anywhere; }
+.aoo-rich { font-size: var(--fs-body); line-height: 1.6; color: var(--fg-1); overflow-wrap: anywhere; }
 .aoo-rich ul, .aoo-rich ol { margin: 4px 0; padding-left: 1.4em; }
 .aoo-rich ul { list-style: disc; }
 .aoo-rich ol { list-style: decimal; }
@@ -2466,7 +2474,7 @@ button:disabled,
 
 /* บรรทัด "งานติดอยู่ตรงไหน" บนการ์ด (lib/tasks/updates.ts statusLineText) */
 .aoo-task-card__status {
-  margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--fg-2);
+  margin: 6px 0 0; font-size: var(--fs-caption); line-height: 1.4; color: var(--fg-2);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
@@ -2474,7 +2482,7 @@ button:disabled,
 .aoo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .aoo-chip {
   padding: 5px 12px; border: 1px solid var(--border-1); border-radius: 999px;
-  background: var(--bg-surface); font-size: 13px; color: var(--fg-2); cursor: pointer; white-space: nowrap;
+  background: var(--bg-surface); font-size: var(--fs-caption); color: var(--fg-2); cursor: pointer; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .aoo-chip:hover:not(:disabled):not([aria-pressed="true"]) { border-color: var(--fg-3); color: var(--fg-1); }
@@ -2502,8 +2510,8 @@ button:disabled,
 .aoo-tiles--scroll > .aoo-tile:hover:not([aria-pressed="true"]) { border-color: transparent; background: var(--bg-sunken); }
 .aoo-tiles--scroll > .aoo-tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .aoo-tile__text { display: flex; flex-direction: column; min-width: 0; }
-.aoo-tile__label { font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--fg-1); }
-.aoo-tile__hint { font-size: 13px; line-height: 1.35; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; }
+.aoo-tile__label { font-size: var(--fs-body); font-weight: 600; line-height: 1.3; color: var(--fg-1); }
+.aoo-tile__hint { font-size: var(--fs-caption); line-height: 1.35; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; }
 .aoo-tile:not(.aoo-tile--stacked) .aoo-tile__hint { white-space: nowrap; }
 .aoo-tile__image { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-md); object-fit: contain; background: var(--bg-sunken); }
 
@@ -2522,9 +2530,9 @@ button:disabled,
   display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: auto;
   border-radius: var(--r-lg); background: rgba(255, 255, 255, .2);
 }
-.aoo-quick-card__title { margin-top: 12px; font-size: 20px; font-weight: 700; line-height: 1.25; }
-.aoo-quick-card__hint { font-size: 14px; line-height: 1.35; opacity: .9; font-variant-numeric: tabular-nums; }
-@media (min-width: 640px) { .aoo-quick-card { padding: 20px; } .aoo-quick-card__title { font-size: 22px; } }
+.aoo-quick-card__title { margin-top: 12px; font-size: var(--fs-h3); font-weight: 700; line-height: 1.25; }
+.aoo-quick-card__hint { font-size: var(--fs-caption); line-height: 1.35; opacity: .9; font-variant-numeric: tabular-nums; }
+@media (min-width: 640px) { .aoo-quick-card { padding: 20px; } .aoo-quick-card__title { font-size: var(--fs-h3); } }
 
 /* แท็บสถานะกะทัดรัด (<StatusTabs>) — ยกจาก aoocommerce หน้าคำสั่งซื้อ */
 .aoo-status-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
@@ -2538,21 +2546,21 @@ button:disabled,
 .aoo-status-tab:hover:not([aria-pressed="true"]) { filter: brightness(.97); }
 .aoo-status-tab[aria-pressed="true"] { background: var(--tone); color: var(--tone-on); }
 .aoo-status-tab[aria-pressed="true"]:hover { filter: brightness(.95); }
-.aoo-status-tab__label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; }
-.aoo-status-tab__count { display: block; font-size: 20px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.aoo-status-tab__hint { display: block; font-size: 12px; opacity: .85; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aoo-status-tab__label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: var(--fs-body); font-weight: 500; white-space: nowrap; }
+.aoo-status-tab__count { display: block; font-size: var(--fs-h3); font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.aoo-status-tab__hint { display: block; font-size: var(--fs-caption); opacity: .85; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .aoo-status-tab__image { width: 18px; height: 18px; border-radius: 4px; object-fit: contain; background: var(--bg-surface); }
 .aoo-status-tab--compact { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 12px; border-radius: var(--r-pill); }
 .aoo-status-tab__badge {
   min-width: 22px; padding: 0 7px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .55);
-  font-size: 13px; font-weight: 700; line-height: 20px; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-caption); font-weight: 700; line-height: 20px; font-variant-numeric: tabular-nums;
 }
 .aoo-status-tab[aria-pressed="true"] .aoo-status-tab__badge { background: rgba(255, 255, 255, .25); }
 
 /* ช่องเงินในตาราง (<MoneyInput variant="cell">) — หน้าเงินเดือน · แก้ข้อมูลหลายคน */
 .aoo-money-cell {
   height: 32px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: var(--r-md);
-  background: var(--bg-surface); color: var(--fg-1); font-family: var(--font-sans); font-size: 14px;
+  background: var(--bg-surface); color: var(--fg-1); font-family: var(--font-sans); font-size: var(--fs-caption);
   font-variant-numeric: tabular-nums; text-align: right; outline: none;
   transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
@@ -2570,7 +2578,7 @@ button:disabled,
 }
 .aoo-lightbox__content { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; max-height: 100%; }
 .aoo-lightbox__media { display: block; max-width: 100%; max-height: calc(100dvh - 96px); object-fit: contain; border-radius: var(--r-md); }
-.aoo-lightbox__note { padding: 6px 14px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .92); font-size: 13px; text-align: center; }
+.aoo-lightbox__note { padding: 6px 14px; border-radius: var(--r-pill); background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .92); font-size: var(--fs-caption); text-align: center; }
 .aoo-lightbox__btn {
   position: absolute; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); color: #fff; cursor: pointer;
@@ -2582,28 +2590,58 @@ button:disabled,
 .aoo-lightbox__nav--next { right: 16px; }
 .aoo-lightbox__counter {
   position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-  padding: 6px 14px; border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 600;
+  padding: 6px 14px; border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font-size: var(--fs-caption); font-weight: 600;
 }
 
 /* ไทม์ไลน์ความคืบหน้า (components/tasks/TaskTimeline.tsx) */
 /* ฟอร์มเพิ่มรายการ — ไม่มีกล่องซ้อน (การ์ดในการ์ดเบียดบนมือถือ) ปุ่มบันทึกอยู่ท้ายหน้าต่างเหมือนแท็บรายละเอียด */
 .aoo-timeline__composer { display: flex; flex-direction: column; gap: 14px; }
-.aoo-timeline__kind-note { margin: 6px 0 0; font-size: 13px; color: var(--fg-2); }
-.aoo-timeline__composer-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--fg-1); }
+.aoo-timeline__kind-note { margin: 6px 0 0; font-size: var(--fs-caption); color: var(--fg-2); }
+.aoo-timeline__composer-title { margin: 0; font-size: var(--fs-body); font-weight: 700; color: var(--fg-1); }
 .aoo-timeline__history { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-1); }
-.aoo-timeline__history-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg-3); }
-.aoo-timeline__due-note { margin: 0; font-size: 13px; font-weight: 600; color: var(--sun-700); }
+.aoo-timeline__history-title { margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 600; color: var(--fg-3); }
+.aoo-timeline__due-note { margin: 0; font-size: var(--fs-caption); font-weight: 600; color: var(--sun-700); }
 .aoo-timeline { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .aoo-timeline__item {
-  display: flex; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); background: var(--bg-sunken); font-size: 13px;
+  display: flex; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); background: var(--bg-sunken); font-size: var(--fs-caption);
 }
 .aoo-timeline__emoji { flex: none; line-height: 1.4; }
 .aoo-timeline__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .aoo-timeline__head { font-weight: 600; color: var(--fg-1); overflow-wrap: anywhere; }
 .aoo-timeline__body { color: var(--fg-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .aoo-timeline__dates { display: inline-flex; align-items: center; gap: 4px; }
-.aoo-timeline__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--fg-3); }
+.aoo-timeline__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-caption); color: var(--fg-3); }
 .aoo-timeline__link {
-  padding: 0; border: 0; background: none; font-size: 12px; color: var(--fg-3); cursor: pointer; text-decoration: underline;
+  padding: 0; border: 0; background: none; font-size: var(--fs-caption); color: var(--fg-3); cursor: pointer; text-decoration: underline;
 }
 .aoo-timeline__link:hover { color: var(--fg-1); }
+
+/* ตัวกรองไอคอนวงกลม (IconFilter) */
+.aoo-icon-filter { display: flex; gap: 8px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+.aoo-icon-filter__item {
+  display: grid; place-items: center; flex: none; width: 44px; height: 44px; overflow: hidden;
+  border: 2px solid var(--border-1); border-radius: 50%; background: var(--bg-surface); color: var(--fg-3); cursor: pointer;
+}
+.aoo-icon-filter__item:hover { border-color: var(--border-2); }
+.aoo-icon-filter__item[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
+/* เอกสารพิมพ์ใช้ขนาดเดิม: ตำแหน่งบนกระดาษ A4 คำนวณไว้แล้ว ขยายตามหน้าจอไม่ได้ */
+#document-sheet, #contract-sheet, #certificate-sheet {
+  --text-xs: 0.75rem; --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem; --text-sm--line-height: 1.25rem;
+  --text-base: 1rem; --text-lg: 1.125rem;
+}
+
+/* รูปคนซ้อนกันแนวนอน (AvatarStack) */
+.aoo-avatar-stack { display: inline-flex; align-items: center; flex-shrink: 0; }
+.aoo-avatar-stack > * + * { margin-left: -8px; }
+.aoo-avatar-stack__item, .aoo-avatar-stack__more { box-shadow: 0 0 0 2px var(--bg-surface); border-radius: 50%; }
+.aoo-avatar-stack__more {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  background: var(--bg-sunken); color: var(--fg-2); font-size: var(--fs-caption); font-weight: 600;
+}
+
+/* การ์ดสูงไม่เท่ากันเรียงต่อไม่เว้นช่อง (masonry) · จอแคบคอลัมน์เดียว */
+.aoo-masonry { column-gap: 16px; }
+.aoo-masonry > * { break-inside: avoid; margin-bottom: 16px; }
+@media (min-width: 1024px) { .aoo-masonry { column-count: 2; } }

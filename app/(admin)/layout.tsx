@@ -105,7 +105,7 @@ export default function AdminLayout({
                 color: "var(--fg-1)",
                 border: "1px solid var(--border-2)",
                 borderRadius: "var(--r-md)",
-                fontSize: 14,
+                fontSize: 'var(--fs-caption)',
                 boxShadow: "var(--shadow-lg)",
               },
             }}

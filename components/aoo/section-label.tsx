@@ -14,7 +14,7 @@ export function SectionLabel({ children, style }: SectionLabelProps) {
   return (
     <div
       style={{
-        fontSize: 13,
+        fontSize: 'var(--fs-caption)',
         fontWeight: 700,
         textTransform: "uppercase",
         letterSpacing: "0.05em",

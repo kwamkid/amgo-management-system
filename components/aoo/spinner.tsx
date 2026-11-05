@@ -82,7 +82,7 @@ export function Spinner({
       {label && (
         <span
           style={{
-            fontSize: 13,
+            fontSize: 'var(--fs-caption)',
             color: labelColor ?? "var(--fg-3)",
             fontWeight: 500,
             lineHeight: 1.4,

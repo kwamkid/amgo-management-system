@@ -231,7 +231,7 @@ export function UatCardView({ c, dragging, overlay }: { c: UatCase; dragging?: b
   return (
     <article className="aoo-task-card" data-dragging={dragging || undefined} data-overlay={overlay || undefined} data-done={c.status === 'closed' || undefined}>
       <div className="aoo-task-card__meta" style={{ marginBottom: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-3)' }}>{uatCode(c.no)}</span>
+        <span style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, color: 'var(--fg-3)' }}>{uatCode(c.no)}</span>
         {c.priority === 1 && <Pill tone="danger">{PRIORITY_LABELS[1]}</Pill>}
         {c.status === 'retest' && <Pill tone={STATUS_TONE.retest}>{STATUS_LABELS.retest}</Pill>}
         {c.round > 1 && <Pill>รอบ {c.round}</Pill>}

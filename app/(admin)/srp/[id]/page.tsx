@@ -270,7 +270,7 @@ function NumCell({
       disabled={disabled}
       title={disabled ? undefined : HINT}
       placeholder={placeholder}
-      className={`h-9 w-full rounded border bg-transparent px-1.5 text-right text-[15px] tabular-nums focus:bg-white focus:outline-none disabled:text-gray-400 ${
+      className={`h-9 w-full rounded border bg-transparent px-1.5 text-right text-sm tabular-nums focus:bg-white focus:outline-none disabled:text-gray-400 ${
         dirty ? DIRTY_RING : 'border-transparent focus:border-amber-300'
       } ${className}`}
     />
@@ -297,7 +297,7 @@ function TextCell({
       {...props}
       readOnly={readOnly}
       title={readOnly ? undefined : HINT}
-      className={`w-full rounded border bg-transparent px-1.5 py-1 text-[15px] focus:bg-white focus:outline-none ${
+      className={`w-full rounded border bg-transparent px-1.5 py-1 text-sm focus:bg-white focus:outline-none ${
         dirty ? DIRTY_RING : 'border-transparent focus:border-amber-300'
       } ${className}`}
     />
@@ -1154,7 +1154,7 @@ export default function SrpBrandPage() {
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         <table
           ref={tableRef}
-          className="border-collapse text-[15px]"
+          className="border-collapse text-sm"
           style={{ tableLayout: 'fixed', width: tableWidth }}
         >
           <colgroup>
@@ -2250,13 +2250,13 @@ const SrpCard = memo(function SrpCard({
       <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-2.5 text-center">
         <div>
           <p className="text-xs text-gray-400">ต้นทุนรวม</p>
-          <p className="text-[15px] font-semibold tabular-nums">{fmt(p.totalImportCost)}</p>
+          <p className="text-sm font-semibold tabular-nums">{fmt(p.totalImportCost)}</p>
         </div>
         <div>
           <p className="text-xs text-gray-400">แนะนำ</p>
           <button
             type="button"
-            className="text-[15px] tabular-nums text-sky-600"
+            className="text-sm tabular-nums text-sky-600"
             onClick={() => {
               if (!canEdit) return
               patch(

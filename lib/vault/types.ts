@@ -1,5 +1,5 @@
-// Shapes shared by /api/vault and the /vault page. No secrets in list shapes: the blob only
-// leaves the server through POST /api/vault/[id]/reveal, one account at a time, logged.
+// Shapes shared by /api/vault and the /vault page. Password and note are not in list shapes: they
+// leave the server only through POST /api/vault/[id]/reveal, one account at a time, logged.
 
 export interface VaultSecret {
   username: string
@@ -27,6 +27,9 @@ export interface VaultItem {
   name: string
   updatedAt: string
   perm: VaultPerm
+  /** decrypted for the list; absent when the row cannot be decrypted */
+  username?: string
+  otpPhone?: string
   /** admin only */
   access?: VaultGrant[]
 }

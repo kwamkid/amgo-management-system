@@ -101,7 +101,7 @@ export function GlobalQueue() {
           )
           return (
             <li key={q.id}>
-              <div className="flex items-center gap-2 text-[13px] font-semibold">
+              <div className="flex items-center gap-2 text-xs font-semibold">
                 {active ? <Loader2 size={14} className="shrink-0 animate-spin" /> : <CheckCircle2 size={14} className="shrink-0" />}
                 <span className="min-w-0 flex-1 truncate">{title}</span>
                 <span className="shrink-0 font-normal opacity-80">

@@ -174,7 +174,7 @@ export default function DeliveryLivePage() {
                     position={{ lat: d.lat, lng: d.lng }}
                     title={d.driverName}
                     onClick={() => focus(d)}
-                    label={{ text: d.driverName.slice(0, 12), color: token('--fg-1') || 'black', fontSize: '12px', fontWeight: '700' }}
+                    label={{ text: d.driverName.slice(0, 12), color: token('--fg-1') || 'black', fontSize: 'var(--fs-caption)', fontWeight: '700' }}
                     icon={{
                       path: google.maps.SymbolPath.CIRCLE,
                       fillColor: isStale ? stale : live,

@@ -299,7 +299,7 @@ export default function CheckinMapPage() {
           label={{
             text: record.userName?.charAt(0) || '?',
             color: '#ffffff',
-            fontSize: '11px',
+            fontSize: 'var(--fs-caption)',
             fontWeight: 'bold'
           }}
           onClick={() => setSelectedRecord(record)}

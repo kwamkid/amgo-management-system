@@ -2507,6 +2507,25 @@ button:disabled,
 .aoo-tile:not(.aoo-tile--stacked) .aoo-tile__hint { white-space: nowrap; }
 .aoo-tile__image { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-md); object-fit: contain; background: var(--bg-sunken); }
 
+/* การ์ดใหญ่หน้าแรก (components/dashboard/QuickActions) — พื้นสีเต็ม ตัวหนังสือตามโทน ไม่มีเงา */
+.aoo-quick-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* ใบเดียว (คนไม่ต้องเช็คอิน): มือถือเต็มแถว · จอกว้างครึ่งแถว ไม่ยืดโล่ง */
+@media (max-width: 639px) { .aoo-quick-cards[data-single] { grid-template-columns: minmax(0, 1fr); } }
+.aoo-quick-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 148px; padding: 16px;
+  border-radius: var(--r-lg); background: var(--tone); color: var(--tone-on);
+  transition: filter var(--dur-fast) var(--ease-out);
+}
+.aoo-quick-card:hover { filter: brightness(.95); }
+.aoo-quick-card:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+.aoo-quick-card__icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: auto;
+  border-radius: var(--r-lg); background: rgba(255, 255, 255, .2);
+}
+.aoo-quick-card__title { margin-top: 12px; font-size: 20px; font-weight: 700; line-height: 1.25; }
+.aoo-quick-card__hint { font-size: 14px; line-height: 1.35; opacity: .9; font-variant-numeric: tabular-nums; }
+@media (min-width: 640px) { .aoo-quick-card { padding: 20px; } .aoo-quick-card__title { font-size: 22px; } }
+
 /* แท็บสถานะกะทัดรัด (<StatusTabs>) — ยกจาก aoocommerce หน้าคำสั่งซื้อ */
 .aoo-status-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .aoo-status-tabs::-webkit-scrollbar { display: none; }

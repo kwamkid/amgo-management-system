@@ -2,10 +2,10 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { getActiveCheckIn, hasCheckedInToday } from '@/lib/services/checkinService';
-import type { CheckInRecord } from '@/types/checkin';
+import { hasCheckedInToday } from '@/lib/services/checkinService';
 import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
+import QuickActions from '@/components/dashboard/QuickActions';
 import TodoZone from '@/components/dashboard/TodoZone';
 import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import HrInbox from '@/components/dashboard/HrInbox';
@@ -15,19 +15,12 @@ import AttendanceSection from '@/components/dashboard/AttendanceSection';
 import TechLoader from '@/components/shared/TechLoader';
 import { AlertCircle, LogIn, CheckCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared'
-import { Button as AooButton, Alert, Button, TabBar, TabItem } from '@/components/aoo'
+import { Alert, Button, TabBar, TabItem } from '@/components/aoo'
 import { useEffect, useState } from 'react'
 export default function DashboardPage() {
   const [tab, setTab] = useState('birthday')
   const { userData, loading, error } = useAuth();
-  // ปุ่มบนหัวหน้าต้องรู้แค่ว่าเช็คอินอยู่ไหม — เดิมเรียก useCheckIn() ทั้งก้อน ซึ่งดึง
-  // สาขา+กะทั้งหมด และเปิด GPS หาตำแหน่งทุกครั้งที่เปิด Dashboard (30 ก.ย. 69)
-  const [currentCheckIn, setCurrentCheckIn] = useState<CheckInRecord | null>(null);
   const router = useRouter();
-  useEffect(() => {
-    if (!userData?.id) return;
-    getActiveCheckIn(userData.id).then(setCurrentCheckIn).catch(() => {});
-  }, [userData?.id]);
 
   // เปิดแอปมา (PWA เริ่มที่ /dashboard) ยังไม่ได้เช็คอินวันนี้ → พาไปหน้าเช็คอินเลย
   // หน้านั้นอ่าน GPS เองทันที เหลือกดปุ่มเดียว (เจ้าของขอ 31 ต.ค. 69)
@@ -72,6 +65,20 @@ export default function DashboardPage() {
       {/* ยังไม่มีเครื่องไหนเปิดแจ้งเตือน — ขึ้นบนสุดจนกว่าจะกดเปิด */}
       <NotifySetupCard />
 
+      <PageHeader
+        // ทักด้วยชื่อเล่น ไม่ใช่ชื่อ LINE ที่เจ้าตัวตั้งเอง
+        title={`สวัสดี ${userData.nickname || userData.fullName || 'ผู้ใช้'}`}
+        description={
+          userData.role === 'admin' ? 'ผู้ดูแลระบบ'
+          : userData.role === 'hr' ? 'ฝ่ายบุคคล'
+          : userData.role === 'manager' ? 'ผู้จัดการ'
+          : 'พนักงาน'
+        }
+      />
+
+      {/* 2 อย่างที่ทำบ่อยสุด — ต้องกดได้ทันทีตั้งแต่เปิดแอป (เจ้าของ 5 พ.ย. 69) */}
+      <QuickActions userData={userData} />
+
       {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ — ไม่มีอะไรค้างก็ไม่ขึ้น */}
       <TodoZone />
 
@@ -83,32 +90,6 @@ export default function DashboardPage() {
 
       {/* แอดมินเห็นว่าใครยังทดลองงาน ใกล้ถึงวันตัดสินหรือยัง */}
       <ProbationZone />
-
-      <PageHeader
-        // ทักด้วยชื่อเล่น ไม่ใช่ชื่อ LINE ที่เจ้าตัวตั้งเอง
-        title={`สวัสดี ${userData.nickname || userData.fullName || 'ผู้ใช้'}`}
-        description={
-          userData.role === 'admin' ? 'ผู้ดูแลระบบ'
-          : userData.role === 'hr' ? 'ฝ่ายบุคคล'
-          : userData.role === 'manager' ? 'ผู้จัดการ'
-          : 'พนักงาน'
-        }
-        actions={
-          currentCheckIn ? (
-            <AooButton variant="secondary" icon="CheckCircle2" onClick={() => router.push('/checkin')}>
-              เช็คอินแล้ว{' '}
-              {new Date(currentCheckIn.checkinTime).toLocaleTimeString('th-TH', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </AooButton>
-          ) : (
-            <AooButton icon="Clock" onClick={() => router.push('/checkin')}>
-              เช็คอิน
-            </AooButton>
-          )
-        }
-      />
 
       {/* Tabs */}
       <>

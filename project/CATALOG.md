@@ -51,12 +51,11 @@
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 5 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
-| [vault.md](jobs/doing/vault.md) | 2 | 1 | Per-account view/edit/delete grants. Every active admin has full access, including adding accounts and changin |
 
 ### jobs/done/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [2026-11.md](jobs/done/2026-11.md) | 1 | 2 | Finished topics, newest first. History only. |
+| [2026-11.md](jobs/done/2026-11.md) | 2 | 3 | Finished topics, newest first. History only. |
 
 ### knowledge/
 | File | KB | Sections | About |

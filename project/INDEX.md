@@ -32,4 +32,4 @@
 
 Closing a topic: 0 open items in its doing file → move the section to `jobs/done/<YYYY-MM>.md`, delete the doing file. Follow-ups, owner checks and UAT cases never keep a topic open. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ปิดได้หลัง <x> · ❌ ยังเหลือ N ข้อ.
 
-## Size: 19 files · biggest: `jobs/devplan.md` 131 KB · `bugs/bugs_fixed.md` 94 KB · `knowledge/learning/general.md` 59 KB
+## Size: 18 files · biggest: `jobs/devplan.md` 131 KB · `bugs/bugs_fixed.md` 94 KB · `knowledge/learning/general.md` 59 KB

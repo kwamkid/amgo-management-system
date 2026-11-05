@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (28)
+**Contents** (29)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -32,6 +32,7 @@
 - 2026-10-17 — แอป Android (Capacitor) + ทดสอบ route โดยไม่เปิด dev server
 - 2026-10-30 — Hosting a hand-made HTML tool inside the app unchanged
 - 2026-10-30 — Thai text in a print-ready PDF without font problems
+- 2026-11-05 — Traps from the vault and type scale work
 <!-- /toc -->
 
 ---
@@ -454,3 +455,11 @@ SRP Calculator มี 20 คอลัมน์ + ตรึงคอลัมน�
 - SCB account check digit: 9 digits × 4,3,2,7,6,5,4,3,2, keep each product's units digit, sum, last digit = (10 − sum mod 10) mod 10 (`isScbAccount`).
 - Owner's `next dev` (Turbopack) often keeps serving the old `app_globals_*.css` after globals.css edits (new classes missing, page JS already new). Check: fetch the stylesheet link and look for the class; `touch app/globals.css` + reload; it catches up after a while. Not a code bug — don't "fix" styles because of it.
 - Category guessing from free Thai text: keyword regex rules ordered by specificity + nearest past description by character-bigram Dice ≥ 0.6 (no word segmentation needed); measured against historical rows (90%).
+
+## 2026-11-05 — Traps from the vault and type scale work
+- `npm run types:gen` redirects with `>`, so a failed run (403, no project access) leaves `types/database.ts` empty. Generate to a scratch file first; restore with `git restore -- types/database.ts`.
+- Tailwind v4 sizes are plain CSS variables: setting `--text-sm` in `:root` moves every `text-sm` at once, and setting them back on one id (`#contract-sheet`) protects a print layout without touching that page.
+- `<ListRow onClick>` renders a `<button>`, so a checkbox inside it is invalid: use the `aside` prop.
+- Text appended to globals.css may not reach the dev server until the file is edited again; `touch` does not help.
+- A preview before import is what caught the shifted columns. Default mapping must match the real sheet, and a data row can look like a header (`Shopee` hit the `shop` word): a cell with `@` or 6+ digits means data.
+

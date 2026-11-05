@@ -3,9 +3,10 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (2)
+**Contents** (3)
 - Expenses (เบิกค่าใช้จ่าย) — since 2026-11-03
 - Home screen quick actions — since 2026-11-05
+- Password vault (รหัสบัญชี) — since 2026-11-05
 <!-- /toc -->
 
 ---
@@ -19,4 +20,10 @@
 ## Home screen quick actions — since 2026-11-05
 - **What it does:** the first screen gives staff two big cards for what they do most: check in/out (shows whether they are in, since when, or done for the day) and expenses (shows money waiting to come back). Leave and everything else stay in the menu.
 - **Limits:** staff who don't need to check in see only the expense card. If not checked in, the first open of the day still goes straight to the check-in page.
+
+## Password vault (รหัสบัญชี) — since 2026-11-05
+- **What it does:** one place for shared shop and service logins (user, password, OTP phone, note), locked per account. Admins choose who can view, edit or delete each account, one at a time or across many. People with no access do not see the account exists. Every opening, edit and permission change is logged.
+- **What it uses:** paste rows straight from a Google Sheet to import, filter by platform logo, search by platform, brand, email or phone.
+- **Limits:** logins are encrypted, so losing the key loses them. Someone with view access can still copy a password; change it when they leave. All admins have full access.
+- **Package:** internal, not sold.
 

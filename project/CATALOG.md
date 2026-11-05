@@ -13,6 +13,7 @@
 | `domains/import.md` | Import module (สั่งของนำเข้า) — 29 Oct 2026 |
 | `domains/labels.md` | Thai OCPB (สคบ.) labels — 30 Oct 2026 |
 | `domains/ui-design-system.md` | UI design system — conventions (owner, 28 Oct 2026) |
+| `domains/vault.md` | Vault (/vault): shop logins with per-account access (owner, 5 Nov 2569) |
 | `queue.md` | งานเบื้องหลังต้องใช้คิวกลาง (เจ้าของสั่ง 8 ต.ค. 69) |
 | `seo-rank-rules.md` | กติกาอันดับ + แจ้งเตือน SEO (อ่านก่อนแก้ทุกครั้ง) |
 
@@ -32,7 +33,7 @@
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 2 | 2 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 3 | 3 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
 | [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
@@ -50,6 +51,7 @@
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 5 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
+| [vault.md](jobs/doing/vault.md) | 2 | 1 | Per-account view/edit/delete grants. Every active admin has full access, including adding accounts and changin |
 
 ### jobs/done/
 | File | KB | Sections | About |
@@ -66,4 +68,4 @@
 ### knowledge/learning/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [general.md](knowledge/learning/general.md) | 58 | 28 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [general.md](knowledge/learning/general.md) | 59 | 29 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |

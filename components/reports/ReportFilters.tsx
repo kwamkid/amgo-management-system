@@ -181,7 +181,6 @@ export default function ReportFilters({
           options={[{ value: '', label: 'ทั้งหมด' }, ...locations.map((l) => ({ value: l.id, label: l.name }))]}
           placeholder="ทั้งหมด"
           clearable={false}
-          searchThreshold={8}
         />
       </FilterField>
 

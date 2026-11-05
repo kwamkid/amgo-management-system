@@ -6,7 +6,7 @@
 // ของเดิมแต่ละหน้าวาง <Pagination> เองแล้วจัดกึ่งกลางบ้าง ชิดขวาบ้าง
 // และไม่มีหน้าไหนบอกเลยว่า "กำลังดูอยู่กี่รายการจากทั้งหมดเท่าไหร่"
 
-import { Pagination, Select } from '@/components/aoo'
+import { Pagination, SelectMenu } from '@/components/aoo'
 
 export default function TableFooter({
   page,
@@ -53,14 +53,17 @@ export default function TableFooter({
 
       <div className="flex items-center gap-3">
         {onPageSizeChange && (
-          <label className="flex items-center gap-1.5 text-sm text-gray-500">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
             ต่อหน้า
-            <Select value={String(pageSize)} onChange={(e) => onPageSizeChange(Number(e.target.value))} style={{ width: 84 }} aria-label="จำนวนต่อหน้า">
-              {pageSizeOptions.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </Select>
-          </label>
+            <span className="inline-block w-[84px]">
+              <SelectMenu
+                size="sm"
+                value={String(pageSize)}
+                options={pageSizeOptions.map((n) => ({ value: String(n), label: String(n) }))}
+                onChange={(v) => v && onPageSizeChange(Number(v))}
+              />
+            </span>
+          </div>
         )}
         {pageCount > 1 && (
           <Pagination currentPage={page} pageCount={pageCount} onPageChange={onPageChange} />

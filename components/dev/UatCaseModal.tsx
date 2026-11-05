@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Image as ImageIcon, Pencil, RotateCcw, Lock, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { Button, ConfirmDialog, Field, ImageDropzone, Input, Modal, Pill, Select, StepSelect, Textarea } from '@/components/aoo'
+import { Button, ConfirmDialog, Field, ImageDropzone, Input, Modal, Pill, SelectMenu, StepSelect, Textarea } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import {
   DEVICE_LABELS,
@@ -483,26 +483,26 @@ export function CaseForm({
         <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="ทำอะไร แล้วควรเกิดอะไร" />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-        <Field label="ความสำคัญ">
-          <Select value={priority} onChange={(e) => setPriority(Number(e.target.value) as 1 | 2 | 3)}>
-            {[1, 2, 3].map((p) => (
-              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
-            ))}
-          </Select>
+        <Field label="ความสำคัญ" asDiv>
+          <SelectMenu
+            value={String(priority)}
+            options={[1, 2, 3].map((p) => ({ value: String(p), label: PRIORITY_LABELS[p] }))}
+            onChange={(v) => v && setPriority(Number(v) as 1 | 2 | 3)}
+          />
         </Field>
-        <Field label="ระบบ">
-          <Select value={environment} onChange={(e) => setEnvironment(e.target.value as UatCase['environment'])}>
-            {(Object.keys(ENV_LABELS) as UatCase['environment'][]).map((k) => (
-              <option key={k} value={k}>{ENV_LABELS[k]}</option>
-            ))}
-          </Select>
+        <Field label="ระบบ" asDiv>
+          <SelectMenu
+            value={environment}
+            options={(Object.keys(ENV_LABELS) as UatCase['environment'][]).map((k) => ({ value: k, label: ENV_LABELS[k] }))}
+            onChange={(v) => v && setEnvironment(v as UatCase['environment'])}
+          />
         </Field>
-        <Field label="อุปกรณ์">
-          <Select value={device} onChange={(e) => setDevice(e.target.value as UatCase['device'])}>
-            {(Object.keys(DEVICE_LABELS) as UatCase['device'][]).map((k) => (
-              <option key={k} value={k}>{DEVICE_LABELS[k]}</option>
-            ))}
-          </Select>
+        <Field label="อุปกรณ์" asDiv>
+          <SelectMenu
+            value={device}
+            options={(Object.keys(DEVICE_LABELS) as UatCase['device'][]).map((k) => ({ value: k, label: DEVICE_LABELS[k] }))}
+            onChange={(v) => v && setDevice(v as UatCase['device'])}
+          />
         </Field>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>

@@ -29,7 +29,7 @@ import {
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, Circle } from '@react-google-maps/api'
 import TechLoader from '@/components/shared/TechLoader'
 import { GOOGLE_MAPS_LOADER } from '@/lib/maps'
-import { DatePicker, Input, Pill, Card, CardContent, Button, IconButton, Select, Spinner, EmptyState, Alert } from '@/components/aoo'
+import { DatePicker, Input, Pill, Card, CardContent, Button, IconButton, SelectMenu, Spinner, EmptyState, Alert } from '@/components/aoo'
 const mapContainerStyle = {
   width: '100%',
   height: '100%'
@@ -422,15 +422,11 @@ export default function CheckinMapPage() {
 
           {/* Filter */}
           <div className="mt-2">
-            <Select value={filterType} onChange={(e) => ((v: any) => setFilterType(v))(e.target.value)} className="text-sm h-8">
-<option value="">ประเภท</option>
-              
-              
-                <option value="all">ทั้งหมด</option>
-                <option value="onsite">ในสถานที่</option>
-                <option value="offsite">นอกสถานที่</option>
-              
-            </Select>
+            <SelectMenu size="sm" value={filterType} options={[
+                { value: 'all', label: 'ทั้งหมด' },
+                { value: 'onsite', label: 'ในสถานที่' },
+                { value: 'offsite', label: 'นอกสถานที่' },
+              ]} onChange={(v) => v && setFilterType(v as typeof filterType)} />
           </div>
         </div>
 
@@ -486,14 +482,13 @@ export default function CheckinMapPage() {
               />
             </div>
 
-            <Select value={filterType} onChange={(e) => ((v: any) => setFilterType(v))(e.target.value)} className="h-7 text-xs w-[100px]">
-              
-              
-                <option value="all">ทั้งหมด</option>
-                <option value="onsite">ในสถานที่</option>
-                <option value="offsite">นอกสถานที่</option>
-              
-            </Select>
+            <div className="w-[120px]">
+              <SelectMenu size="sm" value={filterType} options={[
+                { value: 'all', label: 'ทั้งหมด' },
+                { value: 'onsite', label: 'ในสถานที่' },
+                { value: 'offsite', label: 'นอกสถานที่' },
+              ]} onChange={(v) => v && setFilterType(v as typeof filterType)} />
+            </div>
           </div>
 
           {/* Stats */}

@@ -3,13 +3,8 @@
 Per-account view/edit/delete grants. Every active admin has full access, including adding accounts and changing grants (owner decision, 5 Nov; first version used a vault_owners list, dropped in `20261105110000`). Secrets = one AES-256-GCM blob per account with `VAULT_SECRET_KEY`, account id as AAD. Tables have RLS on, no policies, no grants: only /api/vault touches them; reveal is the only exit and logs first. `vault_logs` is append-only by trigger.
 
 ## Resume
-Pushed in a8f23a5. Both migrations applied by the owner; `VAULT_SECRET_KEY` set in Vercel by the owner (value cannot be read back: confirm with one test account on production). API e2e 32/32 and the UI (add, reveal, grant, log, delete) checked in Chrome on 5 Nov; not checked at phone width or on production. A non-admin revealing or editing was not run on purpose (the log is append-only and would name a real employee): leave it to UAT.
+Live on production at ea79b1a, owner confirmed reveal, `/employees/bulk` and printed documents on 5 Nov. Key backed up, passwords changed, Sheet removed, staff grants set (owner, 5 Nov). UAT-0154 to 0160 on the board. No PIN step (owner). Rules: `.claude/rules/domains/vault.md`.
 
-- [ ] After the type scale push: check `/employees/bulk`, printed documents (contract, certificate) and phone width
-- [ ] Owner backs up the key outside the vault; test one account on production before adding real logins
-- [ ] 10 files still use native `Select`; several `searchThreshold={99}` still turn search off; owner to decide
-- [ ] After re-import, confirm one reveal on production (proves the Vercel key matches `.env.local`)
-- [ ] Replace hand-written vault types in `types/database.ts` with `npm run types:gen`
-- [ ] UAT cases, rules file `.claude/rules/domains/vault.md`
-- [ ] Owner moves logins from the Sheet, changes each password, deletes the Sheet
-- [ ] Decide: PIN or LINE check before reveal; not built
+- [ ] Push (uncommitted): native `Select` replaced everywhere, `searchThreshold` overrides removed, vault rules file
+- [ ] After that push, add a UAT case for the new dropdowns (leave form, UAT board, SEO settings, page-size in table footers)
+- [ ] Replace hand-written vault types with `npm run types:gen`: needs a token with access to this project. Careful, a failed run empties `types/database.ts`

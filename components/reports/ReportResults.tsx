@@ -6,7 +6,7 @@ import { Skeleton, DataTable } from '@/components/shared'
 import { useState } from 'react'
 import { Clock, ChevronLeft, ChevronRight, ClipboardList, Inbox } from 'lucide-react'
 import { format } from 'date-fns'
-import { HelpTooltip, Textarea, Input, Pill, Card, CardContent, CardHeader, CardTitle, Button, Select, TabBar, TabItem, EmptyState, Alert, Modal, Field } from '@/components/aoo'
+import { HelpTooltip, Textarea, Input, Pill, Card, CardContent, CardHeader, CardTitle, Button, SelectMenu, TabBar, TabItem, EmptyState, Alert, Modal, Field } from '@/components/aoo'
 import { createClient } from '@/lib/supabase/client'
 import { th } from 'date-fns/locale'
 import { AttendanceReportData, AttendanceReportFilters, AttendanceReportResponse } from '@/lib/services/reportService'
@@ -320,17 +320,14 @@ function PaginationControls({
       {/* Left: rows per page */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500">แสดง</span>
-        <Select
-          value={String(pageSize ?? 50)}
-          onChange={(e) => ((v) => onPageSizeChange?.(Number(v)))(e.target.value)}
-         className="h-7 w-16 text-xs">
-          
-          
-            {[20, 50, 100, 200].map(n => (
-              <option key={n} value={String(n)} className="text-xs">{n}</option>
-            ))}
-          
-        </Select>
+        <div className="w-20">
+          <SelectMenu
+            size="sm"
+            value={String(pageSize ?? 50)}
+            options={[20, 50, 100, 200].map((n) => ({ value: String(n), label: String(n) }))}
+            onChange={(v) => v && onPageSizeChange?.(Number(v))}
+          />
+        </div>
         <span className="text-xs text-gray-500">รายการ/หน้า</span>
         {pagination && (
           <span className="text-xs text-gray-400 ml-2">

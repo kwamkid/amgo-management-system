@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { Copy, Pencil, Plus, ShieldCheck, Trash2, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Alert, Button, Field, IconButton, Input, Modal, Pill, Select, Toggle, useConfirm } from '@/components/aoo'
+import { Alert, Button, Field, IconButton, Input, Modal, Pill, SelectMenu, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, PageHeader, SectionCard, SiteFavicon, TechLoader, type Column } from '@/components/shared'
 import ApiKeys from './ApiKeys'
 import {
@@ -317,29 +317,26 @@ export default function SeoSettingsPage() {
                   onChange={(e) => setBudget({ ...budget, monthlyBudgetUsd: Number(e.target.value) })}
                 />
               </Field>
-              <Field label="เช็คอันดับแบบ">
-                <Select
+              <Field label="เช็คอันดับแบบ" asDiv>
+                <SelectMenu
                   value={budget.rankDevice}
-                  onChange={(e) => setBudget({ ...budget, rankDevice: e.target.value as SeoSettings['rankDevice'] })}
-                >
-                  <option value="mobile">มือถือ (คนไทยค้นจากมือถือเป็นหลัก)</option>
-                  <option value="desktop">คอมพิวเตอร์</option>
-                </Select>
+                  options={[
+                    { value: 'mobile', label: 'มือถือ (คนไทยค้นจากมือถือเป็นหลัก)' },
+                    { value: 'desktop', label: 'คอมพิวเตอร์' },
+                  ]}
+                  onChange={(v) => v && setBudget({ ...budget, rankDevice: v as SeoSettings['rankDevice'] })}
+                />
               </Field>
               <Field
                 label="ค้นคำละกี่ครั้งต่อรอบ"
+                asDiv
                 help="ปกติ 1 ครั้งพอ — ระบบดูประวัติ 4 รอบล่าสุด + GSC ช่วยตัดสินว่าติดจริงไหม · ครั้งละ ~$0.006"
               >
-                <Select
+                <SelectMenu
                   value={String(budget.rankSamples)}
-                  onChange={(e) => setBudget({ ...budget, rankSamples: Number(e.target.value) })}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n} ครั้ง{n === 1 ? ' (แนะนำ)' : ''}
-                    </option>
-                  ))}
-                </Select>
+                  options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${n} ครั้ง${n === 1 ? ' (แนะนำ)' : ''}` }))}
+                  onChange={(v) => v && setBudget({ ...budget, rankSamples: Number(v) })}
+                />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -438,24 +435,23 @@ export default function SeoSettingsPage() {
             </Field>
             <Field
               label="GSC property"
+              asDiv
               help="แบบ Domain = sc-domain:example.com · แบบ URL-prefix = https://www.example.com/"
             >
               {access?.properties.length ? (
-                <Select
-                  value={editing.gscProperty}
-                  onChange={(e) => setEditing({ ...editing, gscProperty: e.target.value })}
-                >
-                  <option value="">— ยังไม่เลือก —</option>
-                  {/* property ที่พิมพ์ไว้เองแต่ service account ยังไม่เห็น ก็ต้องเลือกค้างไว้ได้ */}
-                  {editing.gscProperty && !access.properties.some((p) => p.siteUrl === editing.gscProperty) && (
-                    <option value={editing.gscProperty}>{editing.gscProperty} (ยังไม่มีสิทธิ์)</option>
-                  )}
-                  {access.properties.map((p) => (
-                    <option key={p.siteUrl} value={p.siteUrl}>
-                      {p.siteUrl}
-                    </option>
-                  ))}
-                </Select>
+                <SelectMenu
+                  value={editing.gscProperty || null}
+                  clearable="— ยังไม่เลือก —"
+                  placeholder="— ยังไม่เลือก —"
+                  options={[
+                    // property ที่พิมพ์ไว้เองแต่ service account ยังไม่เห็น ต้องคงไว้ในรายการ
+                    ...(editing.gscProperty && !access.properties.some((p) => p.siteUrl === editing.gscProperty)
+                      ? [{ value: editing.gscProperty, label: `${editing.gscProperty} (ยังไม่มีสิทธิ์)` }]
+                      : []),
+                    ...access.properties.map((p) => ({ value: p.siteUrl, label: p.siteUrl })),
+                  ]}
+                  onChange={(v) => setEditing({ ...editing, gscProperty: v ?? '' })}
+                />
               ) : (
                 <Input
                   value={editing.gscProperty}

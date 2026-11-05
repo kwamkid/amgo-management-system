@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_RULES } from '@/types/leave';
 import { useLeave } from '@/hooks/useLeave';
 import { calculateLeaveDays, validateLeaveRequest } from '@/lib/services/leaveService';
-import { Alert, Button, Field, Select, DatePicker, Textarea, FileDropzone, ConfirmDialog, toIso } from '@/components/aoo'
+import { Alert, Button, Field, SelectMenu, DatePicker, Textarea, FileDropzone, ConfirmDialog, toIso } from '@/components/aoo'
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
@@ -255,13 +255,14 @@ export default function LeaveRequestForm({ onSuccess }: LeaveRequestFormProps) {
             control={form.control}
             name="type"
             render={({ field }) => (
-              <Select value={field.value} onChange={(e) => field.onChange(e.target.value as LeaveType)}>
-                {Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label} (เหลือ {quota?.[value as LeaveType]?.remaining || 0} วัน)
-                  </option>
-                ))}
-              </Select>
+              <SelectMenu
+                value={field.value}
+                options={Object.entries(LEAVE_TYPE_LABELS).map(([value, label]) => ({
+                  value,
+                  label: `${label} (เหลือ ${quota?.[value as LeaveType]?.remaining || 0} วัน)`,
+                }))}
+                onChange={(v) => v && field.onChange(v as LeaveType)}
+              />
             )}
           />
         </Field>

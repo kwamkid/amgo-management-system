@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/useToast'
 import AiMentions from './AiMentions'
 import { trackQueue } from '@/lib/queue/tracker'
 import { getQueueGroup, type QueueGroupStatus } from '@/lib/services/queueService'
-import { Button, Field, IconButton, Modal, Pill, Progress, Select, Textarea, Toggle, useConfirm } from '@/components/aoo'
+import { Button, Field, IconButton, Modal, Pill, Progress, SelectMenu, Textarea, Toggle, useConfirm } from '@/components/aoo'
 import { DataTable, StatCard, StatGrid, type Column } from '@/components/shared'
 import {
   AEO_ENGINE_LABELS,
@@ -414,17 +414,11 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
         </Field>
         <Field
           label="เกี่ยวกับคำเป้าหมาย"
+          asDiv
           help="ไม่บังคับ · ผลของ AI แต่ละตัวจะไปโชว์ในตารางคำเป้าหมายของคำนั้นด้วย"
           className="mt-4"
         >
-          <Select value={linkKw} onChange={(e) => setLinkKw(e.target.value)}>
-            <option value="">— ไม่ผูก —</option>
-            {keywords.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.keyword}
-              </option>
-            ))}
-          </Select>
+          <SelectMenu value={linkKw || null} clearable="— ไม่ผูก —" placeholder="— ไม่ผูก —" options={keywords.map((k) => ({ value: k.id, label: k.keyword }))} onChange={(v) => setLinkKw(v ?? '')} />
         </Field>
       </Modal>
 
@@ -437,23 +431,18 @@ export default function AiAnswers({ site }: { site: SeoSite }) {
       >
         {detail && (
           <div className="space-y-5 text-sm">
-            <Field label="เกี่ยวกับคำเป้าหมาย">
-              <Select
-                value={detail.keywordId ?? ''}
-                onChange={async (e) => {
-                  const v = e.target.value || null
+            <Field label="เกี่ยวกับคำเป้าหมาย" asDiv>
+              <SelectMenu
+                value={detail.keywordId ?? null}
+                clearable="— ไม่ผูก —"
+                placeholder="— ไม่ผูก —"
+                options={keywords.map((k) => ({ value: k.id, label: k.keyword }))}
+                onChange={async (v) => {
                   setDetail({ ...detail, keywordId: v, keyword: keywords.find((k) => k.id === v)?.keyword ?? null })
                   await setAeoPromptKeyword(detail.id, v).catch((err) => showToast(err.message, 'error'))
                   load()
                 }}
-              >
-                <option value="">— ไม่ผูก —</option>
-                {keywords.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.keyword}
-                  </option>
-                ))}
-              </Select>
+              />
             </Field>
             {AEO_ENGINE_LABELS.map((e) => {
               const r = detail.latest[e.key]

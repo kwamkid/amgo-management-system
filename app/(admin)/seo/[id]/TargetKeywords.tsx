@@ -34,7 +34,7 @@ import {
   Input,
   Modal,
   Pill,
-  Select,
+  SelectMenu,
   Textarea,
   Toggle,
   useConfirm,
@@ -696,12 +696,16 @@ export default function TargetKeywords({ site }: { site: SeoSite }) {
                   placeholder="/features/chat"
                 />
               </Field>
-              <Field label="ความสำคัญ">
-                <Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
-                  <option value="1">1 · คำหลักของหน้า</option>
-                  <option value="2">2 · คำรอง</option>
-                  <option value="3">3 · ติดตามไว้ดู</option>
-                </Select>
+              <Field label="ความสำคัญ" asDiv>
+                <SelectMenu
+                  value={form.priority}
+                  options={[
+                    { value: '1', label: '1 · คำหลักของหน้า' },
+                    { value: '2', label: '2 · คำรอง' },
+                    { value: '3', label: '3 · ติดตามไว้ดู' },
+                  ]}
+                  onChange={(v) => v && setForm({ ...form, priority: v })}
+                />
               </Field>
             </>
           )}

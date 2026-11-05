@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { format, eachDayOfInterval, addDays } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select } from '@/components/aoo'
+import { Textarea, Toggle, Checkbox, Label, Input, Alert, Card, CardContent, CardHeader, CardTitle, CardDescription, Button, SelectMenu } from '@/components/aoo'
 interface HolidayFormProps {
   initialData?: Holiday
   onSubmit: (data: HolidayFormData) => Promise<boolean>
@@ -235,17 +235,11 @@ export default function HolidayForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="type">ประเภทวันหยุด</Label>
-              <Select
+              <SelectMenu
                 value={formData.type}
-                onChange={(e) => ((value: Holiday['type']) => setFormData({...formData, type: value}))(e.target.value as 'public' | 'company' | 'special')}
-              >
-                
-                
-                  {Object.entries(HOLIDAY_TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                
-              </Select>
+                options={Object.entries(HOLIDAY_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                onChange={(v) => v && setFormData({ ...formData, type: v as Holiday['type'] })}
+              />
             </div>
             
             <div className="flex items-center gap-4 mt-6">

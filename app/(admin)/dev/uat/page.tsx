@@ -8,8 +8,8 @@ import Link from 'next/link'
 import { FlaskConical, Plus, Settings2, UserPlus, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Card, EmptyState, Field, Input, Modal, Pill, Select, Toggle } from '@/components/aoo'
-import { PageHeader, PersonChip, TechLoader } from '@/components/shared'
+import { Button, Card, EmptyState, Field, Input, Modal, Pill, SelectMenu, Toggle } from '@/components/aoo'
+import { PageHeader, PersonChip, TechLoader, UserAvatar } from '@/components/shared'
 import { ROLE_LABELS, type DevProject, type DevRole } from '@/lib/dev/uat'
 import { createDevProject, getDevPeople, getDevProjects, removeDevMember, setDevMember, updateDevProject } from '@/lib/services/devService'
 
@@ -209,28 +209,27 @@ function ProjectModal({ project, onClose, onSaved }: { project?: DevProject; onC
                 {members.map((m) => (
                   <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ flex: 1, minWidth: 0 }}><PersonChip userId={m.userId} name={m.name} /></span>
-                    <Select value={m.role} onChange={(e) => changeRole(m.userId, e.target.value as DevRole)} style={{ width: 140 }}>
-                      {(Object.keys(ROLE_LABELS) as DevRole[]).map((r) => (
-                        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                      ))}
-                    </Select>
+                    <span className="w-[130px] shrink-0">
+                      <SelectMenu size="sm" value={m.role} options={(Object.keys(ROLE_LABELS) as DevRole[]).map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => v && changeRole(m.userId, v as DevRole)} />
+                    </span>
                     <Button variant="ghost" size="sm" icon={X} aria-label="เอาออก" onClick={() => remove(m.userId)} />
                   </div>
                 ))}
                 {members.length === 0 && <p style={{ margin: 0, color: 'var(--fg-3)', fontSize: 'var(--fs-caption)' }}>ยังไม่มีสมาชิก</p>}
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center' }}>
-                <Select value={pick} onChange={(e) => setPick(e.target.value)} style={{ flex: 1 }}>
-                  <option value="">เลือกพนักงาน…</option>
-                  {candidates.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </Select>
-                <Select value={pickRole} onChange={(e) => setPickRole(e.target.value as DevRole)} style={{ width: 130 }}>
-                  {(Object.keys(ROLE_LABELS) as DevRole[]).map((r) => (
-                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                  ))}
-                </Select>
+                <span className="min-w-0 flex-1">
+                  <SelectMenu
+                    size="sm"
+                    value={pick || null}
+                    placeholder="เลือกพนักงาน…"
+                    options={candidates.map((p) => ({ value: p.id, label: p.name, icon: <UserAvatar userId={p.id} name={p.name} size="xs" /> }))}
+                    onChange={(v) => setPick(v ?? '')}
+                  />
+                </span>
+                <span className="w-[130px] shrink-0">
+                  <SelectMenu size="sm" value={pickRole} options={(Object.keys(ROLE_LABELS) as DevRole[]).map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => v && setPickRole(v as DevRole)} />
+                </span>
                 <Button variant="secondary" size="sm" icon={UserPlus} onClick={addMember} disabled={!pick}>เพิ่ม</Button>
               </div>
             </div>

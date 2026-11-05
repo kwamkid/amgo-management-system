@@ -475,7 +475,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
             value={null}
             placeholder="→ ตั้งบริษัท"
             options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name }))}
-            searchThreshold={99}
             onChange={(v) => v && patch(selected, { company_id: v })}
           />
         </div>
@@ -486,7 +485,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
             value={null}
             placeholder="→ ตั้งหน้าที่"
             options={functions.map((f) => ({ value: f.id, label: f.name }))}
-            searchThreshold={99}
             onChange={(v) => v && applyFunction(selected, v)}
           />
         </div>
@@ -497,7 +495,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
             value={null}
             placeholder="→ ตั้งประเภท"
             options={TYPES}
-            searchThreshold={99}
             onChange={(v) => v && patch(selected, { employment_type: v as 'monthly' | 'daily' })}
           />
         </div>
@@ -508,7 +505,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
             value={null}
             placeholder="→ ตั้งสถานะ"
             options={STATUSES}
-            searchThreshold={99}
             onChange={(v) => {
               if (!v) return
               const next = v as EmploymentStatus
@@ -549,7 +545,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
               { value: 'y', label: 'ติ๊ก: นอกสถานที่ได้' },
               { value: 'n', label: 'เอาออก (WFH ดับตาม)' },
             ]}
-            searchThreshold={99}
             onChange={(v) => {
               if (!v) return
               patch(
@@ -571,7 +566,6 @@ export default function BulkEditTable({ people, companies, functions }: Props) {
               { value: 'y', label: 'ติ๊ก: WFH ได้' },
               { value: 'n', label: 'เอาออก' },
             ]}
-            searchThreshold={99}
             onChange={(v) => {
               if (!v) return
               patch(
@@ -784,7 +778,6 @@ function Cell({
             {...menuShared}
             value={row.employment_status}
             options={STATUSES}
-            searchThreshold={99}
             onChange={(v) => {
               const next = (v ?? 'active') as EmploymentStatus
               onChange(
@@ -807,7 +800,6 @@ function Cell({
             invalid={!row.company_id}
             placeholder="— ยังไม่ระบุ —"
             clearable="— ยังไม่ระบุ —"
-            searchThreshold={99}
             options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name }))}
             onChange={(v) => onChange({ company_id: v })}
           />
@@ -823,7 +815,6 @@ function Cell({
             invalid={!row.job_function_id}
             placeholder="— ยังไม่ระบุ —"
             clearable="— ยังไม่ระบุ —"
-            searchThreshold={99}
             options={functions.map((f) => ({ value: f.id, label: f.name }))}
             onChange={(v) => onChange({ job_function_id: v })}
           />
@@ -837,7 +828,6 @@ function Cell({
             {...menuShared}
             value={row.employment_type}
             options={TYPES}
-            searchThreshold={99}
             onChange={(v) => onChange({ employment_type: (v ?? 'monthly') as 'monthly' | 'daily' })}
           />
         </td>
@@ -940,7 +930,6 @@ function Cell({
             {...menuShared}
             value={row.payroll_cycle}
             options={CYCLES}
-            searchThreshold={99}
             placeholder={
               fn?.payroll_cycle
                 ? `ตามหน้าที่ (${CYCLES.find((c) => c.value === fn.payroll_cycle)?.label})`

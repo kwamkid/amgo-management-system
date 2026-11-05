@@ -420,7 +420,6 @@ export default function LeaveQuotaManagementPage() {
                 size="md"
                 value={String(year)}
                 onChange={(v) => v && setYear(Number(v))}
-                searchThreshold={99}
                 options={[-1, 0, 1].map((offset) => {
                   const y = new Date().getFullYear() + offset
                   // แสดงเป็น พ.ศ. ตามที่คนไทยใช้ แต่เก็บเป็น ค.ศ.

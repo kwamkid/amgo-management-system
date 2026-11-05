@@ -6711,6 +6711,7 @@ export type Database = {
         Returns: boolean
       }
       import_plan: { Args: { p_slug: string }; Returns: Json }
+      has_vault_access: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_finance: { Args: never; Returns: boolean }
       is_hr: { Args: never; Returns: boolean }

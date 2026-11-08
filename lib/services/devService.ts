@@ -233,7 +233,11 @@ function caseRow(input: Partial<UatCaseInput>): Record<string, unknown> {
   if (input.device !== undefined) p.device = input.device
   if (input.preparation !== undefined) p.preparation = text(input.preparation)
   if (input.steps !== undefined)
-    p.steps = input.steps.map((s) => ({ action: s.action.trim(), ...(s.expected?.trim() ? { expected: s.expected.trim() } : {}) }))
+    p.steps = input.steps.map((s) => ({
+      action: s.action.trim(),
+      ...(s.expected?.trim() ? { expected: s.expected.trim() } : {}),
+      ...(s.image ? { image: s.image } : {}), // step pictures come from Claude's tester; the form only keeps them
+    }))
       .filter((s) => s.action)
   if (input.source !== undefined) p.source = text(input.source)
   return p
@@ -290,6 +294,12 @@ async function signShots(paths: string[]): Promise<UatShot[]> {
   const { data } = await db().storage.from(SHOT_BUCKET).createSignedUrls(paths, SIGNED_TTL)
   const byPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]))
   return paths.map((path) => ({ path, url: byPath.get(path) ?? null }))
+}
+
+/** step pictures → signed URLs, keyed by path (read policy on dev-shots: first folder = case id) */
+export async function signStepImages(steps: UatStep[]): Promise<Record<string, string>> {
+  const paths = steps.map((s) => s.image).filter((p): p is string => !!p)
+  return Object.fromEntries((await signShots(paths)).filter((s) => s.url).map((s) => [s.path, s.url as string]))
 }
 
 export async function getUatResults(caseId: string): Promise<UatResult[]> {

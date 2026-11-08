@@ -439,3 +439,13 @@ dev tracker แบบ MCP (Streamable HTTP, stateless JSON-RPC) ให้ Claude
 ลงทะเบียนครั้งเดียวระดับผู้ใช้: `claude mcp add --scope user --transport http amgo-dev https://app.amgovenger.com/api/mcp/dev --header "Authorization: Bearer <AMGO_DEV_KEY>"`
 กุญแจ = กุญแจ bot API scope `dev` หรือ `superadmin` (general ตอบ 403) · สิทธิ์เท่ากับข้อ 8 · method: `initialize` · `ping` · `tools/list` · `tools/call` · batch ได้ · GET/DELETE = 405
 Tools (ชื่อ · อาร์กิวเมนต์): `uat_projects` · `uat_summary(project, status?, limit?)` · `uat_list(project, status?, limit?)` · `uat_case(no)` (รูปเป็น signed URL 1 ชม.) · `uat_add(project, cases[])` · `uat_update(no, …fields)` · `uat_retest(no, fix_note)` · `uat_close(no)` — เนื้อหาเหมือน 8.1–8.5 · โค้ด `lib/mcp/devTools.ts` + `app/api/mcp/dev/route.ts`
+
+## 8. Dev tracker: step reference pictures (dev key · 9 Nov 2569)
+
+A UAT step can carry a small picture of where to press, shown beside the step on the board (tap to enlarge).
+
+- `POST /dev/images` `{ project, data_base64, content_type }` → `{ path, preview_url }` · PNG, JPEG or WebP, max 2 MB.
+- Put `path` in `steps[].image` of `POST /dev/cases` or `PATCH /dev/cases/{no}` (`action: "update"`). Saving moves the file to `<case id>/steps/…` and stores that path. A path from another project or case is refused.
+- `GET /dev/cases/{no}` returns `steps[].image_url` (signed, 1 hour).
+- MCP (`/api/mcp/dev`): `uat_upload_image { project, data_base64, content_type }` → `{ path, preview_url }`; `uat_add` / `uat_update` accept `steps[].image`; `uat_case` returns `steps[].image_url`.
+- CLI: `node scripts/dev.mjs upload <project> <image>` prints the path; in `add <project> <cases.json>`, `steps[].image` may be a local file path (relative to the JSON file) and is uploaded first.

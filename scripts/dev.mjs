@@ -5,6 +5,9 @@
 //   node scripts/dev.mjs summary [project]          open cases + latest result (JSON)
 //   node scripts/dev.mjs list [project]             open case numbers and titles (dedupe before adding)
 //   node scripts/dev.mjs add <project> <cases.json>  insert one case or an array, prints the numbers
+//                                                    steps[].image may be a local file path (png/jpg/webp ≤ 2 MB,
+//                                                    relative to the JSON file): it is uploaded first
+//   node scripts/dev.mjs upload <project> <image>   upload one step picture, prints its path for steps[].image
 //   node scripts/dev.mjs retest <no> "<fix note>"   send back for another round
 //   node scripts/dev.mjs close <no>
 //   node scripts/dev.mjs shots <no> <out dir>       download every picture of a case
@@ -13,8 +16,8 @@
 //
 // กุญแจ: AMGO_DEV_KEY ใน /Users/ampstark/amgo-management-system/memo/bot-keys.env (scope 'dev' — ใช้ได้เฉพาะ /api/bot/dev)
 // ปลายทาง: AMGO_API_BASE ในไฟล์เดียวกัน (ค่าเริ่มต้น https://app.amgovenger.com/api/bot)
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -44,6 +47,13 @@ async function api(path, init = {}) {
   return body
 }
 const num = (no) => Number(String(no).replace(/^uat-?/i, ''))
+const IMAGE_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }
+async function upload(project, file) {
+  const type = IMAGE_TYPES[extname(file).toLowerCase()]
+  if (!type) die(`not a png/jpg/webp: ${file}`)
+  const { path } = await api('/dev/images', { method: 'POST', body: JSON.stringify({ project, content_type: type, data_base64: readFileSync(file).toString('base64') }) })
+  return path
+}
 const code = (no) => `UAT-${String(no).padStart(4, '0')}`
 
 if (cmd === 'summary' || cmd === 'list') {
@@ -59,8 +69,21 @@ if (cmd === 'summary' || cmd === 'list') {
   const [project, file] = args
   if (!project || !file) die('usage: add <project> <cases.json>')
   const input = JSON.parse(readFileSync(file, 'utf8'))
-  const { added } = await api('/dev/cases', { method: 'POST', body: JSON.stringify({ project, cases: Array.isArray(input) ? input : [input] }) })
+  const cases = Array.isArray(input) ? input : [input]
+  // steps[].image given as a local file → upload it and send the stored path instead
+  for (const c of cases) {
+    for (const s of Array.isArray(c.steps) ? c.steps : []) {
+      if (!s || typeof s.image !== 'string') continue
+      const local = isAbsolute(s.image) ? s.image : resolve(dirname(file), s.image)
+      if (existsSync(local)) s.image = await upload(project, local)
+    }
+  }
+  const { added } = await api('/dev/cases', { method: 'POST', body: JSON.stringify({ project, cases }) })
   for (const c of added) console.log(`${c.code}\t${c.title}`)
+} else if (cmd === 'upload') {
+  const [project, file] = args
+  if (!project || !file) die('usage: upload <project> <image>')
+  console.log(await upload(project, file))
 } else if (cmd === 'retest') {
   const [no, note] = args
   if (!no) die('usage: retest <no> "<fix note>"')
@@ -94,5 +117,5 @@ if (cmd === 'summary' || cmd === 'list') {
   const { projects } = await api('/dev/projects')
   for (const p of projects) console.log(`${p.slug}\t${p.open_cases} open\t${p.name}${p.is_active ? '' : '\t(inactive)'}`)
 } else {
-  die('commands: summary [project] · list [project] · add <project> <file> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects')
+  die('commands: summary [project] · list [project] · add <project> <file> · upload <project> <image> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects')
 }

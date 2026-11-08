@@ -10,7 +10,18 @@ export type DevRole = 'manager' | 'tester' | 'viewer'
 export interface UatStep {
   action: string
   expected?: string
+  /** reference picture: storage path in dev-shots, `<case id>/steps/<uuid>.<ext>` once the case is saved */
+  image?: string
 }
+
+/** step picture limits (owner 9 Nov 2569: a picture per step showing where to press) */
+export const STEP_IMAGE_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }
+export const STEP_IMAGE_MAX_BYTES = 2_000_000
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+/** freshly uploaded, not attached yet: `<project id>/<uuid>.<ext>` */
+export const STAGED_STEP_IMAGE = new RegExp(`^(${UUID})/(${UUID})\\.(png|jpg|webp)$`)
+/** attached to a case: `<case id>/steps/<uuid>.<ext>` */
+export const CASE_STEP_IMAGE = new RegExp(`^(${UUID})/steps/(${UUID})\\.(png|jpg|webp)$`)
 
 export interface DevProject {
   id: string

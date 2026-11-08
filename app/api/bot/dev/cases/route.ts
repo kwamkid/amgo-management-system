@@ -4,7 +4,8 @@
 //   คืนเลขเคสที่ได้ (UAT-0086 …) · ต่อท้ายคอลัมน์รอเทส
 import type { NextRequest } from 'next/server'
 import { apiError, apiJson, authBotApi, readJson, untyped } from '@/lib/services/bot/botApi'
-import { CASE_COLS, RESULT_COLS, devProject, parseCaseInput, toBotCase, type CaseRow, type ResultRow } from '@/lib/services/bot/botDev'
+import { CASE_COLS, RESULT_COLS, checkStepImages, devProject, insertCases, parseCaseInput, toBotCase, type CaseRow, type ResultRow } from '@/lib/services/bot/botDev'
+import type { UatStep } from '@/lib/dev/uat'
 import { uatCode, type UatStatus } from '@/lib/dev/uat'
 
 const STATUSES: UatStatus[] = ['pending', 'retest', 'passed', 'failed', 'blocked', 'closed']
@@ -64,9 +65,14 @@ export async function POST(request: NextRequest) {
   for (const raw of list) {
     const r = parseCaseInput(raw)
     if ('error' in r) return apiError(400, r.error)
+    const bad = await checkStepImages(a.caller, p.project.id, r.row.steps as UatStep[])
+    if (bad) return apiError(400, bad)
     rows.push({ ...r.row, project_id: p.project.id, created_by: a.caller.user.id, sort_order: Date.now() / 1000 + rows.length })
   }
-  const { data, error } = await untyped(a.caller.sb).from('dev_uat_cases').insert(rows).select('no, title')
-  if (error) return apiJson({ error: error.message }, 500)
-  return apiJson({ project: p.project.slug, added: (data ?? []).map((c: { no: number; title: string }) => ({ no: c.no, code: uatCode(c.no), title: c.title })) }, 201)
+  try {
+    const added = await insertCases(a.caller, rows)
+    return apiJson({ project: p.project.slug, added: added.map((c) => ({ no: c.no, code: uatCode(c.no), title: c.title })) }, 201)
+  } catch (e) {
+    return apiJson({ error: (e as Error).message }, 500)
+  }
 }

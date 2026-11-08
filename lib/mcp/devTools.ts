@@ -10,13 +10,18 @@ import {
   RESULT_COLS,
   devCaseByNo,
   devProject,
+  attachStepImages,
+  checkStepImages,
+  insertCases,
   parseCaseInput,
   signShots,
+  signStepImages,
   toBotCase,
+  uploadStepImage,
   type CaseRow,
   type ResultRow,
 } from '@/lib/services/bot/botDev'
-import { uatCode, type UatStatus } from '@/lib/dev/uat'
+import { STEP_IMAGE_MAX_BYTES, STEP_IMAGE_TYPES, uatCode, type UatStatus, type UatStep } from '@/lib/dev/uat'
 
 type Json = Record<string, unknown>
 
@@ -42,7 +47,7 @@ const CASE_SCHEMA: Json = {
     steps: {
       type: 'array',
       minItems: 1,
-      items: { type: 'object', required: ['action'], properties: { action: { type: 'string' }, expected: { type: 'string', description: 'What the tester should see' } } },
+      items: { type: 'object', required: ['action'], properties: { image: { type: 'string', description: 'Reference picture of where to press: the path returned by uat_upload_image (optional)' }, action: { type: 'string' }, expected: { type: 'string', description: 'What the tester should see' } } },
     },
     module: { type: 'string' },
     priority: { type: 'integer', enum: [1, 2, 3], description: '1 urgent · 2 normal (default) · 3 low' },
@@ -163,7 +168,27 @@ export const DEV_TOOLS: DevTool[] = [
       const r = await unwrap(devCaseByNo(caller, caseNo(args)))
       const { data } = await untyped(caller.sb).from('dev_uat_results').select(RESULT_COLS).eq('case_id', r.c.id).order('created_at', { ascending: false })
       const results = await Promise.all(((data ?? []) as ResultRow[]).map(async (x) => ({ ...x, shots: await signShots(caller, Array.isArray(x.shots) ? x.shots : []) })))
-      return { case: toBotCase(r.c, r.project), results }
+      return { case: { ...toBotCase(r.c, r.project), steps: await signStepImages(caller, r.c.steps) }, results }
+    },
+  },
+  {
+    name: 'uat_upload_image',
+    description: `Store one reference picture for a step (where to press, e.g. a small screenshot with the target boxed) and get its path. Put the path in steps[].image of uat_add or uat_update; saving the case moves it under the case. PNG, JPEG or WebP, base64, max ${STEP_IMAGE_MAX_BYTES / 1_000_000} MB: crop to the area that matters. ${PROJECT_DOC}`,
+    inputSchema: {
+      type: 'object',
+      required: ['project', 'data_base64', 'content_type'],
+      properties: {
+        project: { type: 'string' },
+        data_base64: { type: 'string', description: 'file bytes as base64 (a data: URL prefix is accepted)' },
+        content_type: { type: 'string', enum: Object.keys(STEP_IMAGE_TYPES) },
+      },
+    },
+    readOnly: false,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      const r = await uploadStepImage(caller, p.project, args.data_base64, args.content_type)
+      if ('error' in r) throw new DevToolError(r.error)
+      return { path: r.path, preview_url: r.url }
     },
   },
   {
@@ -183,11 +208,14 @@ export const DEV_TOOLS: DevTool[] = [
       for (const raw of list) {
         const parsed = parseCaseInput(raw)
         if ('error' in parsed) throw new DevToolError(parsed.error)
+        const bad = await checkStepImages(caller, p.project.id, parsed.row.steps as UatStep[])
+        if (bad) throw new DevToolError(bad)
         rows.push({ ...parsed.row, project_id: p.project.id, created_by: caller.user.id, sort_order: Date.now() / 1000 + rows.length })
       }
-      const { data, error } = await untyped(caller.sb).from('dev_uat_cases').insert(rows).select('no, title')
-      if (error) throw new DevToolError(error.message)
-      return { project: p.project.slug, added: ((data ?? []) as { no: number; title: string }[]).map((c) => ({ no: c.no, code: uatCode(c.no), title: c.title })) }
+      const added = await insertCases(caller, rows).catch((e: Error) => {
+        throw new DevToolError(e.message)
+      })
+      return { project: p.project.slug, added: added.map((c) => ({ no: c.no, code: uatCode(c.no), title: c.title })) }
     },
   },
   {
@@ -210,6 +238,13 @@ export const DEV_TOOLS: DevTool[] = [
       const parsed = parseCaseInput({ title: r.c.title, steps: r.c.steps, ...sent })
       if ('error' in parsed) throw new DevToolError(parsed.error)
       const patch = Object.fromEntries(Object.entries(parsed.row).filter(([k]) => k in sent))
+      if (patch.steps) {
+        const bad = await checkStepImages(caller, r.project.id, patch.steps as UatStep[], r.c.id)
+        if (bad) throw new DevToolError(bad)
+        patch.steps = (await attachStepImages(caller, r.c.id, patch.steps as UatStep[]).catch((e: Error) => {
+          throw new DevToolError(e.message)
+        })).steps
+      }
       const { error } = await untyped(caller.sb).from('dev_uat_cases').update(patch).eq('id', r.c.id)
       if (error) throw new DevToolError(error.message)
       return { ok: true, code: uatCode(r.c.no), updated: Object.keys(patch) }

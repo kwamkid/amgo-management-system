@@ -1,9 +1,10 @@
-// GET   /api/bot/dev/cases/{no} — เคสเต็ม + ประวัติผล (รูปเป็น signed URL 1 ชม.)
+// GET   /api/bot/dev/cases/{no} — เคสเต็ม + ประวัติผล (รูปผลและรูปประกอบขั้นตอนเป็น signed URL 1 ชม. · steps[].image_url)
 // PATCH /api/bot/dev/cases/{no} — { action: 'retest', fix_note } ส่งกลับไปเทสซ้ำ (รอบ+1) · { action: 'close' } ปิดเคส
 //   · { action: 'update', ...fields } แก้ข้อมูลเคส (title, steps, module, …)
 import type { NextRequest } from 'next/server'
 import { apiError, apiJson, authBotApi, readJson, untyped } from '@/lib/services/bot/botApi'
-import { devCaseByNo, parseCaseInput, RESULT_COLS, signShots, toBotCase, type ResultRow } from '@/lib/services/bot/botDev'
+import { attachStepImages, checkStepImages, devCaseByNo, parseCaseInput, RESULT_COLS, signShots, signStepImages, toBotCase, type ResultRow } from '@/lib/services/bot/botDev'
+import type { UatStep } from '@/lib/dev/uat'
 import { uatCode } from '@/lib/dev/uat'
 
 type Params = { params: Promise<{ no: string }> }
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const results = await Promise.all(
     ((data ?? []) as ResultRow[]).map(async (x) => ({ ...x, shots: await signShots(a.caller, Array.isArray(x.shots) ? x.shots : []) }))
   )
-  return apiJson({ case: toBotCase(r.c, r.project), results })
+  return apiJson({ case: { ...toBotCase(r.c, r.project), steps: await signStepImages(a.caller, r.c.steps) }, results })
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -40,6 +41,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const parsed = parseCaseInput({ title: r.c.title, steps: r.c.steps, ...fields })
     if ('error' in parsed) return apiError(400, parsed.error)
     patch = parsed.row
+    const steps = patch.steps as UatStep[]
+    const bad = await checkStepImages(a.caller, r.project.id, steps, r.c.id)
+    if (bad) return apiError(400, bad)
+    try {
+      patch.steps = (await attachStepImages(a.caller, r.c.id, steps)).steps
+    } catch (e) {
+      return apiJson({ error: (e as Error).message }, 500)
+    }
   } else {
     return apiError(400, 'action ต้องเป็น retest, close หรือ update')
   }

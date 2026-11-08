@@ -32,6 +32,7 @@ import {
   retestUatCase,
   updateUatCase,
   type UatCaseInput,
+  signStepImages,
 } from '@/lib/services/devService'
 
 const RESULT_TONE = { passed: 'success', failed: 'danger', blocked: 'warning' } as const
@@ -130,14 +131,7 @@ export default function UatCaseModal({
           )}
           <div>
             <h4 style={{ margin: '0 0 8px', fontSize: 'var(--fs-caption)', fontWeight: 700 }}>ขั้นตอน</h4>
-            <ol style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 10 }}>
-              {c.steps.map((s, i) => (
-                <li key={i}>
-                  <div style={{ fontWeight: 600 }}>{s.action}</div>
-                  {s.expected && <div style={{ color: 'var(--fg-2)', fontSize: 'var(--fs-caption)' }}>ควรเห็น: {s.expected}</div>}
-                </li>
-              ))}
-            </ol>
+            <StepList steps={c.steps} />
           </div>
           {c.source && <p style={{ margin: 0, fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>ที่มา: {c.source}</p>}
         </div>
@@ -163,6 +157,49 @@ export default function UatCaseModal({
         <ManagerPanel c={c} presetRetest={presetRetest} sortOrder={sortOrder} onChanged={done} onGone={() => onClose(true)} />
       )}
     </Modal>
+  )
+}
+
+/** ขั้นตอน + รูปประกอบเล็กข้างขวา (Claude ผู้เทสแนบมา ชี้ว่ากดตรงไหน) · แตะรูปเพื่อขยาย */
+function StepList({ steps }: { steps: UatStep[] }) {
+  const [urls, setUrls] = useState<Record<string, string>>({})
+  const [open, setOpen] = useState<number | null>(null)
+  const key = steps.map((s) => s.image ?? '').join('|')
+  useEffect(() => {
+    if (!key.replace(/\|/g, '')) return
+    signStepImages(steps).then(setUrls).catch(() => setUrls({}))
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  const pictures = steps.map((s) => (s.image ? urls[s.image] : undefined)).filter((u): u is string => !!u)
+  return (
+    <>
+      <ol style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 10 }}>
+        {steps.map((s, i) => {
+          const url = s.image ? urls[s.image] : undefined
+          return (
+            <li key={i}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>{s.action}</div>
+                  {s.expected && <div style={{ color: 'var(--fg-2)', fontSize: 'var(--fs-caption)' }}>ควรเห็น: {s.expected}</div>}
+                </div>
+                {url && (
+                  <button
+                    type="button"
+                    aria-label={`ขยายรูปประกอบขั้นตอนที่ ${i + 1}`}
+                    onClick={() => setOpen(pictures.indexOf(url))}
+                    style={{ padding: 0, border: 0, background: 'none', flexShrink: 0, cursor: 'zoom-in' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- signed URL */}
+                    <img src={url} alt="" loading="lazy" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-md)', border: '1px solid var(--border-1)' }} />
+                  </button>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+      {open !== null && <Lightbox urls={pictures} index={open} onClose={() => setOpen(null)} />}
+    </>
   )
 }
 

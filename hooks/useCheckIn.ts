@@ -255,10 +255,17 @@ export function useCheckIn(): UseCheckInReturn {
       // กรอกใบเอง (schedule_exceptions มี 0 แถวมาตลอดทั้งที่มี UI ให้กรอก)
       // เจ้าของทัก 16 ส.ค. 69: "เค้าไปทำงานก่อน แล้วกดเช็คอิน แล้วมันค่อยขึ้นว่าวันหยุดเค้า"
       // fire-and-forget — ถามไม่ขึ้นก็ไม่กระทบการเช็คอิน
+      // Skip when a swap for today is already filed (pending/approved) — the
+      // prompt can't be dismissed and createSwap rejects the duplicate, so
+      // people who swapped in advance got trapped and couldn't check out.
+      // Same rule as fetchCurrentStatus (mode 'off' && !swapFiled).
+      const today = new Date()
       import('@/lib/services/scheduleSwapService')
-        .then(({ expectedMode }) => expectedMode(userData.id!, new Date()))
-        .then((mode) => {
-          if (mode === 'off') setSwapPromptDate(new Date())
+        .then(({ expectedMode, hasSwapFor }) =>
+          Promise.all([expectedMode(userData.id!, today), hasSwapFor(userData.id!, today)])
+        )
+        .then(([mode, filed]) => {
+          if (mode === 'off' && !filed) setSwapPromptDate(today)
         })
         .catch(() => {})
 

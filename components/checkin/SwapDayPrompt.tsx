@@ -58,7 +58,15 @@ export default function SwapDayPrompt({
       showToast('ยื่นใบสลับวันหยุดแล้ว รอ HR อนุมัติ', 'success')
       onDone()
     } catch (e) {
-      showToast((e as Error).message, 'error')
+      const msg = (e as Error).message
+      // A swap for this day already exists → nothing left to ask; close so the
+      // person isn't stuck behind an undismissable modal (can't check out).
+      if (msg.includes('มีใบสลับวันหยุดที่ใช้วันนี้อยู่แล้ว')) {
+        showToast('มีใบสลับวันหยุดของวันนี้อยู่แล้ว', 'success')
+        onDone()
+        return
+      }
+      showToast(msg, 'error')
     } finally {
       setSaving(false)
     }

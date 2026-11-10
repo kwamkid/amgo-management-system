@@ -22,6 +22,7 @@
 | Bug found, not fixed | `bugs/bugs.md` | `## YYYY-MM-DD · area · symptom` |
 | Bug fixed: symptom → root cause → fix | `bugs/bugs_fixed.md` | new entry on top · grep, never read whole |
 | Lesson / technique / trap | `knowledge/learning/<topic>.md` | seen twice → rule in `.claude/rules/` |
+| Optimization done (1,000-row · speed · shared code · design · mobile) | `knowledge/optimized.md` | team-optimizer greps before review · one line each, newest on top |
 | Hard rule, shared component / service registry | `.claude/rules/<topic>.md` | outside project/ · auto-loads by `paths:` |
 | What the app can do (customer wording) | `features/app-features.md` | feeds web · content · marketing |
 | Outside systems and their status | `features/platforms.md` | by type, live / partial / planned / paused / none |
@@ -32,4 +33,4 @@
 
 Closing a topic: 0 open items in its doing file → move the section to `jobs/done/<YYYY-MM>.md`, delete the doing file. Follow-ups, owner checks and UAT cases never keep a topic open. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ปิดได้หลัง <x> · ❌ ยังเหลือ N ข้อ.
 
-## Size: 18 files · biggest: `jobs/devplan.md` 131 KB · `bugs/bugs_fixed.md` 94 KB · `knowledge/learning/general.md` 59 KB
+## Size: 18 files · biggest: `jobs/devplan.md` 131 KB · `bugs/bugs_fixed.md` 95 KB · `knowledge/learning/general.md` 59 KB

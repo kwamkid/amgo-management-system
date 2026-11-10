@@ -28,7 +28,7 @@
 | File | KB | Sections | About |
 |---|---|---|---|
 | [bugs.md](bugs/bugs.md) | 1 | 0 | One entry: `## YYYY-MM-DD · area · symptom` + what is known. Fixed → move it to `bugs_fixed.md` with root caus |
-| [bugs_fixed.md](bugs/bugs_fixed.md) | 94 | 22 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
+| [bugs_fixed.md](bugs/bugs_fixed.md) | 95 | 23 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
 
 ### features/
 | File | KB | Sections | About |
@@ -55,7 +55,7 @@
 ### jobs/done/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [2026-11.md](jobs/done/2026-11.md) | 2 | 3 | Finished topics, newest first. History only. |
+| [2026-11.md](jobs/done/2026-11.md) | 2 | 4 | Finished topics, newest first. History only. |
 
 ### knowledge/
 | File | KB | Sections | About |

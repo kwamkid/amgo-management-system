@@ -5,7 +5,8 @@
 > logged once is never re-debugged. Append-only via `/memo`.
 
 <!-- toc -->
-**Contents** (22)
+**Contents** (23)
+- 2026-11-10 — Working a swapped day off: can't check out · fixed `08232b6`
 - Database / migrations
 - หน้า bulk / เงินเดือน
 - Tests
@@ -31,6 +32,12 @@
 <!-- /toc -->
 
 ---
+
+## 2026-11-10 — Working a swapped day off: can't check out · fixed `08232b6`
+- **Symptom:** staff who filed a schedule swap in advance (worked_date = today) check in on their day off, then can't check out.
+- **Root cause:** the check-in path in [useCheckIn.ts](/hooks/useCheckIn.ts) opened the undismissable `SwapDayPrompt` on `expectedMode === 'off'` alone, without `hasSwapFor` (the page-load path checks `swapFiled`). `createSwap` then rejects the duplicate ("มีใบสลับวันหยุดที่ใช้วันนี้อยู่แล้ว"), the modal never closes and covers the checkout button. Refresh escaped it. `expected_work_mode` ignores `schedule_swaps`, so the mode is still 'off'.
+- **Fix:** check-in checks `hasSwapFor` too · [SwapDayPrompt.tsx](/components/checkin/SwapDayPrompt.tsx) closes on the duplicate error as a fallback.
+- **Lesson:** an undismissable modal needs the same "already answered?" gate on every path that opens it, plus an exit when submit says it's already done.
 
 ## Database / migrations
 

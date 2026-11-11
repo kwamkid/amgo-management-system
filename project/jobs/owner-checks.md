@@ -10,6 +10,7 @@
 ---
 
 ## 👁 Owner checks on real shops
+- Import: แป้งหมี่ opens https://amgo-management.vercel.app/import#p=STK5-stokke (after refresh) — carton boxes editable and EUR cost column visible.
 - Dev tracker: on a phone, drag a card on https://app.amgovenger.com/dev/uat/aoocommerce to ไม่ผ่าน, attach a photo, save — confirms upload + push notification to you (real device + your push subscription).
 - Hermes: Friday's 08:30 TH leave DM to หน่อย/กอล์ฟ and Edith task DMs arrive (Discord, not testable by a tester).
 - Hermes: morning brief 04:00 TH incl. the weekly (Monday) and monthly (1st) embeds — check the Discord channel.

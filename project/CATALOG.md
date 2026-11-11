@@ -33,7 +33,7 @@
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 3 | 3 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 3 | 4 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
 | [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
@@ -42,7 +42,7 @@
 | [devplan.md](jobs/devplan.md) | 131 | 52 | คิวงาน + สิ่งที่ทำเสร็จแล้ว · Append-only via `/memo` |
 | [followups.md](jobs/followups.md) | 1 | 0 | Never block closing a topic. `/todo` lists the ones due. Format: `- [ ] YYYY-MM-DD · <topic> · <check> → <acti |
 | [ideas.md](jobs/ideas.md) | 5 | 4 | Quick thoughts that don't fit devplan / learning / rules / component. |
-| [owner-checks.md](jobs/owner-checks.md) | 1 | 1 | Checks only the owner can do (real shop · real money · real device). Never block closing a topic. |
+| [owner-checks.md](jobs/owner-checks.md) | 2 | 1 | Checks only the owner can do (real shop · real money · real device). Never block closing a topic. |
 | [todo.md](jobs/todo.md) | 1 | 1 | Starting a topic = move its section to `doing/<topic>.md`. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ป |
 
 ### jobs/doing/
@@ -51,6 +51,7 @@
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 5 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
+| [stokke-order.md](jobs/doing/stokke-order.md) | 3 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
 
 ### jobs/done/
 | File | KB | Sections | About |
@@ -67,4 +68,4 @@
 ### knowledge/learning/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [general.md](knowledge/learning/general.md) | 59 | 29 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [general.md](knowledge/learning/general.md) | 60 | 30 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |

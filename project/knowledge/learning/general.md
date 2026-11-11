@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (29)
+**Contents** (30)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -33,6 +33,7 @@
 - 2026-10-30 — Hosting a hand-made HTML tool inside the app unchanged
 - 2026-10-30 — Thai text in a print-ready PDF without font problems
 - 2026-11-05 — Traps from the vault and type scale work
+- 2026-11-11 — Legacy aoo sales without MySQL
 <!-- /toc -->
 
 ---
@@ -463,3 +464,6 @@ SRP Calculator มี 20 คอลัมน์ + ตรึงคอลัมน�
 - Text appended to globals.css may not reach the dev server until the file is edited again; `touch` does not help.
 - A preview before import is what caught the shifted columns. Default mapping must match the real sheet, and a data row can look like a header (`Shopee` hit the `shop` word): a cell with `@` or 6+ digits means data.
 
+
+## 2026-11-11 — Legacy aoo sales without MySQL
+- Homebrew mysqld fails (missing abseil dylib), so stream the gz dump with a small INSERT-tuple parser (gzcat | python3) and keep only the brand's products/POS/sale-order lines — 90 MB dump in ~2 min.

@@ -6706,6 +6706,11 @@ export type Database = {
       import_can_edit: { Args: never; Returns: boolean }
       import_can_view: { Args: never; Returns: boolean }
       import_my_brands: { Args: never; Returns: string[] }
+      import_my_edit_brands: { Args: never; Returns: string[] }
+      import_round_editable: {
+        Args: { p_brand: string; p_srp: string }
+        Returns: boolean
+      }
       import_round_visible: {
         Args: { p_brand: string; p_extra: Json; p_srp: string; p_sub: string }
         Returns: boolean

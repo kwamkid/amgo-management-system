@@ -6,7 +6,7 @@ export async function GET() {
   const ctx = await importGuard()
   if (ctx instanceof NextResponse) return ctx
   try {
-    return NextResponse.json(await listRounds(ctx.sb, ctx.seeCost))
+    return NextResponse.json(await listRounds(ctx.sb, ctx))
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }

@@ -20,6 +20,8 @@ export interface ImportCtx {
   seeCost: boolean
   /** null = ทุกแบรนด์ (import_access) · brand manager = แบรนด์ที่มีสิทธิ์ SRP (ตัวเล็ก) */
   brands: string[] | null
+  /** เจ้าของแบรนด์ = SRP role editor → แก้จำนวน + เห็นทุน เฉพาะรอบของแบรนด์นี้ (ตัวเล็ก · เจ้าของ 11 พ.ย. 69) */
+  editBrands: string[]
 }
 
 /**
@@ -31,10 +33,19 @@ export async function importGuard(): Promise<ImportCtx | NextResponse> {
   const user = await verifiedUser(sb)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { data } = await sb.from('import_access').select('can_edit, see_cost').eq('user_id', user.id).maybeSingle()
-  if (data) return { sb, userId: user.id, canEdit: data.can_edit, seeCost: data.see_cost, brands: null }
-  const { data: mine } = await sb.rpc('import_my_brands')
+  if (data) return { sb, userId: user.id, canEdit: data.can_edit, seeCost: data.see_cost, brands: null, editBrands: [] }
+  const [{ data: mine }, { data: edit }] = await Promise.all([sb.rpc('import_my_brands'), sb.rpc('import_my_edit_brands')])
   if (!mine?.length) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  return { sb, userId: user.id, canEdit: false, seeCost: false, brands: mine }
+  return { sb, userId: user.id, canEdit: false, seeCost: false, brands: mine, editBrands: edit ?? [] }
+}
+
+/** สิทธิ์ในรอบเดียว — import_access ตามที่ตั้ง · เจ้าของแบรนด์ (SRP editor) แก้ + เห็นทุนรอบของแบรนด์ตัวเอง (RLS import_round_editable คุมซ้ำ) */
+export function roundRights(
+  ctx: Pick<ImportCtx, 'canEdit' | 'seeCost' | 'editBrands'>,
+  r: Pick<RoundRow, 'brand' | 'srp_brand'>
+): { canEdit: boolean; seeCost: boolean } {
+  const own = [r.brand, r.srp_brand].some((b) => !!b && ctx.editBrands.includes(b.toLowerCase()))
+  return { canEdit: ctx.canEdit || own, seeCost: ctx.seeCost || own }
 }
 
 /** brand manager ขอราคาได้เฉพาะแบรนด์ตัวเอง */
@@ -104,7 +115,7 @@ const yearOf = (r: Pick<RoundRow, 'container' | 'arrive' | 'created_at'>) =>
   r.container?.match(/^(20\d\d)/)?.[1] ?? (r.arrive ?? r.created_at).slice(0, 4)
 
 /** รายการรอบ — รูปแบบเดียวกับ /api/rounds ของ serve.mjs (path = slug) */
-export async function listRounds(sb: Sb, seeCost = true) {
+export async function listRounds(sb: Sb, ctx: Pick<ImportCtx, 'canEdit' | 'seeCost' | 'editBrands'> = { canEdit: true, seeCost: true, editBrands: [] }) {
   const { data: rounds, error } = await sb.from('import_rounds').select('*')
   if (error) throw error
   const { data: ordered, error: e2 } = await sb
@@ -116,6 +127,7 @@ export async function listRounds(sb: Sb, seeCost = true) {
   return (rounds ?? [])
     .map((r) => {
       const ord = (ordered ?? []).filter((i) => i.round_id === r.id)
+      const { seeCost } = roundRights(ctx, r)
       return {
         path: r.slug,
         brand: r.brand,
@@ -159,7 +171,7 @@ export async function listRounds(sb: Sb, seeCost = true) {
  * รอบเดียวในรูปแบบ plan.json + ทุกอย่างที่หน้าต้องใช้ในคำขอเดียว (เจ้าของ 30 ต.ค. 69: "rpc, server load ได้เลย")
  * RPC import_plan = รอบ + รายการ + โลโก้ + ราคา SRP ทุกแบรนด์ในรอบ (1 รอบเน็ตไป DB) · ราคา aoo มาจากแคช
  */
-export async function getPlan(sb: Sb, slug: string, ctx: Pick<ImportCtx, 'canEdit' | 'seeCost'> = { canEdit: true, seeCost: true }) {
+export async function getPlan(sb: Sb, slug: string, ctx: Pick<ImportCtx, 'canEdit' | 'seeCost' | 'editBrands'> = { canEdit: true, seeCost: true, editBrands: [] }) {
   const { data, error } = await sb.rpc('import_plan', { p_slug: slug })
   if (error) throw error
   if (!data) return null
@@ -182,12 +194,13 @@ export async function getPlan(sb: Sb, slug: string, ctx: Pick<ImportCtx, 'canEdi
   const missing = d.srpBrands.filter((b) => !d.srp.some((x) => x.brand === b))
 
   const extra = (r.extra && typeof r.extra === 'object' && !Array.isArray(r.extra) ? r.extra : {}) as Record<string, Json>
-  const cost = ctx.seeCost
+  const rights = roundRights(ctx, r)
+  const cost = rights.seeCost
   return {
     ...extra,
     // หน้าใช้ซ่อนคอลัมน์ทุน/ยอดเงิน และล็อกช่องจำนวน (ตัวเลขทุนถูกตัดที่นี่แล้ว ไม่ถึงเบราว์เซอร์)
     _seeCost: cost,
-    _canEdit: ctx.canEdit,
+    _canEdit: rights.canEdit,
     brand: r.brand,
     sub: r.sub,
     srpBrand: r.srp_brand ?? undefined,

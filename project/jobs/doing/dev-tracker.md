@@ -16,6 +16,7 @@
 - [ ] Archive /Users/ampstark/aoo-uat (never deployed) once the old tables are dropped.
 - [x] 2026-11-04 UAT board header on mobile: search moved to its own full-width row so the project name isn't cut to "A…" — 3db85ef (UAT-0140)
 - [x] 2026-11-04 ไกด์ set to `manager` in all 3 dev projects (DB data, not a migration) — can add/edit cases, cannot create projects (UAT-0141)
+- [x] 2026-11-11 Step reference pictures (asked by aoocommerce-cc): `steps[].image`, MCP `uat_upload_image`, bot API `POST /api/bot/dev/images`, CLI `upload`, board thumbnail + enlarge, uat_case returns `image_url` — f8594ca pushed, tested on prod end to end (throwaway UAT-0245 deleted). The new `StepList` also uses the private `Lightbox`, so the shared-Lightbox swap above covers both spots.
 - [ ] รอคุณแอม: want a comment thread on UAT cases? Today only the result "หมายเหตุ" exists (offered 4 Nov, no answer).
 - [ ] รอคุณแอม: auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
 

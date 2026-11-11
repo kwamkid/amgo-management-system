@@ -3,7 +3,8 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (4)
+**Contents** (5)
+- UAT test cases: reference picture per step — since 2026-11-09
 - Order plans: brand owners edit their own brand — since 2026-11-11
 - Expenses (เบิกค่าใช้จ่าย) — since 2026-11-03
 - Home screen quick actions — since 2026-11-05
@@ -11,6 +12,11 @@
 <!-- /toc -->
 
 ---
+
+## UAT test cases: reference picture per step — since 2026-11-09
+- Each step of a test case can carry a picture showing where to press. Testers see a small thumbnail beside the step on the board and tap it to enlarge (phone too).
+- Pictures are added by developer bots (MCP `uat_upload_image`, bot API, CLI) or kept when a case is edited on the web. PNG, JPEG or WebP, up to 2 MB each.
+- **Package:** internal, not sold.
 
 ## Order plans: brand owners edit their own brand — since 2026-11-11
 - Staff who own a brand in the SRP Calculator (editor) can change carton quantities and see purchase cost on that brand's import order plans; other brands stay hidden. Viewers stay read-only without cost.

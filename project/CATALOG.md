@@ -33,7 +33,7 @@
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 3 | 4 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 4 | 5 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
 | [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
@@ -48,7 +48,7 @@
 ### jobs/doing/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [dev-tracker.md](jobs/doing/dev-tracker.md) | 5 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
+| [dev-tracker.md](jobs/doing/dev-tracker.md) | 6 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
 | [stokke-order.md](jobs/doing/stokke-order.md) | 3 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |

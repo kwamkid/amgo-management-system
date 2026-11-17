@@ -631,7 +631,8 @@ function renderChips() {
     ${kinds().length > 1 ? fsHtml('fkind', 'สินค้า', kinds(), kind, '') : ''}
   </div>`;
   if (had) { const q = $('#fq'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
-  $('#fq').oninput = e => { query = e.target.value.trim().toLowerCase(); page = 1; renderRows(); };
+  let qTimer = 0; // redraw after a short pause in typing, not on every key (owner 2026-11-17: felt jerky)
+  $('#fq').oninput = e => { const v = e.target.value.trim().toLowerCase(); clearTimeout(qTimer); qTimer = setTimeout(() => { query = v; page = 1; renderRows(); }, 150); };
   // Esc clears (the browser's own history pop-up used to swallow it → autocomplete off) · the ✕ button fires 'search'
   $('#fq').onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.target.value = ''; query = ''; page = 1; renderRows(); } };
   $('#fq').addEventListener('search', e => { if (!e.target.value) { query = ''; page = 1; renderRows(); } });
@@ -672,13 +673,16 @@ function matchQuery(i) {
   return words.every(w => h.includes(w));
 }
 
+// item → its index in plan.items, rebuilt when the list itself changes (indexOf in a sort was O(n²))
+let posMap = new Map(), posFor = null;
+const posOf = i => { if (posFor !== plan.items || posMap.size !== plan.items.length) { posMap = new Map(plan.items.map((x, k) => [x, k])); posFor = plan.items; } return posMap.get(i) ?? -1; };
 function visible() {
   const v = plan.items.filter(i => (!onlyOrdered || i.qty > 0) && (!cat || i.group === cat) && (!sub || i.sub === sub) && (!chan || i.channel === chan) && (!kind || kindOf(i) === kind) &&
     matchQuery(i));
   if (!sortKey) return v;
   const f = SORT[sortKey];
   // ties: best seller first, then the brand's order
-  return v.sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir || (b.avg || 0) - (a.avg || 0) || plan.items.indexOf(a) - plan.items.indexOf(b); });
+  return v.sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir || (b.avg || 0) - (a.avg || 0) || posOf(a) - posOf(b); });
 }
 
 function stockCells(i) {
@@ -756,7 +760,7 @@ function renderRows() {
   const from = per ? (page - 1) * per : 0, shown = per ? vis.slice(from, from + per) : vis;
   shown.forEach((i, k) => {
     if (!sortKey && i.group && i.group !== grp) { grp = i.group; html += `<tr class="grp"><td colspan="${NCOL()}"><span>${esc(grp)}</span></td></tr>`; }
-    html += rowHtml(i, plan.items.indexOf(i), from + k + 1);
+    html += rowHtml(i, posOf(i), from + k + 1);
   });
   $('#rows').innerHTML = html || `<tr><td colspan="${NCOL()}" class="empty">ไม่มีรายการ</td></tr>`;
 }
@@ -936,7 +940,7 @@ function save() {
 /* lightbox */
 let lbList = [], lbPos = 0;
 function openLb(idx) {
-  lbList = visible().filter(i => i.img).map(i => plan.items.indexOf(i));
+  lbList = visible().filter(i => i.img).map(posOf);
   lbPos = Math.max(0, lbList.indexOf(idx)); showLb(); $('#lb').classList.add('on');
 }
 function showLb() {

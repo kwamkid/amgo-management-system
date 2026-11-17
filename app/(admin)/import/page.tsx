@@ -128,9 +128,8 @@ export default function ImportPage() {
   return (
     <div className="-mx-4 -mb-10 -mt-5 flex h-[calc(100dvh-3.5rem)] flex-col lg:-mx-7">
       <div
-        className={`shrink-0 overflow-hidden px-4 transition-[max-height,padding] duration-200 lg:px-7 ${
-          folded ? 'max-h-0 pt-0' : 'max-h-[480px] pt-5'
-        }`}
+        // หุบ/กางทันที ไม่มีแอนิเมชัน — แอนิเมชันทำให้กรอบตารางเปลี่ยนขนาดทุกเฟรม ตารางจัดหน้าใหม่ทุกเฟรม = กระตุก (เจ้าของ 17 พ.ย. 69)
+        className={`shrink-0 overflow-hidden px-4 lg:px-7 ${folded ? 'hidden' : 'pt-5'}`}
       >
         <PageHeader
           title={title}

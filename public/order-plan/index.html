@@ -660,9 +660,21 @@ function renderChips() {
   fsBind('fkind', pick(v => { kind = v; }));
 }
 
+// search (owner 2026-11-17): words in any order, symbols ignored — "tripp natural chair" finds "Tripp Trapp® Chair Natural",
+// "set2" finds "Baby Set²", "yoyo5" finds "YOYO⁵". Each word must appear somewhere in code / name / barcode / group / channel.
+const normQ = s => String(s || '').normalize('NFKC').toLowerCase().replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ').trim();
+const hayOf = new WeakMap();
+function matchQuery(i) {
+  const words = normQ(query).split(' ').filter(Boolean);
+  if (!words.length) return true;
+  let h = hayOf.get(i);
+  if (!h) { const s = normQ([i.code, i.name, i.barcode, i.group, i.sub, i.channel].join(' ')); h = s + ' ' + s.replace(/ /g, ''); hayOf.set(i, h); }
+  return words.every(w => h.includes(w));
+}
+
 function visible() {
   const v = plan.items.filter(i => (!onlyOrdered || i.qty > 0) && (!cat || i.group === cat) && (!sub || i.sub === sub) && (!chan || i.channel === chan) && (!kind || kindOf(i) === kind) &&
-    (!query || [i.code, i.name, i.barcode, i.group, i.sub, i.channel].some(v => String(v || '').toLowerCase().includes(query))));
+    matchQuery(i));
   if (!sortKey) return v;
   const f = SORT[sortKey];
   // ties: best seller first, then the brand's order

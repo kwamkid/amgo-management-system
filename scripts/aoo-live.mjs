@@ -8,7 +8,9 @@
 //   an English name without the brand and a letter suffix (Hape INV-2626437: E6620 → sku "E6620A", 30 Oct 2026).
 // codes: item code → the key used in stock/sales, so callers can look up rows that have no barcode.
 //
-// stock: barcode → available (all warehouses, on hand − reserved) + in transit.
+// stock: barcode → available (on hand − reserved) + in transit, in the MAIN warehouse only (owner 17 Nov 2026: stock
+//   sitting in stores / consignment / Window & Show is not ours to refill from). --warehouse <name> picks another,
+//   --all-warehouses sums every warehouse (the old behaviour).
 // sales: barcode → { 'YYYY-MM': { u, b2b } } from --since to today. Sales before the cutover come from the OLD aoo
 //   (legacy export, e.g. AGD legacy-hape/hape-sku-24m.csv) — never add both for the same days: marketplace orders were
 //   synced into both systems, staff moved to the new aoo in October 2026 (dealer bills from 21 Oct, legacy dump 22 Oct
@@ -29,6 +31,8 @@ const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d)
 const brand = args[0]
 const out = opt('--out')
 const since = opt('--since', '2026-10-22')
+const WH = args.includes('--all-warehouses') ? null : opt('--warehouse', 'คลังหลัก RAMA2')
+const whArgs = WH ? { warehouses: [WH], by_warehouse: true } : {}
 const codeFiles = args.flatMap((a, i) => (args[i - 1] === '--codes' ? [a] : []))
 if (!brand || brand.startsWith('--') || !out) {
   console.error('usage: node scripts/aoo-live.mjs <brand> --out <file.json> [--since YYYY-MM-DD]')
@@ -60,8 +64,8 @@ const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10) // Th
 // Some products have no brand in aoo (brand null, e.g. Hape markers / sand toys) → also take brand-less rows whose
 // name mentions the brand. Sales are then read for all brands and kept only for these barcodes.
 const stock = {}
-const byBrand = await tool('stock', { brands: [brand], include_zero: true, limit: 2000 })
-const byName = (await tool('stock', { q: brand, include_zero: true, limit: 2000 })).filter(
+const byBrand = await tool('stock', { brands: [brand], include_zero: true, limit: 2000, ...whArgs })
+const byName = (await tool('stock', { q: brand, include_zero: true, limit: 2000, ...whArgs })).filter(
   (x) => !x.brand && new RegExp(`\\b${brand}\\b`, 'i').test(x.name)
 )
 if (byBrand.length >= 2000 || byName.length >= 2000) throw new Error('stock: 2000-row cap hit — split the query')
@@ -74,7 +78,7 @@ const found = new Set([...byBrand, ...byName].map(codeOf).filter(Boolean))
 const byCode = []
 const asked = [...wanted].filter((c) => !found.has(c))
 for (const c of asked) {
-  const hit = (await tool('stock', { q: c, include_zero: true, limit: 20 })).filter(
+  const hit = (await tool('stock', { q: c, include_zero: true, limit: 20, ...whArgs })).filter(
     (x) => codeOf(x) === c && (!x.brand || x.brand.toLowerCase() === brand.toLowerCase())
   )
   byCode.push(...hit)
@@ -91,6 +95,7 @@ for (const x of [...byBrand, ...byName, ...byCode]) {
   for (const k of [x.barcode, x.sku, x.code]) if (k) alias[String(k).trim()] ??= bar
   if (codeOf(x)) codes[codeOf(x)] ??= bar
   const s = (stock[bar] ??= { available: 0, inTransit: 0, code: x.code })
+  if (WH && x.warehouse && x.warehouse !== WH) continue // by_warehouse rows with no stock come back with warehouse null
   s.available += Number(x.available) || 0
   s.inTransit += Number(x.in_transit) || 0
 }
@@ -124,4 +129,4 @@ for (let m = since.slice(0, 7); m <= today.slice(0, 7); ) {
 }
 
 await fs.writeFile(out, JSON.stringify({ source: 'aoo MCP', brand, asOf: today, since, noBrand: [...noBrand], codes, stock, sales }, null, 1))
-console.log(`${brand}: stock ${Object.keys(stock).length} barcodes (${noBrand.size} with no brand in aoo, ${byCode.length} found by code of ${asked.length} asked) · sales ${since}…${today} ${Object.keys(sales).length} barcodes · by flow ${JSON.stringify(flows)} → ${out}`)
+console.log(`${brand}: stock [${WH ?? "all warehouses"}] ${Object.keys(stock).length} barcodes (${noBrand.size} with no brand in aoo, ${byCode.length} found by code of ${asked.length} asked) · sales ${since}…${today} ${Object.keys(sales).length} barcodes · by flow ${JSON.stringify(flows)} → ${out}`)

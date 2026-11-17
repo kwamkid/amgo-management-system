@@ -56,7 +56,7 @@
 ### jobs/done/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [2026-11.md](jobs/done/2026-11.md) | 2 | 4 | Finished topics, newest first. History only. |
+| [2026-11.md](jobs/done/2026-11.md) | 3 | 5 | Finished topics, newest first. History only. |
 
 ### knowledge/
 | File | KB | Sections | About |
@@ -68,4 +68,4 @@
 ### knowledge/learning/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [general.md](knowledge/learning/general.md) | 60 | 30 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [general.md](knowledge/learning/general.md) | 61 | 31 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |

@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (30)
+**Contents** (31)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -34,6 +34,7 @@
 - 2026-10-30 — Thai text in a print-ready PDF without font problems
 - 2026-11-05 — Traps from the vault and type scale work
 - 2026-11-11 — Legacy aoo sales without MySQL
+- 2026-11-17 — Plaud recording → amgo tasks
 <!-- /toc -->
 
 ---
@@ -467,3 +468,8 @@ SRP Calculator มี 20 คอลัมน์ + ตรึงคอลัมน�
 
 ## 2026-11-11 — Legacy aoo sales without MySQL
 - Homebrew mysqld fails (missing abseil dylib), so stream the gz dump with a small INSERT-tuple parser (gzcat | python3) and keep only the brand's products/POS/sale-order lines — 90 MB dump in ~2 min.
+
+## 2026-11-17 — Plaud recording → amgo tasks
+- Plaud share link (`web.plaud.ai/s/pub_…`) has no file id and renders as canvas; match the tab title against `mcp__plaud__list_files` names to get `of_…`. A recording can have no transcript/notes at all.
+- No transcript → `get_file` presigned URL (expires in 5 min, curl at once) → `mlx_whisper` large-v3-turbo, `language='th'`, `condition_on_previous_text=False`: 88 min in ~15 min on this Mac. `python3 -I` hides user site-packages (mlx_whisper missing) → use `-P`. Output is noisy; drop lines with <4 Thai chars or mostly foreign script.
+- Bot API caps task `notes` and each timeline `body` at 5,000 chars → long text as several timeline notes, posted last-part-first so part 1 is on top. Supabase MCP may be unauthorized → `GET /api/bot/people` gives user ids (two people named แอม: owner `31e03073…`; แอ๋ม = อ๋อมแอ๋ม).

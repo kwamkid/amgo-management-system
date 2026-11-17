@@ -381,3 +381,15 @@ export const VOICE_HANDLERS: Record<string, (sb: SupabaseClient, job: QueueJob) 
   'voice.extract.poll': (sb, job) => extractPoll(asDb(sb), job),
   'voice.cleanup': (sb) => cleanup(asDb(sb)),
 }
+
+/** Queue the daily `voice.cleanup` job unless one is already waiting. Called by the photo-cleanup cron. */
+export async function queueVoiceCleanup(db: SupabaseClient): Promise<boolean> {
+  const { count } = await db
+    .from('queue_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', 'voice.cleanup')
+    .in('status', ['queued', 'running'])
+  if (count) return false
+  await enqueue(db, [{ kind: 'voice.cleanup', label: 'ล้างไฟล์เสียงเก่า', groupKey: 'voice:cleanup' }])
+  return true
+}

@@ -9,7 +9,7 @@
 - [ ] Not pushed yet — needs `/push` (owner)
 - [ ] รอคุณแอม: Vercel env `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET` → redeploy
 - [ ] รอคุณแอม: ElevenLabs dashboard → Developers → Webhooks → Create: URL `https://app.amgovenger.com/api/voice/webhook`, auth HMAC, event "Transcription completed"; copy signing secret to `ELEVENLABS_WEBHOOK_SECRET`
-- [ ] รอคุณแอม: cron-job.org daily → `https://app.amgovenger.com/api/cron/voice-cleanup` with `Authorization: Bearer <CRON_SECRET>`
+- [x] Daily voice cleanup piggybacks on the existing /api/cron/cleanup-photos cron (owner 2026-11-17: no new cron); /api/cron/voice-cleanup = manual trigger only
 - [ ] First real run with the AGD post-fair Plaud link: check webhook payload shape, `transcripts.get` "not ready" codes (guessed 404/409/425), batch result, drafts quality
 - [ ] iPhone Share-Sheet Shortcut "ส่งเข้า amgo": needs a token the Shortcut can hold (new bot key scope `voice`, migration on `bot_api_keys_scope_check`) → upload-url endpoint → PUT file to Storage → start
 - [ ] Sidebar menu entry for `/tasks/voice` (skipped: components/layout/Sidebar.tsx has another chat's uncommitted edits) — for now reached via the "จากเสียงประชุม" button on /tasks

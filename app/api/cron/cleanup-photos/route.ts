@@ -26,8 +26,11 @@
 // cron-job.org รอผลลัพธ์ได้ 30 วินาที ถ้าเกินจะตัดการเชื่อมต่อ
 // จึงทำทีละก้อนแล้วบอกว่าเหลืออีกเท่าไหร่ — รันซ้ำวันถัดไปก็ไล่เก็บต่อเอง
 
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { kickQueue } from '@/lib/queue/queue'
+import { queueVoiceCleanup } from '@/lib/voice/pipeline'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { capPlan } from '@/lib/services/storageCapRules'
 import { readQuotaMb, readStorageUsage } from '@/lib/services/storageUsageService'
@@ -228,6 +231,17 @@ export async function GET(request: NextRequest) {
       { onConflict: 'key' }
     )
 
+    // Same daily slot also queues the voice-audio cleanup (owner 2026-11-17: reuse this cron, no new one).
+    // A failure here must not fail the photo cleanup.
+    let voiceQueued = false
+    try {
+      voiceQueued = await queueVoiceCleanup(sb as unknown as SupabaseClient)
+      const origin = request.nextUrl.origin
+      after(() => kickQueue(origin))
+    } catch (e) {
+      console.error('[ลบรูปเก่า] queue voice.cleanup failed:', e)
+    }
+
     return NextResponse.json({
       success: true,
       retentionDays: RETENTION_DAYS,
@@ -236,6 +250,7 @@ export async function GET(request: NextRequest) {
       delivery,
       stock,
       cap,
+      voiceQueued,
       // ยังเหลือ = รันรอบหน้าจะไล่เก็บต่อ ไม่ต้องทำอะไร
       done: checkin.remaining === 0 && delivery.remaining === 0 && stock.remaining === 0 && !cap.stillOver,
       timestamp: new Date().toISOString(),

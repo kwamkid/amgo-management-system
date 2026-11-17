@@ -28,10 +28,24 @@ async function getJson(base: string, path: string): Promise<Record<string, unkno
   return (await res.json()) as Record<string, unknown>
 }
 
+/** Regional hosts to try when the global host says "Share not found" (seen 2026-11-17: an APAC
+ *  account's share answers 40400 on api.plaud.ai instead of the -302 redirect). */
+const PLAUD_REGIONS = ['https://api-apse1.plaud.ai', 'https://api-euc1.plaud.ai']
+
 /** Plaud answers status -302 with the user's regional API host; retry there once. */
 async function getRegional(path: string): Promise<{ base: string; body: Record<string, unknown> }> {
   let base = PLAUD_API
   let body = await getJson(base, path)
+  if (body.status === 40400) {
+    for (const region of PLAUD_REGIONS) {
+      const b = await getJson(region, path).catch(() => null)
+      if (b && b.status !== 40400) {
+        base = region
+        body = b
+        break
+      }
+    }
+  }
   if (body.status === -302) {
     const api = (body.data as { domains?: { api?: string } } | undefined)?.domains?.api
     if (!api || !/^https:\/\/api[-a-z0-9]*\.plaud\.ai$/.test(api)) throw new Error('Plaud region redirect without a valid host')

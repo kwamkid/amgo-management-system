@@ -473,3 +473,6 @@ SRP Calculator มี 20 คอลัมน์ + ตรึงคอลัมน�
 - Plaud share link (`web.plaud.ai/s/pub_…`) has no file id and renders as canvas; match the tab title against `mcp__plaud__list_files` names to get `of_…`. A recording can have no transcript/notes at all.
 - No transcript → `get_file` presigned URL (expires in 5 min, curl at once) → `mlx_whisper` large-v3-turbo, `language='th'`, `condition_on_previous_text=False`: 88 min in ~15 min on this Mac. `python3 -I` hides user site-packages (mlx_whisper missing) → use `-P`. Output is noisy; drop lines with <4 Thai chars or mostly foreign script.
 - Bot API caps task `notes` and each timeline `body` at 5,000 chars → long text as several timeline notes, posted last-part-first so part 1 is on top. Supabase MCP may be unauthorized → `GET /api/bot/people` gives user ids (two people named แอม: owner `31e03073…`; แอ๋ม = อ๋อมแอ๋ม).
+
+## 2026-11-17 — aoo MCP stock rows can have barcode null
+Some aoo products keep the barcode only in `sku` (e.g. Stokke MuTable V2, Snoozi, Clikk Travel Bag): `stock` returns `barcode: null`. Matching plan lines on `barcode` alone silently gives stock 0 — key on barcode || sku || code (aoo-live.mjs already does). Order-plan stock for Stokke STK #5 = `warehouses: [คลังหลัก RAMA2]`, `by_warehouse: true`.

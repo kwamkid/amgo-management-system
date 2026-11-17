@@ -107,6 +107,20 @@ const KINDS = {
     personal: { label: 'ลากิจ', tone: 'sky' },
     vacation: { label: 'ลาพักร้อน', tone: 'success' },
   },
+  // เสียงประชุม → งาน (voice_recordings.status / voice_task_drafts.status)
+  voice: {
+    uploaded: { label: 'รอถอดเสียง', tone: 'neutral' },
+    transcribing: { label: 'กำลังถอดเสียง', tone: 'warning' },
+    extracting: { label: 'กำลังสรุปงาน', tone: 'grape' },
+    review: { label: 'รอตรวจ', tone: 'accent' },
+    done: { label: 'ตรวจครบแล้ว', tone: 'success' },
+    failed: { label: 'ไม่สำเร็จ', tone: 'danger' },
+  },
+  voiceDraft: {
+    pending: { label: 'รอตรวจ', tone: 'warning' },
+    accepted: { label: 'รับเป็นงานแล้ว', tone: 'success' },
+    rejected: { label: 'ปัดตก', tone: 'neutral' },
+  },
 } satisfies Record<string, Record<string, StatusDef>>
 
 export type StatusKind = keyof typeof KINDS

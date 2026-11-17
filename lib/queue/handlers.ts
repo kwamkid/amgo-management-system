@@ -12,6 +12,7 @@ import type { AeoEvent } from '@/lib/services/seo/aeoSync'
 import { syncBing } from '@/lib/services/seo/bing'
 import { fetchLlmMentions } from '@/lib/services/seo/llmMentions'
 import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
+import { VOICE_HANDLERS } from '@/lib/voice/pipeline'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
 
@@ -94,6 +95,14 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
 
   /** ส่งแจ้งเตือน SEO ที่เก็บไว้ — ข้อความละเว็บ · ยังมีผลอันดับค้าง = รอ 10 นาที (สูงสุด 3 ชม.) */
   'seo.alerts.flush': async (sb) => flushSeoAlerts(sb, { waitForRanks: true }),
+
+  // ── เสียงประชุม → งาน (lib/voice/pipeline.ts) · เรียกผ่านลูกศรเพราะ pipeline import queue.ts วนกลับมาที่ไฟล์นี้ ──
+  'voice.plaud.import': (sb, job) => VOICE_HANDLERS['voice.plaud.import'](sb, job),
+  'voice.transcribe.start': (sb, job) => VOICE_HANDLERS['voice.transcribe.start'](sb, job),
+  'voice.transcribe.poll': (sb, job) => VOICE_HANDLERS['voice.transcribe.poll'](sb, job),
+  'voice.extract.start': (sb, job) => VOICE_HANDLERS['voice.extract.start'](sb, job),
+  'voice.extract.poll': (sb, job) => VOICE_HANDLERS['voice.extract.poll'](sb, job),
+  'voice.cleanup': (sb, job) => VOICE_HANDLERS['voice.cleanup'](sb, job),
 
   /** ล้างประวัติคิวเก่ากว่า 30 วัน */
   'queue.prune': async (sb) => {

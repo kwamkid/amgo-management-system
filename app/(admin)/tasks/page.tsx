@@ -7,7 +7,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { AlarmClock, AlertTriangle, FileText, History, ListChecks, ListTodo, Search } from 'lucide-react'
+import Link from 'next/link'
+import { AlarmClock, AlertTriangle, AudioLines, FileText, History, ListChecks, ListTodo, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -194,9 +195,18 @@ export default function TasksPage() {
         description="กดค้างที่การ์ดแล้วลากเพื่อย้ายสถานะหรือเรียงลำดับ · แตะการ์ดเพื่อดูรายละเอียด"
         icon={ListChecks}
         actions={
-          <Button icon="Plus" onClick={() => setModal('new')}>
-            เพิ่มงาน
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link href="/tasks/voice">
+                <Button variant="secondary" icon={AudioLines}>
+                  จากเสียงประชุม
+                </Button>
+              </Link>
+            )}
+            <Button icon="Plus" onClick={() => setModal('new')}>
+              เพิ่มงาน
+            </Button>
+          </div>
         }
       />
 

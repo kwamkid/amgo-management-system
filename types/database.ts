@@ -4981,7 +4981,9 @@ export type Database = {
           id: string
           notes: string
           sort_order: number
+          source_kind: string
           source_ref: string | null
+          source_recording_id: string | null
           status: string
           title: string
           updated_at: string
@@ -4997,7 +4999,9 @@ export type Database = {
           id?: string
           notes?: string
           sort_order?: number
+          source_kind?: string
           source_ref?: string | null
+          source_recording_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -5013,7 +5017,9 @@ export type Database = {
           id?: string
           notes?: string
           sort_order?: number
+          source_kind?: string
           source_ref?: string | null
+          source_recording_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -5747,6 +5753,194 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      voice_recordings: {
+        Row: {
+          audio_deleted_at: string | null
+          company_id: string | null
+          created_at: string
+          duration_sec: number | null
+          error: string | null
+          external_id: string | null
+          id: string
+          provider: string | null
+          provider_job_id: string | null
+          recorded_at: string | null
+          source: string
+          status: string
+          storage_path: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          audio_deleted_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          provider?: string | null
+          provider_job_id?: string | null
+          recorded_at?: string | null
+          source: string
+          status?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          audio_deleted_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          provider?: string | null
+          provider_job_id?: string | null
+          recorded_at?: string | null
+          source?: string
+          status?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_recordings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_recordings_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_task_drafts: {
+        Row: {
+          assignee_ids: string[]
+          assignee_raw: string | null
+          brand: string | null
+          confidence: number | null
+          created_at: string
+          due_date: string | null
+          evidence_quote: string | null
+          evidence_start_sec: number | null
+          id: string
+          notes: string
+          recording_id: string
+          sort_order: number
+          status: string
+          task_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_ids?: string[]
+          assignee_raw?: string | null
+          brand?: string | null
+          confidence?: number | null
+          created_at?: string
+          due_date?: string | null
+          evidence_quote?: string | null
+          evidence_start_sec?: number | null
+          id?: string
+          notes?: string
+          recording_id: string
+          sort_order?: number
+          status?: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_ids?: string[]
+          assignee_raw?: string | null
+          brand?: string | null
+          confidence?: number | null
+          created_at?: string
+          due_date?: string | null
+          evidence_quote?: string | null
+          evidence_start_sec?: number | null
+          id?: string
+          notes?: string
+          recording_id?: string
+          sort_order?: number
+          status?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_task_drafts_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "voice_recordings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_task_drafts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_transcripts: {
+        Row: {
+          created_at: string
+          language: string | null
+          raw: Json | null
+          recording_id: string
+          segments: Json
+          speaker_guesses: Json
+          speaker_map: Json
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          language?: string | null
+          raw?: Json | null
+          recording_id: string
+          segments?: Json
+          speaker_guesses?: Json
+          speaker_map?: Json
+          text?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          language?: string | null
+          raw?: Json | null
+          recording_id?: string
+          segments?: Json
+          speaker_guesses?: Json
+          speaker_map?: Json
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_transcripts_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: true
+            referencedRelation: "voice_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       web_bills: {
         Row: {

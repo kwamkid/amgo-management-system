@@ -6,7 +6,7 @@
 - Decided 2026-11-17: Scribe async needs a webhook set up in the ElevenLabs dashboard (400 `no_webhooks_configured`). Owner chose central queue + webhook (queue rule) over one long request; extraction = Claude Message Batch.
 - Owner 2026-11-17: inputs must be several, not only Plaud — Plaud link · web upload (iPhone Voice Memos .m4a) · iPhone Share-Sheet Shortcut.
 - [x] (2)–(5) Built on the queue (lib/voice/pipeline.ts, kinds voice.plaud.import / transcribe.start / transcribe.poll / extract.start / extract.poll / cleanup), webhook `/api/voice/webhook`, pages `/tasks/voice` + `/tasks/voice/[id]`, accept → tasks (source_kind voice), cron `/api/cron/voice-cleanup` · tsc green · commit see below
-- [ ] Not pushed yet — needs `/push` (owner)
+- [x] Pushed 2026-11-17 (6cbc271..5ab9832)
 - [ ] รอคุณแอม: Vercel env `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_WEBHOOK_SECRET` → redeploy
 - [ ] รอคุณแอม: ElevenLabs dashboard → Developers → Webhooks → Create: URL `https://app.amgovenger.com/api/voice/webhook`, auth HMAC, event "Transcription completed"; copy signing secret to `ELEVENLABS_WEBHOOK_SECRET`
 - [x] Daily voice cleanup piggybacks on the existing /api/cron/cleanup-photos cron (owner 2026-11-17: no new cron); /api/cron/voice-cleanup = manual trigger only

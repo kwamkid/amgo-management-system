@@ -33,7 +33,7 @@
 - Short task number `#N` (`tasks.no`) on cards, in DMs, accepted by `/api/bot/tasks/{id}`.
 - Edith chases overdue tasks once a day at 14:00 TH (DM "#57 เลยกำหนด 3 วัน ติดอะไรไหม", reply logged to timeline, new update kind `chase`), summary DM to แอม at 17:30 TH. VPS script change (edith_reminders.py or new script) — tell owner before touching VPS.
 
-## Built 2026-11-18 (uncommitted, tsc green, NOT run — migration first or /tasks breaks: code selects tasks.no)
+## Built 2026-11-18 — commit 1bfaf5e (migration applied by owner, verified via REST: #1–#43, chase kind accepted). UI not yet seen in a browser.
 - Migration `20261118090000_tasks_no_assign_chase.sql`: tasks.no (+seq, backfill by created_at) · task_assignees_creator(_delete) · kind `chase` (after_insert skips it, task_status_line view skips it).
 - Bot API: `no` in every task · `/tasks/{id}` (+ images/updates subroutes) accept uuid or `57`/`#57` (`resolveTaskId`) · anyone assigns on create; non-creator may only remove self (`assigneeChangeError`) · `POST /tasks/{id}/updates {kind:"chase"}` superadmin only, created_by null · `GET /tasks/chase` (superadmin): overdue + chases, chasedToday, repliedToday, lastReply.
 - Web: TaskList.tsx (phone, grouped, tap circle = done + ยกเลิก) · board hidden on phone · #no on cards · creator picks assignees · timeline shows chase as Edith.

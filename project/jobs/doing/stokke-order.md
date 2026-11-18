@@ -16,13 +16,14 @@
 - [x] 2026-11-17 order form = the owner's own Stokke sheet (code · FOB EUR · SRP · qty), owner fills it. ~~After owner approves STK #5: fill Stokke's order form (AGD brand-system §9 step 4). No Stokke price list / order form on file — ask the owner for one; current EUR prices = last invoice, carton qty = old packing lists, fx 38 is a guess.~~
 - [x] 2026-11-17 suggested column recomputed on main-warehouse stock (638 pcs ≈ €36.6k vs owner 792 pcs ≈ €37.9k); lines missing from Stokke's form or "discon once stock cleared" → 0 with ⛔ note; Sleepi Bed old 591401/591402 sales merged into 711501/711502 (+ wheels 709101). aoo-live main warehouse by default `45e5a85`.
 - [x] 2026-11-17 order-plan search: any word order, symbols ignored `9e9fdc2`; smoother scroll (instant header fold) + debounced search `9779471` — pushed.
-- [ ] รอคุณแอม: review STK #5 lines where own qty ≠ suggested — not ordered: Sleepi Bed 711501/711502 (sugg 14/8), Newborn Set Grey 526101 (22), Sleepi Dresser Natural 583702+583802 (5 each, both boxes); ordered much less: Tripp Trapp Natural 100101 (12 vs 32), Harness² Beige 651301 (12 vs 48); ordered with plenty of stock: Bumper Bar 705701 (50, stock 134), YOYO Backpack 704901 (36, stock 57), Seat Pack Taupe 714602 (20, stock 28). Seat pack Bonpoint 714801 ×10 has no total in owner's sheet (€546).
+- [ ] รอคุณแอม: send the final STK #5 ordered list (owner placed the order with Stokke 2026-11-18, will send what was ordered) → set round `STK5-stokke` qty to it + status ordered, update AGD `04-stokke/_notes/2-order/orders.md` row (planned → ordered) + log.md.
+- [x] 2026-11-18 owner placed STK #5 with Stokke — review below is moot. ~~review STK #5 lines where own qty ≠ suggested — not ordered: Sleepi Bed 711501/711502 (sugg 14/8), Newborn Set Grey 526101 (22), Sleepi Dresser Natural 583702+583802 (5 each, both boxes); ordered much less: Tripp Trapp Natural 100101 (12 vs 32), Harness² Beige 651301 (12 vs 48); ordered with plenty of stock: Bumper Bar 705701 (50, stock 134), YOYO Backpack 704901 (36, stock 57), Seat Pack Taupe 714602 (20, stock 28). Seat pack Bonpoint 714801 ×10 has no total in owner's sheet (€546).
 - [ ] รอคุณแอม: Hape — switch stock to main warehouse too? Hape ordering.md (02-hape/_notes/2-order/ordering.md) says count stock in stores; AGD `package.json` `plan:live` passes `--all-warehouses` until decided. Yes → drop the flag + rewrite that ordering.md line.
 - [ ] รอคุณแอม: order-plan table speed refactor (offered, ~half a day): build rows once and show/hide on search/filter, update only the edited row, instead of innerHTML rebuild in `renderRows()` (public/order-plan/index.html).
 - [ ] รอคุณแอม: AGD Stokke todo S1 (laser engraving for the 5–8 Nov fair) still open past the fair — done or drop?
 
 ## Resume note
-Resume at: owner's answers — review of STK #5 qty vs suggested, Hape main-warehouse yes/no, table refactor yes/no.
+Resume at: owner's final STK #5 ordered list (ordered 2026-11-18) → round qty + status + AGD orders.md; then Hape main-warehouse yes/no, table refactor yes/no.
 ### State
 Round `STK5-stokke` in amgo holds owner's qty + recomputed suggested + main-warehouse stock (live edits by owner/แป้งหมี่ happen there — read the round from Supabase before changing it; `import-sync pull` only syncs qty). All code pushed. Scratchpad files gone.
 ### Gotchas

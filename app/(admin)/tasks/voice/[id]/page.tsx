@@ -24,7 +24,7 @@ import {
   Textarea,
   type SelectOption,
 } from '@/components/aoo'
-import { PageHeader, QueueFloat, SectionCard, StatusBadge } from '@/components/shared'
+import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
 import { BRANDS, brandLabel } from '@/lib/constants/brands'
 import { SOURCE_LABEL, clock, durationText, speakerLabel, voiceFetch } from '@/lib/voice/format'
 
@@ -158,7 +158,14 @@ export default function VoiceRecordingPage() {
   const people = useMemo(() => data?.people ?? [], [data])
   const byId = useMemo(() => new Map(people.map((p) => [p.user_id, p])), [people])
   const personOptions: SelectOption[] = useMemo(
-    () => people.map((p) => ({ value: p.user_id, label: personName(p), hint: [p.full_name, p.company].filter(Boolean).join(' · ') })),
+    () =>
+      people.map((p) => ({
+        value: p.user_id,
+        label: personName(p),
+        hint: [p.full_name, p.company].filter(Boolean).join(' · '),
+        // รูปจาก /api/avatar (สำเนาที่เราเก็บไว้ + เบราว์เซอร์จำ 1 วัน) — ไม่ดึงจาก LINE ซ้ำ
+        icon: <UserAvatar userId={p.user_id} name={personName(p)} size="xs" />,
+      })),
     [people],
   )
   const speakers = useMemo(() => {
@@ -372,9 +379,12 @@ export default function VoiceRecordingPage() {
           <div className="divide-y divide-gray-100">
             {handedOut.map((g) => (
               <div key={g.uid || 'none'} className="py-3 first:pt-0 last:pb-0">
-                <p className="mb-1 font-semibold text-gray-900">
-                  {g.name} <span className="text-xs font-normal text-gray-500">{g.list.length} งาน</span>
-                </p>
+                <div className="mb-2 flex items-center gap-2">
+                  {g.uid ? <UserAvatar userId={g.uid} name={g.name} size="sm" /> : <UserAvatar name="?" size="sm" />}
+                  <p className="font-semibold text-gray-900">
+                    {g.name} <span className="text-xs font-normal text-gray-500">{g.list.length} งาน</span>
+                  </p>
+                </div>
                 <ul className="space-y-1">
                   {g.list.map((t) => (
                     <li key={t.id}>

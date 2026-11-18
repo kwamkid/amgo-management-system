@@ -45,10 +45,20 @@ interface Draft {
   status: 'pending' | 'accepted' | 'rejected'
   task_id: string | null
 }
+/** งานที่แจกออกจากประชุมนี้แล้ว (tasks.source_recording_id) */
+interface HandedOut {
+  id: string
+  no: number
+  title: string
+  status: 'todo' | 'doing' | 'done'
+  due_date: string | null
+  assignee_ids: string[]
+}
 interface Detail {
   recording: {
     id: string
     title: string
+    summary: string | null
     recorded_at: string | null
     duration_sec: number | null
     source: string
@@ -64,6 +74,7 @@ interface Detail {
     speaker_guesses: Record<string, Guess>
   } | null
   drafts: Draft[]
+  tasks: HandedOut[]
   people: Person[]
   audioUrl: string | null
   queue: { total: number; done: number; failed: number; active: boolean; running: string[]; waiting: string[] }
@@ -98,6 +109,8 @@ export default function VoiceRecordingPage() {
   const [busyDraft, setBusyDraft] = useState<string | null>(null)
   const [busyAll, setBusyAll] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [summary, setSummary] = useState('')
+  const [summaryDirty, setSummaryDirty] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const load = useCallback(async () => {
@@ -113,6 +126,8 @@ export default function VoiceRecordingPage() {
     setSpeakerMap(d.transcript?.speaker_map ?? {})
     setMapDirty(false)
     setEdits(Object.fromEntries(d.drafts.map((x) => [x.id, toEdit(x)])))
+    setSummary(d.recording.summary ?? '')
+    setSummaryDirty(false)
     return d
   }, [id])
 
@@ -173,6 +188,27 @@ export default function VoiceRecordingPage() {
       showToast(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ', 'error')
     }
   }
+
+  const saveSummary = async () => {
+    try {
+      await voiceFetch(`/api/voice/recordings/${id}`, 'PATCH', { summary })
+      setSummaryDirty(false)
+      showToast('บันทึกสรุปประชุมแล้ว')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ', 'error')
+    }
+  }
+
+  // งานที่แจกแล้ว แยกตามคน (งานหลายคนอยู่ทุกคน) · ไม่มีคนรับไว้ท้ายสุด
+  const handedOut = useMemo(() => {
+    const groups = new Map<string, HandedOut[]>()
+    for (const t of data?.tasks ?? []) {
+      for (const uid of t.assignee_ids.length ? t.assignee_ids : ['']) groups.set(uid, [...(groups.get(uid) ?? []), t])
+    }
+    return [...groups.entries()]
+      .map(([uid, list]) => ({ uid, name: uid ? (byId.get(uid) ? personName(byId.get(uid)!) : '?') : 'ยังไม่มีคนรับ', list }))
+      .sort((a, b) => (a.uid ? 0 : 1) - (b.uid ? 0 : 1) || b.list.length - a.list.length)
+  }, [data, byId])
 
   const patchEdit = (draftId: string, patch: Partial<Edit>) =>
     setEdits((m) => ({ ...m, [draftId]: { ...m[draftId], ...patch } }))
@@ -312,6 +348,54 @@ export default function VoiceRecordingPage() {
         </SectionCard>
       )}
 
+      {(FINAL.has(status) || !!rec.summary) && (
+        <SectionCard title="สรุปประชุม" description="เก็บไว้ที่ประชุมนี้ ไม่ขึ้นเป็นงานบนบอร์ด · AI สรุปให้ แก้ได้">
+          <Textarea
+            rows={8}
+            value={summary}
+            onChange={(ev) => {
+              setSummary(ev.target.value)
+              setSummaryDirty(true)
+            }}
+            placeholder="ยังไม่มีสรุป"
+          />
+          <div className="mt-3 flex justify-end">
+            <Button variant="secondary" onClick={saveSummary} disabled={!summaryDirty}>
+              บันทึกสรุป
+            </Button>
+          </div>
+        </SectionCard>
+      )}
+
+      {data.tasks.length > 0 && (
+        <SectionCard title={`งานที่แจกแล้ว ${data.tasks.length} งาน`} description="แยกตามคนรับ · แตะเพื่อเปิดงานบนบอร์ด">
+          <div className="divide-y divide-gray-100">
+            {handedOut.map((g) => (
+              <div key={g.uid || 'none'} className="py-3 first:pt-0 last:pb-0">
+                <p className="mb-1 font-semibold text-gray-900">
+                  {g.name} <span className="text-xs font-normal text-gray-500">{g.list.length} งาน</span>
+                </p>
+                <ul className="space-y-1">
+                  {g.list.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-baseline gap-2 text-left hover:underline"
+                        onClick={() => router.push(`/tasks?task=${t.id}`)}
+                      >
+                        <span className="text-gray-500">#{t.no}</span>
+                        <span className={t.status === 'done' ? 'flex-1 text-gray-400 line-through' : 'flex-1 text-gray-900'}>{t.title}</span>
+                        {t.due_date && <span className="text-xs text-gray-500">{format(new Date(`${t.due_date}T00:00:00`), 'd/M')}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       {data.transcript && (
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard
@@ -326,7 +410,16 @@ export default function VoiceRecordingPage() {
               </div>
             )}
             {!drafts.length ? (
-              <EmptyState size="sm" title={status === 'review' || status === 'done' ? 'ไม่พบงานที่มอบหมายในเสียงนี้' : 'ยังไม่มีร่างงาน'} />
+              <EmptyState
+                size="sm"
+                title={
+                  data.tasks.length
+                    ? 'ไม่มีร่างค้าง — งานแจกครบแล้ว (ดูด้านบน)'
+                    : status === 'review' || status === 'done'
+                      ? 'ไม่พบงานที่มอบหมายในเสียงนี้'
+                      : 'ยังไม่มีร่างงาน'
+                }
+              />
             ) : (
               <div className="divide-y divide-gray-100">
                 {drafts.map((d) => {

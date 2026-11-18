@@ -225,7 +225,7 @@ async function extractStart(db: Db, job: QueueJob): Promise<HandlerResult> {
   try {
     const { tr, roster, segments } = await extractInput(db, rec)
     if (!segments.length) {
-      await finishExtract(db, id, tr, [], {})
+      await finishExtract(db, id, tr, [], {}, '')
       return { result: 'no speech' }
     }
     const batchId = await submitExtractBatch(id, {
@@ -263,7 +263,7 @@ async function extractPoll(db: Db, job: QueueJob): Promise<HandlerResult> {
   try {
     const { tr, roster, segments } = await extractInput(db, rec)
     const parsed = parseExtractMessage(out.message, { roster, brands: BRANDS, segments })
-    await finishExtract(db, id, tr, parsed.tasks, parsed.speakerGuesses)
+    await finishExtract(db, id, tr, parsed.tasks, parsed.speakerGuesses, parsed.summary)
     return { result: { tasks: parsed.tasks.length, usage: parsed.usage } }
   } catch (e) {
     // A bad answer will not get better by re-reading the same batch — fail the recording (retry = new batch).
@@ -273,10 +273,11 @@ async function extractPoll(db: Db, job: QueueJob): Promise<HandlerResult> {
 }
 
 /** extracting → review, then write drafts. Only the caller that wins the status update writes (no duplicates). */
-async function finishExtract(db: Db, id: string, tr: SegmentsRow, tasks: ExtractedTask[], guesses: SpeakerGuesses) {
+async function finishExtract(db: Db, id: string, tr: SegmentsRow, tasks: ExtractedTask[], guesses: SpeakerGuesses, summary: string) {
   const { data: won } = await db
     .from('voice_recordings')
-    .update({ status: 'review', error: null })
+    // a re-run ("ลองใหม่") replaces the summary with the new one
+    .update({ status: 'review', error: null, ...(summary && { summary }) })
     .eq('id', id)
     .eq('status', 'extracting')
     .select('id')

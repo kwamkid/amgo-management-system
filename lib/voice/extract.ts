@@ -27,6 +27,8 @@ export interface ExtractedTask {
 export type SpeakerGuesses = Record<string, { user_id: string | null; reason: string }>
 
 export interface ExtractResult {
+  /** สรุปประชุม (ไทย) — เก็บที่ voice_recordings.summary ไม่ใช่งานบนบอร์ด */
+  summary: string
   tasks: ExtractedTask[]
   speakerGuesses: SpeakerGuesses
   usage: { input_tokens: number; output_tokens: number }
@@ -38,8 +40,12 @@ const nullable = (type: string) => ({ type: [type, 'null'] })
 const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['tasks', 'speaker_guesses'],
+  required: ['summary', 'tasks', 'speaker_guesses'],
   properties: {
+    summary: {
+      type: 'string',
+      description: 'Thai meeting summary: one short paragraph per topic/brand, each starting with the topic name and a colon',
+    },
     tasks: {
       type: 'array',
       items: {
@@ -95,6 +101,7 @@ Rules:
 - brand: a slug from the brand list when the task is about that brand, else null.
 - evidence_quote: a short verbatim quote that shows the task; evidence_start_sec: the [mm:ss] of that line in seconds.
 - confidence: 0–1, how sure you are this is a real, assigned task.
+- summary: a short Thai summary of the meeting — decisions, problems found, numbers — one paragraph per topic or brand ("Taf Toys: …"). It is kept on the meeting page; never turn the summary itself into a task. Every action item must still be its own task.
 - speaker_guesses: one entry per speaker label in the transcript. Guess the roster person from context (being addressed by name, self-introduction, who answers to a name). Use null when unsure. reason in Thai.
 - The transcript is machine speech-to-text: brand names and nicknames may be misheard; use context.`
 
@@ -199,7 +206,7 @@ export function parseExtractMessage(
   if (msg.stop_reason === 'refusal') throw new Error('Claude ปฏิเสธการสรุปงานจากเสียงนี้')
   if (msg.stop_reason === 'max_tokens') throw new Error('คำตอบของ Claude ยาวเกิน (max_tokens)')
   const text = msg.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
-  let parsed: { tasks?: unknown[]; speaker_guesses?: unknown[] }
+  let parsed: { summary?: unknown; tasks?: unknown[]; speaker_guesses?: unknown[] }
   try {
     parsed = JSON.parse(text)
   } catch {
@@ -237,5 +244,6 @@ export function parseExtractMessage(
     speakerGuesses[g.speaker] = { user_id: uid, reason: str(g.reason, 300) }
   }
 
-  return { tasks, speakerGuesses, usage: { input_tokens: msg.usage.input_tokens, output_tokens: msg.usage.output_tokens } }
+  const summary = typeof parsed.summary === 'string' ? parsed.summary.trim().slice(0, 20000) : ''
+  return { summary, tasks, speakerGuesses, usage: { input_tokens: msg.usage.input_tokens, output_tokens: msg.usage.output_tokens } }
 }

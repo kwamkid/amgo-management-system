@@ -1,7 +1,8 @@
 // GET    /api/voice/recordings/[id] — recording + transcript + drafts + staff list + short-lived audio URL
 //        + queue progress of this recording's jobs (group voice:<id>; read with the service role — queue_jobs RLS
 //          only lets web owners read, see lib/services/queueService.ts)
-// PATCH  /api/voice/recordings/[id] — { title?, speaker_map?: { speaker_0: <user id> | null } }
+//        + tasks already handed out from this meeting (tasks.source_recording_id) — page groups them per person
+// PATCH  /api/voice/recordings/[id] — { title?, summary?, speaker_map?: { speaker_0: <user id> | null } }
 // DELETE /api/voice/recordings/[id] — remove audio + recording (transcript/drafts cascade; accepted tasks stay)
 import type { NextRequest } from 'next/server'
 import { BUCKET, VoiceError, getStaff, requireVoiceAdmin, voiceError, voiceJson } from '@/lib/voice/server'
@@ -16,13 +17,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     const { db } = await requireVoiceAdmin()
     const { data: recording, error } = await db
       .from('voice_recordings')
-      .select('id, title, recorded_at, duration_sec, source, status, error, storage_path, created_at, audio_deleted_at')
+      .select('id, title, summary, recorded_at, duration_sec, source, status, error, storage_path, created_at, audio_deleted_at')
       .eq('id', id)
       .maybeSingle()
     if (error) throw new Error(error.message)
     if (!recording) throw new VoiceError(404, 'ไม่พบไฟล์เสียงนี้')
 
-    const [{ data: transcript }, { data: drafts, error: dErr }, people, { data: jobs }] = await Promise.all([
+    const [{ data: transcript }, { data: drafts, error: dErr }, people, { data: jobs }, { data: tasks }] = await Promise.all([
       db.from('voice_transcripts').select('language, segments, speaker_map, speaker_guesses').eq('recording_id', id).maybeSingle(),
       db
         .from('voice_task_drafts')
@@ -33,6 +34,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
         .limit(1000),
       getStaff(db, false),
       db.from('queue_jobs').select('status, label, kind').eq('group_key', voiceGroup(id)).order('id').limit(100),
+      db
+        .from('tasks')
+        .select('id, no, title, status, due_date, brand, task_assignees(user_id)')
+        .eq('source_recording_id', id)
+        .order('no')
+        .limit(500),
     ])
     if (dErr) throw new Error(dErr.message)
 
@@ -54,7 +61,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
       running: rows.filter((j) => j.status === 'running').map((j) => j.label ?? j.kind),
       waiting: rows.filter((j) => j.status === 'queued').map((j) => j.label ?? j.kind),
     }
-    return voiceJson({ recording: rec, transcript, drafts: drafts ?? [], people, audioUrl, queue })
+    const handedOut = (tasks ?? []).map(({ task_assignees, ...t }) => ({ ...t, assignee_ids: task_assignees.map((a) => a.user_id) }))
+    return voiceJson({ recording: rec, transcript, drafts: drafts ?? [], tasks: handedOut, people, audioUrl, queue })
   } catch (e) {
     return voiceError(e)
   }
@@ -71,6 +79,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       const title = body.title.replace(/\s+/g, ' ').trim().slice(0, 300)
       if (!title) throw new VoiceError(400, 'ต้องมีชื่อ')
       const { error } = await db.from('voice_recordings').update({ title }).eq('id', id)
+      if (error) throw new Error(error.message)
+    }
+
+    if (typeof body.summary === 'string') {
+      const summary = body.summary.trim().slice(0, 20000)
+      const { error } = await db.from('voice_recordings').update({ summary: summary || null }).eq('id', id)
       if (error) throw new Error(error.message)
     }
 

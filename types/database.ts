@@ -5771,6 +5771,7 @@ export type Database = {
           recorded_at: string | null
           source: string
           status: string
+          summary: string | null
           storage_path: string | null
           title: string
           updated_at: string
@@ -5789,6 +5790,7 @@ export type Database = {
           recorded_at?: string | null
           source: string
           status?: string
+          summary?: string | null
           storage_path?: string | null
           title?: string
           updated_at?: string
@@ -5807,6 +5809,7 @@ export type Database = {
           recorded_at?: string | null
           source?: string
           status?: string
+          summary?: string | null
           storage_path?: string | null
           title?: string
           updated_at?: string

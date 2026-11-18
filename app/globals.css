@@ -976,7 +976,8 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   .aoo-queue, .aoo-queue-fab { right: 16px; bottom: 16px; }
 }
 /* แถบเลือกคนแบบรูป (AssigneeStrip · หน้างาน) — เลื่อนข้างได้บนมือถือ */
-.aoo-people-strip { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+/* padding-top leaves room for the count badge (top:-4px) — overflow-x:auto also clips vertically */
+.aoo-people-strip { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 8px 8px 2px 2px; margin: -2px; }
 .aoo-people-strip::-webkit-scrollbar { display: none; }
 .aoo-people-strip__item {
   flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -990,7 +991,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   background: var(--accent-soft); color: var(--accent);
 }
 .aoo-people-strip__count {
-  position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9999px;
+  position: absolute; top: -6px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 9999px; line-height: 1; box-sizing: border-box;
   display: grid; place-items: center; font-size: var(--fs-caption); font-weight: 700;
   background: var(--warm-600); color: #fff; border: 2px solid var(--bg-surface);
 }

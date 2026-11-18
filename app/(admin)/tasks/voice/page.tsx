@@ -88,9 +88,13 @@ export default function VoiceRecordingsPage() {
         size: file.size,
         lastModified: file.lastModified,
       })
+      // supabase-js sends a File as multipart using the File's own type, ignoring the contentType option —
+      // a browser that reports "application/octet-stream" (or "") gets 415 from the bucket. Re-wrap with the
+      // type the server picked from the extension.
+      const body = file.type === r.contentType ? file : new File([file], file.name, { type: r.contentType })
       const { error } = await createClient()
         .storage.from('voice-audio')
-        .uploadToSignedUrl(r.path, r.token, file, { contentType: r.contentType })
+        .uploadToSignedUrl(r.path, r.token, body, { contentType: r.contentType })
       if (error) {
         // ลบแถวที่ค้างไว้ ไม่ให้ cron ไปถอดเสียงไฟล์ที่ไม่มีอยู่
         await fetch(`/api/voice/recordings/${r.id}`, { method: 'DELETE' }).catch(() => {})

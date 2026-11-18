@@ -84,8 +84,18 @@ async function getRec(db: Db, id: string): Promise<Rec | null> {
 }
 
 /** Mark the recording failed (only from the given statuses) — the review page shows the error + a retry button. */
+/** Turn known provider errors into Thai the owner can act on (owner 2026-11-18). */
+function friendlyError(raw: string): string {
+  const quota = raw.match(/exceeds your quota[^.]*\.\s*You have (\d+) credits remaining, while (\d+) credits are required/i)
+  if (quota) {
+    const n = (s: string) => Number(s).toLocaleString('en-US')
+    return `เครดิต ElevenLabs ไม่พอ — คลิปนี้ต้องใช้ ${n(quota[2])} เครดิต เหลืออยู่ ${n(quota[1])} · เติมเครดิตหรืออัปแพลนที่ elevenlabs.io แล้วกด "ลองใหม่"`
+  }
+  return raw
+}
+
 export async function failRecording(db: Db, id: string, from: string[], e: unknown) {
-  const msg = (e instanceof Error ? e.message : String(e)).slice(0, 1000)
+  const msg = friendlyError(e instanceof Error ? e.message : String(e)).slice(0, 1000)
   console.error(`[voice] ${id} failed:`, msg)
   await db.from('voice_recordings').update({ status: 'failed', error: msg }).eq('id', id).in('status', from)
 }

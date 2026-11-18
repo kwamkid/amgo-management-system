@@ -16,7 +16,8 @@
 - [x] ElevenLabs webhook created by owner 2026-11-18 (test event 200): URL `https://app.amgovenger.com/api/voice/webhook`, auth HMAC, event "Transcription completed"; copy signing secret to `ELEVENLABS_WEBHOOK_SECRET`
 - [x] Daily voice cleanup piggybacks on the existing /api/cron/cleanup-photos cron (owner 2026-11-17: no new cron); /api/cron/voice-cleanup = manual trigger only
 - [x] Plaud import works on prod after region fix 5b12f44 (2026-11-18); webhook test event 200 · signature OK · payload shape matches
-- [ ] รอคุณแอม: ElevenLabs credits — the 88-min AGD clip needs 7,066 credits, 2,934 left of 10,000 (recording 537719fa failed, Thai message db400e0). Top up, then press ลองใหม่
+- [x] AGD 88-min clip no longer needs re-transcribing (2026-11-18, af89dab): owner said a meeting summary must not sit on the board as a task → old task #23 (summary + transcript pasted from Plaud) moved onto recording 537719fa (summary + 853 segments, status done), #24–#43 linked via source_recording_id, #23 deleted (backup memo/backup-task23-20261118.json). Credits only needed for future long clips.
+- [x] Meeting page: `summary` (AI-written, editable) + "งานที่แจกแล้ว" grouped per person. Per-draft person picker + รับทั้งหมด already existed (owner asked 18 Nov).
 - [x] First real run 2026-11-18 with a 51 s synthetic Thai clip (macOS `say -v Kanya`, recording 542682fe "ทดสอบ-ประชุมสั้น", left in review — not accepted): webhook → extracting in <1 min, batch picked up by the 10-min cron, 4/4 drafts correct (people, brands, Thai relative dates).
 - [x] Fixed 9bd74ed: upload failed with 415 when the browser reports `application/octet-stream` (supabase-js sends the File's own type) — page now re-wraps the File.
 - [x] Fixed fa46282: evidence second was 0 for every draft (one segment per speaker turn) — turns now split at 30 s / 0.6 s pause after a spacing token.

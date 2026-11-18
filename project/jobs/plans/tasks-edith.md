@@ -2,6 +2,13 @@
 
 > Owner wants the task system (/tasks) easy enough that staff actually use it, working together with the Edith Discord bot (Hermes, all staff, own data only). Not designed yet — start here in a fresh chat.
 
+<!-- toc -->
+**Contents** (3)
+- Owner answers (2026-11-18)
+- Already exists (check before building)
+- Next
+<!-- /toc -->
+
 ## Owner answers (2026-11-18)
 - Why staff don't use it (all four): must open the web to see tasks · creating/updating is fiddly · nobody chases tasks · the screen is hard to read.
 - Edith should (all four): turn a Discord message into a task ("ask เฟื่อง to do the GB promo by Friday") · update/close tasks from chat (reply "done", attach progress photos) · DM each person a morning summary (today, due soon, overdue) · chase overdue tasks for the owner and report back to แอม.

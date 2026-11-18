@@ -5,7 +5,9 @@
 > logged once is never re-debugged. Append-only via `/memo`.
 
 <!-- toc -->
-**Contents** (24)
+**Contents** (26)
+- 2026-11-18 — Person strip count badge digits cut off (/tasks) · fixed `936d08f`
+- 2026-11-18 — Plaud link import: "Share not found" · fixed `5b12f44`
 - 2026-11-17 — Order plan stock didn't match aoo (Stokke STK #5) · fixed `45e5a85`
 - 2026-11-10 — Working a swapped day off: can't check out · fixed `08232b6`
 - Database / migrations
@@ -33,6 +35,16 @@
 <!-- /toc -->
 
 ---
+
+## 2026-11-18 — Person strip count badge digits cut off (/tasks) · fixed `936d08f`
+- Symptom: numbers on the avatar badges (41, 16, 7…) clipped top/bottom.
+- Cause: 14px (`--fs-caption`) digits in an 18px badge with 2px border and the Thai font's tall line-height.
+- Fix: badge 20px, `line-height: 1`, strip gets top padding — `.aoo-people-strip__count` in app/globals.css.
+
+## 2026-11-18 — Plaud link import: "Share not found" · fixed `5b12f44`
+- Symptom: /tasks/voice "ดึงจาก Plaud" → `Plaud share error: Share not found` for a valid link.
+- Cause: the owner's account is on the APAC host; `api.plaud.ai` answers status 40400 instead of the -302 region redirect the code expected.
+- Fix: on 40400 retry `api-apse1` / `api-euc1` (lib/voice/plaud.ts `PLAUD_REGIONS`).
 
 ## 2026-11-17 — Order plan stock didn't match aoo (Stokke STK #5) · fixed `45e5a85`
 - Symptom: plan "ตอนนี้" column ≠ aoo stock page for คลังหลัก RAMA2 (Serene Pink 12 vs −2; MuTable V2 / Snoozi / Clikk Travel Bag 0 vs 2–6).

@@ -3,7 +3,8 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (5)
+**Contents** (6)
+- Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
 - UAT test cases: reference picture per step — since 2026-11-09
 - Order plans: brand owners edit their own brand — since 2026-11-11
 - Expenses (เบิกค่าใช้จ่าย) — since 2026-11-03
@@ -12,6 +13,12 @@
 <!-- /toc -->
 
 ---
+
+## Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
+- **What it does:** admin pastes a Plaud share link or uploads an audio file (iPhone Voice Memos .m4a, mp3, wav, ogg, webm, ≤ 50 MB) on /tasks/voice. The system transcribes it, drafts tasks (assignee, due date, brand, quote with timestamp) and waits for review: map speakers to staff, edit, accept or reject each draft; accepted drafts become normal tasks linked back to the recording. Runs in the background queue, so the page can be closed.
+- **Uses:** Plaud share links · ElevenLabs Scribe (speech-to-text, webhook) · Claude Opus (batch) · private Supabase storage.
+- **Limits:** admin only; audio deleted after 90 days (transcript kept); each transcription spends ElevenLabs credits (~80 per minute). iPhone Share-Sheet shortcut not built yet.
+- **Package:** internal, not sold.
 
 ## UAT test cases: reference picture per step — since 2026-11-09
 - Each step of a test case can carry a picture showing where to press. Testers see a small thumbnail beside the step on the board and tap it to enlarge (phone too).

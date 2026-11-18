@@ -28,12 +28,12 @@
 | File | KB | Sections | About |
 |---|---|---|---|
 | [bugs.md](bugs/bugs.md) | 1 | 0 | One entry: `## YYYY-MM-DD · area · symptom` + what is known. Fixed → move it to `bugs_fixed.md` with root caus |
-| [bugs_fixed.md](bugs/bugs_fixed.md) | 96 | 24 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
+| [bugs_fixed.md](bugs/bugs_fixed.md) | 97 | 26 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
 
 ### features/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [app-features.md](features/app-features.md) | 4 | 5 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
+| [app-features.md](features/app-features.md) | 5 | 6 | By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet. |
 | [platforms.md](features/platforms.md) | 1 | 2 | One row per outside system, grouped by type, status live / partial / planned / paused / none. Not drafted yet. |
 
 ### jobs/
@@ -51,8 +51,8 @@
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 6 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
-| [stokke-order.md](jobs/doing/stokke-order.md) | 5 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
-| [voice-tasks.md](jobs/doing/voice-tasks.md) | 3 | 0 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |
+| [stokke-order.md](jobs/doing/stokke-order.md) | 6 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
+| [voice-tasks.md](jobs/doing/voice-tasks.md) | 3 | 1 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |
 
 ### jobs/done/
 | File | KB | Sections | About |
@@ -76,4 +76,4 @@
 ### knowledge/learning/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [general.md](knowledge/learning/general.md) | 61 | 32 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [general.md](knowledge/learning/general.md) | 62 | 33 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |

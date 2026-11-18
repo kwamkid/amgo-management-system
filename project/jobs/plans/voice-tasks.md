@@ -4,10 +4,11 @@
 > Status: **plan only, nothing built.** Third-party prices marked (verify) are from mid-2026 — recheck before building.
 
 <!-- toc -->
-**Contents** (11)
+**Contents** (14)
 - Goal
 - Key decisions (and why they differ from the first chat draft)
 - Models / APIs
+- Cost at owner's estimate — 5 meeting-hours / month (measured 2026-11-17)
 - Cost estimate (20 meeting-hours / month)
 - Architecture
 - Database (new migration, RLS like `tasks`: admin sees all, member sees own)
@@ -16,6 +17,8 @@
 - Owner decisions (2026-11-17)
 - Plaud share link — verified 2026-11-17 (unofficial API, read from web.plaud.ai JS; may change)
 - Blockers before coding
+- STT bake-off — 2026-11-17 (file "AGD-ประชุมหลังแฟร์", 88 min, Plaud Ogg Opus)
+- Resume point — 2026-11-17 (start Phase 1 in a fresh chat)
 <!-- /toc -->
 
 ## Goal

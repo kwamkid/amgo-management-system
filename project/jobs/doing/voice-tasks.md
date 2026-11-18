@@ -25,7 +25,7 @@
 - [ ] iPhone Share-Sheet Shortcut "ส่งเข้า amgo": needs a token the Shortcut can hold (new bot key scope `voice`, migration on `bot_api_keys_scope_check`) → upload-url endpoint → PUT file to Storage → start
 - [ ] Sidebar menu entry for `/tasks/voice` (skipped: components/layout/Sidebar.tsx has another chat's uncommitted edits) — for now reached via the "จากเสียงประชุม" button on /tasks
 - [ ] Repo ESLint config crashes ("Converting circular structure to JSON" in FlatCompat, eslint.config.mjs) — pre-existing, not caused by this work
-- [ ] Not pushed: 936d08f (person-strip badge fix, /tasks) · db400e0 (Thai ElevenLabs credit message) — needs `/push`
+- [x] Pushed 2026-11-18 (5b12f44..6f802c1): 936d08f · db400e0 · voice fixes 9bd74ed fa46282 · tasks 1bfaf5e · meeting summary af89dab · avatars e045267 6f802c1
 
 ## Resume note
 Resume at: owner tops up ElevenLabs credits → on /tasks/voice press ลองใหม่ on "AGD-ประชุมหลังแฟร์" (recording 537719fa…) → watch queue_jobs + voice_recordings status through transcribing → extracting → review; verify poll codes and draft quality.

@@ -11,14 +11,15 @@ import type { NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 import { UUID, apiError, apiJson, authBotApi, readJson, type BotCaller } from '@/lib/services/bot/botApi'
 import { removeTaskImages } from '@/lib/services/bot/botImages'
-import { DATE_REQUIRED, UPDATE_KINDS, isYmd, type BotUpdateKind } from '@/lib/services/bot/botTasks'
+import { DATE_REQUIRED, UPDATE_KINDS, isYmd, resolveTaskId, type BotUpdateKind } from '@/lib/services/bot/botTasks'
 
 type Ctx = { params: Promise<{ id: string; updateId: string }> }
 
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
 
-async function loadOwned(caller: BotCaller, taskId: string, updateId: string) {
-  if (!UUID.test(taskId) || !UUID.test(updateId)) return { error: apiError(404, 'ไม่พบรายการนี้') }
+async function loadOwned(caller: BotCaller, rawTaskId: string, updateId: string) {
+  const taskId = await resolveTaskId(caller.sb, rawTaskId)
+  if (!taskId || !UUID.test(updateId)) return { error: apiError(404, 'ไม่พบรายการนี้') }
   const { data: u } = await caller.sb
     .from('task_updates')
     .select('id, kind, event_date, created_by, created_at')
@@ -29,7 +30,7 @@ async function loadOwned(caller: BotCaller, taskId: string, updateId: string) {
   const fresh = Date.now() - new Date(u.created_at).getTime() < EDIT_WINDOW_MS
   if (!caller.isAdmin && !(u.created_by === caller.user.id && fresh))
     return { error: apiError(403, 'แก้/ลบได้เฉพาะรายการของตัวเองภายใน 24 ชม. (แอดมินได้ตลอด)') }
-  return { u }
+  return { u, taskId }
 }
 
 async function taskState(caller: BotCaller, id: string) {
@@ -95,7 +96,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       dueChange: data.new_due ? { from: data.old_due, to: data.new_due } : undefined,
       editedAt: data.updated_at,
     },
-    task: await taskState(caller, id),
+    task: await taskState(caller, r.taskId),
   })
 }
 
@@ -116,5 +117,5 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   }
   const { error } = await caller.sb.from('task_updates').delete().eq('id', updateId)
   if (error) return apiError(500, error.message)
-  return apiJson({ deleted: updateId, task: await taskState(caller, id) })
+  return apiJson({ deleted: updateId, task: await taskState(caller, r.taskId) })
 }

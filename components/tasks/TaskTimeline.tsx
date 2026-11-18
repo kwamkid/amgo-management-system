@@ -448,7 +448,7 @@ export default function TaskTimeline({
                 )}
                 <span className="aoo-timeline__meta">
                   <span>
-                    {name(u.createdBy)} · {thaiDay(toYmd(new Date(u.createdAt)))}{' '}
+                    {u.kind === 'chase' ? 'Edith' : name(u.createdBy)} · {thaiDay(toYmd(new Date(u.createdAt)))}{' '}
                     {new Date(u.createdAt).toTimeString().slice(0, 5)}
                   </span>
                   {mine(u) && !editing && !reason && (
@@ -498,6 +498,8 @@ function headOf(u: TaskUpdate) {
       return `นัด ${thaiDay(u.eventDate!)}${u.eventTime ? ` ${shortTime(u.eventTime)}` : ''}`
     case 'note':
       return u.eventDate ? `อัปเดต · ขั้นถัดไป ${thaiDay(u.eventDate)}` : 'อัปเดต'
+    case 'chase':
+      return 'Edith ถามความคืบหน้า'
     case 'due_change':
       return (
         <span className="aoo-timeline__dates">

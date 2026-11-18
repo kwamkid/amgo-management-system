@@ -29,6 +29,7 @@ import { BrandLogo, FilterBar, FilterSelect, PageHeader, Segmented, TechLoader }
 import AssigneeStrip, { type AssigneeScope } from '@/components/tasks/AssigneeStrip'
 import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
+import TaskList from '@/components/tasks/TaskList'
 import TaskImages from '@/components/tasks/TaskImages'
 import TaskTimeline from '@/components/tasks/TaskTimeline'
 import { STATUS_ICON, STATUS_TONE } from '@/components/tasks/taskUi'
@@ -181,6 +182,22 @@ export default function TasksPage() {
     })
   }
 
+  // มือถือ: แตะวงกลมในรายการ = เปลี่ยนสถานะทันที (ไม่ต้องเปิดหน้าต่าง)
+  const setStatus = (task: Task, status: TaskStatus) => {
+    if (!canEdit(task)) return
+    setTasks((prev) =>
+      prev?.map((t) =>
+        t.id === task.id
+          ? { ...t, status, doneAt: status === 'done' ? t.doneAt ?? new Date().toISOString() : null }
+          : t
+      ) ?? prev
+    )
+    updateTask(task.id, { status }).catch((e) => {
+      showToast(e.message, 'error')
+      load()
+    })
+  }
+
   if (!userData || !tasks || !me) return <TechLoader />
 
   const todayKey = format(new Date(), 'yyyy-MM-dd')
@@ -246,8 +263,12 @@ export default function TasksPage() {
         />
       </FilterBar>
 
-      <div className="max-lg:min-h-0 max-lg:flex-1">
+      <div className="max-lg:hidden">
         <TaskBoard tasks={visible} onMove={move} onOpen={setModal} />
+      </div>
+      {/* มือถือ: รายการตามความด่วน เลื่อนในกรอบตัวเอง (หน้าทั้งหน้าพอดีจอเหมือนเดิม) */}
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3 lg:hidden">
+        <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setModal} onSetStatus={setStatus} />
       </div>
 
       {modal && (
@@ -357,8 +378,8 @@ function TaskModal({
     run(async () => {
       if (!task) {
         await createTask(
-          // พนักงานมอบได้แค่ตัวเอง — ช่องคนล็อกไว้ที่ตัวเองอยู่แล้ว
-          { title: title.trim(), notes: cleanNotes, dueDate: due || null, brand, sortOrder, assigneeIds: isAdmin ? assignees : [userId] },
+          // ทุกคนมอบงานที่ตัวเองสร้างให้ใครก็ได้ (เจ้าของ 18 พ.ย. 69)
+          { title: title.trim(), notes: cleanNotes, dueDate: due || null, brand, sortOrder, assigneeIds: assignees },
           userId
         )
         return
@@ -370,7 +391,7 @@ function TaskModal({
         ...(dueMoved && { dueDate: due || null, dueReason }),
         ...(canEditDetails && { title: title.trim() || task.title, brand }),
       })
-      if (isAdmin) await setTaskAssignees(task.id, task.assignees.map((a) => a.userId), assignees)
+      if (canEditDetails) await setTaskAssignees(task.id, task.assignees.map((a) => a.userId), assignees)
     })
 
   return (
@@ -507,7 +528,7 @@ function TaskModal({
             </Field>
           )}
           <Field label="ผู้รับผิดชอบ" asDiv>
-            <AssigneePicker people={people} value={assignees} onChange={setAssignees} editable={isAdmin} />
+            <AssigneePicker people={people} value={assignees} onChange={setAssignees} editable={canEditDetails} />
           </Field>
           {task && (
             <Field label="รูป" asDiv>

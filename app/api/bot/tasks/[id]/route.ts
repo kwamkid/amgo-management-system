@@ -7,7 +7,7 @@
 //   เลื่อนวัน → ลงไทม์ไลน์ "เลื่อนวัน" พร้อมเหตุผลและชื่อคนเลื่อน (เหมือนหน้าเว็บ)
 import type { NextRequest } from 'next/server'
 import { listTaskImages } from '@/lib/services/bot/botImages'
-import { UUID, apiError, apiJson, authBotApi, readJson, resolvePeople, untyped } from '@/lib/services/bot/botApi'
+import { apiError, apiJson, authBotApi, readJson, resolvePeople, untyped } from '@/lib/services/bot/botApi'
 import {
   STATUSES,
   assigneeChangeError,
@@ -17,6 +17,7 @@ import {
   isYmd,
   normalizeBrand,
   peopleMap,
+  resolveTaskId,
   setAssignees,
   toBotTasks,
   type TaskStatus,
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const a = await authBotApi(request)
   if ('error' in a) return a.error
   const { sb } = a.caller
-  const id = (await params).id
-  if (!UUID.test(id)) return apiError(404, 'ไม่พบงานนี้')
+  const id = await resolveTaskId(sb, (await params).id)
+  if (!id) return apiError(404, 'ไม่พบงานนี้')
   const row = await getTaskRow(sb, id)
   if (!row) return apiError(404, 'ไม่พบงานนี้')
 
@@ -68,8 +69,8 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   if ('error' in a) return a.error
   const { caller } = a
   const { sb } = caller
-  const id = (await params).id
-  if (!UUID.test(id)) return apiError(404, 'ไม่พบงานนี้')
+  const id = await resolveTaskId(sb, (await params).id)
+  if (!id) return apiError(404, 'ไม่พบงานนี้')
   const row = await getTaskRow(sb, id)
   if (!row) return apiError(404, 'ไม่พบงานนี้')
   if (!canEditTask(caller, row)) return apiError(403, 'แก้ได้เฉพาะแอดมิน คนสร้างงาน หรือผู้รับผิดชอบ')

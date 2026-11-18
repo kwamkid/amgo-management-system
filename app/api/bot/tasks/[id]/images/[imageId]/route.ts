@@ -3,14 +3,15 @@
 import type { NextRequest } from 'next/server'
 import { UUID, apiError, apiJson, authBotApi } from '@/lib/services/bot/botApi'
 import { listTaskImages, removeTaskImages } from '@/lib/services/bot/botImages'
-import { canEditTask, getTaskRow } from '@/lib/services/bot/botTasks'
+import { canEditTask, getTaskRow, resolveTaskId } from '@/lib/services/bot/botTasks'
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string; imageId: string }> }) {
   const a = await authBotApi(request)
   if ('error' in a) return a.error
   const { caller } = a
-  const { id, imageId } = await params
-  if (!UUID.test(id) || !UUID.test(imageId)) return apiError(404, 'ไม่พบรูปนี้')
+  const { id: rawId, imageId } = await params
+  const id = await resolveTaskId(caller.sb, rawId)
+  if (!id || !UUID.test(imageId)) return apiError(404, 'ไม่พบรูปนี้')
   const row = await getTaskRow(caller.sb, id)
   if (!row) return apiError(404, 'ไม่พบงานนี้')
   if (!canEditTask(caller, row)) return apiError(403, 'ลบรูปได้เฉพาะแอดมิน คนสร้างงาน หรือผู้รับผิดชอบ')

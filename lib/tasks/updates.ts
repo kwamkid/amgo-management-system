@@ -6,10 +6,10 @@
 // งานส่วนใหญ่ "ติดอยู่ที่อีกฝ่าย" ไม่ได้มีนัดจริง (เจ้าของ 28 ต.ค. 69) — จึงเริ่มจาก "รอเขา"
 // ที่บังคับวันตามอีกที · วันในรายการกลายเป็นวันครบกำหนดของงาน (trigger ใน DB)
 
-export type TaskUpdateKind = 'waiting' | 'follow_up' | 'appointment' | 'note' | 'due_change'
+export type TaskUpdateKind = 'waiting' | 'follow_up' | 'appointment' | 'note' | 'due_change' | 'chase'
 
-/** ประเภทที่คนกดเพิ่มเองได้ — due_change เขียนโดย trigger ตอนเลื่อนวันจากช่องครบกำหนด */
-export type ManualUpdateKind = Exclude<TaskUpdateKind, 'due_change'>
+/** ประเภทที่คนกดเพิ่มเองได้ — due_change เขียนโดย trigger ตอนเลื่อนวัน · chase = Edith ถามงานที่เลยกำหนด (bot API) */
+export type ManualUpdateKind = Exclude<TaskUpdateKind, 'due_change' | 'chase'>
 
 /** ต้องมีวันไหม — ตรงกับ check constraint ใน migration 20261028014843 */
 export const DATE_REQUIRED: Record<ManualUpdateKind, boolean> = {
@@ -36,6 +36,7 @@ export const KIND_LABEL: Record<TaskUpdateKind, string> = {
   appointment: 'นัดหมาย',
   note: 'อัปเดต',
   due_change: 'เลื่อนวัน',
+  chase: 'Edith ถามความคืบหน้า',
 }
 
 export const KIND_EMOJI: Record<TaskUpdateKind, string> = {
@@ -44,6 +45,7 @@ export const KIND_EMOJI: Record<TaskUpdateKind, string> = {
   appointment: '📅',
   note: '📝',
   due_change: '🗓',
+  chase: '🤖',
 }
 
 /** สถานะล่าสุดของงาน (view task_status_line) */

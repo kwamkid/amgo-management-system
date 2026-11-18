@@ -37,6 +37,8 @@ export async function getTaskPeople(): Promise<TaskPerson[]> {
 
 export interface Task {
   id: string
+  /** เลขงานสั้น ๆ (#57) — อ้างใน Discord / Edith */
+  no: number
   title: string
   notes: string
   brand: string | null
@@ -57,6 +59,7 @@ export interface Task {
 
 interface TaskRow {
   id: string
+  no: number
   title: string
   notes: string
   brand: string | null
@@ -76,7 +79,7 @@ export async function getTasks(people: TaskPerson[]): Promise<Task[]> {
   const [{ data, error }, lines, covers] = await Promise.all([
     sb
       .from('tasks')
-      .select('id, title, notes, brand, source_ref, due_date, status, sort_order, done_at, created_by, created_at, task_assignees(user_id), task_images(count)')
+      .select('id, no, title, notes, brand, source_ref, due_date, status, sort_order, done_at, created_by, created_at, task_assignees(user_id), task_images(count)')
       .order('sort_order')
       .order('created_at', { ascending: false }),
     getStatusLines(),
@@ -88,6 +91,7 @@ export async function getTasks(people: TaskPerson[]): Promise<Task[]> {
   const names = new Map(people.map((p) => [p.userId, p.name]))
   return rows.map((r) => ({
     id: r.id,
+    no: r.no,
     title: r.title,
     notes: r.notes,
     brand: r.brand,

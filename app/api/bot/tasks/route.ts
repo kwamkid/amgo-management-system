@@ -5,7 +5,7 @@
 //
 // POST /api/bot/tasks — สร้างงาน
 //   { title, notes?, brand?, due_date?: "YYYY-MM-DD", assignees?: ["me" | discord id | user id] }
-//   general: มอบได้แค่ตัวเอง (ไม่ส่ง assignees = มอบให้ตัวเอง) · superadmin: มอบใครก็ได้ / ไม่มอบใครก็ได้
+//   มอบใครก็ได้ทั้งสองคีย์ · ไม่ส่ง assignees: general = มอบให้ตัวเอง · superadmin = ยังไม่มอบใคร
 import type { NextRequest } from 'next/server'
 import { apiError, apiJson, authBotApi, readJson, resolvePeople } from '@/lib/services/bot/botApi'
 import {
@@ -89,9 +89,8 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(body.assignees)) return apiError(400, 'assignees ต้องเป็น array')
     const { found, missing } = await resolvePeople(caller.sb, body.assignees.map(String), caller.user)
     if (missing.length) return apiError(400, `ไม่พบพนักงาน: ${missing.join(', ')}`)
+    // ทุกคนมอบงานที่ตัวเองสร้างให้ใครก็ได้ (owner 18 Nov · task_assignees_creator)
     assigneeIds = found.map((f) => f.id)
-    if (!caller.isAdmin && assigneeIds.some((id) => id !== caller.user.id))
-      return apiError(403, 'มอบงานให้คนอื่นได้เฉพาะแอดมิน — พนักงานจดงานให้ตัวเองได้เท่านั้น')
   }
 
   // งานใหม่อยู่บนสุดของคอลัมน์ "ต้องทำ" (เหมือนหน้าเว็บ: ลำดับน้อยกว่าใบบนสุด)

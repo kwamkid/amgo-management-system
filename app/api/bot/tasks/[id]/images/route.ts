@@ -12,15 +12,15 @@
 import type { NextRequest } from 'next/server'
 import { UUID, apiError, apiJson, authBotApi, readJson } from '@/lib/services/bot/botApi'
 import { collectImages, listTaskImages, saveTaskImage } from '@/lib/services/bot/botImages'
-import { canEditTask, getTaskRow } from '@/lib/services/bot/botTasks'
+import { canEditTask, getTaskRow, resolveTaskId } from '@/lib/services/bot/botTasks'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(request: NextRequest, { params }: Ctx) {
   const a = await authBotApi(request)
   if ('error' in a) return a.error
-  const id = (await params).id
-  if (!UUID.test(id) || !(await getTaskRow(a.caller.sb, id))) return apiError(404, 'ไม่พบงานนี้')
+  const id = await resolveTaskId(a.caller.sb, (await params).id)
+  if (!id || !(await getTaskRow(a.caller.sb, id))) return apiError(404, 'ไม่พบงานนี้')
   return apiJson({ images: await listTaskImages(a.caller.sb, id) })
 }
 
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const a = await authBotApi(request)
   if ('error' in a) return a.error
   const { caller } = a
-  const id = (await params).id
-  if (!UUID.test(id)) return apiError(404, 'ไม่พบงานนี้')
+  const id = await resolveTaskId(caller.sb, (await params).id)
+  if (!id) return apiError(404, 'ไม่พบงานนี้')
   const row = await getTaskRow(caller.sb, id)
   if (!row) return apiError(404, 'ไม่พบงานนี้')
   if (!canEditTask(caller, row)) return apiError(403, 'เพิ่มรูปได้เฉพาะแอดมิน คนสร้างงาน หรือผู้รับผิดชอบ')
@@ -70,8 +70,8 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   const a = await authBotApi(request)
   if ('error' in a) return a.error
   const { caller } = a
-  const id = (await params).id
-  if (!UUID.test(id)) return apiError(404, 'ไม่พบงานนี้')
+  const id = await resolveTaskId(caller.sb, (await params).id)
+  if (!id) return apiError(404, 'ไม่พบงานนี้')
   const row = await getTaskRow(caller.sb, id)
   if (!row) return apiError(404, 'ไม่พบงานนี้')
   if (!canEditTask(caller, row)) return apiError(403, 'เรียงรูปได้เฉพาะแอดมิน คนสร้างงาน หรือผู้รับผิดชอบ')

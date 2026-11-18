@@ -4979,6 +4979,7 @@ export type Database = {
           due_change_reason: string | null
           due_date: string | null
           id: string
+          no: number
           notes: string
           sort_order: number
           source_kind: string
@@ -4997,6 +4998,7 @@ export type Database = {
           due_change_reason?: string | null
           due_date?: string | null
           id?: string
+          no?: number
           notes?: string
           sort_order?: number
           source_kind?: string
@@ -5015,6 +5017,7 @@ export type Database = {
           due_change_reason?: string | null
           due_date?: string | null
           id?: string
+          no?: number
           notes?: string
           sort_order?: number
           source_kind?: string

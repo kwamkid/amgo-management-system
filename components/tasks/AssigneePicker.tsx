@@ -15,7 +15,7 @@ export default function AssigneePicker({
   people: TaskPerson[]
   value: string[]
   onChange: (ids: string[]) => void
-  /** false = โชว์อย่างเดียว (มอบงานคนอื่นได้เฉพาะแอดมิน) */
+  /** false = โชว์อย่างเดียว (เปลี่ยนคนได้เฉพาะแอดมินกับคนสร้างงาน) */
   editable: boolean
 }) {
   const byId = new Map(people.map((p) => [p.userId, p]))

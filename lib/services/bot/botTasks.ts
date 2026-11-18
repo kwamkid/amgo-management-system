@@ -4,8 +4,9 @@
 //   อ่าน     : ทุกคนเห็นทุกงาน (20261027222208_tasks_visible_to_all — "ไม่มีอะไรต้องปิดบัง")
 //   แก้      : แอดมิน · คนสร้าง · ผู้รับผิดชอบ (tasks_update_own)
 //              คนที่ไม่ใช่แอดมิน/คนสร้าง แก้ได้แค่ สถานะ · วันครบกำหนด · โน้ต (tasks_before_write)
-//   ผู้รับผิดชอบ: แอดมินตั้งใครก็ได้ · พนักงานเพิ่ม/ถอด "ตัวเอง" ได้เฉพาะงานที่ตัวเองสร้าง
-//              (task_assignees_self / _self_delete)
+//   ผู้รับผิดชอบ: แอดมินตั้งใครก็ได้ · คนสร้างงานมอบให้ใครก็ได้ · ผู้รับผิดชอบถอดตัวเองออกได้
+//              (task_assignees_creator / _creator_delete — 20261118090000, owner 18 Nov)
+//   เลขงาน   : tasks.no (#57) — ทุก route /tasks/{id} รับได้ทั้ง uuid และเลขงาน (resolveTaskId)
 //   ไทม์ไลน์ : ใครแก้งานได้ = เพิ่มรายการได้ (task_updates_insert · ห้าม kind due_change)
 //   เลื่อนวัน : ผ่าน rpc bot_set_task_due → ลงไทม์ไลน์ due_change พร้อมชื่อคนเลื่อน
 // สถานะ done: ส่ง done_by เอง (trigger ใช้ auth.uid() ซึ่ง service role ไม่มี)
@@ -13,7 +14,7 @@
 import { bangkokDayKey } from '@/lib/services/workingHoursService'
 import { richTextToPlain } from '@/lib/utils/richText'
 import { statusLineText, type ManualUpdateKind } from '@/lib/tasks/updates'
-import { personName, type AdminDb, type BotCaller, type BotPerson } from './botApi'
+import { UUID, personName, type AdminDb, type BotCaller, type BotPerson } from './botApi'
 
 export type TaskStatus = 'todo' | 'doing' | 'done'
 export const STATUSES: TaskStatus[] = ['todo', 'doing', 'done']
@@ -41,6 +42,7 @@ export const normalizeBrand = (b: unknown) => (typeof b === 'string' ? b.trim().
 
 export interface TaskRow {
   id: string
+  no: number
   title: string
   notes: string
   brand: string | null
@@ -52,11 +54,13 @@ export interface TaskRow {
   task_assignees: { user_id: string }[]
 }
 
-export const TASK_COLS = 'id, title, notes, brand, due_date, status, done_at, created_by, created_at, task_assignees(user_id)'
+export const TASK_COLS = 'id, no, title, notes, brand, due_date, status, done_at, created_by, created_at, task_assignees(user_id)'
 
 /** งานแบบย่อที่ส่งให้บอท */
 export interface BotTask {
   id: string
+  /** เลขงานสั้น ๆ ที่โชว์บนการ์ด — คนพิมพ์ใน Discord ว่า "#57 เสร็จแล้ว" */
+  no: number
   title: string
   brand: string | null
   status: TaskStatus
@@ -94,6 +98,7 @@ export async function toBotTasks(sb: AdminDb, rows: TaskRow[], opts: { notes?: '
   return rows.map((r) => {
     const t: BotTask = {
       id: r.id,
+      no: r.no,
       title: r.title,
       brand: r.brand,
       status: r.status as TaskStatus,
@@ -126,6 +131,22 @@ export async function toBotTasks(sb: AdminDb, rows: TaskRow[], opts: { notes?: '
   })
 }
 
+const TASK_NO = /^#?(\d{1,9})$/
+
+/** พารามิเตอร์ {id} ของ route → uuid ของงาน · รับ uuid หรือเลขงาน ("57" / "#57" / "%2357") · ไม่พบ = null */
+export async function resolveTaskId(sb: AdminDb, raw: string): Promise<string | null> {
+  let v = raw
+  try {
+    v = decodeURIComponent(raw)
+  } catch {}
+  v = v.trim()
+  if (UUID.test(v)) return v
+  const m = TASK_NO.exec(v)
+  if (!m) return null
+  const { data } = await sb.from('tasks').select('id').eq('no', Number(m[1])).maybeSingle()
+  return data?.id ?? null
+}
+
 export async function getTaskRow(sb: AdminDb, id: string): Promise<TaskRow | null> {
   const { data } = await sb.from('tasks').select(TASK_COLS).eq('id', id).maybeSingle()
   return (data as TaskRow | null) ?? null
@@ -140,11 +161,13 @@ export const canEditDetails = (c: BotCaller, t: Pick<TaskRow, 'created_by'>) => 
 
 /** ตรวจการเปลี่ยนผู้รับผิดชอบ — คืนข้อความ error หรือ null */
 export function assigneeChangeError(c: BotCaller, createdBy: string | null, before: string[], after: string[]): string | null {
-  if (c.isAdmin) return null
-  const changed = [...after.filter((x) => !before.includes(x)), ...before.filter((x) => !after.includes(x))]
-  if (!changed.length) return null
-  if (createdBy !== c.user.id || changed.some((x) => x !== c.user.id))
-    return 'มอบงานให้คนอื่นได้เฉพาะแอดมิน — พนักงานเพิ่ม/ถอดได้แค่ตัวเองในงานที่ตัวเองสร้าง'
+  if (c.isAdmin || createdBy === c.user.id) return null
+  const added = after.filter((x) => !before.includes(x))
+  const removed = before.filter((x) => !after.includes(x))
+  if (!added.length && !removed.length) return null
+  // ไม่ใช่คนสร้าง: ถอดตัวเองออกได้อย่างเดียว
+  if (added.length || removed.some((x) => x !== c.user.id))
+    return 'เปลี่ยนผู้รับผิดชอบได้เฉพาะคนสร้างงานหรือแอดมิน — ผู้รับผิดชอบถอดตัวเองออกได้'
   return null
 }
 

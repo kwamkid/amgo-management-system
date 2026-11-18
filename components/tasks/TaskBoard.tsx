@@ -213,7 +213,9 @@ function TaskCardView({ task, dragging, overlay }: { task: Task; dragging?: bool
         // eslint-disable-next-line @next/next/no-img-element -- signed URL จาก Supabase
         <img className="aoo-task-card__cover" src={task.coverUrl} alt="" loading="lazy" draggable={false} />
       )}
-      <h4 className="aoo-task-card__title">{task.title}</h4>
+      <h4 className="aoo-task-card__title">
+        <span className="aoo-task-row__no">#{task.no}</span> {task.title}
+      </h4>
       {task.statusLine && task.status !== 'done' && (
         <p className="aoo-task-card__status">{statusLineText(task.statusLine)}</p>
       )}

@@ -19,14 +19,32 @@ export interface Transcript {
 
 type Word = { text: string; start?: number; end?: number; type: string; speakerId?: string }
 
-/** Merge word-level output into one segment per speaker turn. */
+/** Long monologues are split so each draft's evidence can jump near the right second
+ *  (one segment per turn made a 51 s single-speaker clip cite 0:00 for every task — 2026-11-18). */
+const MAX_SEGMENT_SEC = 30
+const PAUSE_SPLIT_SEC = 0.6
+const MIN_BEFORE_PAUSE_SPLIT_SEC = 8
+
+/** Merge word-level output into segments per speaker turn, split on long turns / pauses. */
 export function wordsToSegments(words: Word[]): Segment[] {
   const out: Segment[] = []
+  // spacing tokens stretch across the pause, so measure the gap from the previous *word*
+  let lastWordEnd: number | null = null
+  // Thai "words" from Scribe are often single characters — only split right after a spacing token
+  let afterSpace = false
   for (const w of words) {
     if (w.type === 'audio_event') continue
     const speaker = w.speakerId ?? 'speaker_0'
     const last = out[out.length - 1]
-    if (last && last.speaker === speaker) {
+    const len = last ? last.end - last.start : 0
+    const gap = last && w.start != null && lastWordEnd != null ? w.start - lastWordEnd : 0
+    if (w.type === 'word' && w.end != null) lastWordEnd = w.end
+    const split =
+      w.type === 'word' &&
+      afterSpace &&
+      (len >= MAX_SEGMENT_SEC || (len >= MIN_BEFORE_PAUSE_SPLIT_SEC && gap >= PAUSE_SPLIT_SEC))
+    afterSpace = w.type === 'spacing'
+    if (last && last.speaker === speaker && !split) {
       last.text += w.text
       if (w.end != null) last.end = w.end
     } else if (w.type === 'word') {

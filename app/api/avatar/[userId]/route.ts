@@ -20,8 +20,9 @@ import { createServerSupabase, verifiedUser } from '@/lib/supabase/server'
 
 const BUCKET = 'avatars'
 
-/** เก็บในเบราว์เซอร์ได้ 1 วัน — รูปโปรไฟล์ไม่ได้เปลี่ยนบ่อย */
-const CACHE = 'private, max-age=86400'
+/** เก็บในเบราว์เซอร์ได้ 7 วัน — รูปโปรไฟล์ไม่ได้เปลี่ยนบ่อย, โหลดหน้าไวกว่า (เจ้าของ 18 พ.ย. 69)
+ *  แลกกับ: คนเปลี่ยนรูป คนอื่นเห็นรูปใหม่ช้าสุด 7 วัน */
+const CACHE = 'private, max-age=604800'
 
 /**
  * คนที่ไม่มีรูปก็ต้อง cache ผลว่า "ไม่มี" ด้วย

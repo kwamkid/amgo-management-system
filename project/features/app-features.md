@@ -20,6 +20,7 @@
 
 ## Order plans: brand owners edit their own brand — since 2026-11-11
 - Staff who own a brand in the SRP Calculator (editor) can change carton quantities and see purchase cost on that brand's import order plans; other brands stay hidden. Viewers stay read-only without cost.
+- Search in order plans (since 2026-11-17): type words in any order, symbols ignored (® ™ ² ⁵), Thai and English mixed — "tripp natural chair" or "set2 pink" finds the line. Stock shown = sellable stock in the main warehouse only.
 
 ## Expenses (เบิกค่าใช้จ่าย) — since 2026-11-03
 - **What it does:** staff claim money they paid themselves, or ask the company to pay a supplier directly (bill/invoice attached). Pick the company first, pick the accounting category as icon tiles (auto-suggested from the description), attach up to 10 photos/PDFs. Finance approves once, exports one SCB bulk-transfer file per company, the owner approves the transfer in the SCB app, finance attaches the slip and marks it paid. Staff see each stage on their claim and get a Discord @mention when paid or rejected.

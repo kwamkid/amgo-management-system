@@ -5,7 +5,8 @@
 > logged once is never re-debugged. Append-only via `/memo`.
 
 <!-- toc -->
-**Contents** (23)
+**Contents** (24)
+- 2026-11-17 — Order plan stock didn't match aoo (Stokke STK #5) · fixed `45e5a85`
 - 2026-11-10 — Working a swapped day off: can't check out · fixed `08232b6`
 - Database / migrations
 - หน้า bulk / เงินเดือน
@@ -32,6 +33,11 @@
 <!-- /toc -->
 
 ---
+
+## 2026-11-17 — Order plan stock didn't match aoo (Stokke STK #5) · fixed `45e5a85`
+- Symptom: plan "ตอนนี้" column ≠ aoo stock page for คลังหลัก RAMA2 (Serene Pink 12 vs −2; MuTable V2 / Snoozi / Clikk Travel Bag 0 vs 2–6).
+- Cause 1: plan stock summed every warehouse (stores, consignment, Window & Show). Cause 2: aoo MCP `stock` rows with `by_warehouse` can have `barcode: null` (barcode only in `sku`) → match on barcode alone gave 0.
+- Fix: `scripts/aoo-live.mjs` now counts `คลังหลัก RAMA2` only by default (`--warehouse`, `--all-warehouses`), keys rows on barcode‖sku‖code; STK5 round stock + suggested recomputed. Hape `plan:live` passes `--all-warehouses` until owner decides.
 
 ## 2026-11-10 — Working a swapped day off: can't check out · fixed `08232b6`
 - **Symptom:** staff who filed a schedule swap in advance (worked_date = today) check in on their day off, then can't check out.

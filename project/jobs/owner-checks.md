@@ -17,3 +17,4 @@
 - aoocommerce: say "ลบตารางเก่าได้" in the aoocommerce chat to drop `uat_cases/uat_results/uat_testers` + bucket `uat-shots` (declined there until you confirm).
 - Expenses: Discord — reject a test claim and mark one paid; the claimant gets an @mention in the Leave channel (or the Expense channel if set in ตั้งค่า > Discord).
 - Expenses: first real SCB export — approve a real claim, ส่งออกไฟล์ SCB on /expenses/manage, upload the .txt to SCB Business Anywhere, confirm the bank accepts it (OAT, fee BEN), approve in the app, then โอนแล้ว · แนบสลิป (real bank + money).
+- Order plans: on the live /import page scroll a long plan and type in search — header folds without stutter, search finds "tripp natural chair" (9779471, 9e9fdc2).

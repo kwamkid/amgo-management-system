@@ -3,13 +3,12 @@
 // ส่งแจ้งเตือนงานของทีม (server เท่านั้น — ห้าม import ฝั่งเบราว์เซอร์)
 // กติกาว่าเตือนอะไร/ใคร อยู่ที่ lib/tasks/reminders.ts — ไฟล์นี้แค่อ่านข้อมูลกับส่ง
 //
-// ── ยังไม่ผูกกับอะไร (เจ้าของ 28 ต.ค. 69: "ทำเตรียมไว้ เดี๋ยวทำทีหลัง") ─────
-// ตอนเปิดใช้:
-//   1. รายวัน: app/api/cron/task-reminders/route.ts → isAuthorizedCron แล้วเรียก
-//      sendDailyTaskReminders() · ตั้ง cron-job.org วันละครั้ง ~08:30 เวลาไทย (ดู CRON_SETUP.md)
-//   2. ตามเหตุการณ์: route POST ที่อ่านผู้ใช้จาก session แล้วเรียก sendTaskEvent()
-//      (แบบ lib/push/notify.ts → /api/push/notify) — อย่ารับชื่อคนกดจากเบราว์เซอร์
-//   3. Discord: เพิ่มช่องทางใน deliver() ด้านล่าง (DM/ช่องทีม) — ตอนนี้ส่ง push อย่างเดียว
+// ── ผูกแล้ว (เจ้าของ 20 พ.ย. 69 "ตั้ง noti ไปที่มือถือด้วย") ─────────────
+//   1. รายวัน: app/api/cron/task-reminders → sendDailyTaskReminders() · cron-job.org วันละครั้ง 08:30 ไทย (docs/cron.md)
+//   2. ตามเหตุการณ์ (เว็บ): lib/tasks/notifyClient.ts → /api/tasks/notify → sendTaskEvent()
+//      ชื่อคนกดอ่านจาก session ไม่รับจากเบราว์เซอร์
+//   3. ตามเหตุการณ์ (Edith/บอท): bot task routes เรียก sendTaskEvent() ตรงใน after()
+//   Discord DM รายวันยังเป็นของ Edith บน VPS (edith_reminders.py) — ไฟล์นี้ส่ง push อย่างเดียว
 //
 // ไม่ throw: แจ้งเตือนพลาดต้องไม่ทำให้การบันทึกงานล้มตาม
 

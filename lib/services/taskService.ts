@@ -6,6 +6,7 @@ import { getImageUrls } from '@/lib/supabase/storage'
 import { resizeImage } from '@/lib/utils/resizeImage'
 import type { Database } from '@/types/database'
 import type { ManualUpdateKind, TaskStatusLine, TaskUpdateKind } from '@/lib/tasks/updates'
+import { taskNotify } from '@/lib/tasks/notifyClient'
 
 export type TaskStatus = 'todo' | 'doing' | 'done'
 
@@ -146,6 +147,7 @@ export async function createTask(
       .from('task_assignees')
       .insert(input.assigneeIds.map((user_id) => ({ task_id: data.id, user_id })))
     if (aErr) throw aErr
+    taskNotify('assigned', data.id, input.assigneeIds)
   }
   return data.id
 }
@@ -162,6 +164,7 @@ export async function setTaskAssignees(taskId: string, before: string[], after: 
   if (added.length) {
     const { error } = await sb.from('task_assignees').insert(added.map((user_id) => ({ task_id: taskId, user_id })))
     if (error) throw error
+    taskNotify('assigned', taskId, added)
   }
 }
 
@@ -191,6 +194,32 @@ export async function updateTask(
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
   const { error } = await createClient().from('tasks').update(row).eq('id', id)
   if (error) throw error
+  // server แจ้งเฉพาะงานที่เพิ่งปิด (done_at ไม่เกิน 2 นาที) — กดบันทึกงานที่เสร็จนานแล้วไม่แจ้งซ้ำ
+  if (patch.status === 'done') taskNotify('task_done', id)
+}
+
+export interface MyTaskAlert {
+  id: string
+  no: number
+  title: string
+  brand: string | null
+  dueDate: string
+}
+
+/**
+ * งานของฉันที่ครบกำหนดวันนี้หรือเลยแล้ว (ยังไม่เสร็จ) — กล่องบนหน้าแรกหลังเช็คอิน
+ * วันตาม/วันนัดในไทม์ไลน์กลายเป็นวันครบกำหนดอยู่แล้ว (trigger) จึงดูแค่ due_date
+ */
+export async function getMyTaskAlerts(userId: string, today: string): Promise<MyTaskAlert[]> {
+  const { data, error } = await createClient()
+    .from('tasks')
+    .select('id, no, title, brand, due_date, task_assignees!inner(user_id)')
+    .eq('task_assignees.user_id', userId)
+    .neq('status', 'done')
+    .lte('due_date', today)
+    .order('due_date')
+  if (error) throw error
+  return (data ?? []).map((t) => ({ id: t.id, no: t.no, title: t.title, brand: t.brand, dueDate: t.due_date! }))
 }
 
 /** วันครบกำหนด/สถานะล่าสุด — ไทม์ไลน์เปลี่ยนให้เองผ่าน trigger หน้าต่างแก้งานต้องตามให้ทัน */
@@ -414,6 +443,7 @@ export async function addTaskUpdate(taskId: string, input: TaskUpdateInput, user
       console.error(e)
     }
   }
+  taskNotify('task_updated', taskId)
   return failed
 }
 

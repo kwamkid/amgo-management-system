@@ -5,7 +5,8 @@
 //     notes?, title?, brand?, assignees?: ["me" | discord id | user id] (ทั้งชุดใหม่) }
 //   แก้ได้: แอดมิน · คนสร้าง · ผู้รับผิดชอบ — ผู้รับผิดชอบที่ไม่ได้สร้างงาน แก้ได้แค่ status / due_date / notes
 //   เลื่อนวัน → ลงไทม์ไลน์ "เลื่อนวัน" พร้อมเหตุผลและชื่อคนเลื่อน (เหมือนหน้าเว็บ)
-import type { NextRequest } from 'next/server'
+import { after, type NextRequest } from 'next/server'
+import { sendTaskEvent } from '@/lib/tasks/notify'
 import { listTaskImages } from '@/lib/services/bot/botImages'
 import { apiError, apiJson, authBotApi, readJson, resolvePeople, untyped } from '@/lib/services/bot/botApi'
 import {
@@ -140,6 +141,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       return apiError(500, `ตั้งผู้รับผิดชอบไม่สำเร็จ: ${(e as Error).message}`)
     }
   }
+
+  // push ไปมือถือ: คนที่เพิ่งถูกมอบ · ปิดงาน → คนสร้าง/ผู้รับผิดชอบร่วม
+  const actor = { id: caller.user.id, name: caller.user.name }
+  const added = newAssignees?.filter((u) => !before.includes(u)) ?? []
+  if (added.length) after(() => sendTaskEvent('assigned', id, actor, { newAssigneeIds: added }))
+  if (patch.done_by) after(() => sendTaskEvent('task_done', id, actor))
 
   const fresh = await getTaskRow(sb, id)
   const [task] = await toBotTasks(sb, fresh ? [fresh] : [], { notes: 'full' })

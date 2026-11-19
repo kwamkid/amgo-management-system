@@ -6,7 +6,8 @@
 // POST /api/bot/tasks — สร้างงาน
 //   { title, notes?, brand?, due_date?: "YYYY-MM-DD", assignees?: ["me" | discord id | user id] }
 //   มอบใครก็ได้ทั้งสองคีย์ · ไม่ส่ง assignees: general = มอบให้ตัวเอง · superadmin = ยังไม่มอบใคร
-import type { NextRequest } from 'next/server'
+import { after, type NextRequest } from 'next/server'
+import { sendTaskEvent } from '@/lib/tasks/notify'
 import { apiError, apiJson, authBotApi, readJson, resolvePeople } from '@/lib/services/bot/botApi'
 import {
   STATUSES,
@@ -111,6 +112,8 @@ export async function POST(request: NextRequest) {
   if (assigneeIds.length) {
     const { error: aErr } = await caller.sb.from('task_assignees').insert(assigneeIds.map((user_id) => ({ task_id: data.id, user_id })))
     if (aErr) return apiError(500, `สร้างงานแล้ว แต่ใส่ผู้รับผิดชอบไม่สำเร็จ: ${aErr.message}`)
+    // push ไปมือถือคนที่ถูกมอบ (ไม่ส่งหาคนสั่งเอง) — หลังตอบบอทแล้ว
+    after(() => sendTaskEvent('assigned', data.id, { id: caller.user.id, name: caller.user.name }, { newAssigneeIds: assigneeIds }))
   }
   const row = await getTaskRow(caller.sb, data.id)
   const [task] = await toBotTasks(caller.sb, row ? [row] : [], { notes: 'full' })

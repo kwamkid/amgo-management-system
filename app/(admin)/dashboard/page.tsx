@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import EmployeeSection from '@/components/dashboard/EmployeeSection';
 import QuickActions from '@/components/dashboard/QuickActions';
 import TodoZone from '@/components/dashboard/TodoZone';
+import MyTasksZone from '@/components/dashboard/MyTasksZone';
 import TeamTodoZone from '@/components/dashboard/TeamTodoZone';
 import HrInbox from '@/components/dashboard/HrInbox';
 import NotifySetupCard from '@/components/push/NotifySetupCard';
@@ -75,6 +76,9 @@ export default function DashboardPage() {
           : 'พนักงาน'
         }
       />
+
+      {/* งานของฉันที่ครบ/เลยกำหนด — ขึ้นหลังเช็คอิน (เจ้าของ 20 พ.ย. 69 "เช็คอินแล้ว เตือนเลย") */}
+      <MyTasksZone />
 
       {/* 2 อย่างที่ทำบ่อยสุด — ต้องกดได้ทันทีตั้งแต่เปิดแอป (เจ้าของ 5 พ.ย. 69) */}
       <QuickActions userData={userData} />

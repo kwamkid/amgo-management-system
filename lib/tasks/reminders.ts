@@ -2,7 +2,7 @@
 //
 // แจ้งเตือนงานของทีม — วันไหนเตือนเรื่องอะไร ใครได้รับ ข้อความว่าอะไร
 // กติกาล้วน ไม่แตะฐานข้อมูล (ทดสอบด้วย node ตรง ๆ ได้ → ห้ามใช้ '@/' alias, import ต้องมี .ts)
-// ตัวส่งจริงอยู่ที่ lib/tasks/notify.ts (server) — ยังไม่ผูก cron/ปุ่มไหน (เจ้าของ 28 ต.ค. 69: "ทำเตรียมไว้")
+// ตัวส่งจริงอยู่ที่ lib/tasks/notify.ts (server) — ผูกแล้ว 20 พ.ย. 69: /api/tasks/notify (เว็บ) · bot routes · /api/cron/task-reminders
 //
 // ── สองแบบ ──────────────────────────────────────────────────────────
 // รายวัน (cron วันละครั้งตอนเช้า → planDailyReminders):
@@ -13,7 +13,7 @@
 //   overdue              เลยกำหนด — เตือนวันที่ 1 · 3 · 7 แล้วทุก 7 วัน (ไม่งั้นคนปิดแจ้งเตือนทิ้งทั้งแอป)
 // ตามเหตุการณ์ (ยิงตอนมีคนกด → eventReminder):
 //   assigned             ถูกมอบงานใหม่
-//   task_updated         คนอื่นเพิ่มอัปเดตในงานที่เรารับผิดชอบ
+//   task_updated         คนอื่นเพิ่มอัปเดตในงานที่เรารับผิดชอบ หรืองานที่เราสร้าง (มอบให้คนอื่นแล้วอยากรู้ความคืบหน้า)
 //   task_done            งานที่เราสร้าง/รับผิดชอบร่วม ถูกปิดแล้ว
 //
 // ผู้รับ = ผู้รับผิดชอบทุกคน · งานลอย (ไม่มีคนรับ) → คนสร้าง · ไม่ส่งหาคนที่เป็นคนกดเอง
@@ -170,7 +170,10 @@ export function eventReminder(
       }
       break
     case 'task_updated':
-      userIds = recipientsFor(task, actor.id)
+      // คนสร้างได้ด้วย — มอบงานให้คนอื่นแล้วต้องรู้ว่าเดินไปถึงไหน (เจ้าของ 20 พ.ย. 69)
+      userIds = [...new Set([...recipientsFor(task, actor.id), ...(task.createdBy ? [task.createdBy] : [])])].filter(
+        (id) => id !== actor.id
+      )
       message = {
         title: `${actor.name} อัปเดตงาน`,
         body: `${headline(task)}${task.statusLine ? `\n${statusLineText(task.statusLine)}` : ''}`,

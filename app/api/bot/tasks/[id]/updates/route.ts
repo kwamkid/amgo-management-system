@@ -6,7 +6,8 @@
 //   waiting / follow_up / appointment ต้องมี date · มี date แล้ววันครบกำหนดของงานเปลี่ยนเป็นวันนั้น (trigger)
 //   รายการแรกของงานเปลี่ยน "ต้องทำ" → "กำลังทำ" ให้เอง
 //   เพิ่มได้: แอดมิน · คนสร้าง · ผู้รับผิดชอบ (task_updates_insert)
-import type { NextRequest } from 'next/server'
+import { after, type NextRequest } from 'next/server'
+import { sendTaskEvent } from '@/lib/tasks/notify'
 import { apiError, apiJson, authBotApi, readJson } from '@/lib/services/bot/botApi'
 import { collectImages, saveTaskImage } from '@/lib/services/bot/botImages'
 import { DATE_REQUIRED, UPDATE_KINDS, canEditTask, getTaskRow, isYmd, resolveTaskId, type BotUpdateKind } from '@/lib/services/bot/botTasks'
@@ -80,6 +81,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       console.error('[bot] รูปในอัปเดตบันทึกไม่สำเร็จ:', e)
     }
   }
+
+  // push ไปมือถือผู้รับผิดชอบคนอื่น + คนสร้าง (ไม่ส่งหาคนอัปเดตเอง)
+  after(() => sendTaskEvent('task_updated', id, { id: caller.user.id, name: caller.user.name }))
 
   const { data: t } = await caller.sb.from('tasks').select('status, due_date').eq('id', id).single()
   return apiJson(

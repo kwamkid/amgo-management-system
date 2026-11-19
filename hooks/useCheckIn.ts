@@ -1,6 +1,7 @@
 // hooks/useCheckIn.ts
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { useLocations } from '@/hooks/useLocations'
@@ -9,6 +10,8 @@ import { Shift } from '@/types/location'
 import * as checkinService from '@/lib/services/checkinService'
 import * as locationDetectionService from '@/lib/services/locationDetectionService'
 import { format } from 'date-fns'
+import { getMyTaskAlerts } from '@/lib/services/taskService'
+import { toYmd } from '@/lib/push/notify'
 import { DiscordNotificationService } from '@/lib/discord/notificationService'
 import { fixedScheduleShift, usesLocationShifts } from '@/lib/services/fixedScheduleRules'
 
@@ -41,6 +44,7 @@ interface UseCheckInReturn {
 
 export function useCheckIn(): UseCheckInReturn {
   const { userData } = useAuth()
+  const router = useRouter()
   const { showToast } = useToast()
   const { locations } = useLocations(true) // Active locations only
   
@@ -295,6 +299,11 @@ export function useCheckIn(): UseCheckInReturn {
       
       showToast('เช็คอินสำเร็จ', 'success')
       await fetchCurrentStatus()
+      // มีงานครบ/เลยกำหนด → พาไปหน้าแรกให้เห็นกล่อง "งานของฉัน" ทันที (เจ้าของ 20 พ.ย. 69 "เช็คอินแล้ว เตือนเลย")
+      if (userData.id)
+        getMyTaskAlerts(userData.id, toYmd(new Date()))
+          .then((t) => t.length && router.push('/dashboard'))
+          .catch(() => {})
     } catch (err) {
       console.error('Check-in error:', err)
       showToast('เช็คอินไม่สำเร็จ', 'error')

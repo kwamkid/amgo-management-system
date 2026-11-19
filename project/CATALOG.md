@@ -28,7 +28,7 @@
 | File | KB | Sections | About |
 |---|---|---|---|
 | [bugs.md](bugs/bugs.md) | 1 | 0 | One entry: `## YYYY-MM-DD · area · symptom` + what is known. Fixed → move it to `bugs_fixed.md` with root caus |
-| [bugs_fixed.md](bugs/bugs_fixed.md) | 97 | 26 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
+| [bugs_fixed.md](bugs/bugs_fixed.md) | 98 | 27 | Traps we keep re-hitting: symptom → root cause → fix → file links, |
 
 ### features/
 | File | KB | Sections | About |
@@ -52,17 +52,17 @@
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
 | [stokke-order.md](jobs/doing/stokke-order.md) | 6 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
-| [voice-tasks.md](jobs/doing/voice-tasks.md) | 3 | 1 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |
+| [voice-tasks.md](jobs/doing/voice-tasks.md) | 5 | 1 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |
 
 ### jobs/done/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [2026-11.md](jobs/done/2026-11.md) | 3 | 5 | Finished topics, newest first. History only. |
+| [2026-11.md](jobs/done/2026-11.md) | 4 | 6 | Finished topics, newest first. History only. |
 
 ### jobs/plans/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [tasks-edith.md](jobs/plans/tasks-edith.md) | 2 | 3 | Owner wants the task system (/tasks) easy enough that staff actually use it, working together with the Edith D |
+| [tasks-edith.md](jobs/plans/tasks-edith.md) | 5 | 6 | Owner wants the task system (/tasks) easy enough that staff actually use it, working together with the Edith D |
 | [voice-tasks.md](jobs/plans/voice-tasks.md) | 14 | 14 | Drafted 2026-11-17 from an owner chat (design first, build later in Claude Code). |
 
 ### knowledge/
@@ -76,4 +76,4 @@
 ### knowledge/learning/
 | File | KB | Sections | About |
 |---|---|---|---|
-| [general.md](knowledge/learning/general.md) | 62 | 33 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [general.md](knowledge/learning/general.md) | 63 | 34 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |

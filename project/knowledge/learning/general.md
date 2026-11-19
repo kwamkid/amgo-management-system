@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (33)
+**Contents** (34)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -37,6 +37,7 @@
 - 2026-11-17 — Plaud recording → amgo tasks
 - 2026-11-17 — aoo MCP stock rows can have barcode null
 - 2026-11-18 — ElevenLabs webhook + credits, Vercel CLI here
+- 2026-11-19 — Overflow + contrast checks (/ui-check skill)
 <!-- /toc -->
 
 ---
@@ -483,3 +484,7 @@ Some aoo products keep the barcode only in `sku` (e.g. Stokke MuTable V2, Snoozi
 - ElevenLabs dashboard "Add endpoint": URL + name + event checkboxes (tick only "Transcription completed"); signature header `ElevenLabs-Signature`. Test event payload = `{type:'speech_to_text_transcription', event_timestamp, data:{request_id, transcription:{language_code, text, words[]}}}` — matches app/api/voice/webhook.
 - Scribe cost: an 88-min clip needed 7,066 credits (~80/min); the plan had 10,000/month. Over quota → error "exceeds your quota … X credits remaining, while Y required" (shown in Thai by `friendlyError` in lib/voice/pipeline.ts).
 - `vercel env add` fails in this repo (`.vercel` link is stale: "Could not retrieve Project Settings") — owner sets env vars in the dashboard; don't relink without asking.
+
+## 2026-11-19 — Overflow + contrast checks (/ui-check skill)
+- `truncate`/`line-clamp` does nothing inside a flex item lacking `min-w-0`; a `grid` with no `grid-cols-1` sizes its implicit track to the longest nowrap text → card wider than a phone.
+- Global skill `~/.claude/skills/ui-check` (probe.js = overflow, probe-style.js = contrast normal+hover, fonts, sizes, button colours). Measure every width in a same-origin iframe — `resize_window` did nothing on the owner's Chrome. amgo dev = port 3002. javascript_tool times out at 45s → loop widths in the background, poll `window.__res`. An empty-data page passes trivially — get real rows first.

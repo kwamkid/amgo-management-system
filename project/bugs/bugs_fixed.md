@@ -5,7 +5,8 @@
 > logged once is never re-debugged. Append-only via `/memo`.
 
 <!-- toc -->
-**Contents** (26)
+**Contents** (27)
+- 2026-11-19 — Approve button pushed off screen (/leaves/management) + weak sidebar contrast · fixed `f2c833b`
 - 2026-11-18 — Person strip count badge digits cut off (/tasks) · fixed `936d08f`
 - 2026-11-18 — Plaud link import: "Share not found" · fixed `5b12f44`
 - 2026-11-17 — Order plan stock didn't match aoo (Stokke STK #5) · fixed `45e5a85`
@@ -35,6 +36,11 @@
 <!-- /toc -->
 
 ---
+
+## 2026-11-19 — Approve button pushed off screen (/leaves/management) + weak sidebar contrast · fixed `f2c833b`
+- Symptom: a long leave reason pushed อนุมัติ/ไม่อนุมัติ past the right edge (desktop with sidebar open).
+- Cause: `truncate` on a `flex-1` item without `min-w-0` → flex item never shrinks below its text. Fix: `min-w-0` up the chain, `shrink-0` on actions, stack (`flex-col sm:flex-row`) on phones — [page.tsx](../app/(admin)/leaves/management/page.tsx).
+- Same pass: sidebar section labels/chevrons `--fg-4` (3.1:1) → `--fg-3`; nav icons vivid tone on own 14% tint (2.9:1) → `--tone-ink`; `text-xl..4xl` were unbound Tailwind 20/24/30/36px → bound to type tokens in globals.css (print sheets keep old sizes).
 
 ## 2026-11-18 — Person strip count badge digits cut off (/tasks) · fixed `936d08f`
 - Symptom: numbers on the avatar badges (41, 16, 7…) clipped top/bottom.

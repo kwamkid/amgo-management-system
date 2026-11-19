@@ -4,8 +4,7 @@
 // กติกาว่าเตือนอะไร/ใคร อยู่ที่ lib/tasks/reminders.ts — ไฟล์นี้แค่อ่านข้อมูลกับส่ง
 //
 // ── ผูกแล้ว (เจ้าของ 20 พ.ย. 69 "ตั้ง noti ไปที่มือถือด้วย") ─────────────
-//   1. รายวัน: พ่วง cron เตือนเช็คเอาท์ (ทุก 30 นาที) → sendDailyTaskRemindersOnce() ส่งรอบแรกหลัง 08:30 ไทย
-//      วันละครั้ง (จดวันใน app_config) — เจ้าของไม่อยากเพิ่ม cron ใหม่ (20 พ.ย. 69)
+//   1. รายวัน: cron กลาง /api/cron/tick งาน 'task-reminders' 08:30 ไทย (lib/cron/schedule.ts)
 //   2. ตามเหตุการณ์ (เว็บ): lib/tasks/notifyClient.ts → /api/tasks/notify → sendTaskEvent()
 //      ชื่อคนกดอ่านจาก session ไม่รับจากเบราว์เซอร์
 //   3. ตามเหตุการณ์ (Edith/บอท): bot task routes เรียก sendTaskEvent() ตรงใน after()
@@ -86,35 +85,6 @@ export async function sendDailyTaskReminders(now = new Date()): Promise<{ planne
     console.error('[เตือนงาน] ส่งไม่สำเร็จ:', e)
     return { planned: 0, delivered: 0 }
   }
-}
-
-const DAILY_KEY = 'task_reminders_last_sent'
-/** ส่งได้ตั้งแต่กี่โมง (เวลาไทย, นาทีนับจากเที่ยงคืน) */
-const DAILY_FROM_MIN = 8 * 60 + 30
-
-/**
- * เตือนรายวันแบบพ่วง cron ที่ยิงถี่ — ส่งครั้งเดียวต่อวัน รอบแรกที่เลย 08:30 ไทย
- * จองวันด้วย update แบบมีเงื่อนไข (value <> วันนี้) — สองรอบชนกันได้แถวแค่รอบเดียว
- * คืน null = ยังไม่ถึงเวลา / ส่งไปแล้ววันนี้
- */
-export async function sendDailyTaskRemindersOnce(now = new Date()): Promise<{ planned: number; delivered: number } | null> {
-  const bkk = new Date(now.getTime() + 7 * 3_600_000)
-  if (bkk.getUTCHours() * 60 + bkk.getUTCMinutes() < DAILY_FROM_MIN) return null
-  const today = bangkokDayKey(now)
-  const sb = createAdminClient()
-  // แถวแรกครั้งเดียว (ค่าเมื่อวานสมมติ) แล้วค่อยจองด้วยเงื่อนไข
-  await sb.from('app_config').upsert(
-    { key: DAILY_KEY, value: '', note: 'เตือนงานรายวัน (push) ส่งล่าสุดวันไหน — lib/tasks/notify.ts' },
-    { onConflict: 'key', ignoreDuplicates: true }
-  )
-  const { data: claimed } = await sb
-    .from('app_config')
-    .update({ value: today })
-    .eq('key', DAILY_KEY)
-    .neq('value', today)
-    .select('key')
-  if (!claimed?.length) return null
-  return sendDailyTaskReminders(now)
 }
 
 /** แจ้งตอนมีคนกด (มอบงาน · อัปเดต · ปิดงาน) */

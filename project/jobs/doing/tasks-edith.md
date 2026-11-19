@@ -13,13 +13,14 @@
 - [x] Quick add with due chips (TaskQuickAdd.tsx, commit "Tasks: phone quick add"): phone "เพิ่มงาน" = title + วันนี้/พรุ่งนี้/ศุกร์นี้(หน้า)/เลือกวัน + assignees; "เพิ่มรายละเอียด" opens the full form prefilled. Desktop unchanged.
 - [x] Phone list: stage tabs ต้องทำ/กำลังทำ/เสร็จแล้ว (none = open) · icon-only filter button (FilterBar with lead) · overdue group light red (f5bc65d, 7829b5e).
 - [x] Task push (owner 2026-11-20): web → lib/tasks/notifyClient.ts → /api/tasks/notify (assigned · task_updated → assignees + creator · task_done only if done_at < 2 min) · bot task routes call sendTaskEvent in after()
-- [x] Daily task push piggybacks on the checkout-reminder cron (every 30 min): first run after 08:30 TH, once a day via app_config `task_reminders_last_sent` (owner: no new cron). Separate /api/cron/task-reminders route removed.
+- [x] Central cron (owner 2026-11-20): one cron-job.org job GET /api/cron/tick every 10 min · schedule in lib/cron/schedule.ts (task-reminders 08:30 is a row there) · lock + history table cron_runs · light jobs inline, heavy via http, web-jobs only when queued. Dry-run checked (?dry=1&at=).
+- [ ] Owner approves + runs migration 20261120090000_cron_runs.sql, deploy, then cron-job.org: add tick job, disable the 10 old jobs (docs/cron.md §2). After first day check cron_runs (all ok?).
 - [x] Dashboard MyTasksZone (overdue + due today, after check-in or requiresCheckin=false) · check-in success with such tasks → router.push('/dashboard').
 - [ ] Edith SOUL commands + VPS chase script (14:00 TH chase DM, 17:30 summary to แอม) — tell the owner before touching the VPS.
 - [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 
 ## Resume note
-Resume at: owner tries phone pieces after push (first daily task push = first checkout-reminder run after 08:30); then Edith SOUL/VPS chase (tell owner first).
+Resume at: cron_runs migration + cron-job.org switchover; owner tries phone pieces after push; then Edith SOUL/VPS chase (tell owner first).
 ### State
 Nothing uncommitted for this topic. Other chats' uncommitted files: Sidebar.tsx, components/shared/index.ts, docs/bot-api.md, brief files — don't touch.
 ### Gotchas

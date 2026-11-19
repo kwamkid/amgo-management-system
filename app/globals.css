@@ -2534,6 +2534,13 @@ button:disabled,
   font: inherit; font-size: var(--fs-caption); font-weight: 600; color: var(--accent); cursor: pointer;
 }
 
+/* ปุ่มกรองบนมือถือแบบไอคอนล้วน (FilterBar ที่มีแถบคนอยู่หน้า) + ตัวเลขจำนวนตัวกรอง */
+.aoo-filter-icon-btn { width: 40px; padding: 0; justify-content: center; }
+.aoo-filter-icon-btn__count {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--accent); color: var(--fg-on-brand); font-size: var(--fs-caption); font-weight: 700; line-height: 1;
+}
+
 /* หน้ารายละเอียดงานบนมือถือ (components/tasks/TaskSheet) — หน้าอ่าน + ปุ่มสถานะ + อัปเดตแบบแชท */
 .aoo-task-sheet { display: flex; flex-direction: column; gap: 14px; }
 .aoo-task-sheet__title { overflow-wrap: anywhere; }
@@ -2690,6 +2697,8 @@ button:disabled,
 .aoo-status-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .aoo-status-tabs::-webkit-scrollbar { display: none; }
 .aoo-status-tabs--fill > .aoo-status-tab { flex: 1 1 0; }
+/* compact + fill (แท็บขั้นงานบนมือถือ) — ให้ 4 แท็บพอดีจอ 360px ไม่ต้องเลื่อน */
+.aoo-status-tabs--fill > .aoo-status-tab--compact { min-width: 0; padding: 6px 8px; gap: 4px; justify-content: center; }
 .aoo-status-tab {
   flex-shrink: 0; min-width: 88px; padding: 8px 16px; border: 0; border-radius: var(--r-lg);
   background: var(--tone-soft); color: var(--tone-ink); text-align: center; cursor: pointer;

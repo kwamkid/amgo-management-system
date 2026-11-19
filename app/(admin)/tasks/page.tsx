@@ -19,6 +19,7 @@ import {
   Input,
   Modal,
   SelectMenu,
+  StatusTabs,
   StepSelect,
   RichText,
   RichTextEditor,
@@ -30,7 +31,7 @@ import { brandSelectOptions } from '@/components/shared/BrandBadge'
 import AssigneeStrip, { type AssigneeScope } from '@/components/tasks/AssigneeStrip'
 import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
-import TaskList from '@/components/tasks/TaskList'
+import TaskList, { type TaskStage } from '@/components/tasks/TaskList'
 import TaskSheet from '@/components/tasks/TaskSheet'
 import TaskQuickAdd, { type TaskDraft } from '@/components/tasks/TaskQuickAdd'
 import TaskImages from '@/components/tasks/TaskImages'
@@ -91,6 +92,8 @@ export default function TasksPage() {
   const [modal, setModal] = useState<Task | 'new' | null>(null)
   /** มือถือ: แตะงานในรายการ = หน้าอ่าน (แก้ไขค่อยเปิด modal) */
   const [sheet, setSheet] = useState<Task | null>(null)
+  /** มือถือ: ดูงานขั้นไหน (บอร์ดบนคอมเห็นทุกคอลัมน์อยู่แล้ว) */
+  const [stage, setStage] = useState<TaskStage>('open')
   /** มือถือ: "เพิ่มงาน" = ฟอร์มสั้น (ชื่อ + วัน + คน) · draft = ค่าที่กรอกไว้ก่อนกด "เพิ่มรายละเอียด" */
   const [quickAdd, setQuickAdd] = useState(false)
   const [draft, setDraft] = useState<TaskDraft | null>(null)
@@ -275,8 +278,24 @@ export default function TasksPage() {
         <TaskBoard tasks={visible} onMove={move} onOpen={setModal} />
       </div>
       {/* มือถือ: รายการตามความด่วน เลื่อนในกรอบตัวเอง (หน้าทั้งหน้าพอดีจอเหมือนเดิม) */}
+      <div className="lg:hidden">
+        <StatusTabs
+          compact
+          fill
+          ariaLabel="ดูงานขั้นไหน"
+          // ไม่เลือก = งานที่ยังค้าง (ต้องทำ + กำลังทำ) · กดแท็บเดิมซ้ำ = กลับไปดูงานค้างทั้งหมด
+          activeKey={stage === 'open' ? null : stage}
+          onSelect={(k) => setStage(stage === k ? 'open' : (k as TaskStage))}
+          tabs={[
+            // พอดีจอ 360px · เสร็จแล้วไม่โชว์จำนวน (หลักร้อย ไม่มีประโยชน์)
+            { key: 'todo', label: 'ต้องทำ', count: visible.filter((t) => t.status === 'todo').length, tone: STATUS_TONE.todo },
+            { key: 'doing', label: 'กำลังทำ', count: visible.filter((t) => t.status === 'doing').length, tone: STATUS_TONE.doing },
+            { key: 'done', label: 'เสร็จแล้ว', tone: STATUS_TONE.done },
+          ]}
+        />
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-3 lg:hidden">
-        <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setSheet} onSetStatus={setStatus} />
+        <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setSheet} onSetStatus={setStatus} stage={stage} />
       </div>
 
       {quickAdd && (

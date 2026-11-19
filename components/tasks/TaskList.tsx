@@ -21,6 +21,9 @@ const GROUPS: { key: GroupKey; label: string }[] = [
 /** งานเสร็จโชว์แค่ล่าสุดกี่ใบ — ที่เหลือดูบนคอม/ค้นหา */
 const DONE_LIMIT = 10
 
+/** มือถือ: ดูขั้นไหน — open = ยังไม่เสร็จ (ต้องทำ + กำลังทำ) */
+export type TaskStage = 'open' | TaskStatus
+
 function groupOf(t: Task, today: Date): GroupKey {
   if (t.status === 'done') return 'done'
   if (!t.dueDate) return 'none'
@@ -34,12 +37,15 @@ export default function TaskList({
   canEdit,
   onOpen,
   onSetStatus,
+  stage = 'open',
 }: {
   tasks: Task[]
   me: string
   canEdit: (t: Task) => boolean
   onOpen: (t: Task) => void
   onSetStatus: (t: Task, status: TaskStatus) => void
+  /** ขั้นที่ดูอยู่ — งานที่เพิ่งติ๊กยังค้างในขั้นเดิมจนออกจากหน้า */
+  stage?: TaskStage
 }) {
   // งานที่เพิ่งติ๊กเสร็จ ค้างอยู่กลุ่มเดิมจนกว่าจะออกจากหน้า — กด "ยกเลิก" ได้ ไม่กระโดดหายทันที
   const [justDone, setJustDone] = useState<Map<string, TaskStatus>>(new Map())
@@ -49,6 +55,8 @@ export default function TaskList({
     const by = new Map<GroupKey, Task[]>(GROUPS.map((g) => [g.key, []]))
     for (const t of tasks) {
       const prev = justDone.get(t.id)
+      const s = prev ?? t.status
+      if (stage === 'open' ? s === 'done' : s !== stage) continue
       by.get(prev ? groupOf({ ...t, status: prev }, today) : groupOf(t, today))!.push(t)
     }
     const due = (t: Task) => t.dueDate ?? '9999'
@@ -57,9 +65,10 @@ export default function TaskList({
       else if (k === 'none') list.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       else list.sort((a, b) => due(a).localeCompare(due(b)))
     }
-    by.set('done', by.get('done')!.slice(0, DONE_LIMIT))
+    // แท็บ "ยังไม่เสร็จ" ไม่มีกลุ่มเสร็จแล้ว · แท็บ "เสร็จแล้ว" โชว์หมด (ล่าสุดก่อน)
+    if (stage !== 'done') by.set('done', by.get('done')!.slice(0, DONE_LIMIT))
     return GROUPS.map((g) => ({ ...g, items: by.get(g.key)! })).filter((g) => g.items.length)
-  }, [tasks, justDone])
+  }, [tasks, justDone, stage])
 
   const toggle = (t: Task) => {
     if (t.status === 'done') {

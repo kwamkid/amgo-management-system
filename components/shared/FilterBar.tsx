@@ -68,15 +68,19 @@ export default function FilterBar({
 
       {children && (
         // ห่ออีกชั้น — .aoo-btn ไม่อยู่ใน @layer เลยชนะ class `hidden` ของ Tailwind
-        <div className="sm:hidden">
+        // มีแถบเลือกคนอยู่หน้า (lead) → ไอคอนเล็กอย่างเดียว ให้แถบคนได้ที่ (เจ้าของ 20 พ.ย. 69)
+        <div className={lead ? 'relative sm:hidden' : 'sm:hidden'}>
           <Button
             variant={activeCount > 0 ? 'soft' : 'secondary'}
             icon={SlidersHorizontal}
             onClick={() => setOpen(true)}
             aria-haspopup="dialog"
+            aria-label={lead ? `กรอง${activeCount > 0 ? ` (${activeCount})` : ''}` : undefined}
+            className={lead ? 'aoo-filter-icon-btn' : undefined}
           >
-            {activeCount > 0 ? `กรอง (${activeCount})` : 'กรอง'}
+            {lead ? undefined : activeCount > 0 ? `กรอง (${activeCount})` : 'กรอง'}
           </Button>
+          {lead && activeCount > 0 && <span className="aoo-filter-icon-btn__count">{activeCount}</span>}
         </div>
       )}
 

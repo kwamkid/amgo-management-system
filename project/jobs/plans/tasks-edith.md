@@ -3,9 +3,12 @@
 > Owner wants the task system (/tasks) easy enough that staff actually use it, working together with the Edith Discord bot (Hermes, all staff, own data only). Not designed yet — start here in a fresh chat.
 
 <!-- toc -->
-**Contents** (3)
+**Contents** (6)
 - Owner answers (2026-11-18)
 - Already exists (check before building)
+- Phone review (2026-11-18, 390px on prod)
+- Decisions (owner, 2026-11-18)
+- Built 2026-11-18 — commit 1bfaf5e (migration applied by owner, verified via REST: #1–#43, chase kind accepted). UI not y
 - Next
 <!-- /toc -->
 
@@ -39,6 +42,12 @@
 - Web: TaskList.tsx (phone, grouped, tap circle = done + ยกเลิก) · board hidden on phone · #no on cards · creator picks assignees · timeline shows chase as Edith.
 - docs/bot-api.md NOT updated yet — file has another session's uncommitted brief edits; update after they commit.
 - Known gap: a chase becomes the "latest" update, so the assignee can no longer edit kind/date of their previous entry (task_update_is_latest). Acceptable for now.
+
+## Tasksuke import (2026-11-19, owner asked — staff were still using Tasksuke)
+- All 653 tasks of Tasksuke company AGD → amgo tasks #44–#697 (gap at #85 from a retried row), `source_ref = 'tasksuke:<id>'` (idempotent re-run; delete with `source_ref like 'tasksuke:%'`). 584 done · 47 todo · 22 doing (Tasksuke `review` → doing).
+- 145 comments → task_updates kind `note` with original author/time; 114 images (covers + comment images) converted to JPEG into `task-images`. Brand guessed from title (226 tasks).
+- People matched by name (13). Nrm. and Nattanaree have no amgo account (done tasks only) — name kept in notes/comment text.
+- Tasksuke itself is still live: owner should tell staff to stop adding there, or re-run the import (script in session scratchpad, not kept).
 
 ## Next
 - Still to build: task sheet read-first + instant status buttons + chat-like update box · quick add with due chips · Edith SOUL commands + VPS chase script (tell owner).

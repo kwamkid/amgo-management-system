@@ -358,6 +358,22 @@ export function SelectMenu({
         {trigger ? trigger(selected, open) : (<>
         {selected?.dot && <Dot color={selected.dot} />}
         {selected?.icon && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{selected.icon}</span>}
+        {/* multi: show the picked options' icons (e.g. people avatars), overlapping, up to 3 */}
+        {multi && picked.some((o) => o.icon) && (
+          <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+            {picked
+              .filter((o) => o.icon)
+              .slice(0, 3)
+              .map((o, i) => (
+                <span
+                  key={o.value}
+                  style={{ display: 'inline-flex', marginLeft: i ? -6 : 0, borderRadius: 999, boxShadow: '0 0 0 2px var(--bg-surface)' }}
+                >
+                  {o.icon}
+                </span>
+              ))}
+          </span>
+        )}
         <span
           style={{
             flex: 1,

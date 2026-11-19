@@ -32,6 +32,7 @@ import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
 import TaskList from '@/components/tasks/TaskList'
 import TaskSheet from '@/components/tasks/TaskSheet'
+import TaskQuickAdd, { type TaskDraft } from '@/components/tasks/TaskQuickAdd'
 import TaskImages from '@/components/tasks/TaskImages'
 import TaskTimeline from '@/components/tasks/TaskTimeline'
 import { STATUS_ICON, STATUS_TONE } from '@/components/tasks/taskUi'
@@ -90,6 +91,14 @@ export default function TasksPage() {
   const [modal, setModal] = useState<Task | 'new' | null>(null)
   /** มือถือ: แตะงานในรายการ = หน้าอ่าน (แก้ไขค่อยเปิด modal) */
   const [sheet, setSheet] = useState<Task | null>(null)
+  /** มือถือ: "เพิ่มงาน" = ฟอร์มสั้น (ชื่อ + วัน + คน) · draft = ค่าที่กรอกไว้ก่อนกด "เพิ่มรายละเอียด" */
+  const [quickAdd, setQuickAdd] = useState(false)
+  const [draft, setDraft] = useState<TaskDraft | null>(null)
+  const openNew = () => {
+    setDraft(null)
+    if (window.matchMedia('(min-width: 1024px)').matches) setModal('new')
+    else setQuickAdd(true)
+  }
   const [extraBrands, setExtraBrands] = useState<string[]>([])
 
   const load = useCallback(async () => {
@@ -219,7 +228,7 @@ export default function TasksPage() {
                 </Button>
               </Link>
             )}
-            <Button icon="Plus" onClick={() => setModal('new')}>
+            <Button icon="Plus" onClick={openNew}>
               เพิ่มงาน
             </Button>
           </div>
@@ -270,6 +279,24 @@ export default function TasksPage() {
         <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setSheet} onSetStatus={setStatus} />
       </div>
 
+      {quickAdd && (
+        <TaskQuickAdd
+          userId={me}
+          people={people}
+          brand={brand}
+          sortOrder={topOfTodo}
+          onMore={(d) => {
+            setQuickAdd(false)
+            setDraft(d)
+            setModal('new')
+          }}
+          onClose={(created) => {
+            setQuickAdd(false)
+            if (created) load()
+          }}
+        />
+      )}
+
       {sheet && (
         <TaskSheet
           key={sheet.id}
@@ -293,6 +320,7 @@ export default function TasksPage() {
         <TaskModal
           // สร้างใหม่: ติดแบรนด์ที่กำลังกรองอยู่มาให้ (น่าจะหมายถึงแบรนด์นั้น)
           task={modal === 'new' ? null : modal}
+          draft={modal === 'new' ? draft : null}
           defaultBrand={brand}
           sortOrder={topOfTodo}
           userId={me}
@@ -314,6 +342,7 @@ export default function TasksPage() {
 
 function TaskModal({
   task,
+  draft,
   defaultBrand,
   sortOrder,
   userId,
@@ -327,6 +356,8 @@ function TaskModal({
 }: {
   /** null = สร้างงานใหม่ */
   task: Task | null
+  /** ค่าที่กรอกไว้ในฟอร์มสั้นบนมือถือ */
+  draft: TaskDraft | null
   defaultBrand: string | null
   /** ลำดับของงานใหม่ — บนสุดของคอลัมน์ต้องทำ */
   sortOrder: number
@@ -342,16 +373,16 @@ function TaskModal({
   onClose: (changed: boolean) => void
 }) {
   const { showToast } = useToast()
-  const [title, setTitle] = useState(task?.title ?? '')
+  const [title, setTitle] = useState(task?.title ?? draft?.title ?? '')
   const [notes, setNotes] = useState(task?.notes ?? '')
   const [brand, setBrand] = useState<string | null>(task ? task.brand : defaultBrand)
-  const [due, setDue] = useState(task?.dueDate ?? '')
+  const [due, setDue] = useState(task?.dueDate ?? draft?.dueDate ?? '')
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo')
   const [dueReason, setDueReason] = useState('')
   // วันครบกำหนดใน DB ตอนนี้ — ไทม์ไลน์เปลี่ยนได้ระหว่างเปิดหน้าต่างนี้
   const [savedDue, setSavedDue] = useState(task?.dueDate ?? null)
   const dueMoved = !!task && (due || null) !== savedDue
-  const [assignees, setAssignees] = useState<string[]>(task ? task.assignees.map((a) => a.userId) : [userId])
+  const [assignees, setAssignees] = useState<string[]>(task ? task.assignees.map((a) => a.userId) : draft?.assigneeIds ?? [userId])
   const [busy, setBusy] = useState(false)
   const [changed, setChanged] = useState(false)
   // เปิดงานส่วนใหญ่เพื่อดูว่าต้องทำอะไร → แท็บรายละเอียดก่อน · ไทม์ไลน์แยกแท็บ หน้าต่างไม่ยาวเกิน

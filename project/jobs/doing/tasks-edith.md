@@ -10,12 +10,12 @@
 - [x] Tasksuke import 2026-11-19 (e0c3a53 notes): 653 tasks → #44–#697 · owner told staff to stop using Tasksuke (2026-11-19).
 - [x] Phone task sheet (TaskSheet.tsx, commit "Tasks: phone task sheet"): tap row on phone → read view (#no · due · brand · people · แก้ไข) · StepSelect saves instantly · notes · chat feed old→new · composer (camera/gallery multi-pick + text → kind `note`). Desktop board still opens the edit modal. Tested at 390px with writes mocked.
 - [ ] Owner to try TaskSheet on a real phone (camera picker on iPhone, keyboard covering the composer).
-- [ ] Quick add with due chips (today / tomorrow / Friday / pick).
+- [x] Quick add with due chips (TaskQuickAdd.tsx, commit "Tasks: phone quick add"): phone "เพิ่มงาน" = title + วันนี้/พรุ่งนี้/ศุกร์นี้(หน้า)/เลือกวัน + assignees; "เพิ่มรายละเอียด" opens the full form prefilled. Desktop unchanged.
 - [ ] Edith SOUL commands + VPS chase script (14:00 TH chase DM, 17:30 summary to แอม) — tell the owner before touching the VPS.
 - [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 
 ## Resume note
-Resume at: quick add with due chips (phone). TaskSheet done 2026-11-20.
+Resume at: task push notifications + dashboard task reminder after check-in (owner asked 2026-11-20).
 ### State
 Nothing uncommitted for this topic. Other chats' uncommitted files: Sidebar.tsx, components/shared/index.ts, docs/bot-api.md, brief files — don't touch.
 ### Gotchas

@@ -118,7 +118,8 @@ const KINDS = {
   },
   voiceDraft: {
     pending: { label: 'รอตรวจ', tone: 'warning' },
-    accepted: { label: 'รับเป็นงานแล้ว', tone: 'success' },
+    creating: { label: 'กำลังสร้าง…', tone: 'grape' },
+    accepted: { label: 'สร้าง Task แล้ว', tone: 'success' },
     rejected: { label: 'ปัดตก', tone: 'neutral' },
   },
 } satisfies Record<string, Record<string, StatusDef>>

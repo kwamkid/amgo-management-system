@@ -111,8 +111,15 @@ export default function VoiceRecordingPage() {
   const [speakerMap, setSpeakerMap] = useState<Record<string, string | null>>({})
   const [mapDirty, setMapDirty] = useState(false)
   const [edits, setEdits] = useState<Record<string, Edit>>({})
-  const [busyDraft, setBusyDraft] = useState<string | null>(null)
-  const [busyAll, setBusyAll] = useState(false)
+  // drafts with a request in flight — each runs on its own, so several can be created at once
+  const [inFlight, setInFlight] = useState<Set<string>>(new Set())
+  const flight = (draftId: string, on: boolean) =>
+    setInFlight((s) => {
+      const n = new Set(s)
+      if (on) n.add(draftId)
+      else n.delete(draftId)
+      return n
+    })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [summary, setSummary] = useState('')
   const [summaryDirty, setSummaryDirty] = useState(false)
@@ -135,7 +142,8 @@ export default function VoiceRecordingPage() {
     setStatus(d.recording.status)
     // the poll must not wipe names / summary the admin is typing but has not saved yet
     if (!dirty.current.map) setSpeakerMap(d.transcript?.speaker_map ?? {})
-    setEdits(Object.fromEntries(d.drafts.map((x) => [x.id, toEdit(x)])))
+    // keep what the admin typed in drafts that are still open — a refresh after creating one task must not wipe the others
+    setEdits((prev) => Object.fromEntries(d.drafts.map((x) => [x.id, x.status === 'pending' && prev[x.id] ? prev[x.id] : toEdit(x)])))
     if (!dirty.current.summary) setSummary(d.recording.summary ?? '')
     return d
   }, [id])
@@ -266,56 +274,54 @@ export default function VoiceRecordingPage() {
   const patchEdit = (draftId: string, patch: Partial<Edit>) =>
     setEdits((m) => ({ ...m, [draftId]: { ...m[draftId], ...patch } }))
 
-  const accept = async (d: Draft, quiet = false) => {
+  // one quiet reload shortly after the last task is created (updates "งานที่แจกแล้ว" + recording status)
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshSoon = () => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current)
+    refreshTimer.current = setTimeout(() => void load(), 1500)
+  }
+  const markDraft = (draftId: string, patch: Partial<Draft>) =>
+    setData((prev) => (prev ? { ...prev, drafts: prev.drafts.map((x) => (x.id === draftId ? { ...x, ...patch } : x)) } : prev))
+
+  /** Create the task in the background — the button returns at once, other drafts stay usable. */
+  const createTask = async (d: Draft, quiet = false): Promise<boolean> => {
     const e = edits[d.id] ?? toEdit(d)
     if (!e.title.trim()) {
-      showToast('ต้องมีชื่องาน', 'error')
+      showToast(`งานที่ไม่มีชื่อสร้างไม่ได้ — ใส่ชื่องานก่อน`, 'error')
       return false
     }
-    await voiceFetch(`/api/voice/drafts/${d.id}/accept`, 'POST', e)
-    if (!quiet) showToast('ลงบอร์ดงานแล้ว')
-    return true
-  }
-
-  const acceptOne = async (d: Draft) => {
-    setBusyDraft(d.id)
+    flight(d.id, true)
     try {
-      if (await accept(d)) await load()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'รับงานไม่สำเร็จ', 'error')
+      const r = (await voiceFetch(`/api/voice/drafts/${d.id}/accept`, 'POST', e)) as { taskId?: string } | null
+      markDraft(d.id, { status: 'accepted', task_id: r?.taskId ?? null })
+      if (!quiet) showToast(`สร้าง Task แล้ว: ${e.title.trim()}`)
+      refreshSoon()
+      return true
+    } catch (err) {
+      showToast(`${e.title.trim()}: ${err instanceof Error ? err.message : 'สร้าง Task ไม่สำเร็จ'}`, 'error')
+      return false
     } finally {
-      setBusyDraft(null)
+      flight(d.id, false)
     }
   }
 
-  const acceptAll = async () => {
-    const pending = (data?.drafts ?? []).filter((d) => d.status === 'pending')
-    setBusyAll(true)
-    let ok = 0
-    try {
-      for (const d of pending) {
-        setBusyDraft(d.id)
-        if (await accept(d, true)) ok++
-      }
-      showToast(`ลงบอร์ดงานแล้ว ${ok} งาน`)
-    } catch (e) {
-      showToast(`${e instanceof Error ? e.message : 'รับงานไม่สำเร็จ'} (สำเร็จไปแล้ว ${ok} งาน)`, 'error')
-    } finally {
-      setBusyDraft(null)
-      setBusyAll(false)
-      await load()
-    }
+  const createAll = async () => {
+    const todo = (data?.drafts ?? []).filter((d) => d.status === 'pending' && !inFlight.has(d.id))
+    const done = await Promise.all(todo.map((d) => createTask(d, true)))
+    const ok = done.filter(Boolean).length
+    if (ok) showToast(`สร้าง Task แล้ว ${ok} งาน${ok < todo.length ? ` · ไม่สำเร็จ ${todo.length - ok}` : ''}`)
   }
 
   const setDraftStatus = async (d: Draft, next: 'rejected' | 'pending') => {
-    setBusyDraft(d.id)
+    flight(d.id, true)
     try {
       await voiceFetch(`/api/voice/drafts/${d.id}`, 'PATCH', next === 'rejected' ? { ...edits[d.id], status: next } : { status: next })
-      await load()
+      markDraft(d.id, { status: next })
+      refreshSoon()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ', 'error')
     } finally {
-      setBusyDraft(null)
+      flight(d.id, false)
     }
   }
 
@@ -340,7 +346,7 @@ export default function VoiceRecordingPage() {
 
   const rec = data.recording
   const drafts = data.drafts
-  const pendingCount = drafts.filter((d) => d.status === 'pending').length
+  const pendingCount = drafts.filter((d) => d.status === 'pending' && !inFlight.has(d.id)).length
   const brandOptions: SelectOption[] = [
     ...BRANDS.map((b) => ({ value: b.slug, label: b.label })),
     ...[...new Set(Object.values(edits).map((e) => e.brand))]
@@ -461,13 +467,13 @@ export default function VoiceRecordingPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>ร่างงาน {drafts.length} รายการ</span>
                 {pendingCount > 0 && (
-                  <Button icon={Check} onClick={acceptAll} loading={busyAll} disabled={!!busyDraft && !busyAll}>
-                    รับทั้งหมดที่รอตรวจ ({pendingCount})
+                  <Button icon={Check} onClick={createAll}>
+                    สร้าง Task ทั้งหมด ({pendingCount})
                   </Button>
                 )}
               </div>
             }
-            description={drafts.length ? 'แก้ได้ทุกช่องก่อนกดรับ · กด ▶ เพื่อฟังช่วงที่พูดถึงงานนั้น' : undefined}
+            description={drafts.length ? 'แก้ได้ทุกช่องก่อนกดสร้าง · กดหลายงานพร้อมกันได้ ระบบสร้างให้เบื้องหลัง · กด ▶ ฟังช่วงที่พูดถึงงานนั้น' : undefined}
           >
             {!drafts.length && (
               <EmptyState
@@ -485,11 +491,13 @@ export default function VoiceRecordingPage() {
               <div className="aoo-drafts">
                 {drafts.map((d, i) => {
                   const e = edits[d.id] ?? toEdit(d)
-                  const locked = d.status !== 'pending'
+                  const busy = inFlight.has(d.id)
+                  const shown = busy && d.status === 'pending' ? 'creating' : d.status
+                  const locked = d.status !== 'pending' || busy
                   const conf = d.confidence != null ? Math.round(d.confidence * 100) : null
                   const canSeek = d.evidence_start_sec != null && !!data.audioUrl
                   return (
-                    <SectionCard key={d.id} className={`aoo-draft aoo-draft--${d.status}`}>
+                    <SectionCard key={d.id} className={`aoo-draft aoo-draft--${shown}`}>
                       <div className="aoo-draft__head">
                         <span className="aoo-draft__no">งานที่ {i + 1}</span>
                         {conf != null && (
@@ -498,7 +506,7 @@ export default function VoiceRecordingPage() {
                             มั่นใจ {conf}%
                           </span>
                         )}
-                        <StatusBadge status={d.status} kind="voiceDraft" />
+                        <StatusBadge status={shown} kind="voiceDraft" />
                       </div>
 
                       <div className="aoo-draft__title">
@@ -571,16 +579,16 @@ export default function VoiceRecordingPage() {
                       <div className="flex flex-wrap justify-end gap-2">
                         {d.status === 'pending' && (
                           <>
-                            <Button variant="danger" icon={X} onClick={() => setDraftStatus(d, 'rejected')} disabled={!!busyDraft}>
+                            <Button variant="danger" icon={X} onClick={() => setDraftStatus(d, 'rejected')} disabled={busy}>
                               ปัดตก
                             </Button>
-                            <Button variant="secondary" icon={Check} onClick={() => acceptOne(d)} loading={busyDraft === d.id} disabled={!!busyDraft}>
-                              รับเป็นงาน
+                            <Button variant="secondary" icon={Check} onClick={() => void createTask(d)} loading={busy}>
+                              {busy ? 'กำลังสร้าง…' : 'สร้าง Task'}
                             </Button>
                           </>
                         )}
                         {d.status === 'rejected' && (
-                          <Button variant="ghost" icon={RotateCcw} onClick={() => setDraftStatus(d, 'pending')} disabled={!!busyDraft}>
+                          <Button variant="ghost" icon={RotateCcw} onClick={() => setDraftStatus(d, 'pending')} disabled={busy}>
                             เปิดกลับมาตรวจ
                           </Button>
                         )}

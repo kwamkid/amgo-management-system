@@ -37,9 +37,12 @@ export async function voiceFetch<T>(url: string, method: 'POST' | 'PATCH' | 'DEL
   return json as T
 }
 
-/** ElevenLabs Scribe bills ~1,000 credits per hour of audio (measured 19 Nov 69: 7.2 s clip → `character-cost: 2`).
- *  The async/webhook API returns no cost, so per-clip usage is estimated from the transcript's own duration. */
-export const SCRIBE_CREDITS_PER_HOUR = 1000
+/** ElevenLabs Scribe v3 bills ~1,240 credits per hour of audio as the pipeline calls it (diarize + keyterms;
+ *  measured 20 Nov 69 via the sync API's `character-cost` header: 55 s → 19 with 3 or 60 keyterms, 7 s → 2 without).
+ *  The async/webhook API returns no cost, so per-clip usage is estimated from the transcript's own duration.
+ *  ⚠ An 18 Nov quota error asked 7,066 credits for an 88-min clip (~4,800/h) — likely a pre-check reserve; re-measure
+ *  if the credit bar drops faster than these estimates add up. */
+export const SCRIBE_CREDITS_PER_HOUR = 1240
 export const scribeCredits = (sec: number) => Math.ceil((sec * SCRIBE_CREDITS_PER_HOUR) / 3600)
 /** null → '' (transcript not from ElevenLabs, e.g. pasted from Plaud) */
 export const creditsText = (credits: number | null | undefined) =>

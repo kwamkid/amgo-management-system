@@ -1178,13 +1178,16 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   color: inherit;
   background: transparent;
   border: 0;
+  /* a long trailing pill drops under the title instead of squeezing it to one word per line */
+  flex-wrap: wrap;
+  row-gap: 6px;
 }
 button.aoo-row, a.aoo-row { cursor: pointer; text-decoration: none; transition: background var(--dur-fast) var(--ease-out); }
 button.aoo-row:hover, a.aoo-row:hover { background: var(--warm-100); }
-.aoo-row__body { flex: 1; min-width: 0; }
+.aoo-row__body { flex: 1 1 9rem; min-width: 0; }
 .aoo-row__title { font-weight: 500; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aoo-row__meta { font-size: var(--fs-body); color: var(--fg-3); }
-.aoo-row__trail { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.aoo-row__trail { display: flex; align-items: center; gap: 8px; flex-shrink: 0; max-width: 100%; margin-left: auto; }
 
 /* ==========================================================================
  *  Card hover/press — opt-in via `data-card-fx` (Card with `hoverable` or

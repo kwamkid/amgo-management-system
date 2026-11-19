@@ -454,18 +454,22 @@ export default function VoiceRecordingPage() {
 
       {data.transcript && (
         <div className="grid gap-4 lg:grid-cols-2">
+          {/* ร่างงานแยกการ์ดละงาน พื้นสีตามสถานะ (เจ้าของ 19 พ.ย. 69) — หัวคอลัมน์เป็นการ์ดของตัวเอง ไม่ซ้อนการ์ด */}
+          <div className="space-y-3">
           <SectionCard
-            title={`ร่างงาน ${drafts.length} รายการ`}
-            description={drafts.length ? 'แก้ได้ทุกช่องก่อนกดรับ · กดเวลาที่ยกมาเพื่อฟังช่วงนั้น' : undefined}
-          >
-            {pendingCount > 0 && (
-              <div className="mb-3 flex justify-end">
-                <Button icon={Check} onClick={acceptAll} loading={busyAll} disabled={!!busyDraft && !busyAll}>
-                  รับทั้งหมดที่รอตรวจ ({pendingCount})
-                </Button>
+            title={
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>ร่างงาน {drafts.length} รายการ</span>
+                {pendingCount > 0 && (
+                  <Button icon={Check} onClick={acceptAll} loading={busyAll} disabled={!!busyDraft && !busyAll}>
+                    รับทั้งหมดที่รอตรวจ ({pendingCount})
+                  </Button>
+                )}
               </div>
-            )}
-            {!drafts.length ? (
+            }
+            description={drafts.length ? 'แก้ได้ทุกช่องก่อนกดรับ · กด ▶ เพื่อฟังช่วงที่พูดถึงงานนั้น' : undefined}
+          >
+            {!drafts.length && (
               <EmptyState
                 size="sm"
                 title={
@@ -476,7 +480,8 @@ export default function VoiceRecordingPage() {
                       : 'ยังไม่มีร่างงาน'
                 }
               />
-            ) : (
+            )}
+          </SectionCard>
               <div className="aoo-drafts">
                 {drafts.map((d, i) => {
                   const e = edits[d.id] ?? toEdit(d)
@@ -484,7 +489,7 @@ export default function VoiceRecordingPage() {
                   const conf = d.confidence != null ? Math.round(d.confidence * 100) : null
                   const canSeek = d.evidence_start_sec != null && !!data.audioUrl
                   return (
-                    <div key={d.id} className="aoo-draft" data-status={d.status}>
+                    <SectionCard key={d.id} className={`aoo-draft aoo-draft--${d.status}`}>
                       <div className="aoo-draft__head">
                         <span className="aoo-draft__no">งานที่ {i + 1}</span>
                         {conf != null && (
@@ -585,12 +590,11 @@ export default function VoiceRecordingPage() {
                           </Button>
                         )}
                       </div>
-                    </div>
+                    </SectionCard>
                   )
                 })}
               </div>
-            )}
-          </SectionCard>
+          </div>
 
           <div className="space-y-4">
             <SectionCard

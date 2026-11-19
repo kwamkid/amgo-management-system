@@ -2553,11 +2553,12 @@ button:disabled,
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .aoo-speaker__help { font-size: var(--fs-caption); color: var(--fg-3); }
-/* ร่างงานจากเสียงประชุม — แต่ละงานคั่นด้วยเส้น (ไม่ทำการ์ดซ้อนการ์ด) */
-.aoo-drafts { display: flex; flex-direction: column; }
-.aoo-draft { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border-1); }
-.aoo-draft:first-child { border-top: 0; padding-top: 0; }
-.aoo-draft[data-status="rejected"] { opacity: .55; }
+/* ร่างงานจากเสียงประชุม — การ์ดละงาน พื้นสีตามสถานะ (เจ้าของ 19 พ.ย. 69) · ช่องกรอกขาวบนพื้นสี */
+.aoo-drafts { display: flex; flex-direction: column; gap: 12px; }
+.aoo-draft { display: flex; flex-direction: column; gap: 12px; }
+.aoo-draft.aoo-draft--pending  { background: var(--sun-50);  border-color: var(--sun-100); }
+.aoo-draft.aoo-draft--accepted { background: var(--leaf-50); border-color: var(--leaf-100); }
+.aoo-draft.aoo-draft--rejected { background: var(--warm-100); border-color: var(--warm-200); opacity: .7; }
 .aoo-draft__head { display: flex; align-items: center; gap: 10px; }
 .aoo-draft__no { font-weight: 700; color: var(--fg-1); }
 .aoo-draft__conf {

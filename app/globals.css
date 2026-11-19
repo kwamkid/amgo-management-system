@@ -2568,6 +2568,9 @@ button:disabled,
 }
 .aoo-draft__conf > :first-child { width: 56px; }
 .aoo-draft__title input { font-weight: 600; }
+/* ผู้รับผิดชอบ · แบรนด์ · ครบกำหนด แถวเดียว (มือถือเรียงลงมา) */
+.aoo-draft__meta { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .aoo-draft__meta { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .aoo-draft__quote { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .aoo-draft__heard { font-size: var(--fs-caption); font-weight: 600; color: var(--tone-ink); }
 

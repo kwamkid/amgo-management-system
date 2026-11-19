@@ -535,22 +535,14 @@ export default function VoiceRecordingPage() {
                         </button>
                       )}
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      {/* one row: who · brand · due (owner 19 Nov 69) */}
+                      <div className="aoo-draft__meta">
                         <Field label="ผู้รับผิดชอบ" asDiv>
                           <MultiSelectMenu
                             values={e.assignee_ids}
                             options={personOptions}
                             onChange={(v) => patchEdit(d.id, { assignee_ids: v })}
                             placeholder="ยังไม่ระบุ"
-                            disabled={locked}
-                          />
-                        </Field>
-                        <Field label="ครบกำหนด" asDiv>
-                          <DatePicker
-                            value={e.due_date ?? ''}
-                            onChange={(v) => patchEdit(d.id, { due_date: v || null })}
-                            placeholder="ไม่ได้กำหนด"
-                            clearable="ไม่กำหนด"
                             disabled={locked}
                           />
                         </Field>
@@ -562,6 +554,15 @@ export default function VoiceRecordingPage() {
                             onCreate={(label) => patchEdit(d.id, { brand: label.trim().toLowerCase() })}
                             clearable="ไม่ระบุแบรนด์"
                             placeholder="ไม่ระบุแบรนด์"
+                            disabled={locked}
+                          />
+                        </Field>
+                        <Field label="ครบกำหนด" asDiv>
+                          <DatePicker
+                            value={e.due_date ?? ''}
+                            onChange={(v) => patchEdit(d.id, { due_date: v || null })}
+                            placeholder="ไม่ได้กำหนด"
+                            clearable="ไม่กำหนด"
                             disabled={locked}
                           />
                         </Field>

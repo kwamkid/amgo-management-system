@@ -158,7 +158,7 @@ export async function createUpload(
   db: Db,
   me: string,
   input: { filename: string; contentType: string; size: number; lastModified?: number | null },
-): Promise<{ id: string; path: string; token: string; contentType: string }> {
+): Promise<{ id: string; path: string; token: string; contentType: string; signedUrl: string }> {
   const name = input.filename.trim().slice(0, 200)
   const extFromName = name.includes('.') ? name.split('.').pop()!.toLowerCase() : ''
   const contentType = AUDIO_TYPES[input.contentType] ? input.contentType : EXT_TYPES[extFromName]
@@ -186,7 +186,7 @@ export async function createUpload(
     await db.from('voice_recordings').delete().eq('id', id)
     throw new Error(`สร้างลิงก์อัปโหลดไม่สำเร็จ: ${signed.error.message}`)
   }
-  return { id, path: signed.data.path, token: signed.data.token, contentType }
+  return { id, path: signed.data.path, token: signed.data.token, contentType, signedUrl: signed.data.signedUrl }
 }
 
 /** Browser says the upload finished — check the object really exists before queueing transcription. */

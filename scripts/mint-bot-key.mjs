@@ -4,6 +4,7 @@
 //
 //   node scripts/mint-bot-key.mjs superadmin "Jarvis (Hermes VPS)" <owner user id>
 //   node scripts/mint-bot-key.mjs general    "Edith (Hermes VPS)"
+//   node scripts/mint-bot-key.mjs voice      "iPhone Shortcut" <owner user id>   (only /api/bot/voice)
 //
 // สูตรเดียวกับ lib/services/bot/botApi.ts (newBotKey) — prefix amgo_bot_ · เก็บ sha256 hex
 // เพิกถอน: update public.bot_api_keys set revoked_at = now() where key_prefix = '<prefix>';
@@ -13,11 +14,11 @@ import { createHash, randomBytes } from 'node:crypto'
 const [scope, label, actsAs] = process.argv.slice(2)
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-if (!['superadmin', 'general'].includes(scope) || !label) {
-  console.error('usage: node scripts/mint-bot-key.mjs <superadmin|general> "<label>" [acts_as user id — superadmin only]')
+if (!['superadmin', 'general', 'voice'].includes(scope) || !label) {
+  console.error('usage: node scripts/mint-bot-key.mjs <superadmin|general|voice> "<label>" [acts_as user id — superadmin only]')
   process.exit(1)
 }
-if (scope === 'superadmin' && !UUID.test(actsAs ?? '')) {
+if ((scope === 'superadmin' || scope === 'voice') && !UUID.test(actsAs ?? '')) {
   console.error('superadmin ต้องระบุ user id ของเจ้าของ (users.id) — งานที่บอทสร้าง/ปิด ลงชื่อคนนี้')
   process.exit(1)
 }
@@ -32,5 +33,5 @@ console.log(`\nKEY (shown once — put it in the bot's env, never in git):\n${ke
 console.log('SQL:')
 console.log(
   `insert into public.bot_api_keys (label, key_prefix, key_hash, scope, acts_as)\n` +
-    `values (${q(label)}, ${q(prefix)}, ${q(hash)}, ${q(scope)}, ${scope === 'superadmin' ? q(actsAs) : 'null'});\n`
+    `values (${q(label)}, ${q(prefix)}, ${q(hash)}, ${q(scope)}, ${scope !== 'general' ? q(actsAs) : 'null'});\n`
 )

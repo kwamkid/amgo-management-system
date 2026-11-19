@@ -45,7 +45,7 @@ export interface BotPerson {
 
 export interface BotCaller {
   keyId: string
-  scope: 'superadmin' | 'general' | 'dev'
+  scope: 'superadmin' | 'general' | 'dev' | 'voice'
   /** ผู้ใช้ที่บอทกำลังทำแทน — superadmin = acts_as · general = เจ้าของ Discord id */
   user: BotPerson
   isAdmin: boolean
@@ -85,7 +85,7 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     .select('id, scope, acts_as, last_used_at')
     .eq('key_hash', hashBotKey(key))
     .is('revoked_at', null)
-    .maybeSingle<{ id: string; scope: 'superadmin' | 'general' | 'dev'; acts_as: string | null; last_used_at: string | null }>()
+    .maybeSingle<{ id: string; scope: 'superadmin' | 'general' | 'dev' | 'voice'; acts_as: string | null; last_used_at: string | null }>()
   if (!k) return { error: apiError(401, 'API key ไม่ถูกต้องหรือถูกเพิกถอนแล้ว') }
 
   // บันทึกว่าใช้ล่าสุดเมื่อไหร่ — ไม่เกินนาทีละครั้ง
@@ -98,8 +98,13 @@ export async function authBotApi(request: NextRequest): Promise<{ caller: BotCal
     return { error: apiError(403, 'กุญแจนี้ใช้ได้เฉพาะ dev tracker (/api/bot/dev · /api/mcp/dev)') }
   }
 
+  // กุญแจ voice (iPhone Shortcut "ส่งเข้า amgo" · 19 พ.ย. 69): ทำแทนเจ้าของ ใช้ได้เฉพาะ /api/bot/voice/*
+  if (k.scope === 'voice' && !path.startsWith('/api/bot/voice')) {
+    return { error: apiError(403, 'กุญแจนี้ใช้ได้เฉพาะส่งไฟล์เสียง (/api/bot/voice)') }
+  }
+
   let row: UserRow | null = null
-  if (k.scope === 'superadmin' || k.scope === 'dev') {
+  if (k.scope === 'superadmin' || k.scope === 'dev' || k.scope === 'voice') {
     const { data } = await sb.from('users').select(USER_COLS).eq('id', k.acts_as!).maybeSingle()
     row = data
     if (!row) return { error: apiError(500, 'กุญแจ superadmin ผูกกับผู้ใช้ที่ไม่มีอยู่แล้ว') }

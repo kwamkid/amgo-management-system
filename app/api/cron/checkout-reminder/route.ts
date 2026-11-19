@@ -2,7 +2,10 @@
 //
 // เตือนให้เช็คเอาท์ด้วย push — ครั้งเดียวต่อกะ
 //
-// ตั้งเวลาเรียกที่ cron-job.org ทุก 15 นาที · ส่ง Authorization: Bearer <CRON_SECRET>
+// ตั้งเวลาเรียกที่ cron-job.org ทุก 30 นาที · ส่ง Authorization: Bearer <CRON_SECRET>
+//
+// พ่วง: เตือนงานรายวัน (push) — รอบแรกหลัง 08:30 ไทย วันละครั้ง (lib/tasks/notify.ts)
+// เจ้าของไม่อยากเพิ่ม cron ใหม่ (20 พ.ย. 69)
 //
 // ใครถึงเวลาเตือนตัดสินใน SQL (checkout_reminders_due — migration 20260930130000):
 // เลยทั้งเวลาเลิกงานปกติ และเวลาที่คนนี้มักเช็คเอาท์ (มัธยฐาน 30 วัน) ไปแล้ว
@@ -17,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push/send'
+import { sendDailyTaskRemindersOnce } from '@/lib/tasks/notify'
 
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCron(request)) {
@@ -25,6 +29,9 @@ export async function GET(request: NextRequest) {
       { status: 401 }
     )
   }
+
+  // ทำก่อนเรื่องเช็คเอาท์ — หาใบเช็คเอาท์พลาดแล้ว return 500 จะได้ไม่พาเตือนงานหายไปด้วย
+  const tasks = await sendDailyTaskRemindersOnce()
 
   const sb = createAdminClient()
   const { data: due, error } = await sb.rpc('checkout_reminders_due', {})
@@ -60,6 +67,7 @@ export async function GET(request: NextRequest) {
     due: due?.length ?? 0,
     reminded,
     delivered,
+    tasks, // null = ยังไม่ถึง 08:30 หรือส่งไปแล้ววันนี้
     timestamp: new Date().toISOString(),
   })
 }

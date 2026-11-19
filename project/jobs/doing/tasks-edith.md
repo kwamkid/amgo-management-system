@@ -12,14 +12,14 @@
 - [ ] Owner to try TaskSheet on a real phone (camera picker on iPhone, keyboard covering the composer).
 - [x] Quick add with due chips (TaskQuickAdd.tsx, commit "Tasks: phone quick add"): phone "เพิ่มงาน" = title + วันนี้/พรุ่งนี้/ศุกร์นี้(หน้า)/เลือกวัน + assignees; "เพิ่มรายละเอียด" opens the full form prefilled. Desktop unchanged.
 - [x] Phone list: stage tabs ต้องทำ/กำลังทำ/เสร็จแล้ว (none = open) · icon-only filter button (FilterBar with lead) · overdue group light red (f5bc65d, 7829b5e).
-- [x] Task push (owner 2026-11-20): web → lib/tasks/notifyClient.ts → /api/tasks/notify (assigned · task_updated → assignees + creator · task_done only if done_at < 2 min) · bot task routes call sendTaskEvent in after() · daily /api/cron/task-reminders.
-- [ ] Owner: add cron-job.org job "AMGO — เตือนงาน" 08:30 TH → /api/cron/task-reminders (docs/cron.md job 11). Not set yet.
+- [x] Task push (owner 2026-11-20): web → lib/tasks/notifyClient.ts → /api/tasks/notify (assigned · task_updated → assignees + creator · task_done only if done_at < 2 min) · bot task routes call sendTaskEvent in after()
+- [x] Daily task push piggybacks on the checkout-reminder cron (every 30 min): first run after 08:30 TH, once a day via app_config `task_reminders_last_sent` (owner: no new cron). Separate /api/cron/task-reminders route removed.
 - [x] Dashboard MyTasksZone (overdue + due today, after check-in or requiresCheckin=false) · check-in success with such tasks → router.push('/dashboard').
 - [ ] Edith SOUL commands + VPS chase script (14:00 TH chase DM, 17:30 summary to แอม) — tell the owner before touching the VPS.
 - [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 
 ## Resume note
-Resume at: owner sets cron job 11 + tries phone pieces; then Edith SOUL/VPS chase (tell owner first).
+Resume at: owner tries phone pieces after push (first daily task push = first checkout-reminder run after 08:30); then Edith SOUL/VPS chase (tell owner first).
 ### State
 Nothing uncommitted for this topic. Other chats' uncommitted files: Sidebar.tsx, components/shared/index.ts, docs/bot-api.md, brief files — don't touch.
 ### Gotchas

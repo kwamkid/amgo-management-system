@@ -12,6 +12,7 @@ export function clock(sec: number | null | undefined): string {
 /** 5280 → "1 ชม. 28 นาที" · '' when unknown */
 export function durationText(sec: number | null | undefined): string {
   if (!sec) return ''
+  if (sec < 60) return `${Math.round(sec)} วินาที`
   const m = Math.round(sec / 60)
   return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาที` : `${m} นาที`
 }
@@ -35,3 +36,11 @@ export async function voiceFetch<T>(url: string, method: 'POST' | 'PATCH' | 'DEL
   if (!res.ok) throw new Error((json as { error?: string }).error || `HTTP ${res.status}`)
   return json as T
 }
+
+/** ElevenLabs Scribe bills ~1,000 credits per hour of audio (measured 19 Nov 69: 7.2 s clip → `character-cost: 2`).
+ *  The async/webhook API returns no cost, so per-clip usage is estimated from the transcript's own duration. */
+export const SCRIBE_CREDITS_PER_HOUR = 1000
+export const scribeCredits = (sec: number) => Math.ceil((sec * SCRIBE_CREDITS_PER_HOUR) / 3600)
+/** null → '' (transcript not from ElevenLabs, e.g. pasted from Plaud) */
+export const creditsText = (credits: number | null | undefined) =>
+  credits == null ? '' : `ใช้ ~${credits.toLocaleString('th-TH')} เครดิต`

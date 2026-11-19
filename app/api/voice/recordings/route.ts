@@ -1,4 +1,5 @@
 // GET /api/voice/recordings — recordings list for /tasks/voice (admin only), newest first, with draft counts.
+import { scribeCredits } from '@/lib/voice/format'
 import { requireVoiceAdmin, voiceError, voiceJson } from '@/lib/voice/server'
 
 export async function GET() {
@@ -7,12 +8,14 @@ export async function GET() {
     // Phase 1 volume is a few recordings a week — 200 newest is plenty for the list.
     const { data, error } = await db
       .from('voice_recordings')
-      .select('id, title, recorded_at, duration_sec, source, status, error, created_at, audio_deleted_at, voice_task_drafts(status)')
+      .select('id, title, recorded_at, duration_sec, source, status, error, created_at, audio_deleted_at, voice_task_drafts(status), voice_transcripts(provider:raw->>provider, scribe_sec:raw->>duration_sec)')
       .order('created_at', { ascending: false })
       .limit(200)
     if (error) throw new Error(error.message)
-    const recordings = (data ?? []).map(({ voice_task_drafts: drafts, ...r }) => ({
+    const recordings = (data ?? []).map(({ voice_task_drafts: drafts, voice_transcripts: tr, ...r }) => ({
       ...r,
+      // ElevenLabs credits this clip used (estimate from the transcript duration) · null = not transcribed by us
+      credits: tr?.provider === 'elevenlabs' && Number(tr.scribe_sec) > 0 ? scribeCredits(Number(tr.scribe_sec)) : null,
       drafts: {
         pending: drafts.filter((d) => d.status === 'pending').length,
         accepted: drafts.filter((d) => d.status === 'accepted').length,

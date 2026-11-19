@@ -7,6 +7,7 @@
 import type { NextRequest } from 'next/server'
 import { BUCKET, VoiceError, getStaff, requireVoiceAdmin, voiceError, voiceJson } from '@/lib/voice/server'
 import { voiceGroup } from '@/lib/voice/pipeline'
+import { scribeCredits } from '@/lib/voice/format'
 import type { Json } from '@/types/database'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     if (!recording) throw new VoiceError(404, 'ไม่พบไฟล์เสียงนี้')
 
     const [{ data: transcript }, { data: drafts, error: dErr }, people, { data: jobs }, { data: tasks }] = await Promise.all([
-      db.from('voice_transcripts').select('language, segments, speaker_map, speaker_guesses').eq('recording_id', id).maybeSingle(),
+      db.from('voice_transcripts').select('language, segments, speaker_map, speaker_guesses, provider:raw->>provider, scribe_sec:raw->>duration_sec').eq('recording_id', id).maybeSingle(),
       db
         .from('voice_task_drafts')
         .select('id, sort_order, title, notes, assignee_ids, assignee_raw, due_date, brand, evidence_quote, evidence_start_sec, confidence, status, task_id')
@@ -62,7 +63,10 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
       waiting: rows.filter((j) => j.status === 'queued').map((j) => j.label ?? j.kind),
     }
     const handedOut = (tasks ?? []).map(({ task_assignees, ...t }) => ({ ...t, assignee_ids: task_assignees.map((a) => a.user_id) }))
-    return voiceJson({ recording: rec, transcript, drafts: drafts ?? [], tasks: handedOut, people, audioUrl, queue })
+    // credits this clip used on ElevenLabs (null = transcript came from elsewhere)
+    const { provider, scribe_sec, ...tr } = (transcript ?? {}) as NonNullable<typeof transcript>
+    const credits = transcript && provider === 'elevenlabs' && Number(scribe_sec) > 0 ? scribeCredits(Number(scribe_sec)) : null
+    return voiceJson({ recording: { ...rec, credits }, transcript: transcript ? tr : null, drafts: drafts ?? [], tasks: handedOut, people, audioUrl, queue })
   } catch (e) {
     return voiceError(e)
   }

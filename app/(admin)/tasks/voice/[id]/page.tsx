@@ -27,7 +27,7 @@ import {
 } from '@/components/aoo'
 import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
 import { brandSelectOptions } from '@/components/shared/BrandBadge'
-import { SOURCE_LABEL, clock, durationText, speakerLabel, voiceFetch } from '@/lib/voice/format'
+import { SOURCE_LABEL, clock, durationText, creditsText, speakerLabel, voiceFetch } from '@/lib/voice/format'
 import SpeakerRow, { SpeakerAvatar, pickSamples } from '@/components/voice/SpeakerRow'
 
 /** a speaker sample plays this many seconds at most, then pauses */
@@ -66,6 +66,7 @@ interface Detail {
     summary: string | null
     recorded_at: string | null
     duration_sec: number | null
+    credits: number | null
     source: string
     status: string
     error: string | null
@@ -359,6 +360,7 @@ export default function VoiceRecordingPage() {
         description={[
           format(new Date(rec.recorded_at ?? rec.created_at), 'd/M/yyyy HH:mm'),
           durationText(rec.duration_sec),
+          creditsText(rec.credits),
           SOURCE_LABEL[rec.source] ?? rec.source,
         ]
           .filter(Boolean)

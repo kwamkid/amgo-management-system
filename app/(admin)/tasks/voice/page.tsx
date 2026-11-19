@@ -14,13 +14,14 @@ import { useToast } from '@/hooks/useToast'
 import { Button, EmptyState, FilePickButton, Input, Progress, Spinner } from '@/components/aoo'
 import { ListRow, ListRows, PageHeader, SectionCard, StatusBadge } from '@/components/shared'
 import { createClient } from '@/lib/supabase/client'
-import { SOURCE_LABEL, durationText, voiceFetch } from '@/lib/voice/format'
+import { SOURCE_LABEL, durationText, creditsText, voiceFetch } from '@/lib/voice/format'
 
 interface RecordingItem {
   id: string
   title: string
   recorded_at: string | null
   duration_sec: number | null
+  credits: number | null
   source: string
   status: string
   error: string | null
@@ -196,6 +197,7 @@ export default function VoiceRecordingsPage() {
                 meta={[
                   format(new Date(r.recorded_at ?? r.created_at), 'd/M/yyyy HH:mm'),
                   durationText(r.duration_sec),
+                  creditsText(r.credits),
                   SOURCE_LABEL[r.source] ?? r.source,
                   r.drafts.total ? `ร่างงาน ${r.drafts.total} · รับแล้ว ${r.drafts.accepted} · รอตรวจ ${r.drafts.pending}` : '',
                   r.status === 'failed' && r.error ? r.error : '',

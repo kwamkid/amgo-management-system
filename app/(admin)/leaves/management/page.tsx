@@ -235,11 +235,11 @@ export default function LeaveManagementPage() {
             return (
               <Card padding={0} key={leave.id}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
                       {/* Row 1: Employee Info + Type + Status */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                           <UserAvatar name={leave.userName} imageUrl={leave.userAvatar} size="sm" />
                           
                           <div>
@@ -267,8 +267,8 @@ export default function LeaveManagementPage() {
                       </div>
                       
                       {/* Row 2: Date + Reason */}
-                      <div className="flex items-start gap-4 text-sm">
-                        <div className="flex items-center gap-1 text-gray-500 min-w-fit">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 text-sm min-w-0">
+                        <div className="flex items-center gap-1 text-gray-500 shrink-0">
                           <Calendar className="w-3.5 h-3.5" />
                           <span>
                             {safeFormatDate(leave.startDate, 'dd/MM/yy')} - 
@@ -276,7 +276,7 @@ export default function LeaveManagementPage() {
                             <span className="font-medium ml-1">({leave.totalDays}วัน)</span>
                           </span>
                         </div>
-                        <span className="text-gray-600 truncate flex-1">{leave.reason}</span>
+                        <span className="text-gray-600 line-clamp-2 sm:truncate flex-1 min-w-0" title={leave.reason}>{leave.reason}</span>
                       </div>
                       
                       {/* Row 3: Additional Info (if any) */}
@@ -297,7 +297,7 @@ export default function LeaveManagementPage() {
                     </div>
                     
                     {/* Actions - Compact */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       {/* Action Buttons */}
                       {leave.status === 'pending' && (
                         <>

@@ -290,6 +290,11 @@
   --text-sm--line-height: 1.5rem;
   --text-base: var(--fs-body);
   --text-lg: var(--fs-h4);
+  /* xl+ snap up to the nearest scale step (were Tailwind 20/24/30/36px, off-scale) */
+  --text-xl: var(--fs-h3);
+  --text-2xl: var(--fs-stat);
+  --text-3xl: var(--fs-h2);
+  --text-4xl: var(--fs-h1);
 
   --lh-tight:  1.15;
   --lh-snug:   1.3;
@@ -1055,7 +1060,7 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
  * แต่ละเมนูมี data-tone ของตัวเอง (เช็คอิน=ฟ้า · ลา=ม่วง · เบิก=เขียว …) ไอคอนอยู่ในชิปสีอ่อน
  * หน้าที่เปิดอยู่ = พื้นสีเต็มของเรื่องนั้น ตัวหนังสือขาว · เมนูย่อยไม่มีไอคอน เป็นรายการบาง ๆ บนเส้นสีเดียวกัน
  * ห้ามใส่ box-shadow — เจ้าของบอกเงาทำให้ดูหม่น */
-.aoo-nav-section { padding: 0 10px 6px; font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.04em; color: var(--fg-4); }
+.aoo-nav-section { padding: 0 10px 6px; font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.04em; color: var(--fg-3); }
 .aoo-nav-item {
   display: flex;
   align-items: center;
@@ -1077,12 +1082,12 @@ g[data-hover="true"] .aoo-trend__bar--cmp { opacity: 0.85; }
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 30px; height: 30px; border-radius: 9px;
   background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
-  color: var(--tone, var(--accent));
+  color: var(--tone-ink, var(--brand-coral-700)); /* ink, not the vivid tone: vivid on its own 14% tint was ~2.9:1 */
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 /* เหลืองสดบนพื้นเหลืองอ่อนแทบมองไม่เห็น — ไอคอนเมนูสีเหลืองใช้เหลืองเข้ม (ink) แทน */
 [data-tone="warning"] .aoo-nav-item__icon, .aoo-nav-item[data-tone="warning"] .aoo-nav-item__icon { color: var(--tone-ink); }
-.aoo-nav-item__chevron { color: var(--fg-4); transition: transform var(--dur-fast) var(--ease-out); }
+.aoo-nav-item__chevron { color: var(--fg-3); transition: transform var(--dur-fast) var(--ease-out); }
 .aoo-nav-item[aria-expanded="false"] .aoo-nav-item__chevron { transform: rotate(-90deg); }
 /* เมนูแม่ที่มีหน้าลูกเปิดอยู่ — ชิปไอคอนเป็นสีเต็ม ชื่อเป็นสีของเรื่อง */
 .aoo-nav-item[data-child-active] { color: var(--tone-ink, var(--accent)); font-weight: 600; }
@@ -2671,6 +2676,7 @@ button:disabled,
   --text-xs: 0.75rem; --text-xs--line-height: 1rem;
   --text-sm: 0.875rem; --text-sm--line-height: 1.25rem;
   --text-base: 1rem; --text-lg: 1.125rem;
+  --text-xl: 1.25rem; --text-2xl: 1.5rem; --text-3xl: 1.875rem; --text-4xl: 2.25rem;
 }
 
 /* รูปคนซ้อนกันแนวนอน (AvatarStack) */

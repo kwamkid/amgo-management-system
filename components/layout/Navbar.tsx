@@ -153,7 +153,7 @@ export default function Navbar({ userData, realRole, onMenuClick }: NavbarProps)
                 <span className="block text-sm font-medium text-gray-800">{name}</span>
                 <span className="block text-xs text-gray-500">{role}</span>
               </span>
-              <ChevronDown size={15} className="text-gray-400" />
+              <ChevronDown size={15} className="text-gray-500" />
             </button>
           )}
         />

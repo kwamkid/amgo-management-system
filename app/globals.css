@@ -2529,9 +2529,9 @@ button:disabled,
 .aoo-speaker:first-child { border-top: 0; padding-top: 0; }
 .aoo-speaker__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .aoo-speaker-avatar { flex: none; border-radius: 999px; object-fit: cover; }
-.aoo-speaker__label { font-weight: 600; color: var(--fg-1); }
+.aoo-speaker__label { font-weight: 600; color: var(--fg-1); white-space: nowrap; }
 .aoo-speaker__animal { font-weight: 400; color: var(--fg-3); }
-.aoo-speaker__count { font-size: var(--fs-caption); color: var(--fg-3); margin-right: auto; }
+.aoo-speaker__count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); color: var(--fg-3); margin-right: auto; }
 .aoo-speaker__clips { display: flex; flex-direction: column; gap: 6px; }
 .aoo-speaker__clip {
   display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 8px 10px;
@@ -2553,6 +2553,31 @@ button:disabled,
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .aoo-speaker__help { font-size: var(--fs-caption); color: var(--fg-3); }
+/* ร่างงานจากเสียงประชุม — แต่ละงานคั่นด้วยเส้น (ไม่ทำการ์ดซ้อนการ์ด) */
+.aoo-drafts { display: flex; flex-direction: column; }
+.aoo-draft { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border-1); }
+.aoo-draft:first-child { border-top: 0; padding-top: 0; }
+.aoo-draft[data-status="rejected"] { opacity: .55; }
+.aoo-draft__head { display: flex; align-items: center; gap: 10px; }
+.aoo-draft__no { font-weight: 700; color: var(--fg-1); }
+.aoo-draft__conf {
+  display: inline-flex; align-items: center; gap: 6px; margin-right: auto;
+  font-size: var(--fs-caption); color: var(--fg-3); white-space: nowrap;
+}
+.aoo-draft__conf > :first-child { width: 56px; }
+.aoo-draft__title input { font-weight: 600; }
+.aoo-draft__quote { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aoo-draft__heard { font-size: var(--fs-caption); font-weight: 600; color: var(--tone-ink); }
+
+/* who-is-it trigger (SelectMenu trigger) — name + avatar, top-right of the speaker */
+.aoo-speaker__who { display: inline-flex; align-items: center; gap: 8px; padding: 2px 2px 2px 10px; border-radius: 999px; transition: background var(--dur-fast) var(--ease-out); }
+.aoo-speaker__who:hover { background: var(--bg-sunken); }
+.aoo-speaker__who-name { font-size: var(--fs-caption); font-weight: 600; color: var(--fg-1); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aoo-speaker__who[data-empty] .aoo-speaker__who-name { color: var(--accent); }
+.aoo-speaker__who-empty {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px;
+  border: 2px dashed var(--accent); color: var(--accent); background: var(--bg-surface);
+}
 
 /* ชิปกดเลือก (รออะไร · +วัน) — กดซ้ำได้ ไม่ใช่ segmented เพราะมี "พิมพ์เอง" */
 .aoo-chips { display: flex; flex-wrap: wrap; gap: 6px; }

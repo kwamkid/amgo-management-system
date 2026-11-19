@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { AudioLines, Check, RotateCcw, Trash2, X } from 'lucide-react'
+import { AudioLines, Check, Play, RotateCcw, Trash2, UserPlus, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -19,6 +19,7 @@ import {
   Field,
   Input,
   MultiSelectMenu,
+  Progress,
   SelectMenu,
   Spinner,
   Textarea,
@@ -476,24 +477,58 @@ export default function VoiceRecordingPage() {
                 }
               />
             ) : (
-              <div className="divide-y divide-gray-100">
-                {drafts.map((d) => {
+              <div className="aoo-drafts">
+                {drafts.map((d, i) => {
                   const e = edits[d.id] ?? toEdit(d)
                   const locked = d.status !== 'pending'
+                  const conf = d.confidence != null ? Math.round(d.confidence * 100) : null
+                  const canSeek = d.evidence_start_sec != null && !!data.audioUrl
                   return (
-                    <div key={d.id} className="space-y-3 py-4 first:pt-0 last:pb-0">
-                      <div className="flex items-center justify-between gap-2">
+                    <div key={d.id} className="aoo-draft" data-status={d.status}>
+                      <div className="aoo-draft__head">
+                        <span className="aoo-draft__no">งานที่ {i + 1}</span>
+                        {conf != null && (
+                          <span className="aoo-draft__conf" title="AI มั่นใจแค่ไหนว่าเป็นงานจริง">
+                            <Progress value={conf} tone={conf >= 80 ? 'success' : conf >= 60 ? 'warning' : 'danger'} height={6} />
+                            มั่นใจ {conf}%
+                          </span>
+                        )}
                         <StatusBadge status={d.status} kind="voiceDraft" />
-                        {d.confidence != null && <span className="text-xs text-gray-500">มั่นใจ {Math.round(d.confidence * 100)}%</span>}
                       </div>
-                      <Field label="ชื่องาน">
-                        <Input value={e.title} disabled={locked} onChange={(ev) => patchEdit(d.id, { title: ev.target.value })} />
-                      </Field>
-                      <Field label="รายละเอียด">
-                        <Textarea rows={3} value={e.notes} disabled={locked} onChange={(ev) => patchEdit(d.id, { notes: ev.target.value })} />
-                      </Field>
+
+                      <div className="aoo-draft__title">
+                        <Input
+                          value={e.title}
+                          disabled={locked}
+                          aria-label="ชื่องาน"
+                          onChange={(ev) => patchEdit(d.id, { title: ev.target.value })}
+                        />
+                      </div>
+
+                      {(d.evidence_quote || d.assignee_raw) && (
+                        <button
+                          type="button"
+                          className="aoo-speaker__clip"
+                          data-tone="accent"
+                          disabled={!canSeek}
+                          onClick={() => seek(d.evidence_start_sec)}
+                          title={canSeek ? 'ฟังช่วงที่พูดถึงงานนี้' : undefined}
+                        >
+                          {canSeek && (
+                            <span className="aoo-speaker__play" aria-hidden>
+                              <Play size={14} strokeWidth={2.5} />
+                            </span>
+                          )}
+                          {d.evidence_start_sec != null && <span className="aoo-speaker__time">{clock(d.evidence_start_sec)}</span>}
+                          <span className="aoo-draft__quote">
+                            {d.evidence_quote && <span className="aoo-speaker__quote">“{d.evidence_quote}”</span>}
+                            {d.assignee_raw && <span className="aoo-draft__heard">ได้ยินชื่อ “{d.assignee_raw}”</span>}
+                          </span>
+                        </button>
+                      )}
+
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="ผู้รับผิดชอบ" help={d.assignee_raw ? `ในเสียงพูดว่า "${d.assignee_raw}"` : undefined} asDiv>
+                        <Field label="ผู้รับผิดชอบ" asDiv>
                           <MultiSelectMenu
                             values={e.assignee_ids}
                             options={personOptions}
@@ -502,48 +537,32 @@ export default function VoiceRecordingPage() {
                             disabled={locked}
                           />
                         </Field>
-                        <Field
-                          label="ครบกำหนด"
-                          asDiv
-                          labelExtra={
-                            e.due_date && !locked ? (
-                              <Button variant="ghost" size="sm" onClick={() => patchEdit(d.id, { due_date: null })}>
-                                ล้าง
-                              </Button>
-                            ) : undefined
-                          }
-                        >
+                        <Field label="ครบกำหนด" asDiv>
                           <DatePicker
                             value={e.due_date ?? ''}
                             onChange={(v) => patchEdit(d.id, { due_date: v || null })}
                             placeholder="ไม่ได้กำหนด"
+                            clearable="ไม่กำหนด"
+                            disabled={locked}
+                          />
+                        </Field>
+                        <Field label="แบรนด์" asDiv>
+                          <SelectMenu
+                            value={e.brand}
+                            options={brandOptions}
+                            onChange={(v) => patchEdit(d.id, { brand: v })}
+                            onCreate={(label) => patchEdit(d.id, { brand: label.trim().toLowerCase() })}
+                            clearable="ไม่ระบุแบรนด์"
+                            placeholder="ไม่ระบุแบรนด์"
                             disabled={locked}
                           />
                         </Field>
                       </div>
-                      <Field label="แบรนด์" asDiv>
-                        <SelectMenu
-                          value={e.brand}
-                          options={brandOptions}
-                          onChange={(v) => patchEdit(d.id, { brand: v })}
-                          onCreate={(label) => patchEdit(d.id, { brand: label.trim().toLowerCase() })}
-                          clearable="ไม่ระบุแบรนด์"
-                          placeholder="ไม่ระบุแบรนด์"
-                          disabled={locked}
-                        />
+
+                      <Field label="รายละเอียด">
+                        <Textarea rows={2} value={e.notes} disabled={locked} onChange={(ev) => patchEdit(d.id, { notes: ev.target.value })} />
                       </Field>
-                      {d.evidence_quote && (
-                        <p className="text-xs text-gray-500">
-                          {d.evidence_start_sec != null && data.audioUrl ? (
-                            <button type="button" className="mr-1 font-medium text-red-600" onClick={() => seek(d.evidence_start_sec)}>
-                              [{clock(d.evidence_start_sec)}]
-                            </button>
-                          ) : d.evidence_start_sec != null ? (
-                            <span className="mr-1">[{clock(d.evidence_start_sec)}]</span>
-                          ) : null}
-                          “{d.evidence_quote}”
-                        </p>
-                      )}
+
                       <div className="flex flex-wrap justify-end gap-2">
                         {d.status === 'pending' && (
                           <>
@@ -578,8 +597,8 @@ export default function VoiceRecordingPage() {
               title="ใครเป็นผู้พูด"
               description={
                 data.audioUrl
-                  ? 'กด ▶ ฟังเสียงตัวอย่าง แล้วเลือกชื่อ · ระบบเดาไว้ให้บางคน'
-                  : 'อ่านตัวอย่างคำพูด แล้วเลือกชื่อ · ระบบเดาไว้ให้บางคน'
+                  ? 'กด ▶ ฟังเสียงตัวอย่าง แล้วกดรูปมุมขวาเพื่อเลือกว่าใคร'
+                  : 'อ่านตัวอย่างคำพูด แล้วกดรูปมุมขวาเพื่อเลือกว่าใคร'
               }
             >
               {!speakers.length ? (
@@ -600,20 +619,32 @@ export default function VoiceRecordingPage() {
                         canPlay={!!data.audioUrl}
                         playingAt={sample}
                         onPlay={playSample}
-                        avatar={person && <UserAvatar userId={person.user_id} name={personName(person)} size="sm" />}
                         help={guess?.reason || undefined}
-                      >
-                        <SelectMenu
-                          value={uid ?? null}
-                          options={personOptions}
-                          onChange={(v) => {
-                            setSpeakerMap((m) => ({ ...m, [sp]: v }))
-                            setMapDirty(true)
-                          }}
-                          clearable="ไม่ทราบ"
-                          placeholder="เลือกว่าใครพูด"
-                        />
-                      </SpeakerRow>
+                        picker={
+                          <SelectMenu
+                            value={uid ?? null}
+                            options={personOptions}
+                            onChange={(v) => {
+                              setSpeakerMap((m) => ({ ...m, [sp]: v }))
+                              setMapDirty(true)
+                            }}
+                            clearable="ไม่ทราบ"
+                            ariaLabel={`เลือกว่า${speakerLabel(sp)}คือใคร`}
+                            trigger={() => (
+                              <span className="aoo-speaker__who" data-empty={!person || undefined}>
+                                <span className="aoo-speaker__who-name">{person ? personName(person) : 'ใครพูด?'}</span>
+                                {person ? (
+                                  <UserAvatar userId={person.user_id} name={personName(person)} size="md" />
+                                ) : (
+                                  <span className="aoo-speaker__who-empty" aria-hidden>
+                                    <UserPlus size={18} />
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          />
+                        }
+                      />
                     )
                   })}
                   <div className="flex justify-end pt-1">

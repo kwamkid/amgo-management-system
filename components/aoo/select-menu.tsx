@@ -69,6 +69,12 @@ export interface SelectMenuProps {
   onKeyDown?: (e: React.KeyboardEvent) => void
   onFocus?: () => void
   triggerRef?: (el: HTMLElement | null) => void
+  /**
+   * Custom trigger (e.g. an avatar) instead of the boxed field — same panel/search/keys.
+   * Panel aligns to the trigger's right edge. Pass `ariaLabel` with it.
+   */
+  trigger?: (selected: SelectOption | null, open: boolean) => ReactNode
+  ariaLabel?: string
   /** ใช้ผ่าน MultiSelectMenu เท่านั้น */
   multi?: { values: string[]; onChange: (values: string[]) => void; summary?: (count: number) => string }
 }
@@ -109,9 +115,12 @@ export function SelectMenu({
   onKeyDown,
   onFocus,
   triggerRef,
+  trigger,
+  ariaLabel,
   multi,
 }: SelectMenuProps) {
   const [open, setOpen] = useState(false)
+  const hasTrigger = !!trigger
   const [hover, setHover] = useState(false)
   const [query, setQuery] = useState('')
   // ช่องค้นหาถูกโฟกัสให้อัตโนมัติตอนกางเมนู — ต้องมีกรอบบอกด้วยว่ากำลังโฟกัสอยู่
@@ -172,8 +181,9 @@ export function SelectMenu({
       // ที่ว่างข้างล่างไม่พอ → พลิกขึ้นบน
       const below = window.innerHeight - r.bottom
       const top = below < panelH + pad && r.top > below ? r.top - panelH - 4 : r.bottom + 4
-      const width = Math.max(r.width, 200)
-      const left = Math.min(Math.max(pad, r.left), window.innerWidth - width - pad)
+      const width = hasTrigger ? Math.min(340, window.innerWidth - 2 * pad) : Math.max(r.width, 200)
+      const want = hasTrigger ? r.right - width : r.left
+      const left = Math.min(Math.max(pad, want), window.innerWidth - width - pad)
       setPos({ top, left, width })
     }
     place()
@@ -187,7 +197,7 @@ export function SelectMenu({
       window.removeEventListener('scroll', place, true)
       window.removeEventListener('resize', place)
     }
-  }, [open, rows.length])
+  }, [open, rows.length, hasTrigger])
 
   /* ---- ปิดเมื่อคลิกข้างนอก / กด Esc ---------------------------- */
   useEffect(() => {
@@ -295,8 +305,19 @@ export function SelectMenu({
         onMouseLeave={() => setHover(false)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={ariaLabel}
         className={className}
-        style={{
+        style={trigger ? {
+          display: 'inline-flex',
+          padding: 0,
+          border: 0,
+          borderRadius: 999,
+          background: 'none',
+          boxShadow: open ? 'var(--shadow-focus)' : 'none',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.5 : 1,
+          outline: 'none',
+        } : {
           display: 'flex',
           alignItems: 'center',
           gap: 6,
@@ -334,6 +355,7 @@ export function SelectMenu({
           outline: 'none',
         }}
       >
+        {trigger ? trigger(selected, open) : (<>
         {selected?.dot && <Dot color={selected.dot} />}
         {selected?.icon && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{selected.icon}</span>}
         <span
@@ -347,6 +369,7 @@ export function SelectMenu({
           {buttonText}
         </span>
         <ChevronDown size={15} style={{ color: 'var(--fg-3)', flexShrink: 0 }} />
+        </>)}
       </button>
 
       {open &&

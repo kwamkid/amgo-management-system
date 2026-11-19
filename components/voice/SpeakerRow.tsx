@@ -7,20 +7,20 @@ import { clock } from '@/lib/voice/format'
 
 export type SpeakerSegment = { speaker: string; start: number; end: number; text: string }
 
-/** Tupperware five — same order as the avatar circle colours (orange, green, red, purple, brown). */
-const TONES = ['accent', 'success', 'danger', 'grape', 'neutral'] as const
-/** 20 animal avatars (public/voice-speakers, Higgsfield 19 Nov 69) — speaker n gets animal n. */
+/** 20 animal avatars (public/voice-speakers, Higgsfield 19 Nov 69) — speaker n gets animal n.
+ *  Circle colour picked per animal so the face never blends into it; the play buttons use the same tone. */
 const ANIMALS = [
-  ['cat', 'แมว'], ['dog', 'หมา'], ['bear', 'หมี'], ['rabbit', 'กระต่าย'], ['fox', 'จิ้งจอก'],
-  ['panda', 'แพนด้า'], ['koala', 'โคอาล่า'], ['lion', 'สิงโต'], ['tiger', 'เสือ'], ['owl', 'นกฮูก'],
-  ['penguin', 'เพนกวิน'], ['frog', 'กบ'], ['monkey', 'ลิง'], ['elephant', 'ช้าง'], ['pig', 'หมู'],
-  ['raccoon', 'แรคคูน'], ['hamster', 'แฮมสเตอร์'], ['sheep', 'แกะ'], ['cow', 'วัว'], ['duck', 'เป็ด'],
+  ['cat', 'แมว', 'success'], ['dog', 'หมา', 'grape'], ['bear', 'หมี', 'danger'], ['rabbit', 'กระต่าย', 'accent'],
+  ['fox', 'จิ้งจอก', 'success'], ['panda', 'แพนด้า', 'danger'], ['koala', 'โคอาล่า', 'accent'], ['lion', 'สิงโต', 'success'],
+  ['tiger', 'เสือ', 'grape'], ['owl', 'นกฮูก', 'danger'], ['penguin', 'เพนกวิน', 'accent'], ['frog', 'กบ', 'grape'],
+  ['monkey', 'ลิง', 'danger'], ['elephant', 'ช้าง', 'success'], ['pig', 'หมู', 'neutral'], ['raccoon', 'แรคคูน', 'accent'],
+  ['hamster', 'แฮมสเตอร์', 'success'], ['sheep', 'แกะ', 'danger'], ['cow', 'วัว', 'grape'], ['duck', 'เป็ด', 'neutral'],
 ] as const
 const indexOf = (speaker: string) => {
   const n = Number(speaker.replace(/^speaker_/, ''))
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
-export const speakerTone = (speaker: string) => TONES[indexOf(speaker) % TONES.length]
+export const speakerTone = (speaker: string) => ANIMALS[indexOf(speaker) % ANIMALS.length][2]
 export const speakerNo = (speaker: string) => indexOf(speaker) + 1
 export const speakerAnimal = (speaker: string) => ANIMALS[indexOf(speaker) % ANIMALS.length][1]
 export const speakerAvatarSrc = (speaker: string) => {
@@ -66,9 +66,8 @@ export default function SpeakerRow({
   canPlay,
   playingAt,
   onPlay,
-  avatar,
+  picker,
   help,
-  children,
 }: {
   speaker: string
   label: string
@@ -78,9 +77,9 @@ export default function SpeakerRow({
   /** start second of the sample playing now (null = none of this speaker's) */
   playingAt: number | null
   onPlay: (s: SpeakerSegment) => void
-  avatar?: ReactNode
+  /** person picker shown top-right (SelectMenu with an avatar trigger) */
+  picker: ReactNode
   help?: string
-  children: ReactNode
 }) {
   return (
     <div className="aoo-speaker" data-tone={speakerTone(speaker)}>
@@ -90,7 +89,7 @@ export default function SpeakerRow({
           {label} <span className="aoo-speaker__animal">({speakerAnimal(speaker)})</span>
         </span>
         <span className="aoo-speaker__count">พูด {turns} ช่วง</span>
-        {avatar}
+        {picker}
       </div>
       {samples.length > 0 && (
         <div className="aoo-speaker__clips">
@@ -118,8 +117,7 @@ export default function SpeakerRow({
           })}
         </div>
       )}
-      {children}
-      {help && <p className="aoo-speaker__help">{help}</p>}
+      {help && <p className="aoo-speaker__help">AI เดา: {help}</p>}
     </div>
   )
 }

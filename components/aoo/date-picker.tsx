@@ -35,6 +35,8 @@ export interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** show a clear button in the panel footer with this label (e.g. "ไม่กำหนด") — onChange("") */
+  clearable?: string;
 }
 
 export function DatePicker({
@@ -46,6 +48,7 @@ export function DatePicker({
   placeholder = "เลือกวันที่",
   disabled,
   className = "",
+  clearable,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => startOfMonth(parseIso(value) ?? parseIso(min) ?? new Date()));
@@ -183,7 +186,19 @@ export function DatePicker({
               })}
             </div>
 
-            <div className="mt-2 flex justify-end border-t border-gray-100 pt-2">
+            <div className="mt-2 flex justify-end gap-1 border-t border-gray-100 pt-2">
+              {clearable && value && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                  className="rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
+                >
+                  {clearable}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

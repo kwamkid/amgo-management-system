@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import { AudioLines, Link2, Upload } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, EmptyState, FilePickButton, Input, Spinner } from '@/components/aoo'
+import { Button, EmptyState, FilePickButton, Input, Progress, Spinner } from '@/components/aoo'
 import { ListRow, ListRows, PageHeader, SectionCard, StatusBadge } from '@/components/shared'
 import { createClient } from '@/lib/supabase/client'
 import { SOURCE_LABEL, durationText, voiceFetch } from '@/lib/voice/format'
@@ -32,6 +32,8 @@ interface RecordingItem {
 const ACCEPT = 'audio/*,.m4a,.mp3,.wav,.ogg,.opus,.webm'
 const MAX_MB = 50
 
+
+type Credits = { left: number; limit: number; used: number; resetAt: string | null }
 
 export default function VoiceRecordingsPage() {
   const router = useRouter()
@@ -58,6 +60,17 @@ export default function VoiceRecordingsPage() {
   useEffect(() => {
     if (isAdmin) void load()
   }, [isAdmin, load])
+
+  // ElevenLabs credits left — once per page load (the API is rate-limited; server caches 5 min)
+  const [credits, setCredits] = useState<Credits | null>(null)
+  const loadCredits = useCallback(async () => {
+    const res = await fetch('/api/voice/credits', { cache: 'no-store' }).catch(() => null)
+    const json = res?.ok ? await res.json().catch(() => null) : null
+    setCredits(json?.available ? json : null)
+  }, [])
+  useEffect(() => {
+    if (isAdmin) void loadCredits()
+  }, [isAdmin, loadCredits])
 
   const importPlaud = async () => {
     if (!link.trim()) return
@@ -144,6 +157,26 @@ export default function VoiceRecordingsPage() {
         <p className="mt-2 text-xs text-gray-500">
           {progress || `รองรับ .m4a (Voice Memos) .mp3 .wav .ogg .webm ไม่เกิน ${MAX_MB} MB · เสียงเก็บ 90 วัน ข้อความถอดเสียงเก็บตลอด`}
         </p>
+        {credits && (
+          <div className="aoo-voice-credits">
+            <div className="aoo-voice-credits__row">
+              <span>เครดิตถอดเสียง (ElevenLabs) เหลือ</span>
+              <strong>
+                {credits.left.toLocaleString('th-TH')} / {credits.limit.toLocaleString('th-TH')}
+              </strong>
+            </div>
+            <Progress
+              value={credits.left}
+              max={credits.limit}
+              tone={credits.left / credits.limit > 0.3 ? 'success' : credits.left / credits.limit > 0.1 ? 'warning' : 'danger'}
+              height={6}
+              aria-label="เครดิตที่เหลือ"
+            />
+            {credits.resetAt && (
+              <p className="aoo-voice-credits__hint">เติมใหม่ {format(new Date(credits.resetAt), 'd/M/yyyy')}</p>
+            )}
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard title="ไฟล์เสียงทั้งหมด">

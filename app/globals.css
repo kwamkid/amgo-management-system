@@ -761,6 +761,11 @@ input, textarea { font-family: var(--font-sans); }
 /* ---------- Progress bar (<Progress>) ---------- */
 .aoo-progress { height: 8px; width: 100%; border-radius: 9999px; background: var(--warm-150); overflow: hidden; }
 .aoo-progress__bar { height: 100%; border-radius: 9999px; background: var(--tone); transition: width var(--dur-med) var(--ease-out); }
+/* ElevenLabs credits left on /tasks/voice (19 Nov) */
+.aoo-voice-credits { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--warm-150); display: grid; gap: 6px; }
+.aoo-voice-credits__row { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: var(--fs-caption); color: var(--fg-2); }
+.aoo-voice-credits__row strong { color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.aoo-voice-credits__hint { font-size: var(--fs-caption); color: var(--fg-3); }
 
 /* ---------- Icon chip (<IconChip>) — coloured square behind an icon ---------- */
 .aoo-icon-chip {

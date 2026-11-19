@@ -22,13 +22,14 @@
 - [x] Fixed 9bd74ed: upload failed with 415 when the browser reports `application/octet-stream` (supabase-js sends the File's own type) — page now re-wraps the File.
 - [x] Meeting page UX pushed 2026-11-19 (9176431..b115029): 2 playable ~10 s samples per speaker · 20 flat animal avatars (public/voice-speakers, Higgsfield sheet, recoloured so faces don't blend) · speaker picker = avatar top-right (SelectMenu `trigger`) · drafts one card each, tint by status (pending soft brown — owner rejected yellow and red) · "สร้าง Task" runs in background/parallel · picked avatars in MultiSelectMenu · shared `brandSelectOptions()` with logos · DatePicker `clearable`. 30 s poll no longer resets the audio player or unsaved names/summary/draft edits.
 - [x] Fixed fa46282: evidence second was 0 for every draft (one segment per speaker turn) — turns now split at 30 s / 0.6 s pause after a spacing token.
-- [ ] Still unverified: `transcripts.get` "not ready" codes (webhook won the race; poll job 1798 was still queued → should end as skip) · 88-min AGD clip after credits.
+- [x] Poll race checked 2026-11-20: jobs 1796 · 1798 · 1817 · 1821 all ended `skip` (webhook always won). Unknown id → 404 `transcript_not_found` (probed, free) → null → retry, give up after 2 h. The in-progress code is still unseen (needs a paid job while it runs); harmless — any other code throws, the poll job fails, the webhook still saves the transcript.
+- [ ] 88-min AGD clip end-to-end once credits allow.
 - [x] iPhone Share-Sheet Shortcut "ส่งเข้า amgo" (2026-11-19, d176d14 pushed): bot key scope `voice` (migration 20261119100000 + key row run by owner; key in memo/bot-keys.env AMGO_VOICE_SHORTCUT_KEY) · POST /api/bot/voice/upload → PUT file to signed uploadUrl (Content-Type audio/mp4) → POST startUrl. Signed .shortcut built with `shortcuts sign` from scratchpad plist (key embedded — rebuild if key rotates). Prod test via curl 9ad328b2 "ทดสอบ-Shortcut": review, 1 correct draft (กอล์ฟ · hape · Fri 20 Nov). Not yet tried from the real iPhone.
 - [ ] Sidebar menu entry for `/tasks/voice` (skipped: components/layout/Sidebar.tsx has another chat's uncommitted edits) — for now reached via the "จากเสียงประชุม" button on /tasks
 - [ ] Repo ESLint config crashes ("Converting circular structure to JSON" in FlatCompat, eslint.config.mjs) — pre-existing, not caused by this work
 - [x] Pushed 2026-11-18 (5b12f44..6f802c1): 936d08f · db400e0 · voice fixes 9bd74ed fa46282 · tasks 1bfaf5e · meeting summary af89dab · avatars e045267 6f802c1
 - [x] ElevenLabs credits on /tasks/voice (2026-11-19/20, 9b24508 be8b829 pushed · 53c43c4 not pushed): bar "เหลือ x / limit" + reset date from GET /api/voice/credits (cached 5 min, /v1/user/subscription 429s after a few calls) · per-clip "ใช้ ~N เครดิต" on list + meeting page, estimate = transcript duration × 1,240/h (lib/voice/format.ts) · clips < 1 min show seconds.
-- [ ] Push 53c43c4 (credit rate 1,000 → 1,240/h after re-measuring with diarize + keyterms).
+- [x] Pushed 2026-11-20 (be8b829..95b99b3): 53c43c4 credit rate 1,000 → 1,240/h.
 
 ## Resume note
 Resume at: push 53c43c4, then the open items above (transcripts.get codes · Sidebar entry once the brief chat commits Sidebar.tsx).

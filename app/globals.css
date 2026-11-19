@@ -2528,12 +2528,9 @@ button:disabled,
 .aoo-speaker { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border-1); }
 .aoo-speaker:first-child { border-top: 0; padding-top: 0; }
 .aoo-speaker__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.aoo-speaker__badge, .aoo-speaker-dot {
-  display: inline-grid; place-items: center; flex: none; border-radius: 999px;
-  background: var(--tone); color: var(--tone-on); font-weight: 700;
-}
-.aoo-speaker__badge { width: 28px; height: 28px; font-size: var(--fs-caption); }
+.aoo-speaker-avatar { flex: none; border-radius: 999px; object-fit: cover; }
 .aoo-speaker__label { font-weight: 600; color: var(--fg-1); }
+.aoo-speaker__animal { font-weight: 400; color: var(--fg-3); }
 .aoo-speaker__count { font-size: var(--fs-caption); color: var(--fg-3); margin-right: auto; }
 .aoo-speaker__clips { display: flex; flex-direction: column; gap: 6px; }
 .aoo-speaker__clip {
@@ -2556,7 +2553,6 @@ button:disabled,
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .aoo-speaker__help { font-size: var(--fs-caption); color: var(--fg-3); }
-.aoo-speaker-dot { width: 22px; height: 22px; font-size: var(--fs-caption); line-height: 1; }
 
 /* ชิปกดเลือก (รออะไร · +วัน) — กดซ้ำได้ ไม่ใช่ segmented เพราะมี "พิมพ์เอง" */
 .aoo-chips { display: flex; flex-wrap: wrap; gap: 6px; }

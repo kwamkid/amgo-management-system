@@ -7,15 +7,41 @@ import { clock } from '@/lib/voice/format'
 
 export type SpeakerSegment = { speaker: string; start: number; end: number; text: string }
 
-/** Tupperware five — one colour per speaker, same colour on the transcript dots. */
-const TONES = ['accent', 'success', 'grape', 'danger', 'neutral'] as const
-export const speakerTone = (speaker: string) => {
+/** Tupperware five — same order as the avatar circle colours (orange, green, red, purple, brown). */
+const TONES = ['accent', 'success', 'danger', 'grape', 'neutral'] as const
+/** 20 animal avatars (public/voice-speakers, Higgsfield 19 Nov 69) — speaker n gets animal n. */
+const ANIMALS = [
+  ['cat', 'แมว'], ['dog', 'หมา'], ['bear', 'หมี'], ['rabbit', 'กระต่าย'], ['fox', 'จิ้งจอก'],
+  ['panda', 'แพนด้า'], ['koala', 'โคอาล่า'], ['lion', 'สิงโต'], ['tiger', 'เสือ'], ['owl', 'นกฮูก'],
+  ['penguin', 'เพนกวิน'], ['frog', 'กบ'], ['monkey', 'ลิง'], ['elephant', 'ช้าง'], ['pig', 'หมู'],
+  ['raccoon', 'แรคคูน'], ['hamster', 'แฮมสเตอร์'], ['sheep', 'แกะ'], ['cow', 'วัว'], ['duck', 'เป็ด'],
+] as const
+const indexOf = (speaker: string) => {
   const n = Number(speaker.replace(/^speaker_/, ''))
-  return TONES[(Number.isFinite(n) ? n : 0) % TONES.length]
+  return Number.isFinite(n) && n >= 0 ? n : 0
 }
-export const speakerNo = (speaker: string) => {
-  const n = Number(speaker.replace(/^speaker_/, ''))
-  return Number.isFinite(n) ? n + 1 : '?'
+export const speakerTone = (speaker: string) => TONES[indexOf(speaker) % TONES.length]
+export const speakerNo = (speaker: string) => indexOf(speaker) + 1
+export const speakerAnimal = (speaker: string) => ANIMALS[indexOf(speaker) % ANIMALS.length][1]
+export const speakerAvatarSrc = (speaker: string) => {
+  const i = indexOf(speaker) % ANIMALS.length
+  return `/voice-speakers/${String(i + 1).padStart(2, '0')}-${ANIMALS[i][0]}.webp`
+}
+
+/** Small round animal for transcript lines and pickers. */
+export function SpeakerAvatar({ speaker, size = 22, className = '' }: { speaker: string; size?: number; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- 9 KB static webp, next/image adds nothing
+    <img
+      src={speakerAvatarSrc(speaker)}
+      alt=""
+      width={size}
+      height={size}
+      className={`aoo-speaker-avatar ${className}`}
+      loading="lazy"
+      decoding="async"
+    />
+  )
 }
 
 /** Longest turns first, the second one at least 1 min away so the two samples sound different. */
@@ -59,10 +85,10 @@ export default function SpeakerRow({
   return (
     <div className="aoo-speaker" data-tone={speakerTone(speaker)}>
       <div className="aoo-speaker__head">
-        <span className="aoo-speaker__badge" aria-hidden>
-          {speakerNo(speaker)}
+        <SpeakerAvatar speaker={speaker} size={40} />
+        <span className="aoo-speaker__label">
+          {label} <span className="aoo-speaker__animal">({speakerAnimal(speaker)})</span>
         </span>
-        <span className="aoo-speaker__label">{label}</span>
         <span className="aoo-speaker__count">พูด {turns} ช่วง</span>
         {avatar}
       </div>

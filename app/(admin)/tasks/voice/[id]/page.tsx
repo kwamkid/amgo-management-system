@@ -27,7 +27,7 @@ import {
 import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
 import { BRANDS, brandLabel } from '@/lib/constants/brands'
 import { SOURCE_LABEL, clock, durationText, speakerLabel, voiceFetch } from '@/lib/voice/format'
-import SpeakerRow, { pickSamples, speakerNo, speakerTone } from '@/components/voice/SpeakerRow'
+import SpeakerRow, { SpeakerAvatar, pickSamples } from '@/components/voice/SpeakerRow'
 
 /** a speaker sample plays this many seconds at most, then pauses */
 const SAMPLE_SEC = 10
@@ -637,9 +637,7 @@ export default function VoiceRecordingPage() {
                       ) : (
                         <span>{clock(s.start)}</span>
                       )}
-                      <span className="aoo-speaker-dot self-center" data-tone={speakerTone(s.speaker)} aria-hidden>
-                        {speakerNo(s.speaker)}
-                      </span>
+                      <SpeakerAvatar speaker={s.speaker} className="self-center" />
                       <span className="font-medium text-gray-700">{speakerName(s.speaker)}</span>
                     </div>
                     <p className="text-gray-900">{s.text}</p>

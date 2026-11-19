@@ -3,12 +3,13 @@
 > Owner wants the task system (/tasks) easy enough that staff actually use it, working together with the Edith Discord bot (Hermes, all staff, own data only). Not designed yet — start here in a fresh chat.
 
 <!-- toc -->
-**Contents** (6)
+**Contents** (7)
 - Owner answers (2026-11-18)
 - Already exists (check before building)
 - Phone review (2026-11-18, 390px on prod)
 - Decisions (owner, 2026-11-18)
 - Built 2026-11-18 — commit 1bfaf5e (migration applied by owner, verified via REST: #1–#43, chase kind accepted). UI not y
+- Tasksuke import (2026-11-19, owner asked — staff were still using Tasksuke)
 - Next
 <!-- /toc -->
 

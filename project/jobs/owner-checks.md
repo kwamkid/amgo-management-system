@@ -18,3 +18,5 @@
 - Expenses: Discord — reject a test claim and mark one paid; the claimant gets an @mention in the Leave channel (or the Expense channel if set in ตั้งค่า > Discord).
 - Expenses: first real SCB export — approve a real claim, ส่งออกไฟล์ SCB on /expenses/manage, upload the .txt to SCB Business Anywhere, confirm the bank accepts it (OAT, fee BEN), approve in the app, then โอนแล้ว · แนบสลิป (real bank + money).
 - Order plans: on the live /import page scroll a long plan and type in search — header folds without stutter, search finds "tripp natural chair" (9779471, 9e9fdc2).
+- Voice: AirDrop "ส่งเข้า amgo.shortcut" (Mac Desktop) to the iPhone, add it, share one Voice Memo → notification "ส่งเข้า amgo แล้ว" and a recording on /tasks/voice within ~15 min. Delete the file from the Desktop after (it holds the key).
+- Domains: yuttana.com — Cloudflare answers REFUSED (zone not in the account that owns emma/troy NS); add the zone + A/www/MX records there.

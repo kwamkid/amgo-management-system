@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (34)
+**Contents** (35)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -38,6 +38,7 @@
 - 2026-11-17 — aoo MCP stock rows can have barcode null
 - 2026-11-18 — ElevenLabs webhook + credits, Vercel CLI here
 - 2026-11-19 — Overflow + contrast checks (/ui-check skill)
+- 2026-11-20 — ElevenLabs cost per call · building iPhone Shortcuts from code
 <!-- /toc -->
 
 ---
@@ -488,3 +489,8 @@ Some aoo products keep the barcode only in `sku` (e.g. Stokke MuTable V2, Snoozi
 ## 2026-11-19 — Overflow + contrast checks (/ui-check skill)
 - `truncate`/`line-clamp` does nothing inside a flex item lacking `min-w-0`; a `grid` with no `grid-cols-1` sizes its implicit track to the longest nowrap text → card wider than a phone.
 - Global skill `~/.claude/skills/ui-check` (probe.js = overflow, probe-style.js = contrast normal+hover, fonts, sizes, button colours). Measure every width in a same-origin iframe — `resize_window` did nothing on the owner's Chrome. amgo dev = port 3002. javascript_tool times out at 45s → loop widths in the background, poll `window.__res`. An empty-data page passes trivially — get real rows first.
+
+## 2026-11-20 — ElevenLabs cost per call · building iPhone Shortcuts from code
+- Sync Scribe responses carry `character-cost` + `fiat-cost-before-overages` headers; async (webhook=true) 202s and transcripts.get carry none. Measured v3 + diarize + keyterms: 55 s → 19 credits (keyterm count 3 vs 60 doesn't matter); 7 s → 2 without keyterms. `/v1/user/subscription` 429s after a few calls — cache it. The 18 Nov "~80/min" figure came from a quota pre-check, not a bill.
+- An iPhone Shortcut can be generated: write the WFWorkflowActions plist (downloadurl / getvalueforkey / notification, ExtensionInput for share-sheet input), then `shortcuts sign --mode anyone` on the Mac → AirDrop. Large files must go to a Supabase signed upload URL (PUT + Content-Type), not through Vercel (4.5 MB body).
+

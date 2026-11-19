@@ -17,7 +17,7 @@
 ## Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
 - **What it does:** admin pastes a Plaud share link or uploads an audio file (iPhone Voice Memos .m4a, mp3, wav, ogg, webm, ≤ 50 MB) on /tasks/voice. The system transcribes it, drafts tasks (assignee, due date, brand, quote with timestamp) and waits for review: map speakers to staff, edit, accept or reject each draft; accepted drafts become normal tasks linked back to the recording. Runs in the background queue, so the page can be closed.
 - **Uses:** Plaud share links · ElevenLabs Scribe (speech-to-text, webhook) · Claude Opus (batch) · private Supabase storage.
-- **Limits:** admin only; audio deleted after 90 days (transcript kept); each transcription spends ElevenLabs credits (~80 per minute). iPhone Share-Sheet shortcut not built yet.
+- **Limits:** admin only; audio deleted after 90 days (transcript kept); each transcription spends ElevenLabs credits (~1,240 per audio hour; credits left and per-clip usage shown on /tasks/voice, 2026-11-20). iPhone Share-Sheet shortcut "ส่งเข้า amgo" sends a Voice Memo straight in (bot key scope `voice`, 2026-11-19).
 - **Package:** internal, not sold.
 
 ## UAT test cases: reference picture per step — since 2026-11-09

@@ -27,12 +27,14 @@
 - [ ] Sidebar menu entry for `/tasks/voice` (skipped: components/layout/Sidebar.tsx has another chat's uncommitted edits) — for now reached via the "จากเสียงประชุม" button on /tasks
 - [ ] Repo ESLint config crashes ("Converting circular structure to JSON" in FlatCompat, eslint.config.mjs) — pre-existing, not caused by this work
 - [x] Pushed 2026-11-18 (5b12f44..6f802c1): 936d08f · db400e0 · voice fixes 9bd74ed fa46282 · tasks 1bfaf5e · meeting summary af89dab · avatars e045267 6f802c1
+- [x] ElevenLabs credits on /tasks/voice (2026-11-19/20, 9b24508 be8b829 pushed · 53c43c4 not pushed): bar "เหลือ x / limit" + reset date from GET /api/voice/credits (cached 5 min, /v1/user/subscription 429s after a few calls) · per-clip "ใช้ ~N เครดิต" on list + meeting page, estimate = transcript duration × 1,240/h (lib/voice/format.ts) · clips < 1 min show seconds.
+- [ ] Push 53c43c4 (credit rate 1,000 → 1,240/h after re-measuring with diarize + keyterms).
 
 ## Resume note
-Resume at: owner tops up ElevenLabs credits → on /tasks/voice press ลองใหม่ on "AGD-ประชุมหลังแฟร์" (recording 537719fa…) → watch queue_jobs + voice_recordings status through transcribing → extracting → review; verify poll codes and draft quality.
+Resume at: push 53c43c4, then the open items above (transcripts.get codes · Sidebar entry once the brief chat commits Sidebar.tsx).
 ### State
-All code committed; typecheck green. Plaud import + webhook verified on prod. `.env.local` has ELEVENLABS_WEBHOOK_SECRET (local only).
+All code committed; typecheck green. Shortcut file built in scratchpad (sc/build.py → `shortcuts sign --mode anyone`), copy on owner's Desktop; key in memo/bot-keys.env AMGO_VOICE_SHORTCUT_KEY.
 ### Gotchas
-Extraction is a Claude Message Batch woken by the 10-min queue cron → drafts can lag ~10 min. Short test clip alternative: Voice Memos upload (~35 min fits remaining credits).
+Async Scribe returns no cost; sync responses carry `character-cost`. 18 Nov quota error implied ~4,800/h vs measured ~1,240/h — see followups. Extraction lags up to 10 min (queue cron).
 ### Read first
-project/jobs/plans/voice-tasks.md · lib/voice/pipeline.ts
+project/jobs/plans/voice-tasks.md · lib/voice/pipeline.ts · app/api/bot/voice/

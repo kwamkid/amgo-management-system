@@ -74,7 +74,8 @@ export default function HrInbox() {
   const beforeStart = new Date().getHours() < ABSENT_FROM_HOUR
 
   return (
-    <section className="space-y-4">
+    // a fragment: each card is its own block in the dashboard masonry, so the two columns balance
+    <>
       {/* ── รออนุมัติ ─────────────────────────────────────────────── */}
       <Card padding={0} className="overflow-hidden">
         <CardHeader>
@@ -83,7 +84,7 @@ export default function HrInbox() {
           </CardTitle>
         </CardHeader>
 
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="aoo-inbox-tiles grid grid-cols-2 gap-2 p-4">
           <Tile
             href="/leaves/management"
             icon={FileText}
@@ -94,22 +95,22 @@ export default function HrInbox() {
           <Tile
             href="/leaves/swap/management"
             icon={CalendarSync}
-            label="ใบสลับวันหยุด"
+            label="สลับวันหยุด"
             count={data.swap_pending}
             tone="grape"
           />
           <Tile
             href="/checkin/pending"
             icon={Clock3}
-            label="ลืมเช็คเอาท์ รอตรวจ"
+            label="ลืมเช็คเอาท์"
             count={data.forgot.length}
             tone="warning"
-            sub={claimed ? `พนักงานแจ้งเวลาแล้ว ${claimed}` : undefined}
+            sub={claimed ? `แจ้งเวลาแล้ว ${claimed}` : undefined}
           />
           <Tile
             href="/expenses/manage"
             icon={Receipt}
-            label="ใบเบิกค่าใช้จ่าย"
+            label="ใบเบิก"
             count={expensePending + expenses.toPay}
             tone="success"
             sub={
@@ -196,7 +197,7 @@ export default function HrInbox() {
           )}
         </Card>
       )}
-    </section>
+    </>
   )
 }
 
@@ -216,10 +217,10 @@ function Tile({
   /** สีของเรื่องนี้ตอนมีค้าง — ใบในแถวเดียวกันต้องคนละสี */
   tone: StatTone
 }) {
-  // ค้าง = สีของเรื่องนั้น · ว่าง = เทา
+  // ค้าง = สีอ่อนของเรื่องนั้น · ว่าง = เทา — สีทึบ 4 ใบเด่นกว่าทั้งหน้า (เจ้าของ 20 พ.ย. 69)
   return (
     <Link href={href} className="block h-full">
-      <StatCard label={label} value={count} icon={icon} tone={count > 0 ? tone : 'muted'} hint={sub} />
+      <StatCard label={label} value={count} icon={icon} tone={count > 0 ? tone : 'muted'} variant="soft" hint={sub} />
     </Link>
   )
 }

@@ -31,6 +31,7 @@ import AssigneeStrip, { type AssigneeScope } from '@/components/tasks/AssigneeSt
 import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
 import TaskList from '@/components/tasks/TaskList'
+import TaskSheet from '@/components/tasks/TaskSheet'
 import TaskImages from '@/components/tasks/TaskImages'
 import TaskTimeline from '@/components/tasks/TaskTimeline'
 import { STATUS_ICON, STATUS_TONE } from '@/components/tasks/taskUi'
@@ -87,6 +88,8 @@ export default function TasksPage() {
   const [dueFilter, setDueFilter] = useState<DueFilter>('any')
   /** null = ปิด · 'new' = สร้างงาน · Task = แก้งาน */
   const [modal, setModal] = useState<Task | 'new' | null>(null)
+  /** มือถือ: แตะงานในรายการ = หน้าอ่าน (แก้ไขค่อยเปิด modal) */
+  const [sheet, setSheet] = useState<Task | null>(null)
   const [extraBrands, setExtraBrands] = useState<string[]>([])
 
   const load = useCallback(async () => {
@@ -110,7 +113,8 @@ export default function TasksPage() {
     setDeepLinked(true)
     const id = new URLSearchParams(window.location.search).get('task')
     const hit = id && tasks.find((t) => t.id === id)
-    if (hit) setModal(hit)
+    // มือถือเปิดหน้าอ่าน · คอมเปิดหน้าต่างแก้เหมือนเดิม
+    if (hit) (window.matchMedia('(min-width: 1024px)').matches ? setModal : setSheet)(hit)
   }, [tasks, deepLinked])
 
   // แบรนด์บริษัทก่อน (เลือกได้แม้ยังไม่มีงาน) แล้วต่อด้วยแบรนด์ที่พิมพ์เพิ่มเอง
@@ -263,8 +267,27 @@ export default function TasksPage() {
       </div>
       {/* มือถือ: รายการตามความด่วน เลื่อนในกรอบตัวเอง (หน้าทั้งหน้าพอดีจอเหมือนเดิม) */}
       <div className="min-h-0 flex-1 overflow-y-auto pb-3 lg:hidden">
-        <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setModal} onSetStatus={setStatus} />
+        <TaskList tasks={visible} me={me} canEdit={canEdit} onOpen={setSheet} onSetStatus={setStatus} />
       </div>
+
+      {sheet && (
+        <TaskSheet
+          key={sheet.id}
+          task={sheet}
+          userId={me}
+          people={people}
+          canEdit={canEdit(sheet)}
+          onSetStatus={setStatus}
+          onEdit={() => {
+            setSheet(null)
+            setModal(tasks.find((t) => t.id === sheet.id) ?? sheet)
+          }}
+          onClose={(changed) => {
+            setSheet(null)
+            if (changed) load()
+          }}
+        />
+      )}
 
       {modal && (
         <TaskModal

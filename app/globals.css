@@ -796,7 +796,12 @@ input, textarea { font-family: var(--font-sans); }
 .aoo-segmented__opt:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- StepSelect — ขั้นลูกศรต่อกัน (components/aoo/step-select.tsx) ---------- */
-.aoo-steps { display: flex; width: 100%; }
+.aoo-steps { display: flex; width: 100%; container-type: inline-size; }
+/* กล่องแคบ (มือถือ ~390px ในหน้าต่าง) — ซ่อนไอคอน ลดขอบ ให้ชื่อขั้นเต็มคำ ไม่เป็น "กำลัง…" */
+@container (max-width: 380px) {
+  .aoo-steps__step { gap: 0; padding: 0 calc(var(--notch) + 2px); }
+  .aoo-steps__step svg { display: none; }
+}
 .aoo-steps__step {
   --notch: 12px;
   flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -2528,6 +2533,42 @@ button:disabled,
   flex: none; align-self: center; padding: 8px 10px; background: none; border: 0;
   font: inherit; font-size: var(--fs-caption); font-weight: 600; color: var(--accent); cursor: pointer;
 }
+
+/* หน้ารายละเอียดงานบนมือถือ (components/tasks/TaskSheet) — หน้าอ่าน + ปุ่มสถานะ + อัปเดตแบบแชท */
+.aoo-task-sheet { display: flex; flex-direction: column; gap: 14px; }
+.aoo-task-sheet__title { overflow-wrap: anywhere; }
+.aoo-task-sheet__no { font-weight: 500; color: var(--fg-3); }
+.aoo-task-sheet__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.aoo-task-sheet__muted { font-size: var(--fs-caption); color: var(--fg-3); }
+.aoo-task-sheet__notes { color: var(--fg-1); }
+.aoo-task-sheet__feed { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border-1); }
+.aoo-task-sheet__feed-title { margin: 0; font-size: var(--fs-caption); font-weight: 700; color: var(--fg-2); }
+.aoo-task-sheet__composer { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.aoo-task-sheet__input-row { display: flex; align-items: flex-end; gap: 8px; }
+.aoo-task-sheet__input {
+  flex: 1; min-width: 0; min-height: 40px; max-height: 120px; padding: 8px 14px; resize: none; box-sizing: border-box; overflow-y: hidden;
+  font: inherit; font-size: var(--fs-body); line-height: 1.4; color: var(--fg-1);
+  background: var(--bg-sunken); border: 1px solid var(--border-1); border-radius: 20px; outline: none;
+}
+.aoo-task-sheet__input:focus { border-color: var(--accent); }
+.aoo-task-sheet__picked { display: flex; gap: 8px; overflow-x: auto; }
+.aoo-task-sheet__thumb { position: relative; flex: none; width: 56px; height: 56px; }
+.aoo-task-sheet__thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-md); }
+.aoo-task-sheet__thumb button {
+  position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 999px; background: var(--fg-1); color: var(--bg-surface); cursor: pointer;
+}
+.aoo-chat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-width: 85%; }
+.aoo-chat[data-own] { align-self: flex-end; align-items: flex-end; }
+.aoo-chat__who { padding: 0 4px; font-size: var(--fs-caption); font-weight: 600; color: var(--fg-2); }
+.aoo-chat__bubble {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; max-width: 100%;
+  background: var(--bg-sunken); border-radius: 16px 16px 16px 4px; color: var(--fg-1); overflow-wrap: anywhere;
+}
+.aoo-chat[data-own] .aoo-chat__bubble { background: var(--accent-soft); border-radius: 16px 16px 4px 16px; }
+.aoo-chat__head { font-size: var(--fs-caption); font-weight: 600; color: var(--fg-2); }
+.aoo-chat__body { white-space: pre-wrap; line-height: 1.45; }
+.aoo-chat__time { padding: 0 4px; font-size: var(--fs-caption); color: var(--fg-3); }
 
 /* ผู้พูดในหน้าเสียงประชุม (components/voice/SpeakerRow) — สีต่อคน + ท่อนตัวอย่างให้กดฟัง */
 .aoo-speaker { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border-1); }

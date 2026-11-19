@@ -18,12 +18,15 @@ export default function TaskImages({
   taskId,
   userId,
   readOnly,
+  hideWhenEmpty,
   onChanged,
 }: {
   taskId: string;
   userId: string;
   /** ดูได้อย่างเดียว — งานที่ไม่ได้สร้างหรือรับผิดชอบ */
   readOnly?: boolean;
+  /** ดูอย่างเดียวแล้วไม่มีรูป = ไม่ต้องโชว์อะไร (หน้าอ่านบนมือถือ) */
+  hideWhenEmpty?: boolean;
   /** รูป/ลำดับเปลี่ยน — ให้บอร์ดโหลดปกใหม่ตอนปิด */
   onChanged: () => void;
 }) {
@@ -89,7 +92,7 @@ export default function TaskImages({
   };
 
   if (!images) return null;
-  if (readOnly && !images.length) return <p className="text-sm text-gray-500">ไม่มีรูป</p>;
+  if (readOnly && !images.length) return hideWhenEmpty ? null : <p className="text-sm text-gray-500">ไม่มีรูป</p>;
 
   return (
     <ImageDropzone

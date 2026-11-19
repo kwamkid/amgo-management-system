@@ -488,7 +488,7 @@ export default function TaskTimeline({
 }
 
 /** หัวรายการ — ส่วนที่บอกว่า "เกิดอะไร/รออะไร/วันไหน" */
-function headOf(u: TaskUpdate) {
+export function headOf(u: TaskUpdate) {
   switch (u.kind) {
     case 'waiting':
       return `${waitingText(u)} · ตาม ${thaiDay(u.eventDate!)}`

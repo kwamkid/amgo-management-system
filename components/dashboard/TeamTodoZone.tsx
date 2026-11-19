@@ -68,14 +68,14 @@ export default function TeamTodoZone() {
 
   if (!behind.length) {
     return (
-      <Alert tone="success" className="mb-5">
+      <Alert tone="success">
         พนักงานทุกคนกรอกชื่อและเชื่อม Discord ครบแล้ว ({rows.length} คน)
       </Alert>
     )
   }
 
   return (
-    <Card padding={0} className="mb-5 overflow-hidden">
+    <Card padding={0} className="overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle icon={UserCog} tone="warning">
           ต้องตามอีก {behind.length} คน

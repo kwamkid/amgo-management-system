@@ -37,7 +37,7 @@ export default function MyTasksZone() {
   const dueToday = tasks.length - late
 
   return (
-    <Card padding={0} className="mb-5 overflow-hidden">
+    <Card padding={0} className="overflow-hidden">
       <CardHeader>
         <CardTitle icon={ListChecks} tone={late ? 'danger' : 'warning'}>
           {['งานของฉัน', late && `เลยกำหนด ${late}`, dueToday && `ครบวันนี้ ${dueToday}`].filter(Boolean).join(' · ')}

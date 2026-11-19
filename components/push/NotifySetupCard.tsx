@@ -68,7 +68,7 @@ export default function NotifySetupCard() {
   }
 
   return (
-    <InfoPanel tone="sky" className="mb-5">
+    <InfoPanel tone="sky">
       <div className="flex items-start gap-3">
         <span className="aoo-title-icon mt-0.5" data-tone="sky">
           <BellRing size={20} />

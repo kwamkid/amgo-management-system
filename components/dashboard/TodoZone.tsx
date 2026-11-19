@@ -28,7 +28,7 @@ export default function TodoZone() {
   const mustDo = todos.filter((t) => t.blocking).length
 
   return (
-    <Card padding={0} className="mb-5 overflow-hidden">
+    <Card padding={0} className="overflow-hidden">
       <CardHeader>
         <CardTitle icon={AlertTriangle} tone="warning">
           สิ่งที่ต้องทำ {todos.length} อย่าง

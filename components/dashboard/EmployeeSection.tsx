@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Cake,
+  CalendarDays,
   Gift,
   PartyPopper,
 } from 'lucide-react';
@@ -11,7 +12,7 @@ import { UserData } from '@/hooks/useAuth';
 import { format, addDays, isSameDay, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 
-import { Pill, Card, CardContent, CardHeader, CardTitle, Modal, EmptyState } from '@/components/aoo'
+import { Pill, Card, CardContent, CardHeader, CardTitle, Modal, Button } from '@/components/aoo'
 import { DateStepper, InfoPanel, ListRow, ListRows, UserAvatar } from '@/components/shared'
 interface EmployeeSectionProps {
   userData: UserData;
@@ -33,6 +34,8 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBirthdayDialog, setShowBirthdayDialog] = useState(false);
+  // the month calendar is ~700px tall — closed by default, the dashboard shows only upcoming birthdays (owner, 20 Nov)
+  const [showCalendar, setShowCalendar] = useState(false);
   
   // ดึงครั้งเดียวตอนเปิดหน้า แล้วเก็บไว้ทั้งปี
   // ของเดิมใส่ currentMonth ไว้ใน dependency → กดเปลี่ยนเดือนทีก็ยิง API ใหม่ทุกครั้ง
@@ -115,8 +118,59 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-4">
+      {/* Upcoming Birthdays */}
+      <Card padding={0}>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle icon={PartyPopper} tone="grape">
+            วันเกิดใกล้ถึง (±5 วัน)
+          </CardTitle>
+          <Button variant="ghost" size="sm" icon={CalendarDays} onClick={() => setShowCalendar((v) => !v)}>
+            {showCalendar ? 'ซ่อนปฏิทิน' : 'ดูปฏิทิน'}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {upcomingBirthdays.length > 0 ? (
+            <ListRows>
+              {upcomingBirthdays.map(user => {
+                const birthdayThisYear = new Date(
+                  new Date().getFullYear(),
+                  user.birthDate.getMonth(),
+                  user.birthDate.getDate()
+                );
+                const isToday = isSameDay(birthdayThisYear, new Date());
+                const daysUntil = Math.ceil((birthdayThisYear.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                
+                return (
+                  <ListRow
+                    key={user.id}
+                    leading={<UserAvatar name={user.fullName} userId={user.id} size="lg" />}
+                    title={user.fullName}
+                    meta={
+                      <>
+                        {format(birthdayThisYear, 'dd MMMM', { locale: th })}
+                        {isToday && <span className="text-[var(--pink-700)] font-medium ml-2">🎉 วันนี้!</span>}
+                        {daysUntil > 0 && daysUntil <= 5 && (
+                          <span className="text-[var(--grape-700)] ml-2">อีก {daysUntil} วัน</span>
+                        )}
+                        {daysUntil < 0 && daysUntil >= -5 && (
+                          <span className="text-gray-500 ml-2">{Math.abs(daysUntil)} วันที่แล้ว</span>
+                        )}
+                      </>
+                    }
+                    trailing={isToday ? <Pill tone="pink">HBD!</Pill> : undefined}
+                  />
+                );
+              })}
+            </ListRows>
+          ) : (
+            <p className="pb-5 pt-1 text-sm text-gray-500">ไม่มีวันเกิดในช่วงนี้</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {showCalendar && (
+        <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* Left Column - Calendar */}
         <Card padding={0}>
           <CardHeader>
@@ -228,83 +282,34 @@ export default function EmployeeSection({ userData }: EmployeeSectionProps) {
           </CardContent>
         </Card>
 
-        {/* Right Column - Upcoming Birthdays */}
-        <div className="space-y-6">
-          {/* Upcoming Birthdays */}
+        {/* All Birthdays in Month */}
+        {monthBirthdays.length > 0 && (
           <Card padding={0}>
             <CardHeader>
-              <CardTitle icon={PartyPopper} tone="grape">
-                วันเกิดใกล้ถึง (±5 วัน)
+              <CardTitle icon={Cake} tone="pink">
+                วันเกิดทั้งหมดในเดือนนี้
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {upcomingBirthdays.length > 0 ? (
-                <ListRows>
-                  {upcomingBirthdays.map(user => {
-                    const birthdayThisYear = new Date(
-                      new Date().getFullYear(),
-                      user.birthDate.getMonth(),
-                      user.birthDate.getDate()
-                    );
-                    const isToday = isSameDay(birthdayThisYear, new Date());
-                    const daysUntil = Math.ceil((birthdayThisYear.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    
-                    return (
-                      <ListRow
-                        key={user.id}
-                        leading={<UserAvatar name={user.fullName} userId={user.id} size="lg" />}
-                        title={user.fullName}
-                        meta={
-                          <>
-                            {format(birthdayThisYear, 'dd MMMM', { locale: th })}
-                            {isToday && <span className="text-[var(--pink-700)] font-medium ml-2">🎉 วันนี้!</span>}
-                            {daysUntil > 0 && daysUntil <= 5 && (
-                              <span className="text-[var(--grape-700)] ml-2">อีก {daysUntil} วัน</span>
-                            )}
-                            {daysUntil < 0 && daysUntil >= -5 && (
-                              <span className="text-gray-500 ml-2">{Math.abs(daysUntil)} วันที่แล้ว</span>
-                            )}
-                          </>
-                        }
-                        trailing={isToday ? <Pill tone="pink">HBD!</Pill> : undefined}
-                      />
-                    );
-                  })}
-                </ListRows>
-              ) : (
-                <EmptyState icon={<Gift size={40} />} title="ไม่มีวันเกิดในช่วงนี้" />
-              )}
+              <ListRows className="max-h-[300px] overflow-y-auto">
+                {monthBirthdays.map(user => (
+                  <ListRow
+                    key={user.id}
+                    leading={<UserAvatar name={user.fullName} userId={user.id} size="sm" />}
+                    title={user.fullName}
+                    trailing={
+                      <span className="text-sm text-gray-600">
+                        {format(user.birthDate, 'dd MMM', { locale: th })}
+                      </span>
+                    }
+                  />
+                ))}
+              </ListRows>
             </CardContent>
           </Card>
-
-          {/* All Birthdays in Month */}
-          {monthBirthdays.length > 0 && (
-            <Card padding={0}>
-              <CardHeader>
-                <CardTitle icon={Cake} tone="pink">
-                  วันเกิดทั้งหมดในเดือนนี้
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ListRows className="max-h-[300px] overflow-y-auto">
-                  {monthBirthdays.map(user => (
-                    <ListRow
-                      key={user.id}
-                      leading={<UserAvatar name={user.fullName} userId={user.id} size="sm" />}
-                      title={user.fullName}
-                      trailing={
-                        <span className="text-sm text-gray-600">
-                          {format(user.birthDate, 'dd MMM', { locale: th })}
-                        </span>
-                      }
-                    />
-                  ))}
-                </ListRows>
-              </CardContent>
-            </Card>
-          )}
+        )}
         </div>
-      </div>
+      )}
 
       {/* Birthday Dialog */}
       <Modal

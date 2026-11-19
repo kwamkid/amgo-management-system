@@ -64,7 +64,7 @@ export default function HrInbox() {
   }, [isHr, load])
 
   if (loading || !isHr) return null
-  if (error) return <Alert tone="error" className="mb-5">{error}</Alert>
+  if (error) return <Alert tone="error">{error}</Alert>
   if (!data) return <Skeleton rows={4} />
 
   const claimed = data.forgot.filter((f) => f.claimed_checkout_time).length
@@ -74,7 +74,7 @@ export default function HrInbox() {
   const beforeStart = new Date().getHours() < ABSENT_FROM_HOUR
 
   return (
-    <section className="mb-5 space-y-4">
+    <section className="space-y-4">
       {/* ── รออนุมัติ ─────────────────────────────────────────────── */}
       <Card padding={0} className="overflow-hidden">
         <CardHeader>

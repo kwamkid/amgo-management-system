@@ -62,7 +62,8 @@ export default function DashboardPage() {
   const isManagement = ['manager', 'hr', 'admin'].includes(userData.role);
 
   return (
-    <div className="space-y-6">
+    // one 16px gap between blocks (the cards used to add their own mb-5 on top of space-y-6)
+    <div className="flex flex-col gap-4 [&>.aoo-page-header]:mb-0">
       {/* ยังไม่มีเครื่องไหนเปิดแจ้งเตือน — ขึ้นบนสุดจนกว่าจะกดเปิด */}
       <NotifySetupCard />
 
@@ -77,43 +78,36 @@ export default function DashboardPage() {
         }
       />
 
+      {/* 2 อย่างที่ทำบ่อยสุด — แถบเตี้ยบนสุด กดได้ทันทีตั้งแต่เปิดแอป (เจ้าของ 5 พ.ย. · 20 พ.ย. 69) */}
+      <QuickActions userData={userData} />
+
       {/* งานของฉันที่ครบ/เลยกำหนด — ขึ้นหลังเช็คอิน (เจ้าของ 20 พ.ย. 69 "เช็คอินแล้ว เตือนเลย") */}
       <MyTasksZone />
 
-      {/* 2 อย่างที่ทำบ่อยสุด — ต้องกดได้ทันทีตั้งแต่เปิดแอป (เจ้าของ 5 พ.ย. 69) */}
-      <QuickActions userData={userData} />
+      {/* เรื่องที่ต้องจัดการ — จอกว้างเรียง 2 คอลัมน์ ไม่มีอะไรค้างก็ไม่ขึ้น */}
+      <div className="grid items-start gap-4 lg:grid-cols-2 empty:hidden">
+        {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ */}
+        <TodoZone />
+        {/* HR/admin: รออนุมัติ · ขาดงานวันนี้ · ข้อมูลที่ยังไม่ครบ */}
+        <HrInbox />
+        {/* HR/admin เห็นเพิ่มว่าต้องไปตามใครบ้าง */}
+        <TeamTodoZone />
+        {/* แอดมินเห็นว่าใครยังทดลองงานอยู่ ใกล้ถึงวันตัดสินหรือยัง */}
+        <ProbationZone />
+      </div>
 
-      {/* เรื่องที่ยังค้างของคนที่กำลังเปิดอยู่ — ไม่มีอะไรค้างก็ไม่ขึ้น */}
-      <TodoZone />
-
-      {/* HR/admin: รออนุมัติ · ขาดงานวันนี้ · ข้อมูลที่ยังไม่ครบ — ทุกอย่างที่ต้องทำในที่เดียว */}
-      <HrInbox />
-
-      {/* HR/admin เห็นเพิ่มว่าต้องไปตามใครบ้าง */}
-      <TeamTodoZone />
-
-      {/* แอดมินเห็นว่าใครยังทดลองงาน ใกล้ถึงวันตัดสินหรือยัง */}
-      <ProbationZone />
-
-      {/* Tabs */}
-      <>
-        <TabBar className="mb-4">
-          <TabItem active={tab === 'birthday'} onClick={() => setTab('birthday')} label="ปฏิทินวันเกิด" />
-          {isManagement && (
+      {/* ล่างสุด: วันเกิดใกล้ถึง (ปฏิทินเต็มกดเปิดเอง) · หัวหน้าเห็นการทำงานวันนี้ */}
+      {isManagement ? (
+        <div>
+          <TabBar className="mb-4">
+            <TabItem active={tab === 'birthday'} onClick={() => setTab('birthday')} label="วันเกิด" />
             <TabItem active={tab === 'attendance'} onClick={() => setTab('attendance')} label="การทำงานวันนี้" />
-          )}
-        </TabBar>
-
-        {tab === 'birthday' && (<div>
-          <EmployeeSection userData={userData} />
-        </div>)}
-
-        {isManagement && tab === 'attendance' && (
-          <div>
-            <AttendanceSection userData={userData} />
-          </div>
-        )}
-      </>
+          </TabBar>
+          {tab === 'birthday' ? <EmployeeSection userData={userData} /> : <AttendanceSection userData={userData} />}
+        </div>
+      ) : (
+        <EmployeeSection userData={userData} />
+      )}
     </div>
   );
 }

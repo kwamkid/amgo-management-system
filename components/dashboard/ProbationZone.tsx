@@ -55,7 +55,7 @@ export default function ProbationZone() {
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <Card padding={0} className="mb-5 overflow-hidden">
+    <Card padding={0} className="overflow-hidden">
       <CardHeader>
         <CardTitle icon={Hourglass} tone="warning">ทดลองงานอยู่ {rows.length} คน</CardTitle>
       </CardHeader>

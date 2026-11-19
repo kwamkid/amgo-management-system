@@ -1,6 +1,6 @@
 'use client'
 
-// การ์ดใหญ่หน้าแรก: 2 อย่างที่พนักงานทำบ่อยสุด — เช็คอิน/เอาท์ · เบิกค่าใช้จ่าย (เจ้าของ 5 พ.ย. 69)
+// ปุ่มลัดหน้าแรก (แถบเตี้ย พื้นสีอ่อน — เจ้าของ 20 พ.ย. 69 การ์ดทึบใบเดียวเด่นเกิน): 2 อย่างที่พนักงานทำบ่อยสุด — เช็คอิน/เอาท์ · เบิกค่าใช้จ่าย (เจ้าของ 5 พ.ย. 69)
 // การ์ดเช็คอินบอกสถานะจริงของวันนี้ · คนที่ตั้งไว้ว่า "ไม่ต้องเช็คอิน" เห็นแค่ใบเบิก
 // ถามสถานะเฉพาะตอนเปิดหน้า ไม่แตะ GPS (เหตุผลเดียวกับที่หน้า Dashboard เลิกเรียก useCheckIn)
 
@@ -29,7 +29,7 @@ function QuickCard({
   return (
     <Link href={href} className="aoo-quick-card" data-tone={tone}>
       <span className="aoo-quick-card__icon">
-        <Icon size={32} strokeWidth={2} />
+        <Icon size={20} strokeWidth={2} />
       </span>
       <span className="aoo-quick-card__title">{title}</span>
       <span className="aoo-quick-card__hint">{hint}</span>
@@ -68,7 +68,7 @@ export default function QuickActions({ userData }: { userData: UserData }) {
     new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="aoo-quick-cards" data-single={needsCheckin ? undefined : ''}>
+    <div className="aoo-quick-cards">
       {needsCheckin && (
         <QuickCard
           href="/checkin"
@@ -91,7 +91,7 @@ export default function QuickActions({ userData }: { userData: UserData }) {
         icon={Receipt}
         tone="grape"
         title="เบิกค่าใช้จ่าย"
-        hint={waiting > 0 ? `รอรับคืน ${thb(waiting)}` : 'ยื่นใบเบิก · ดูสถานะ'}
+        hint={waiting > 0 ? `รอรับคืน ${thb(waiting)}` : 'ยื่น · ดูสถานะ'}
       />
     </div>
   )

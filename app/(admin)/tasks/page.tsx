@@ -25,7 +25,8 @@ import {
   type DateRangeValue,
   type SelectOption,
 } from '@/components/aoo'
-import { BrandLogo, FilterBar, FilterSelect, PageHeader, Segmented, TechLoader } from '@/components/shared'
+import { FilterBar, FilterSelect, PageHeader, Segmented, TechLoader } from '@/components/shared'
+import { brandSelectOptions } from '@/components/shared/BrandBadge'
 import AssigneeStrip, { type AssigneeScope } from '@/components/tasks/AssigneeStrip'
 import AssigneePicker from '@/components/tasks/AssigneePicker'
 import TaskBoard from '@/components/tasks/TaskBoard'
@@ -47,7 +48,6 @@ import {
   type TaskPerson,
   type TaskStatus,
 } from '@/lib/services/taskService'
-import { BRANDS, brandLabel } from '@/lib/constants/brands'
 import { statusLineText } from '@/lib/tasks/updates'
 import { isRichTextEmpty, richTextToPlain, sanitizeRichText } from '@/lib/utils/richText'
 
@@ -113,16 +113,11 @@ export default function TasksPage() {
     if (hit) setModal(hit)
   }, [tasks, deepLinked])
 
-  const brandOptions: SelectOption[] = useMemo(() => {
-    const used = (tasks ?? []).map((t) => t.brand).filter((b): b is string => !!b)
-    // แบรนด์บริษัทก่อน (เลือกได้แม้ยังไม่มีงาน) แล้วต่อด้วยแบรนด์ที่พิมพ์เพิ่มเอง
-    const extra = [...new Set([...extraBrands, ...used])].filter((b) => !BRANDS.some((x) => x.slug === b)).sort()
-    return [...BRANDS.map((b) => b.slug), ...extra].map((b) => ({
-      value: b,
-      label: brandLabel(b),
-      icon: <BrandLogo brand={b} />,
-    }))
-  }, [tasks, extraBrands])
+  // แบรนด์บริษัทก่อน (เลือกได้แม้ยังไม่มีงาน) แล้วต่อด้วยแบรนด์ที่พิมพ์เพิ่มเอง
+  const brandOptions: SelectOption[] = useMemo(
+    () => brandSelectOptions([...extraBrands, ...(tasks ?? []).map((t) => t.brand)]),
+    [tasks, extraBrands]
+  )
 
   const isMine = useCallback(
     (t: Task) => (t.assignees.length ? t.assignees.some((a) => a.userId === me) : t.createdBy === me),

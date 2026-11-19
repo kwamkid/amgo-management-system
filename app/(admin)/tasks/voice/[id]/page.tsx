@@ -26,7 +26,7 @@ import {
   type SelectOption,
 } from '@/components/aoo'
 import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
-import { BRANDS, brandLabel } from '@/lib/constants/brands'
+import { brandSelectOptions } from '@/components/shared/BrandBadge'
 import { SOURCE_LABEL, clock, durationText, speakerLabel, voiceFetch } from '@/lib/voice/format'
 import SpeakerRow, { SpeakerAvatar, pickSamples } from '@/components/voice/SpeakerRow'
 
@@ -347,12 +347,7 @@ export default function VoiceRecordingPage() {
   const rec = data.recording
   const drafts = data.drafts
   const pendingCount = drafts.filter((d) => d.status === 'pending' && !inFlight.has(d.id)).length
-  const brandOptions: SelectOption[] = [
-    ...BRANDS.map((b) => ({ value: b.slug, label: b.label })),
-    ...[...new Set(Object.values(edits).map((e) => e.brand))]
-      .filter((b): b is string => !!b && !BRANDS.some((x) => x.slug === b))
-      .map((b) => ({ value: b, label: brandLabel(b) })),
-  ]
+  const brandOptions = brandSelectOptions(Object.values(edits).map((e) => e.brand))
   const inProgress = !FINAL.has(status)
   const stepIndex = Math.max(0, STEPS.findIndex((x) => x.key === status))
   const q = data.queue

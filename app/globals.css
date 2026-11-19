@@ -2504,6 +2504,10 @@ button:disabled,
 }
 .aoo-task-list__head span { color: var(--fg-3); font-weight: 600; }
 .aoo-task-list__group[data-group="overdue"] .aoo-task-list__head { color: var(--accent); }
+/* เลยกำหนด = พื้นแดงอ่อนทั้งกลุ่ม เห็นชัดตั้งแต่เลื่อนผ่าน (เจ้าของ 20 พ.ย. 69) */
+.aoo-task-list__group[data-group="overdue"] { background: var(--ruby-50); border-color: var(--ruby-100, var(--border-1)); }
+.aoo-task-list__group[data-group="overdue"] .aoo-task-row + .aoo-task-row,
+.aoo-task-list__group[data-group="overdue"] .aoo-task-list__head { border-color: var(--ruby-100, var(--border-1)); }
 .aoo-task-row { display: flex; align-items: flex-start; gap: 4px; padding: 4px 8px 4px 4px; }
 .aoo-task-row + .aoo-task-row { border-top: 1px solid var(--border-1); }
 .aoo-task-row__check {

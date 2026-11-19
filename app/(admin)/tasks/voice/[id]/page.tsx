@@ -27,6 +27,10 @@ import {
 import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
 import { BRANDS, brandLabel } from '@/lib/constants/brands'
 import { SOURCE_LABEL, clock, durationText, speakerLabel, voiceFetch } from '@/lib/voice/format'
+import SpeakerRow, { pickSamples, speakerNo, speakerTone } from '@/components/voice/SpeakerRow'
+
+/** a speaker sample plays this many seconds at most, then pauses */
+const SAMPLE_SEC = 10
 
 type Segment = { speaker: string; start: number; end: number; text: string }
 type Person = { user_id: string; nickname: string | null; full_name: string; company: string | null }
@@ -112,6 +116,10 @@ export default function VoiceRecordingPage() {
   const [summary, setSummary] = useState('')
   const [summaryDirty, setSummaryDirty] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const dirty = useRef({ map: false, summary: false })
+  useEffect(() => {
+    dirty.current = { map: mapDirty, summary: summaryDirty }
+  }, [mapDirty, summaryDirty])
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/voice/recordings/${id}`, { cache: 'no-store' })
@@ -121,13 +129,13 @@ export default function VoiceRecordingPage() {
       return null
     }
     const d = json as Detail
-    setData(d)
+    // keep the first signed audio URL — a new one every 30 s poll reloads the player and stops playback
+    setData((prev) => (prev?.audioUrl && d.audioUrl ? { ...d, audioUrl: prev.audioUrl } : d))
     setStatus(d.recording.status)
-    setSpeakerMap(d.transcript?.speaker_map ?? {})
-    setMapDirty(false)
+    // the poll must not wipe names / summary the admin is typing but has not saved yet
+    if (!dirty.current.map) setSpeakerMap(d.transcript?.speaker_map ?? {})
     setEdits(Object.fromEntries(d.drafts.map((x) => [x.id, toEdit(x)])))
-    setSummary(d.recording.summary ?? '')
-    setSummaryDirty(false)
+    if (!dirty.current.summary) setSummary(d.recording.summary ?? '')
     return d
   }, [id])
 
@@ -182,9 +190,46 @@ export default function VoiceRecordingPage() {
   const seek = (sec: number | null) => {
     const a = audioRef.current
     if (!a || sec == null) return
+    stopAt.current = null
+    setSample(null)
     a.currentTime = Math.max(0, sec - 1)
     void a.play().catch(() => {})
   }
+
+  // ท่อนตัวอย่างของผู้พูด — เล่นในเครื่องเล่นหลัก แล้วหยุดเองหลังจบท่อน (ไม่เกิน SAMPLE_SEC)
+  const [sample, setSample] = useState<number | null>(null)
+  const stopAt = useRef<number | null>(null)
+  const playSample = (s: { start: number; end: number }) => {
+    const a = audioRef.current
+    if (!a) return
+    if (sample === s.start && !a.paused) {
+      a.pause()
+      return
+    }
+    stopAt.current = Math.min(s.end, s.start + SAMPLE_SEC)
+    setSample(s.start)
+    a.currentTime = Math.max(0, s.start - 0.3)
+    void a.play().catch(() => setSample(null))
+  }
+  useEffect(() => {
+    const a = audioRef.current
+    if (!a) return
+    const tick = () => {
+      if (stopAt.current != null && a.currentTime >= stopAt.current) a.pause()
+    }
+    const stop = () => {
+      stopAt.current = null
+      setSample(null)
+    }
+    a.addEventListener('timeupdate', tick)
+    a.addEventListener('pause', stop)
+    a.addEventListener('ended', stop)
+    return () => {
+      a.removeEventListener('timeupdate', tick)
+      a.removeEventListener('pause', stop)
+      a.removeEventListener('ended', stop)
+    }
+  }, [data?.audioUrl])
 
   const saveSpeakers = async () => {
     try {
@@ -529,29 +574,49 @@ export default function VoiceRecordingPage() {
           </SectionCard>
 
           <div className="space-y-4">
-            <SectionCard title="ใครเป็นผู้พูด" description="ระบบเดาจากบริบทไว้ให้ · แก้แล้วกดบันทึก">
+            <SectionCard
+              title="ใครเป็นผู้พูด"
+              description={
+                data.audioUrl
+                  ? 'กด ▶ ฟังเสียงตัวอย่าง แล้วเลือกชื่อ · ระบบเดาไว้ให้บางคน'
+                  : 'อ่านตัวอย่างคำพูด แล้วเลือกชื่อ · ระบบเดาไว้ให้บางคน'
+              }
+            >
               {!speakers.length ? (
                 <p className="text-xs text-gray-500">ไม่มีเสียงพูดในไฟล์นี้</p>
               ) : (
-                <div className="space-y-3">
+                <div>
                   {speakers.map(([sp, n]) => {
                     const guess = data.transcript?.speaker_guesses?.[sp]
+                    const uid = speakerMap[sp]
+                    const person = uid ? byId.get(uid) : undefined
                     return (
-                      <Field key={sp} label={`${speakerLabel(sp)} · พูด ${n} ช่วง`} help={guess?.reason || undefined} asDiv>
+                      <SpeakerRow
+                        key={sp}
+                        speaker={sp}
+                        label={speakerLabel(sp)}
+                        turns={n}
+                        samples={pickSamples(data.transcript?.segments ?? [], sp)}
+                        canPlay={!!data.audioUrl}
+                        playingAt={sample}
+                        onPlay={playSample}
+                        avatar={person && <UserAvatar userId={person.user_id} name={personName(person)} size="sm" />}
+                        help={guess?.reason || undefined}
+                      >
                         <SelectMenu
-                          value={speakerMap[sp] ?? null}
+                          value={uid ?? null}
                           options={personOptions}
                           onChange={(v) => {
                             setSpeakerMap((m) => ({ ...m, [sp]: v }))
                             setMapDirty(true)
                           }}
                           clearable="ไม่ทราบ"
-                          placeholder="ไม่ทราบ"
+                          placeholder="เลือกว่าใครพูด"
                         />
-                      </Field>
+                      </SpeakerRow>
                     )
                   })}
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-1">
                     <Button variant="secondary" onClick={saveSpeakers} disabled={!mapDirty}>
                       บันทึกชื่อผู้พูด
                     </Button>
@@ -572,6 +637,9 @@ export default function VoiceRecordingPage() {
                       ) : (
                         <span>{clock(s.start)}</span>
                       )}
+                      <span className="aoo-speaker-dot self-center" data-tone={speakerTone(s.speaker)} aria-hidden>
+                        {speakerNo(s.speaker)}
+                      </span>
                       <span className="font-medium text-gray-700">{speakerName(s.speaker)}</span>
                     </div>
                     <p className="text-gray-900">{s.text}</p>

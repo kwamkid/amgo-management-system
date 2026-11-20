@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Skeleton, SectionCard, StatCard, type StatTone } from '@/components/shared'
+import AvatarStack from '@/components/shared/AvatarStack'
 import { Alert, Button, Card, CardHeader, CardTitle, Pill } from '@/components/aoo'
 import ForgotReviewList from '@/components/checkin/ForgotReviewList'
 import { fetchHrInbox, type HrInbox as Inbox, type PersonRef } from '@/lib/services/hrInboxService'
@@ -34,6 +35,7 @@ import { countPending as countExpenses } from '@/lib/services/expenseService'
 
 /** โชว์ใบลืมเช็คเอาท์บนหน้าแรกกี่ใบ ที่เหลือไปดูหน้ารอดำเนินการ */
 const FORGOT_PREVIEW = 6
+const ISSUE_PREVIEW = 3
 
 /** ก่อนเวลานี้ยังไม่เรียกว่าขาด — คนเข้า 08:30/09:00/10:00 ยังไม่ถึงเวลา */
 const ABSENT_FROM_HOUR = 10
@@ -166,31 +168,7 @@ export default function HrInbox() {
             <CardTitle icon={CalendarClock} tone="grape">ข้อมูลที่ยังไม่ครบ</CardTitle>
           </CardHeader>
 
-          {data.schedule_issues.length > 0 && (
-            <div className="border-b border-gray-100 px-4 py-3 last:border-0">
-              <div className="flex items-center gap-2">
-                <CalendarClock size={14} className="text-[var(--sun-700)]" />
-                <h3 className="text-sm font-medium text-gray-900">วันหยุดประจำไม่ชัด</h3>
-                <Count n={data.schedule_issues.length} />
-              </div>
-              <p className="mt-0.5 text-xs text-gray-500">
-                กดชื่อเพื่อตั้งวันหยุดให้ถูก — ตั้งผิดทำให้ยื่นสลับวันหยุดไม่ผ่านและรายงานนับขาดเพี้ยน
-              </p>
-              <ul className="mt-2 space-y-1">
-                {data.schedule_issues.map((p) => (
-                  <li key={p.user_id} className="text-sm">
-                    <Link
-                      href={`/employees/${p.user_id}/edit`}
-                      className="font-medium text-[var(--accent)] hover:underline"
-                    >
-                      {p.name}
-                    </Link>{' '}
-                    <span className="text-gray-500">— {p.reason}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {data.schedule_issues.length > 0 && <ScheduleIssues items={data.schedule_issues} />}
 
           {data.no_push.length > 0 && (
             <NoPush people={data.no_push} total={data.staff_total} />
@@ -240,6 +218,8 @@ function Group({
   hint: string
   people: PersonRef[]
 }) {
+  // faces + count first; the 20-odd name chips filled the card (owner, 20 Nov 2026)
+  const [open, setOpen] = useState(false)
   return (
     <SectionCard
       title={
@@ -251,12 +231,58 @@ function Group({
       }
       description={hint}
     >
-      <div className="flex flex-wrap gap-1.5">
-        {people.map((p) => (
-          <Pill key={p.user_id} tone="neutral">{p.name}</Pill>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <AvatarStack people={people.map((p) => ({ id: p.user_id, name: p.name }))} max={8} />
+        <MoreToggle open={open} onToggle={() => setOpen((v) => !v)} label="ดูรายชื่อ" />
       </div>
+      {open && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {people.map((p) => (
+            <Pill key={p.user_id} tone="neutral">{p.name}</Pill>
+          ))}
+        </div>
+      )}
     </SectionCard>
+  )
+}
+
+function MoreToggle({ open, onToggle, label }: { open: boolean; onToggle: () => void; label: string }) {
+  return (
+    <Button variant="link" size="sm" onClick={onToggle}>
+      {open ? 'ซ่อน' : label}
+    </Button>
+  )
+}
+
+/** วันหยุดประจำไม่ชัด — ชื่อสีปกติ (ตัวแดงทั้งกล่องอ่านเหมือนระบบพัง) โชว์ 3 คนแรก */
+function ScheduleIssues({ items }: { items: Inbox['schedule_issues'] }) {
+  const [open, setOpen] = useState(false)
+  const shown = open ? items : items.slice(0, ISSUE_PREVIEW)
+  const more = items.length - ISSUE_PREVIEW
+  return (
+    <div className="border-b border-gray-100 px-4 py-3 last:border-0">
+      <div className="flex items-center gap-2">
+        <CalendarClock size={14} className="text-[var(--sun-700)]" />
+        <h3 className="text-sm font-medium text-gray-900">วันหยุดประจำไม่ชัด</h3>
+        <Count n={items.length} />
+      </div>
+      <p className="mt-0.5 text-xs text-gray-500">
+        กดชื่อเพื่อตั้งวันหยุดให้ถูก — ตั้งผิดทำให้ยื่นสลับวันหยุดไม่ผ่านและรายงานนับขาดเพี้ยน
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {shown.map((p) => (
+          <li key={p.user_id} className="text-sm leading-snug">
+            <Link href={`/employees/${p.user_id}/edit`} className="font-medium text-gray-900 hover:underline">
+              {p.name}
+            </Link>
+            <span className="block text-xs text-gray-500">{p.reason}</span>
+          </li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <MoreToggle open={open} onToggle={() => setOpen((v) => !v)} label={`ดูอีก ${more} คน`} />
+      )}
+    </div>
   )
 }
 

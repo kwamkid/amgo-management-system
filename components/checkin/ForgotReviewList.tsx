@@ -10,7 +10,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Pill, TimePicker } from '@/components/aoo'
+import { Button, TimePicker } from '@/components/aoo'
 import {
   confirmSystemCheckout,
   setCheckoutTime,
@@ -61,38 +61,35 @@ export default function ForgotReviewList({
   }
 
   return (
-    <div className="divide-y divide-gray-100">
+    // @container: in a narrow card (dashboard half column, phone) the buttons sit on their own
+    // line under the name; on a wide page they move to the right. The old single flex-wrap row
+    // pushed name/date onto 3–4 lines (owner, 20 Nov 2026).
+    <div className="@container divide-y divide-gray-100">
       {items.map((it) => {
         const claimed = !!it.claimed_checkout_time
         return (
-          <div key={it.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
-            {/* กว้างขั้นต่ำ — มือถือปุ่มตกไปบรรทัดล่าง แทนที่จะบีบชื่อเหลือบรรทัดละคำ */}
-            <div className="min-w-[14rem] flex-1">
-              <p className="text-sm font-medium text-gray-900">
+          <div key={it.id} className="flex flex-col gap-2 py-3 @xl:flex-row @xl:items-center @xl:gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-gray-900">
                 {it.name} <span className="font-normal text-gray-500">· {day(it.work_date)}</span>
               </p>
               <p className="text-xs text-gray-500">
-                เข้า {hm(it.checkin_time)} · ระบบปิดให้ {hm(it.checkout_time)}
-                {claimed && (
+                เข้า {hm(it.checkin_time)} · ระบบปิดให้ {hm(it.checkout_time)} ·{' '}
+                {claimed ? (
                   <>
-                    {' '}·{' '}
                     <span className="font-semibold text-[var(--grape-700)]">
                       แจ้งว่าเลิก {hm(it.claimed_checkout_time)}
                     </span>
                     {it.claim_note && <span className="text-gray-600"> — {it.claim_note}</span>}
                   </>
+                ) : (
+                  'ยังไม่แจ้งเวลา'
                 )}
               </p>
             </div>
 
-            {claimed ? (
-              <Pill tone="info">แจ้งเวลาแล้ว</Pill>
-            ) : (
-              <Pill tone="neutral">ยังไม่แจ้ง</Pill>
-            )}
-
             {editing === it.id ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <TimePicker value={time} onChange={setTime} step={15} size="sm" placeholder="เวลาเลิก" />
                 <Button
                   size="sm"
@@ -113,7 +110,7 @@ export default function ForgotReviewList({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {claimed && (
                   <Button
                     size="sm"

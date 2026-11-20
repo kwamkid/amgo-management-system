@@ -20,6 +20,10 @@
 //
 // วัน "ไม่บังคับ" (optional) = มาก็นับมา ไม่มาก็ไม่ขาด ไม่เด้งถามสลับวันหยุด
 // (กิ่งไผ่ เสาร์ — เจ้าของสั่ง 30 ก.ย. 69)
+//
+// หยุดหมุนเวียนรายคน (20 พ.ย. 69): ทีม ADF (ปู · ใจ · ขวัญ) สลับวันหยุดกันเอง ขอแค่ครบ
+// N วัน/สัปดาห์ — ทุกวันเก็บเป็น 'rotating' (แบบเดียวกับ PC) รายงานคิดขาดจาก days_per_week
+// ไม่เตือน "มาวันหยุด" ไม่ถามใบสลับ
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -27,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { CalendarClock, Trash2 } from 'lucide-react'
 import { Input, Card, CardContent, CardHeader, CardTitle, Button, IconButton, Pill, SelectMenu, type PillTone } from '@/components/aoo'
+import { Segmented } from '@/components/shared'
 const DAYS = [
   { dow: 0, label: 'อา.' },
   { dow: 1, label: 'จ.' },
@@ -37,15 +42,16 @@ const DAYS = [
   { dow: 6, label: 'ส.' },
 ]
 
-type DayMode = 'work' | 'off' | 'optional'
+type DayMode = 'work' | 'off' | 'optional' | 'rotating'
 
-const NEXT: Record<DayMode, DayMode> = { work: 'off', off: 'optional', optional: 'work' }
+const NEXT: Record<DayMode, DayMode> = { work: 'off', off: 'optional', optional: 'work', rotating: 'work' }
 
 // สีชิปวันมาจากโทเคน [data-tone] กลาง (หยุด = แดง · ไม่บังคับ = เหลือง) — วันทำงานเป็นชิปขาวธรรมดา
 const MODE_TONE: Record<DayMode, PillTone | undefined> = {
   work: undefined,
   off: 'danger',
   optional: 'warning',
+  rotating: undefined,
 }
 const CHIP_TONED =
   'border-[color-mix(in_srgb,var(--tone)_28%,transparent)] bg-[var(--tone-soft)] text-[var(--tone-ink)]'
@@ -62,10 +68,11 @@ const MODE_LABEL: Record<DayMode, string> = {
   work: 'ทำงาน',
   off: 'หยุด',
   optional: 'ไม่บังคับ',
+  rotating: 'หมุนเวียน',
 }
 
 const toDayMode = (m: string | null | undefined): DayMode =>
-  m === 'off' ? 'off' : m === 'optional' ? 'optional' : 'work'
+  m === 'off' ? 'off' : m === 'optional' ? 'optional' : m === 'rotating' ? 'rotating' : 'work'
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
 
@@ -183,8 +190,23 @@ export default function WorkScheduleCard({
   /** กลับไปใช้ตารางของตำแหน่ง (ลบตารางรายคนทิ้งตอนกดบันทึก) */
   const resetToJobFunction = () => setModes({ ...jfModes })
 
+  // วันหยุดไม่ตายตัว (รายคน) = ทุกวันเป็น 'rotating'
+  const personalRotating = !rotating && ALL_DAYS.every((d) => modes[d] === 'rotating')
+  const setPersonalRotating = (on: boolean) => {
+    if (on) {
+      setModes(Object.fromEntries(ALL_DAYS.map((d) => [d, 'rotating'])) as Record<number, DayMode>)
+      if (daysPerWeek == null) setDaysPerWeek(6)
+    } else {
+      setModes({ ...jfModes })
+    }
+  }
+
   /** จำนวนวัน/สัปดาห์ + ตารางรายคน (ตำแหน่งวันตายตัว = ครบ 7 วัน · กะหมุนเวียน = เฉพาะวันหยุด/ไม่บังคับ) */
   const save = async () => {
+    if (personalRotating && daysPerWeek == null) {
+      showToast('หยุดหมุนเวียนต้องระบุว่าทำงานสัปดาห์ละกี่วัน', 'error')
+      return
+    }
     const sb = createClient()
     setSaving(true)
     try {
@@ -207,7 +229,10 @@ export default function WorkScheduleCard({
               day_of_week: d,
               work_mode: modes[d] === 'work' ? workModeOf[d] : modes[d],
               note:
-                modes[d] === 'off' ? 'วันหยุดประจำ' : modes[d] === 'optional' ? 'เข้าได้ ไม่บังคับ' : 'วันทำงาน',
+                modes[d] === 'off' ? 'วันหยุดประจำ'
+                : modes[d] === 'optional' ? 'เข้าได้ ไม่บังคับ'
+                : modes[d] === 'rotating' ? 'หยุดหมุนเวียน'
+                : 'วันทำงาน',
             }))
 
         // เขียนของใหม่ก่อนแล้วค่อยลบส่วนเกิน — ลบก่อนแล้วเขียนพัง ตารางจะหายทั้งสัปดาห์
@@ -301,7 +326,24 @@ export default function WorkScheduleCard({
           </span>
         </div>
 
-        {/* วันหยุดประจำ */}
+        {/* วันหยุดตายตัว / หมุนเวียน — ตำแหน่งกะหมุนเวียน (PC) ใช้ของตำแหน่ง ไม่มีตัวเลือกนี้ */}
+        {!rotating && (
+          <Segmented
+            value={personalRotating ? 'rotating' : 'fixed'}
+            onChange={(v) => setPersonalRotating(v === 'rotating')}
+            options={[
+              { value: 'fixed', label: 'วันหยุดตายตัว' },
+              { value: 'rotating', label: 'หยุดหมุนเวียน' },
+            ]}
+          />
+        )}
+
+        {personalRotating ? (
+          <p className="text-sm text-gray-600">
+            สลับวันหยุดกันเองได้ ขอแค่ทำงานครบสัปดาห์ละ {daysPerWeek ?? '—'} วัน — มาวันไหนก็นับวันนั้น
+            ไม่ต้องยื่นใบสลับวันหยุด · รายงานนับขาดจากจำนวนวันที่ขาดไปในแต่ละช่วง
+          </p>
+        ) : (
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-gray-700">ตารางประจำสัปดาห์ (คลิกวันเพื่อเปลี่ยน)</p>
@@ -339,6 +381,7 @@ export default function WorkScheduleCard({
             })}
           </div>
         </div>
+        )}
 
         {/* สลับวันหยุดรายวัน — นาน ๆ ใช้ที เก็บไว้เฉพาะหน้าแก้ไขพนักงาน ไม่โชว์ใน popup */}
         {showExceptions && (

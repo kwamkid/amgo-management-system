@@ -17,6 +17,9 @@
 - [x] Switchover 2026-11-20 08:20 TH: owner seeded today's done slots, added tick job, disabled the 10 old jobs; test run 202 → checkout-reminder ok, web-uptime ok 27 s (49 sites). Old: seed today's done daily slots (auto-checkout, web-nightly, cleanup-photos, seo-daily — SQL given to owner, my REST write was blocked) · cron-job.org: add tick, DISABLE (not delete) the 10 old jobs, ideally before 09:00 TH (else web-expiry runs twice) · delete old jobs on 2026-11-21 after one full day of ok rows in cron_runs.
 - [x] Dashboard MyTasksZone (overdue + due today, after check-in or requiresCheckin=false) · check-in success with such tasks → router.push('/dashboard'). UAT-0324–0327 written for phone tasks + dashboard box.
 - [ ] Edith SOUL commands + VPS chase script (14:00 TH chase DM, 17:30 summary to แอม) — tell the owner before touching the VPS.
+  - [x] 2026-11-20 local draft: `00-Hermes/edith/edith_chase.py` (`chase` 14:00 · `summary` 17:30 · `--dry` · skip Sat/Sun · owner skipped · max 5 tasks/DM, rotation by lastChaseAt) + `00-Hermes/edith/edith_soul_tasks.md` (#57 commands). Dry-run with mock data OK. Overdue now: 30 tasks, เฟื่อง 16, all assignees have Discord ids.
+  - [x] GET /tasks/chase also returns tasks chased today that are now done/rescheduled (`overdue:false`) so the 17:30 summary sees "done" replies.
+  - [ ] Owner OK on wording/times → VPS: read SOUL + edith_reminders.py + crontab + which key/env morning_brief uses · install script + root crontab `0 7 * * 1-5` / `30 10 * * 1-5` (UTC) · append SOUL section · gateway restart (warn owner).
 - [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 
 ## Resume note

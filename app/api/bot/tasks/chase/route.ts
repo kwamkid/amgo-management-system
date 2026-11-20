@@ -1,11 +1,12 @@
-// GET /api/bot/tasks/chase — งานเลยกำหนดที่ยังไม่เสร็จ สำหรับสคริปต์ตามงานของ Edith (superadmin เท่านั้น)
+// GET /api/bot/tasks/chase — งานเลยกำหนดที่ยังไม่เสร็จ + งานที่ถูกถามวันนี้ (แม้เสร็จ/เลื่อนแล้ว)
+//   สำหรับสคริปต์ตามงานของ Edith (superadmin เท่านั้น) · overdue: false = ไม่เลยกำหนดแล้ว (ตอบเสร็จ/เลื่อนวัน)
 //   14:00 TH: DM ผู้รับผิดชอบแต่ละงาน แล้ว POST /tasks/{id}/updates { kind: "chase", body } ทีละงาน
 //   17:30 TH: สรุปให้เจ้าของ — ใช้ chasedToday / repliedToday / lastReply
 // owner 2026-11-18 (project/jobs/plans/tasks-edith.md)
 import type { NextRequest } from 'next/server'
 import { apiError, apiJson, authBotApi } from '@/lib/services/bot/botApi'
 import { TASK_COLS, peopleMap, toBotTasks, todayBkk, type TaskRow } from '@/lib/services/bot/botTasks'
-import { bangkokDayKey } from '@/lib/services/workingHoursService'
+import { bangkokDayKey, bangkokStartOfDay } from '@/lib/services/workingHoursService'
 import { richTextToPlain } from '@/lib/utils/richText'
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,21 @@ export async function GET(request: NextRequest) {
     .order('created_at')
   if (error) return apiError(500, error.message)
   const rows = (data ?? []) as TaskRow[]
+
+  // งานที่ Edith ถามวันนี้แต่ตอบ "เสร็จ" หรือเลื่อนวันไปแล้ว → ไม่เลยกำหนดแล้ว แต่สรุป 17:30 ยังต้องเห็น
+  const { data: chasedNow, error: cErr } = await caller.sb
+    .from('task_updates')
+    .select('task_id')
+    .eq('kind', 'chase')
+    .gte('created_at', bangkokStartOfDay(new Date()).toISOString())
+  if (cErr) return apiError(500, cErr.message)
+  const have = new Set(rows.map((r) => r.id))
+  const extraIds = [...new Set((chasedNow ?? []).map((u) => u.task_id))].filter((id) => !have.has(id))
+  if (extraIds.length) {
+    const { data: extra, error: eErr } = await caller.sb.from('tasks').select(TASK_COLS).in('id', extraIds)
+    if (eErr) return apiError(500, eErr.message)
+    rows.push(...((extra ?? []) as TaskRow[]))
+  }
   if (!rows.length) return apiJson({ today, count: 0, tasks: [] })
 
   const { data: ups, error: uErr } = await caller.sb
@@ -51,6 +67,7 @@ export async function GET(request: NextRequest) {
       const reply = mine.find((u) => u.kind !== 'chase' && (!lastChase || u.created_at > lastChase.created_at))
       return {
         ...t,
+        overdue: t.status !== 'done' && !!t.due && t.due < today,
         chases: chases.length,
         lastChaseAt: lastChase?.created_at ?? null,
         chasedToday: !!lastChase && dayOf(lastChase.created_at) === today,

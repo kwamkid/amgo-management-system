@@ -21,14 +21,13 @@
   - [x] GET /tasks/chase also returns tasks chased today that are now done/rescheduled (`overdue:false`) so the 17:30 summary sees "done" replies.
   - [x] 2026-11-20 VPS (owner OK): /root/edith_chase.py (keys from profile .env like edith_reminders.py; `--only <discordId>` test, owner id includes own tasks) · root crontab `0 7 * * 1-5 chase` + `30 10 * * 1-5 summary` → /root/hermes-credits/edith-chase.log (backup /root/crontab.bak-20261120) · test chase+summary DM sent to แอม only (5 chase rows logged on แอม's tasks #700 #705 #4 #8 #13) · Edith SOUL paragraph "Task numbers + 14:00 chase" after "You cannot see…" (backup SOUL.md.bak-20261120) · gateway restarted, running. Copy: 00-Hermes/edith/.
 - [x] Pushed (c0b39b3..f177f07, 2026-11-20) fbed575 (chase route keeps tasks chased today) before the 17:30 summary matters — until then done/rescheduled replies drop out of the summary.
-- [ ] Check 2026-11-20 14:00 run (edith-chase.log) + 17:30 summary; ask a staff member if replies like "#57 เสร็จ" worked.
-- [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
+- [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase` (incl. tasks chased today + `overdue` flag, fbed575), `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 
 ## Resume note
-Resume at: check first real chase run (VPS /root/hermes-credits/edith-chase.log after 14:00 TH) and the 17:30 summary; push fbed575; then docs/bot-api.md once the brief chat commits.
+Resume at: docs/bot-api.md — add task `no`, `#57` lookup, `GET /tasks/chase` (overdue + chased-today, `overdue` flag), `/api/bot/voice/*`. Only after the brief chat commits its edits to that file (check `git status`).
 ### State
-Nothing uncommitted for this topic; all code pushed (..c0b39b3). Other chats' uncommitted: Sidebar.tsx, shared/index.ts, docs/bot-api.md, brief files, types/database.ts, import_distributions migration — don't touch. Cron cut over to /api/cron/tick 2026-11-20 (follow-up 2026-11-21 in followups.md).
+All code pushed (..f177f07). Edith chase live on VPS since 2026-11-20 (/root/edith_chase.py, cron Mon–Fri 07:00/10:30 UTC, SOUL paragraph added, gateway restarted). Other chats' uncommitted: Sidebar.tsx, shared/index.ts, docs/bot-api.md, brief + import distribution files, types/database.ts — don't touch.
 ### Gotchas
-Dev :3002 = PROD DB: mock fetch for writes (knowledge/learning/general.md 2026-11-20). My REST writes to prod were blocked by the permission classifier — give the owner SQL instead. A note on a todo task flips it to doing (trigger). Bot routes push via sendTaskEvent in after().
+Dev :3002 = PROD DB: mock writes. BotTask uses `due`, not `due_date`. VPS: each step needs the owner's explicit OK (read ≠ install); backups *.bak-20261120. Script copy lives in 00-Hermes/edith/ — edit there, scp to VPS.
 ### Read first
-project/jobs/plans/tasks-edith.md · project/jobs/doing/hermes-bots.md (VPS) · 01-AGD/.claude/rules/domains/hermes-bots.md
+docs/bot-api.md (tasks section only) · app/api/bot/tasks/chase/route.ts

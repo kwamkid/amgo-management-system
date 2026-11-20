@@ -20,7 +20,7 @@
   - [x] 2026-11-20 local draft: `00-Hermes/edith/edith_chase.py` (`chase` 14:00 · `summary` 17:30 · `--dry` · skip Sat/Sun · owner skipped · max 5 tasks/DM, rotation by lastChaseAt) + `00-Hermes/edith/edith_soul_tasks.md` (#57 commands). Dry-run with mock data OK. Overdue now: 30 tasks, เฟื่อง 16, all assignees have Discord ids.
   - [x] GET /tasks/chase also returns tasks chased today that are now done/rescheduled (`overdue:false`) so the 17:30 summary sees "done" replies.
   - [x] 2026-11-20 VPS (owner OK): /root/edith_chase.py (keys from profile .env like edith_reminders.py; `--only <discordId>` test, owner id includes own tasks) · root crontab `0 7 * * 1-5 chase` + `30 10 * * 1-5 summary` → /root/hermes-credits/edith-chase.log (backup /root/crontab.bak-20261120) · test chase+summary DM sent to แอม only (5 chase rows logged on แอม's tasks #700 #705 #4 #8 #13) · Edith SOUL paragraph "Task numbers + 14:00 chase" after "You cannot see…" (backup SOUL.md.bak-20261120) · gateway restarted, running. Copy: 00-Hermes/edith/.
-- [ ] Push fbed575 (chase route keeps tasks chased today) before the 17:30 summary matters — until then done/rescheduled replies drop out of the summary.
+- [x] Pushed (c0b39b3..f177f07, 2026-11-20) fbed575 (chase route keeps tasks chased today) before the 17:30 summary matters — until then done/rescheduled replies drop out of the summary.
 - [ ] Check 2026-11-20 14:00 run (edith-chase.log) + 17:30 summary; ask a staff member if replies like "#57 เสร็จ" worked.
 - [ ] docs/bot-api.md: document `no`, `#57` lookup, `GET /tasks/chase`, `/api/bot/voice/*` — file has the brief chat's uncommitted edits; wait until they commit.
 

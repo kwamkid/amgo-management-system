@@ -3,7 +3,8 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (6)
+**Contents** (7)
+- Tasks on the phone + task notifications (งานของทีม) — since 2026-11-20
 - Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
 - UAT test cases: reference picture per step — since 2026-11-09
 - Order plans: brand owners edit their own brand — since 2026-11-11
@@ -13,6 +14,13 @@
 <!-- /toc -->
 
 ---
+
+## Tasks on the phone + task notifications (งานของทีม) — since 2026-11-20
+- Phone list grouped by urgency (overdue on a light red background), tabs ต้องทำ / กำลังทำ / เสร็จแล้ว, tap circle = done. Tapping a task opens a read view: status buttons save instantly, progress as a chat with photo upload; "แก้ไข" opens the full form.
+- Quick add on the phone: title + due chips (today / tomorrow / Friday / pick) + who does it.
+- Push to phones: assigned to you · someone updated your task (assignees + creator) · task closed · daily 08:30 (due today, follow-up day, appointment, overdue on day 1/3/7 then weekly). Edith (Discord) actions push too.
+- Home screen "งานของฉัน" box after check-in: overdue + due today; checking in with such tasks lands on the home screen.
+- Uses: Supabase tasks/task_updates, web push, central cron tick. Limit: push reaches only devices that turned notifications on.
 
 ## Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
 - **What it does:** admin pastes a Plaud share link or uploads an audio file (iPhone Voice Memos .m4a, mp3, wav, ogg, webm, ≤ 50 MB) on /tasks/voice. The system transcribes it, drafts tasks (assignee, due date, brand, quote with timestamp) and waits for review: map speakers to staff, edit, accept or reject each draft; accepted drafts become normal tasks linked back to the recording. Runs in the background queue, so the page can be closed.

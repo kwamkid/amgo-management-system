@@ -3,7 +3,7 @@
 > สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo`
 
 <!-- toc -->
-**Contents** (35)
+**Contents** (36)
 - 2026-08-07 — ผลสำรวจสถาปัตยกรรม Firestore (ก่อนตัดสินใจย้าย Supabase)
 - 2026-08-13 — เมนูเฉพาะตำแหน่ง (ไม่ใช่ role) — pattern ที่ใช้กับเมนูการผลิต
 - 2026-08-14 — ชุดเทคนิค Discord embed (ใช้กับการ์ด noti ทั้งระบบ)
@@ -39,6 +39,7 @@
 - 2026-11-18 — ElevenLabs webhook + credits, Vercel CLI here
 - 2026-11-19 — Overflow + contrast checks (/ui-check skill)
 - 2026-11-20 — ElevenLabs cost per call · building iPhone Shortcuts from code
+- 2026-11-20 — Phone-width testing in Claude-in-Chrome when resize_window does nothing
 <!-- /toc -->
 
 ---
@@ -494,3 +495,5 @@ Some aoo products keep the barcode only in `sku` (e.g. Stokke MuTable V2, Snoozi
 - Sync Scribe responses carry `character-cost` + `fiat-cost-before-overages` headers; async (webhook=true) 202s and transcripts.get carry none. Measured v3 + diarize + keyterms: 55 s → 19 credits (keyterm count 3 vs 60 doesn't matter); 7 s → 2 without keyterms. `/v1/user/subscription` 429s after a few calls — cache it. The 18 Nov "~80/min" figure came from a quota pre-check, not a bill.
 - An iPhone Shortcut can be generated: write the WFWorkflowActions plist (downloadurl / getvalueforkey / notification, ExtensionInput for share-sheet input), then `shortcuts sign --mode anyone` on the Mac → AirDrop. Large files must go to a Supabase signed upload URL (PUT + Content-Type), not through Vercel (4.5 MB body).
 
+## 2026-11-20 — Phone-width testing in Claude-in-Chrome when resize_window does nothing
+The window stays desktop width (innerWidth 1604). Replace the page with `<iframe src="/tasks" style="width:390px;height:780px">` (same origin) and drive `iframe.contentDocument`. Dev :3002 uses the PROD DB: patch `iframe.contentWindow.fetch` to fake non-GET `/rest/v1/` + storage uploads (record them in `__writes`), but let `/storage/v1/object/sign` through or images break (`data.map is not a function`). HMR full reloads wipe the iframe — re-create it.

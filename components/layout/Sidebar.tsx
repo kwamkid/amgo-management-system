@@ -44,6 +44,7 @@ import {
   FlaskConical,
   Receipt,
   KeyRound,
+  AudioLines,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -79,6 +80,8 @@ const navSections: NavSection[] = [
       { label: 'Dashboard', href: '/dashboard', icon: icon(LayoutDashboard), tone: 'accent' },
       // บอร์ดงาน (27 ต.ค. 69) — ทุกคนเห็นงานของทุกคน กรองตามคน/แบรนด์ได้ในหน้า
       { label: 'งานของทีม', href: '/tasks', icon: icon(ListChecks), tone: 'accent' },
+      // เสียงประชุม → งาน (17 พ.ย. 69) — หน้าเฉพาะแอดมิน (ปุ่ม "จากเสียงประชุม" บน /tasks ยังอยู่)
+      { label: 'เสียงประชุม', href: '/tasks/voice', icon: icon(AudioLines), tone: 'accent', roles: ['admin'] },
       {
         // งานอนุมัติทั้งหมดรวมเป็นกลุ่มเดียว (เดิมเป็นหัวข้อแยก 5 แถว) · พนักงานทั่วไปไม่เห็นเลย
         // roles = ยูเนียนของลูก · ลูกแต่ละตัวกรองสิทธิ์เองเหมือนเดิม

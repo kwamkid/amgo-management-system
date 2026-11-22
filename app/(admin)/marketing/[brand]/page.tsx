@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { CalendarDays, ListChecks, Megaphone, Plus, Target as TargetIcon, Timer, TrendingUp } from 'lucide-react'
+import { CalendarDays, ListChecks, Megaphone, Plus, RefreshCw, Target as TargetIcon, Timer, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Button, EmptyState, SelectMenu, TabBar, TabItem } from '@/components/aoo'
@@ -15,6 +15,7 @@ import PlanTab from '@/components/marketing/PlanTab'
 import ActionPlanTab from '@/components/marketing/ActionPlanTab'
 import KpiTab from '@/components/marketing/KpiTab'
 import CalendarTab from '@/components/marketing/CalendarTab'
+import { useAooSync } from '@/components/marketing/useAooSync'
 import { fmtMetric, thDateShort } from '@/components/marketing/format'
 import { brandLabel } from '@/lib/constants/brands'
 import { getTaskPeople, type TaskPerson } from '@/lib/services/taskService'
@@ -27,6 +28,7 @@ import {
   getPlans,
   getTargets,
   paceTone,
+  todayTh,
   type MetricRow,
   type Plan,
   type PlanTask,
@@ -71,6 +73,8 @@ export default function BrandMarketingPage() {
   const [detailTick, setDetailTick] = useState(0)
   const loadPlans = () => setPlansTick((t) => t + 1)
   const loadDetail = () => setDetailTick((t) => t + 1)
+  // admin: re-pull this plan's aoo sales now (normally the 05:00 cron)
+  const aooSync = useAooSync(loadDetail)
 
   useEffect(() => {
     if (!allowed) return
@@ -176,9 +180,21 @@ export default function BrandMarketingPage() {
         icon={Megaphone}
         backHref="/marketing"
         actions={
-          <Button variant="secondary" icon={Plus} onClick={() => setCreating(true)}>
-            แผนใหม่
-          </Button>
+          <>
+            {userData?.role === 'admin' && plan && (
+              <Button
+                variant="ghost"
+                icon={RefreshCw}
+                loading={!!aooSync.busy}
+                onClick={() => aooSync.run(plan.brand, plan.startDate, plan.endDate < todayTh() ? plan.endDate : todayTh())}
+              >
+                ดึงยอดขาย
+              </Button>
+            )}
+            <Button variant="secondary" icon={Plus} onClick={() => setCreating(true)}>
+              แผนใหม่
+            </Button>
+          </>
         }
       />
 

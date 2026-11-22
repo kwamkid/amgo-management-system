@@ -291,6 +291,73 @@ export async function setTaskPlan(taskId: string, planId: string | null, phase: 
   if (error) throw error
 }
 
+// ── brand ↔ aoocommerce / aoosocial (admin, /marketing/settings) ───
+
+export interface BrandLink {
+  brand: string
+  aoosocialCompanyId: string | null
+  aoosocialAccountIds: string[]
+  /** brand names in aoo · empty = the brand label when aoo has it */
+  aooBrandNames: string[]
+  /** marketplace shop names to count · empty = every shop */
+  aooShops: string[]
+  updatedAt: string | null
+}
+
+export async function getBrandLinks(): Promise<BrandLink[]> {
+  const { data, error } = await createClient().from('marketing_brand_links').select('*').order('brand')
+  if (error) throw error
+  return (data ?? []).map((l) => ({
+    brand: l.brand,
+    aoosocialCompanyId: l.aoosocial_company_id,
+    aoosocialAccountIds: l.aoosocial_account_ids,
+    aooBrandNames: l.aoo_brand_names,
+    aooShops: l.aoo_channel_ids,
+    updatedAt: l.updated_at,
+  }))
+}
+
+export async function saveBrandLink(l: Omit<BrandLink, 'updatedAt'>): Promise<void> {
+  const { error } = await createClient()
+    .from('marketing_brand_links')
+    .upsert(
+      {
+        brand: l.brand,
+        aoosocial_company_id: l.aoosocialCompanyId || null,
+        aoosocial_account_ids: l.aoosocialAccountIds,
+        aoo_brand_names: l.aooBrandNames,
+        aoo_channel_ids: l.aooShops,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'brand' }
+    )
+  if (error) throw error
+}
+
+export interface AooOptions {
+  brands: string[]
+  shops: { name: string; platform: string }[]
+}
+
+async function apiJson<T>(res: Response): Promise<T> {
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
+  return body as T
+}
+
+/** aoo brand names + marketplace shops for the pickers (admin) */
+export const getAooOptions = async () => apiJson<AooOptions>(await fetch('/api/marketing/aoo', { cache: 'no-store' }))
+
+/** "ดึงยอดตอนนี้" — queue a re-sync of one brand's aoo sales for [from, to] (admin) → queue group to follow */
+export const syncAooSales = async (brand: string, from: string, to: string) =>
+  apiJson<{ groupKey: string }>(
+    await fetch('/api/marketing/aoo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand, from, to }),
+    })
+  )
+
 // ── period helpers ─────────────────────────────────────────────────
 
 export const todayTh = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)

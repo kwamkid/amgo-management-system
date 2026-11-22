@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Megaphone, Plus } from 'lucide-react'
+import { Megaphone, Plus, Settings } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Button, EmptyState, Pill, Progress } from '@/components/aoo'
@@ -104,9 +104,16 @@ export default function MarketingPage() {
         description="แผน งาน และ KPI ของแต่ละแบรนด์ — งานในแผนคือรายการเดียวกับหน้างานของทีม"
         icon={Megaphone}
         actions={
-          <Button icon={Plus} onClick={() => setCreating(true)}>
-            สร้างแผน
-          </Button>
+          <>
+            {userData?.role === 'admin' && (
+              <Button variant="secondary" icon={Settings} onClick={() => router.push('/marketing/settings')}>
+                ตั้งค่า
+              </Button>
+            )}
+            <Button icon={Plus} onClick={() => setCreating(true)}>
+              สร้างแผน
+            </Button>
+          </>
         }
       />
 

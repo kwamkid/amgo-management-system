@@ -13,6 +13,7 @@ import { syncBing } from '@/lib/services/seo/bing'
 import { fetchLlmMentions } from '@/lib/services/seo/llmMentions'
 import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 import { VOICE_HANDLERS } from '@/lib/voice/pipeline'
+import { AOO_SALES_KIND, runAooSalesJob } from '@/lib/marketing/aooSales'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
 
@@ -105,6 +106,11 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   'voice.cleanup': (sb, job) => VOICE_HANDLERS['voice.cleanup'](sb, job),
 
   /** ล้างประวัติคิวเก่ากว่า 30 วัน */
+  /** แผนการตลาด: ยอดขาย aoo ของ 1 แบรนด์ในช่วงวัน → marketing_metric_daily */
+  [AOO_SALES_KIND]: async (sb, job) => ({
+    result: await runAooSalesJob(sb as never, job.payload as { brand: string; from: string; to: string }),
+  }),
+
   'queue.prune': async (sb) => {
     const { error } = await sb.rpc('queue_prune')
     if (error) throw new Error(error.message)

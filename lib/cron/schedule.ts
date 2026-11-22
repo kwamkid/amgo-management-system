@@ -41,6 +41,8 @@ export const CRON_JOBS: CronJob[] = [
   { key: 'web-expiry', label: 'เตือนวันหมดอายุ โดเมน/โฮสต์/SSL', when: { daily: '09:00', until: '18:00' }, run: { http: '/api/web/expiry' } },
   { key: 'web-uptime', label: 'เช็คเว็บล่ม', when: { every: 180 }, run: { http: '/api/web/uptime' } },
   { key: 'web-jobs', label: 'ไล่คิวงานเว็บ + คิวกลาง (สำรอง)', when: { every: 10 }, run: { http: '/api/web/jobs/next' }, whenQueued: true },
+  // แผนการตลาด — ยอดขาย aoo 7 วันล่าสุด → marketing_metric_daily
+  { key: 'marketing-sales', label: 'ดึงยอดขาย aoo เข้าแผนการตลาด', when: { daily: '05:00', until: '12:00' }, run: { http: '/api/cron/marketing-sales' } },
   // SEO
   { key: 'seo-daily', label: 'SEO รายวัน: GSC + อันดับ + AEO + Bing', when: { daily: '04:00', until: '08:00' }, run: { http: '/api/cron/seo/gsc-daily' } },
 ]

@@ -45,6 +45,7 @@ import {
   Receipt,
   KeyRound,
   AudioLines,
+  Megaphone,
 } from 'lucide-react'
 import { UserData } from '@/hooks/useAuth'
 import type { StatTone } from '@/components/shared'
@@ -168,6 +169,14 @@ const navSections: NavSection[] = [
         // 'srp' = ได้รับสิทธิ์อย่างน้อย 1 แบรนด์ (แอดมินเห็นเสมอ) — สิทธิ์รายคนรายแบรนด์
         roles: ['admin', 'srp'],
         href: '/srp',
+      },
+      {
+        // แผนการตลาดรายแบรนด์ + action plan (= งานของทีม) + KPI (21 พ.ย. 69) — แอดมิน + brand manager ของแบรนด์นั้น
+        label: 'แผนการตลาด',
+        icon: icon(Megaphone),
+        tone: 'pink',
+        roles: ['admin', 'srp'],
+        href: '/marketing',
       },
       {
         // แผนสั่งของนำเข้าตามตู้ — ต้องมีชื่อใน import_access (เจ้าของคนเดียวก่อน · 29 ต.ค. 69)

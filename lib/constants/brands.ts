@@ -11,6 +11,7 @@ export const BRANDS: Brand[] = [
   { slug: 'abcthebaby', label: 'ABC the Baby' },
   { slug: 'gb', label: 'GB' },
   { slug: 'hape', label: 'Hape' },
+  { slug: 'jadore', label: "J'adore" },
   { slug: 'stokke', label: 'Stokke' },
   { slug: 'taftoys', label: 'Taf Toys' },
   { slug: 'tommeetippee', label: 'Tommee Tippee' },

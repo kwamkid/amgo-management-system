@@ -2582,6 +2582,147 @@ export type Database = {
           },
         ]
       }
+      marketing_brand_links: {
+        Row: {
+          aoo_brand_names: string[]
+          aoo_channel_ids: string[]
+          aoosocial_account_ids: string[]
+          aoosocial_company_id: string | null
+          brand: string
+          updated_at: string
+        }
+        Insert: {
+          aoo_brand_names?: string[]
+          aoo_channel_ids?: string[]
+          aoosocial_account_ids?: string[]
+          aoosocial_company_id?: string | null
+          brand: string
+          updated_at?: string
+        }
+        Update: {
+          aoo_brand_names?: string[]
+          aoo_channel_ids?: string[]
+          aoosocial_account_ids?: string[]
+          aoosocial_company_id?: string | null
+          brand?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_metric_daily: {
+        Row: {
+          brand: string
+          channel: string
+          date: string
+          metric: string
+          source: string
+          synced_at: string
+          value: number
+        }
+        Insert: {
+          brand: string
+          channel?: string
+          date: string
+          metric: string
+          source: string
+          synced_at?: string
+          value: number
+        }
+        Update: {
+          brand?: string
+          channel?: string
+          date?: string
+          metric?: string
+          source?: string
+          synced_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      marketing_plans: {
+        Row: {
+          brand: string
+          budget: number | null
+          channels: string[]
+          created_at: string
+          created_by: string | null
+          end_date: string
+          goal: string
+          id: string
+          key_dates: Json
+          phases: Json
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          brand: string
+          budget?: number | null
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          goal?: string
+          id?: string
+          key_dates?: Json
+          phases?: Json
+          start_date: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          budget?: number | null
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          goal?: string
+          id?: string
+          key_dates?: Json
+          phases?: Json
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_targets: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          metric: string
+          plan_id: string
+          sort: number
+          source: string
+          target: number
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          metric: string
+          plan_id: string
+          sort?: number
+          source?: string
+          target: number
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          metric?: string
+          plan_id?: string
+          sort?: number
+          source?: string
+          target?: number
+        }
+        Relationships: []
+      }
       migration_id_map: {
         Row: {
           collection: string
@@ -4979,6 +5120,8 @@ export type Database = {
           due_change_reason: string | null
           due_date: string | null
           id: string
+          phase: string | null
+          plan_id: string | null
           no: number
           notes: string
           sort_order: number
@@ -4998,6 +5141,8 @@ export type Database = {
           due_change_reason?: string | null
           due_date?: string | null
           id?: string
+          phase?: string | null
+          plan_id?: string | null
           no?: number
           notes?: string
           sort_order?: number
@@ -5017,6 +5162,8 @@ export type Database = {
           due_change_reason?: string | null
           due_date?: string | null
           id?: string
+          phase?: string | null
+          plan_id?: string | null
           no?: number
           notes?: string
           sort_order?: number
@@ -6906,6 +7053,8 @@ export type Database = {
       import_can_edit: { Args: never; Returns: boolean }
       import_can_view: { Args: never; Returns: boolean }
       import_my_brands: { Args: never; Returns: string[] }
+      marketing_my_brands: { Args: never; Returns: string[] | null }
+      marketing_can: { Args: { p_brand: string }; Returns: boolean }
       import_my_edit_brands: { Args: never; Returns: string[] }
       import_round_editable: {
         Args: { p_brand: string; p_srp: string }

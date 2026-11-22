@@ -125,6 +125,9 @@ export async function createTask(
     brand: string | null
     sortOrder: number
     assigneeIds: string[]
+    /** action of a marketing plan (/marketing) */
+    planId?: string | null
+    phase?: string | null
   },
   userId: string
 ): Promise<string> {
@@ -138,6 +141,8 @@ export async function createTask(
       brand: normalizeBrand(input.brand),
       sort_order: input.sortOrder,
       created_by: userId,
+      plan_id: input.planId ?? null,
+      phase: input.phase ?? null,
     })
     .select('id')
     .single()

@@ -5,7 +5,8 @@
 > logged once is never re-debugged. Append-only via `/memo`.
 
 <!-- toc -->
-**Contents** (27)
+**Contents** (28)
+- 2026-11-22 — /marketing/[brand] reloads data forever; phone shows 0 tasks · fixed (uncommitted)
 - 2026-11-19 — Approve button pushed off screen (/leaves/management) + weak sidebar contrast · fixed `f2c833b`
 - 2026-11-18 — Person strip count badge digits cut off (/tasks) · fixed `936d08f`
 - 2026-11-18 — Plaud link import: "Share not found" · fixed `5b12f44`
@@ -36,6 +37,9 @@
 <!-- /toc -->
 
 ---
+
+## 2026-11-22 — /marketing/[brand] reloads data forever; phone shows 0 tasks · fixed (uncommitted)
+Symptom: 40+ requests per table within seconds, task list empty on a fresh load. Root cause: `useToast()` returns a new `showToast` every render; it sat in the load effects' deps → set state → re-render → effect re-runs and cancels the previous load. Fix: keep it in a ref (`toastRef.current = showToast` in a no-deps effect), deps = data keys only — [app/(admin)/marketing/[brand]/page.tsx](../../app/(admin)/marketing/[brand]/page.tsx). Found by counting `performance.getEntriesByType('resource')` in the probe iframe.
 
 ## 2026-11-19 — Approve button pushed off screen (/leaves/management) + weak sidebar contrast · fixed `f2c833b`
 - Symptom: a long leave reason pushed อนุมัติ/ไม่อนุมัติ past the right edge (desktop with sidebar open).

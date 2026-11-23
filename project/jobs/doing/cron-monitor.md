@@ -18,10 +18,11 @@ Design (amgo keeps its better parts):
 - [x] lib/monitor/health.ts + API + /settings/system page
 - [x] docs/cron.md + .claude/rules/queue.md update
 - [x] owner: SQL run · 3 cron-job.org group jobs added (Notify on failure) · pushed 71f802a (2026-11-23)
-- [ ] owner: disable AMGO Tick once all 3 groups show Successful (after 10:20 2026-11-23)
+- [ ] owner: disable AMGO Tick — all 3 groups answered 200 at 10:20 2026-11-23, told owner to disable
 - [ ] ~2026-11-30: if no failure mails, owner deletes the Inactive old jobs in cron-job.org (AMGO + AooSocial folders — all 11 AooSocial ones are in its tick schedule, checked)
 
-- [ ] Chrome test /settings/system (desktop + 375px) after SQL is run — dev server start was denied this session
+- [x] Chrome desktop on production 2026-11-23 10:23: 3 groups green, jobs 'never' until their first slot (expected)
+- [ ] Chrome 375px — resize_window had no effect this session; retest
 - [ ] after a day live: check lights match reality (late rules in lib/monitor/health.ts lastDueStart)
 
 Gotchas: groups wait ≤ 25 s then answer (502 if a finished job failed); unfinished jobs continue in after(). tick = all groups, still works. Unit check of settleWithin passed (scratch test).

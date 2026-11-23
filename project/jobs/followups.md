@@ -15,4 +15,5 @@
 - [ ] 2026-11-30 · jadore-launch · check whether Alina sent launch photos (H19) and test reports (H20) → add to jadore-marketing.html (img/ + ผลทดสอบ block) and tick they-owe; nothing → remind owner to chase Alina
 - [ ] 2026-11-24 · cron-monitor · open https://app.amgovenger.com/settings/system: every job green after its first slot (late rules in lib/monitor/health.ts lastDueStart) → fix false 'late'/'failing'
 - [ ] 2026-11-24 · marketing-plan · after 06:30 read aoosocial account_insights_daily (rows for 2026-11-23) + amgo marketing_metric_daily source=aoosocial metric followers/reach/views → KPI tab shows them; none → check aoosocial cron_job_runs sync-account-insights
+- [ ] 2026-11-24 · marketing-plan · J'adore sales KPI still '—' → check aoo has J'adore sales since 22 Nov (sales_summary brand J'adore); none = launch not selling yet, fine
 - [ ] 2026-11-30 · cron-monitor · no cron-job.org failure mails all week → tell owner to delete the Inactive old jobs (AMGO + AooSocial folders; all 11 AooSocial ones are in its tick schedule)

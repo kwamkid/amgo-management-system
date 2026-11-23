@@ -30,9 +30,12 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Admin UI `/marketing/settings` (admin only, button ตั้งค่า on /marketing): per brand aoo brand names · marketplace shops to count · aoosocial company id + account ids (text, step 3 makes a picker) · save + backfill 90 days
 - [x] Step 2 built 84f713c: aoo MCP `sales_summary` (no aoo DB access needed) → lib/marketing/aooSales.ts → queue kind `marketing.aoo.sales` · cron row `marketing-sales` 05:00 (last 7 days) · `/api/marketing/aoo` GET options / POST sync now. Backfilled 90 days for gb/hape/stokke/taftoys/tommeetippee 2026-11-22 (taftoys 15–21 Nov matched aoo per channel)
 - [x] Step 2/3a Chrome test on prod 2026-11-23: settings loads all 7 brands with saved links, picker search ok, save toast ok, J'adore KPI + calendar tabs ok, 375px no overflow (title truncates, tab row scrolls). Backfill button NOT pressed (auto-mode blocked prod write; was backfilled 2026-11-22)
+- [x] Settings pickers: platform logos (0f4314e, public/platforms/youtube.svg) · own-brand logos first in aoo picker + Skeleton shape="field" while options load (1c026a8) · pushed 6ba5248..1c026a8 · UAT-0341
+- [ ] รอคุณแอม: J'adore KPI row "ผู้ติดตาม · TikTok" — J'adore has no TikTok; delete it or swap to IG followers (owner decision)
+- [ ] UAT cases still missing: create plan from template + tick an Action plan task (needs a safe test brand/plan on prod or staging)
+- [ ] ABC the Baby still has 4 own-store social accounts linked — owner said ABC = multi-brand store, don't link aoo brand; confirm whether social counting should stay
 - [x] aoo_brand_names set explicitly 2026-11-23 for gb/hape/jadore/stokke/taftoys/tommeetippee (exact aoo names; aoo has no separate Babyzen). ABC the Baby left empty on purpose = multi-brand store (owner)
 - [x] J'adore linked in amgo 2026-11-23 (owner asked; REST upsert). Was: J'adore connected in aoosocial 2026-11-23 (FB J'adore Thailand 55667560… · IG jadorethailand 2500872c…) but amgo marketing_brand_links has no jadore row → pick both on /marketing/settings + save (auto-mode blocked my REST upsert). J'adore has no TikTok → KPI row "ผู้ติดตาม · TikTok" will stay empty (delete it or swap to IG)
-- [ ] J'adore sales KPI shows no number yet — check aoo has J'adore sales since 22 Nov after next 05:00/06:30 cron
 - [x] aoosocial accounts linked 2026-11-23 (owner confirmed; REST upsert into marketing_brand_links): company ABC the Baby ef10249d… · hape FB+IG · gb FB+IG+TT · stokke FB+IG+TT + Babyzen FB (Stokke bought Babyzen; Babyzen has no IG) · taftoys FB+IG · tommeetippee FB+IG+TT · abcthebaby FB+IG+TT+YT · Crane dropped (owner quit the brand) · J'adore not connected → manual KPI
 - [x] Step 3a built 0998ebb: env AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY in amgo .env.local (lib/aoosocial/db.ts) · CalendarTab = live GET /api/marketing/calendar (marketing_can) · queue kind `marketing.social.posts` counts published targets → metric posts per platform (cron + "ดึงตัวเลข" button enqueue it with the aoo sales job) · settings picker for aoosocial accounts · StatusBadge kind socialPost. Backfilled 90 days: gb 95 · abcthebaby 56 · hape 4 · others 0
 - [x] (2026-11-23 verified on prod: /marketing/settings loads aoosocial accounts) add AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY to Vercel env (Production) before deploy — else calendar shows an error and the posts job fails
@@ -43,10 +46,10 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: 2026-11-24 after 06:30 — check aoosocial account_insights_daily rows + followers/reach in KPI tab (followups). Also confirm J'adore FB+IG numbers arrive (linked 23 Nov). Settings pickers now have platform/brand logos + field skeleton (0f4314e, 1c026a8, pushed) — eyeball on prod.
+Resume at: 2026-11-24 after 06:30 — followups item: check aoosocial account_insights_daily rows + marketing_metric_daily source=aoosocial; KPI tab shows followers/reach (J'adore FB+IG too, linked 23 Nov).
 ### State
-All code pushed (amgo f1cc105, aoosocial cf2dd90). Snapshot table live; first rows expected 2026-11-24 06:00, amgo cron 06:30.
+All code pushed (last 1c026a8). Notes commits after it unpushed (fine). All 7 brand links set in marketing_brand_links (6 with explicit aoo names; ABC none).
 ### Gotchas
-aoosocial is READ ONLY from amgo; its supabase/.temp/project-ref points to the wrong project (live = gyuqrqrtyhjmfyguvczy, same as AOOSOCIAL_SUPABASE_URL). IG has followers only (Meta #10).
+aoosocial is READ ONLY from amgo; its supabase/.temp/project-ref is stale (live = gyuqrqrtyhjmfyguvczy). IG has followers only (Meta #10). Auto-mode blocks prod writes (backfill button, REST upsert) unless the owner asks in chat. aoo MCP company_overview returns brand NAMES only (aoo brands.logo_url exists but not exposed). Don't run prettier on whole files (reformats everything).
 ### Read first
 .claude/rules/domains/marketing.md · lib/marketing/socialInsights.ts

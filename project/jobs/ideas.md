@@ -41,3 +41,6 @@
 
 ## 2026-11-04 — other-bank SCB transfer file (owner: later)
 - Non-SCB payees (KBANK staff พี่โด้ · วัน · วินโก, non-SCB suppliers) need SCB's other-bank toolkit `CPX_Toolkit_Template-08.69.xls` (ORFT/SMART). Owner resends the template when wanted; build like the SCB one (olevba → emulate → diff), see project/knowledge/learning/general.md 2026-11-03.
+
+## 2026-11-23 — aoo brand logos in amgo pickers
+aoo brands.logo_url exists but MCP company_overview returns names only. Add logo_url to company_overview (aoocommerce app/api/mcp/route.ts) → /marketing/settings aoo-brand picker shows every brand logo. Owner asked about it; not committed to.

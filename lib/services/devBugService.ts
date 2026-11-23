@@ -1,14 +1,13 @@
 // Dev tracker — bug reports, browser-side (RLS + triggers do the permission work, migration 20261123120000_dev_bugs)
 // Status moves only through the dev_bug_set_status RPC (it writes the history). Pictures: dev-shots `bugs/<project id>/…`.
-// dev_bugs is not in types/database.ts until the owner runs the SQL and types are regenerated → untyped client here.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import type { TablesInsert, TablesUpdate } from '@/types/database'
 import { resizeImage } from '@/lib/utils/resizeImage'
 import { SHOT_BUCKET, type UatDevice, type UatEnvironment } from '@/lib/dev/uat'
 import { BUG_MAX_SHOTS, bugShotFolder, type BugEvent, type BugSeverity, type BugStatus, type DevBug } from '@/lib/dev/bugs'
 
-const db = () => createClient() as unknown as SupabaseClient
+const db = () => createClient()
 const SIGNED_TTL = 60 * 60 * 24
 
 type Person = { full_name: string; nickname: string | null } | null
@@ -121,8 +120,8 @@ export interface BugInput {
   uatCaseId?: string | null
 }
 
-function bugRow(input: Partial<BugInput>): Record<string, unknown> {
-  const p: Record<string, unknown> = {}
+function bugRow(input: Partial<BugInput>): TablesUpdate<'dev_bugs'> {
+  const p: TablesUpdate<'dev_bugs'> = {}
   const text = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null)
   if (input.title !== undefined) p.title = input.title.trim()
   if (input.steps !== undefined) p.steps = text(input.steps)
@@ -171,7 +170,7 @@ export async function createBug(
   const shots = [...existing, ...added]
   const { data, error } = await db()
     .from('dev_bugs')
-    .insert({ project_id: projectId, reported_by: reporterId, sort_order: Date.now() / 1000, shots, ...bugRow(input) })
+    .insert({ project_id: projectId, reported_by: reporterId, sort_order: Date.now() / 1000, shots, ...bugRow(input) } as TablesInsert<'dev_bugs'>) // no/title: trigger + checked above
     .select('id, no')
     .single()
   if (error) {
@@ -222,8 +221,8 @@ export async function setBugStatus(id: string, status: BugStatus, note?: string 
   const { error } = await db().rpc('dev_bug_set_status', {
     p_bug_id: id,
     p_status: status,
-    p_note: note?.trim() || null,
-    p_sort_order: sortOrder ?? null,
+    p_note: note?.trim() || undefined,
+    p_sort_order: sortOrder,
   })
   if (error) throw new Error(error.message.replace(/^.*?: /, ''))
 }

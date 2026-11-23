@@ -22,15 +22,15 @@
 - [x] migration 20261123100000_dev_default_members (table + trigger, ไกด์ seeded) — owner runs SQL — auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
 
 ## Resume note
-Resume at: owner runs the 2 SQL files (bugs, then releases) → regenerate types (`dev_bugs`, `dev_bug_events`, `dev_releases`, `release_id`) and drop the untyped clients in devBugService/devReleaseService → push when told → test on prod (report a bug from a failed UAT result on mobile, move it through the board, tester verdict, a release with drag) → /memo writes UAT cases.
+Resume at: push when told (SQL run by owner 2026-11-23, types regenerated + services typed) → test on prod (report a bug from a failed UAT result on mobile, move it through the board, tester verdict, a release with drag) → /memo writes UAT cases.
 
 ### State
-- 2026-11-23 bugs 0f24818 · releases 076f0e3 · cross-links (this commit). Not pushed. SQL not run yet — pages for bugs/releases error until it is.
+- 2026-11-23 bugs 0f24818 · releases 076f0e3 · cross-links (this commit). Not pushed. SQL run on prod 2026-11-23 (owner).
 - All 3 migrations (default_members, bugs, releases) applied in order on a local Postgres 14 with stub auth/storage (scratchpad): numbering, guards, RPC rules, history, storage policies, same-project triggers behave.
 - UAT live on prod (09d689f), MCP `amgo-dev` live (user scope) — new bug_*/release_* tools appear after deploy.
 
 ### Gotchas
-- dev_bugs/dev_releases are NOT in types/database.ts yet (types/database.ts has another session's uncommitted edits — regenerate only after the SQL, and commit by hunk).
+- types/database.ts regenerated from prod 2026-11-23; the import_distributions block belongs to another session (left unstaged).
 - Sidebar.tsx · docs/bot-api.md · scripts/dev.mjs carry other sessions' uncommitted lines; commits here staged only our hunks (git update-index from a rebuilt file).
 - React-compiler lint (`set-state-in-effect`, `preserve-manual-memoization` on `load` useCallback) fires on the house load-in-effect pattern in every dev page, old ones too — not new.
 - Result trigger sets case status; guard blocks testers elsewhere — bypass flag `dev.apply_result` (rules file). Bugs: status only via `dev_bug_set_status`.

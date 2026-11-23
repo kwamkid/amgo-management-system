@@ -1,11 +1,10 @@
 // Dev tracker — releases, browser-side (RLS: everyone in the project reads, managers write — migration 20261123130000)
-// dev_releases / release_id are not in types/database.ts until the SQL runs and types are regenerated → untyped client.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import type { TablesInsert, TablesUpdate } from '@/types/database'
 import type { DevRelease, ReleaseItem, ReleaseStatus } from '@/lib/dev/releases'
 
-const db = () => createClient() as unknown as SupabaseClient
+const db = () => createClient()
 
 type ReleaseRow = {
   id: string
@@ -81,7 +80,7 @@ export interface ReleaseInput {
 }
 
 const releaseRow = (i: Partial<ReleaseInput>) => {
-  const p: Record<string, unknown> = {}
+  const p: TablesUpdate<'dev_releases'> = {}
   if (i.name !== undefined) p.name = i.name.trim()
   if (i.goal !== undefined) p.goal = i.goal?.trim() || null
   if (i.startDate !== undefined) p.start_date = i.startDate || null
@@ -92,7 +91,7 @@ const releaseRow = (i: Partial<ReleaseInput>) => {
 
 export async function createRelease(projectId: string, input: ReleaseInput): Promise<string> {
   if (!input.name.trim()) throw new Error('ตั้งชื่อรอบก่อน')
-  const { data, error } = await db().from('dev_releases').insert({ project_id: projectId, ...releaseRow(input) }).select('id').single()
+  const { data, error } = await db().from('dev_releases').insert({ project_id: projectId, ...releaseRow(input) } as TablesInsert<'dev_releases'>).select('id').single()
   if (error) throw new Error(`สร้างรอบไม่สำเร็จ: ${error.message}`)
   return (data as { id: string }).id
 }

@@ -1081,6 +1081,228 @@ export type Database = {
           },
         ]
       }
+      dev_bug_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          bug_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          kind: string
+          note: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          bug_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          bug_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_bug_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bug_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bug_events_bug_id_fkey"
+            columns: ["bug_id"]
+            isOneToOne: false
+            referencedRelation: "dev_bugs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_bugs: {
+        Row: {
+          actual: string | null
+          assignee_id: string | null
+          close_reason: string | null
+          closed_at: string | null
+          created_at: string
+          device: string
+          environment: string
+          expected: string | null
+          fix_note: string | null
+          id: string
+          no: number
+          page_url: string | null
+          project_id: string
+          release_id: string | null
+          reported_by: string | null
+          severity: string
+          shots: Json
+          sort_order: number | null
+          source: string | null
+          status: string
+          steps: string | null
+          title: string
+          uat_case_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual?: string | null
+          assignee_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          device?: string
+          environment?: string
+          expected?: string | null
+          fix_note?: string | null
+          id?: string
+          no: number
+          page_url?: string | null
+          project_id: string
+          release_id?: string | null
+          reported_by?: string | null
+          severity?: string
+          shots?: Json
+          sort_order?: number | null
+          source?: string | null
+          status?: string
+          steps?: string | null
+          title: string
+          uat_case_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual?: string | null
+          assignee_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          device?: string
+          environment?: string
+          expected?: string | null
+          fix_note?: string | null
+          id?: string
+          no?: number
+          page_url?: string | null
+          project_id?: string
+          release_id?: string | null
+          reported_by?: string | null
+          severity?: string
+          shots?: Json
+          sort_order?: number | null
+          source?: string | null
+          status?: string
+          steps?: string | null
+          title?: string
+          uat_case_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_bugs_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "dev_releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_bugs_uat_case_id_fkey"
+            columns: ["uat_case_id"]
+            isOneToOne: false
+            referencedRelation: "dev_uat_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_default_members: {
+        Row: {
+          created_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_default_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_default_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_project_members: {
         Row: {
           added_by: string | null
@@ -1143,6 +1365,7 @@ export type Database = {
       }
       dev_projects: {
         Row: {
+          bug_seq: number
           created_at: string
           created_by: string | null
           id: string
@@ -1154,6 +1377,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bug_seq?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1165,6 +1389,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bug_seq?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1192,6 +1417,70 @@ export type Database = {
           },
         ]
       }
+      dev_releases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          goal: string | null
+          id: string
+          name: string
+          project_id: string
+          released_at: string | null
+          start_date: string | null
+          status: string
+          target_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          goal?: string | null
+          id?: string
+          name: string
+          project_id: string
+          released_at?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          goal?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          released_at?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_releases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_releases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_releases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_uat_cases: {
         Row: {
           created_at: string
@@ -1208,6 +1497,7 @@ export type Database = {
           preparation: string | null
           priority: number
           project_id: string
+          release_id: string | null
           round: number
           shop: string | null
           sort_order: number | null
@@ -1232,6 +1522,7 @@ export type Database = {
           preparation?: string | null
           priority?: number
           project_id: string
+          release_id?: string | null
           round?: number
           shop?: string | null
           sort_order?: number | null
@@ -1256,6 +1547,7 @@ export type Database = {
           preparation?: string | null
           priority?: number
           project_id?: string
+          release_id?: string | null
           round?: number
           shop?: string | null
           sort_order?: number | null
@@ -1285,6 +1577,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "dev_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_uat_cases_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "dev_releases"
             referencedColumns: ["id"]
           },
         ]
@@ -7779,11 +8078,27 @@ export type Database = {
           require_approval: boolean
         }[]
       }
+      dev_bug_project: { Args: { p_bug_id: string }; Returns: string }
+      dev_bug_set_status: {
+        Args: {
+          p_actor?: string
+          p_bug_id: string
+          p_note?: string
+          p_sort_order?: number
+          p_status: string
+        }
+        Returns: undefined
+      }
       dev_bump_uat_sequence: { Args: { p_min: number }; Returns: undefined }
       dev_can_manage: { Args: { p_project_id: string }; Returns: boolean }
       dev_can_test: { Args: { p_project_id: string }; Returns: boolean }
       dev_can_view: { Args: { p_project_id: string }; Returns: boolean }
       dev_case_project: { Args: { p_case_id: string }; Returns: string }
+      dev_person_name: { Args: { p_user: string }; Returns: string }
+      dev_shot_folder: {
+        Args: { p_index: number; p_name: string }
+        Returns: string
+      }
       document_by_share: {
         Args: { p_id: string; p_token: string }
         Returns: Json

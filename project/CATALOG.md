@@ -55,7 +55,7 @@
 | File | KB | Sections | About |
 |---|---|---|---|
 | [cron-monitor.md](jobs/doing/cron-monitor.md) | 3 | 2 | Read first: lib/cron/schedule.ts · lib/cron/runner.ts · aoocommerce lib/cron/groups.ts, app/api/cron/[group]/r |
-| [dev-tracker.md](jobs/doing/dev-tracker.md) | 6 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
+| [dev-tracker.md](jobs/doing/dev-tracker.md) | 7 | 2 | - [x] 2026-11-23 shared Lightbox now used for result + step pictures (UatCaseModal wrapper over components/aoo |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
 | [jadore-launch.md](jobs/doing/jadore-launch.md) | 5 | 2 | AGD notes: `01-AGD/02-hape/_notes/jadore.md` (media, clip language check) · `02-hape/_notes/3-marketing/social |

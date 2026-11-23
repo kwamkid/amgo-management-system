@@ -4,13 +4,13 @@
 // เจ้าของ 23 พ.ย. 69: เลขบั๊กแยกต่อโปรเจกต์ BUG-0001 · ใช้สมาชิกและสิทธิ์ชุดเดียวกับ UAT
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { Bug } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Card, EmptyState, Pill } from '@/components/aoo'
+import { EmptyState, Pill } from '@/components/aoo'
+import DevProjectGrid from '@/components/dev/DevProjectGrid'
 import { PageHeader, TechLoader } from '@/components/shared'
-import { ROLE_LABELS, type DevProject } from '@/lib/dev/uat'
+import type { DevProject } from '@/lib/dev/uat'
 import { getDevProjects } from '@/lib/services/devService'
 import { getOpenBugCounts } from '@/lib/services/devBugService'
 
@@ -49,26 +49,11 @@ export default function DevBugProjectsPage() {
       ) : projects.length === 0 ? (
         <EmptyState icon={<Bug />} title="ยังไม่มีโปรเจกต์" body="แอดมินสร้างโปรเจกต์ได้ที่หน้า UAT" />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-          {projects.map((p) => {
-            const open = counts[p.id] ?? 0
-            return (
-              <Card key={p.id} padding={16}>
-                <Link href={`/dev/bugs/${p.slug}`} style={{ display: 'block' }}>
-                  <div style={{ fontSize: 'var(--fs-h4)', fontWeight: 700 }}>{p.name}</div>
-                  <div style={{ fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>{p.slug}</div>
-                </Link>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                  <Pill tone={open > 0 ? 'danger' : 'neutral'}>เปิดอยู่ {open} บั๊ก</Pill>
-                  <Pill>{ROLE_LABELS[p.myRole]}</Pill>
-                </div>
-                <Link href={`/dev/bugs/${p.slug}`} style={{ display: 'block', marginTop: 12 }}>
-                  <Button variant="secondary" style={{ width: '100%' }}>เปิดบอร์ด</Button>
-                </Link>
-              </Card>
-            )
-          })}
-        </div>
+        <DevProjectGrid
+          projects={projects}
+          href={(p) => `/dev/bugs/${p.slug}`}
+          badges={(p) => <Pill tone={(counts[p.id] ?? 0) > 0 ? 'danger' : 'neutral'}>เปิดอยู่ {counts[p.id] ?? 0} บั๊ก</Pill>}
+        />
       )}
     </div>
   )

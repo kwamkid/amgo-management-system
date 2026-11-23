@@ -19,7 +19,8 @@ const INSTRUCTIONS =
   'upload it with uat_upload_image, then put the returned path in steps[].image; uat_case returns steps[].image_url. ' +
   'Bug reports (bug_list, bug_get, bug_add, bug_update, bug_status) live in the same projects; bug numbers restart per ' +
   'project (BUG-0001), so always pass project + no. After fixing a bug, move it to testing with a note of what changed ' +
-  '(the reporter is asked to retest); never close a bug a tester reported without their retest.'
+  '(the reporter is asked to retest); never close a bug a tester reported without their retest. ' +
+  'Releases (release_list, release_add, release_update) group cases and bugs of a project into a round with progress.'
 
 interface RpcRequest {
   jsonrpc?: string

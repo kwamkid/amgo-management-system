@@ -27,6 +27,11 @@ import {
   setBugStatusAs,
   toBotBug,
   uatCaseId,
+  listReleases,
+  parseReleaseInput,
+  releaseRef,
+  setReleaseItems,
+  RELEASE_STATUS_VALUES,
   type BugRow,
   type CaseRow,
   type ResultRow,
@@ -397,6 +402,74 @@ DEV_TOOLS.push(
       const bad = await setBugStatusAs(caller, r.b.id, args.status, args.note)
       if (bad) throw new DevToolError(bad)
       return { ok: true, code: bugCode(r.b.no), status: args.status }
+    },
+  }
+)
+
+const RELEASE_FIELDS: Json = {
+  name: { type: 'string' },
+  goal: { type: 'string', description: 'What this round must finish, plain Thai' },
+  start_date: { type: 'string', description: 'YYYY-MM-DD' },
+  target_date: { type: 'string', description: 'YYYY-MM-DD' },
+  status: { type: 'string', enum: RELEASE_STATUS_VALUES },
+}
+const nums: Json = { type: 'array', items: { type: ['integer', 'string'] } }
+
+DEV_TOOLS.push(
+  {
+    name: 'release_list',
+    description: `Releases (rounds of work) of a project with progress: cases passed/closed and bugs closed out of what is in the round. items=true lists the cases and bugs too. ${PROJECT_DOC}.`,
+    inputSchema: { type: 'object', required: ['project'], properties: { project: { type: 'string' }, items: { type: 'boolean' } } },
+    readOnly: true,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      return { project: p.project.slug, releases: await listReleases(caller, p.project, args.items === true).catch((e: Error) => { throw new DevToolError(e.message) }) }
+    },
+  },
+  {
+    name: 'release_add',
+    description: `Create a release (status planned unless given). ${PROJECT_DOC}.`,
+    inputSchema: { type: 'object', required: ['project', 'name'], properties: { project: { type: 'string' }, ...RELEASE_FIELDS } },
+    readOnly: false,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      const { project: _p, ...fields } = args
+      const parsed = parseReleaseInput(fields, false)
+      if ('error' in parsed) throw new DevToolError(parsed.error)
+      const { data, error } = await untyped(caller.sb).from('dev_releases').insert({ ...parsed.row, project_id: p.project.id, created_by: caller.user.id }).select('id, name').single()
+      if (error) throw new DevToolError(error.message)
+      return data
+    },
+  },
+  {
+    name: 'release_update',
+    description: 'Edit a release (name, goal, dates, status planned|active|released) and/or move UAT cases and bugs of the same project in or out: add_cases / remove_cases (89 or "UAT-0089"), add_bugs / remove_bugs (3 or "BUG-0003"). release = id or exact name.',
+    inputSchema: {
+      type: 'object',
+      required: ['project', 'release'],
+      properties: { project: { type: 'string' }, release: { type: 'string' }, ...RELEASE_FIELDS, add_cases: nums, add_bugs: nums, remove_cases: nums, remove_bugs: nums },
+    },
+    readOnly: false,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      const allowed = ['project', 'release', ...Object.keys(RELEASE_FIELDS), 'add_cases', 'add_bugs', 'remove_cases', 'remove_bugs']
+      const unknown = Object.keys(args).filter((k) => !allowed.includes(k))
+      if (unknown.length) throw new DevToolError(`unknown field(s): ${unknown.join(', ')}`)
+      try {
+        const r = await releaseRef(caller, p.project, args.release)
+        const fields = Object.fromEntries(Object.entries(args).filter(([k]) => k in RELEASE_FIELDS))
+        if (Object.keys(fields).length) {
+          const parsed = parseReleaseInput(fields, true)
+          if ('error' in parsed) throw new DevToolError(parsed.error)
+          const { error } = await untyped(caller.sb).from('dev_releases').update(parsed.row).eq('id', r.id)
+          if (error) throw new DevToolError(error.message)
+        }
+        const added = await setReleaseItems(caller, p.project, r.id, args.add_cases, args.add_bugs)
+        const removed = await setReleaseItems(caller, p.project, null, args.remove_cases, args.remove_bugs, r.id)
+        return { ok: true, release: r.name, updated: Object.keys(fields), added, removed }
+      } catch (e) {
+        throw e instanceof DevToolError ? e : new DevToolError((e as Error).message)
+      }
     },
   }
 )

@@ -462,3 +462,14 @@ Status moves go through the DB function `dev_bug_set_status` (history row per mo
 - `PATCH /dev/bugs/{no}?project=<slug>` `{ action: "status", status, note? }` · `{ action: "update", …fields }` (shots replaces the list)
 - MCP: `bug_list(project, status?, limit?)` · `bug_get(project, no)` · `bug_add(project, bugs[])` · `bug_update(project, no, …fields)` · `bug_status(project, no, status, note?)`
 - CLI: `bugs [project] [status]` · `bug <no> [project]` · `bug-add <project> <bugs.json>` (shots[] may be local files) · `bug-status <no> <status> ["<note>"] [project]`
+
+## 11. Dev tracker: releases (dev key · 23 Nov 2569)
+
+A release = a round of work in a project (`planned` · `active` · `released`, `released_at` stamped by the DB). UAT cases and bugs of the same project join at most one release (`release_id`; another project's release is refused by a trigger). Progress: cases passed/closed + bugs closed/wont_fix out of what is in the round.
+
+- `GET /dev/releases?project=<slug>[&items=1]` → `{ releases: [{ id, name, goal, start_date, target_date, status, released_at, progress: { cases, cases_done, bugs, bugs_done, percent }, cases?, bugs? }] }`
+- `POST /dev/releases` `{ project, name, goal?, start_date?, target_date?, status? }` → 201 `{ id, name }`
+- `PATCH /dev/releases` `{ project, release: <id or exact name>, name?, goal?, start_date?, target_date?, status?, add_cases?: [89, "UAT-0090"], add_bugs?: [3, "BUG-0004"], remove_cases?, remove_bugs? }` → `{ added, removed }` (remove only takes items out of that release)
+- `DELETE /dev/releases?project=&release=` — items stay, they just leave the round
+- MCP: `release_list(project, items?)` · `release_add(project, name, …)` · `release_update(project, release, …)` · CLI: `releases [project]`
+- Web: Dev Management › Releases → `/dev/releases/<slug>` (cards with progress; managers drag cases/bugs between "ยังไม่อยู่ในรอบไหน" and the round)

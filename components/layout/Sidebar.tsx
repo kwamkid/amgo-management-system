@@ -43,6 +43,7 @@ import {
   PanelLeftOpen,
   FlaskConical,
   Bug,
+  Rocket,
   Receipt,
   KeyRound,
   AudioLines,
@@ -227,6 +228,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'UAT', href: '/dev/uat', icon: icon(FlaskConical), tone: 'grape', roles: ['dev'] },
       { label: 'Bug report', href: '/dev/bugs', icon: icon(Bug), tone: 'danger', roles: ['dev'] },
+      { label: 'Releases', href: '/dev/releases', icon: icon(Rocket), tone: 'success', roles: ['dev'] },
     ],
   },
   {

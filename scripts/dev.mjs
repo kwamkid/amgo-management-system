@@ -19,6 +19,7 @@
 //   node scripts/dev.mjs bug-add <project> <bugs.json>  one bug or an array; shots[] may be local image files
 //   node scripts/dev.mjs bug-status <no> <status> ["<note>"] [project]
 //                                                    accepted · fixing · testing (note = what was fixed) · closed · wont_fix (note = why)
+//   node scripts/dev.mjs releases [project]         releases with progress (JSON, items included)
 //
 // กุญแจ: AMGO_DEV_KEY ใน /Users/ampstark/amgo-management-system/memo/bot-keys.env (scope 'dev' — ใช้ได้เฉพาะ /api/bot/dev)
 // ปลายทาง: AMGO_API_BASE ในไฟล์เดียวกัน (ค่าเริ่มต้น https://app.amgovenger.com/api/bot)
@@ -150,6 +151,8 @@ if (cmd === 'summary' || cmd === 'list') {
   if (!no || !status) die('usage: bug-status <no> <status> ["<note>"] [project]')
   const r = await api(`/dev/bugs/${bugNum(no)}?project=${encodeURIComponent(project || DEFAULT_PROJECT)}`, { method: 'PATCH', body: JSON.stringify({ action: 'status', status, note: note || '' }) })
   console.log(`${r.code} → ${r.status}`)
+} else if (cmd === 'releases') {
+  console.log(JSON.stringify(await api(`/dev/releases?project=${encodeURIComponent(args[0] || DEFAULT_PROJECT)}&items=1`), null, 2))
 } else {
-  die('commands: summary [project] · list [project] · add <project> <file> · upload <project> <image> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects · bugs [project] [status] · bug <no> [project] · bug-add <project> <file> · bug-status <no> <status> ["<note>"] [project]')
+  die('commands: summary [project] · list [project] · add <project> <file> · upload <project> <image> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects · bugs [project] [status] · bug <no> [project] · bug-add <project> <file> · bug-status <no> <status> ["<note>"] [project] · releases [project]')
 }

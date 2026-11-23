@@ -2344,6 +2344,13 @@ button:disabled,
   .aoo-kanban--5 .aoo-kanban__col { scroll-snap-align: none; }
   .aoo-kanban--5 .aoo-kanban__col { flex: 0 0 calc((100% - 4 * 12px) / 4.5); max-width: none; }
 }
+/* 2 คอลัมน์ (dev tracker: จัดเคส/บั๊กเข้ารอบ release, 23 พ.ย. 69) — ครึ่งจอเท่ากัน */
+@media (min-width: 1024px) {
+  .aoo-kanban--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .aoo-kanban--2 .aoo-kanban__col { flex-basis: calc(50% - 6px); max-width: none; }
+}
 .aoo-kanban__col[data-over] { border-color: var(--tone); }
 .aoo-kanban__head {
   display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;

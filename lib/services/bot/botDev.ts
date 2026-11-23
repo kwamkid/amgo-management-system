@@ -439,3 +439,92 @@ export async function bugDetail(caller: BotCaller, r: { b: BugRow; project: DevP
     history: data ?? [],
   }
 }
+
+// ── releases (owner 2026-11-23, migration 20261123130000_dev_releases) ──────
+export const RELEASE_COLS = 'id, name, goal, start_date, target_date, status, released_at, created_at'
+export const RELEASE_STATUS_VALUES = ['planned', 'active', 'released'] as const
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** releases of a project with progress (done = UAT passed/closed · bug closed/wont_fix) and their items */
+export async function listReleases(caller: BotCaller, project: DevProjectRow, withItems: boolean) {
+  const sb = untyped(caller.sb)
+  const [{ data: rel, error }, { data: cases }, { data: bugs }] = await Promise.all([
+    sb.from('dev_releases').select(RELEASE_COLS).eq('project_id', project.id).order('created_at'),
+    sb.from('dev_uat_cases').select('no, title, status, release_id').eq('project_id', project.id).not('release_id', 'is', null),
+    sb.from('dev_bugs').select('no, title, status, release_id').eq('project_id', project.id).not('release_id', 'is', null),
+  ])
+  if (error) throw new Error(error.message)
+  type It = { no: number; title: string; status: string; release_id: string }
+  return ((rel ?? []) as Record<string, unknown>[]).map((r) => {
+    const c = ((cases ?? []) as It[]).filter((x) => x.release_id === r.id)
+    const b = ((bugs ?? []) as It[]).filter((x) => x.release_id === r.id)
+    const cDone = c.filter((x) => x.status === 'passed' || x.status === 'closed').length
+    const bDone = b.filter((x) => x.status === 'closed' || x.status === 'wont_fix').length
+    return {
+      ...r,
+      progress: { cases: c.length, cases_done: cDone, bugs: b.length, bugs_done: bDone, percent: c.length + b.length ? Math.round(((cDone + bDone) / (c.length + b.length)) * 100) : 0 },
+      ...(withItems
+        ? { cases: c.map((x) => ({ code: uatCode(x.no), title: x.title, status: x.status })), bugs: b.map((x) => ({ code: bugCode(x.no), title: x.title, status: x.status })) }
+        : {}),
+    }
+  })
+}
+
+/** release by id or exact name inside the project */
+export async function releaseRef(caller: BotCaller, project: DevProjectRow, ref: unknown): Promise<{ id: string; name: string }> {
+  const v = typeof ref === 'string' ? ref.trim() : ''
+  if (!v) throw new Error('ต้องระบุ release (id หรือชื่อรอบ)')
+  const sb = untyped(caller.sb)
+  const isId = /^[0-9a-f-]{36}$/.test(v)
+  const { data } = await sb.from('dev_releases').select('id, name').eq('project_id', project.id).eq(isId ? 'id' : 'name', v).limit(2)
+  const rows = (data ?? []) as { id: string; name: string }[]
+  if (rows.length === 0) throw new Error(`ไม่พบรอบ "${v}" ใน ${project.slug}`)
+  if (rows.length > 1) throw new Error(`มีรอบชื่อ "${v}" มากกว่า 1 รอบ ใช้ id แทน`)
+  return rows[0]
+}
+
+/** fields for insert/update (name required on insert) */
+export function parseReleaseInput(raw: Record<string, unknown>, partial: boolean): { row: Record<string, unknown> } | { error: string } {
+  const row: Record<string, unknown> = {}
+  if (raw.name !== undefined || !partial) {
+    const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+    if (!name) return { error: 'ต้องมี name' }
+    row.name = name
+  }
+  if (raw.goal !== undefined) row.goal = raw.goal === null ? null : String(raw.goal).trim() || null
+  for (const k of ['start_date', 'target_date']) {
+    if (raw[k] === undefined) continue
+    if (raw[k] !== null && raw[k] !== '' && !ISO_DATE.test(String(raw[k]))) return { error: `${k} ต้องเป็น YYYY-MM-DD` }
+    row[k] = raw[k] || null
+  }
+  if (raw.status !== undefined) {
+    if (!(RELEASE_STATUS_VALUES as readonly string[]).includes(String(raw.status))) return { error: `status ต้องเป็น ${RELEASE_STATUS_VALUES.join(', ')}` }
+    row.status = raw.status
+  }
+  return { row }
+}
+
+/** put case/bug numbers of this project into a release (releaseId), or take them out of `from` (releaseId null) */
+export async function setReleaseItems(caller: BotCaller, project: DevProjectRow, releaseId: string | null, cases: unknown, bugs: unknown, from?: string) {
+  const nums = (v: unknown, re: RegExp) => (Array.isArray(v) ? v.map((x) => Number(String(x).replace(re, ''))) : [])
+  const c = nums(cases, /^uat-?/i)
+  const b = nums(bugs, /^bug-?/i)
+  if ([...c, ...b].some((n) => !Number.isInteger(n) || n < 1)) throw new Error('เลขเคส/บั๊กไม่ถูกต้อง')
+  const sb = untyped(caller.sb)
+  let moved = 0
+  if (c.length) {
+    let q = sb.from('dev_uat_cases').update({ release_id: releaseId }).eq('project_id', project.id).in('no', c)
+    if (from) q = q.eq('release_id', from)
+    const { data, error } = await q.select('no')
+    if (error) throw new Error(error.message)
+    moved += (data ?? []).length
+  }
+  if (b.length) {
+    let q = sb.from('dev_bugs').update({ release_id: releaseId }).eq('project_id', project.id).in('no', b)
+    if (from) q = q.eq('release_id', from)
+    const { data, error } = await q.select('no')
+    if (error) throw new Error(error.message)
+    moved += (data ?? []).length
+  }
+  return moved
+}

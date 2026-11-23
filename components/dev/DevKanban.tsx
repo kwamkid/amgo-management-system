@@ -165,7 +165,7 @@ export default function DevKanban<T extends { id: string; sortOrder: number }, K
         setCols(toColumns(items))
       }}
     >
-      <div ref={boardRef} className={`aoo-kanban${columns.length === 5 ? ' aoo-kanban--5' : ''}`}>
+      <div ref={boardRef} className={`aoo-kanban${columns.length === 5 || columns.length === 2 ? ` aoo-kanban--${columns.length}` : ''}`}>
         {columns.map((col) => (
           <Column key={col.key} col={col} locked={locked(col.key)} ids={cols[col.key] ?? []} byId={byId} onOpen={onOpen} renderCard={renderCard} />
         ))}

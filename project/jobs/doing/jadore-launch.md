@@ -15,7 +15,8 @@ Done this session (files in `01-AGD/02-hape/media/jadore/_brand/social/`): logo 
 - [ ] รอ Hape: launch photos asked by owner to Alina 2026-11-23 (they-owe H19, follow up 2026-11-30) — when received, add to `01-AGD/02-hape/_notes/3-marketing/jadore-marketing.html` (img/).
 - [ ] Thai subtitles for the clean `_EN` clips (list in jadore.md "Clip language check"); Chinese clips need cutting/cropping first (852441_3: drop first ~5 s).
 - [ ] รอ Hape: C1 PI + loading date (tracked in `02-hape/_notes/next.md` item 1) — launch dates in the amgo plan depend on it.
-- [ ] รอ Hape: safety test reports for all C1 SKUs (they-owe H20, follow up 2026-11-30) — then add a 'ผลทดสอบ' block to jadore-marketing.html and use in safety content.
+- [x] 2026-11-23 safety test reports for all C1 SKUs received (H20, filed 02-hape/2026/05-test-reports/jadore/, all PASS).
+- [ ] Add a 'ผลทดสอบ' block to jadore-marketing.html and use in safety content.
 - [x] 2026-11-23 bios (IG/TikTok/FB) + marketing page built: `01-AGD/02-hape/_notes/3-marketing/jadore-marketing.html` (local, 7 tabs: market · products+videos · competitors/STP/USP · channels/agent terms · plan/budget/influencers · content + 17 embedded example clips + Google Trends + search volume · SWOT/TOWS · calendar/sources). Facts filed in AGD jadore.md + social-plan.md.
 - [x] 2026-11-23 owner approved the original numbers (owner first read ฿250k as per month; it is per 3 months): budget ฿250k/3 months (ads 120k: TikTok 50 · Meta 30 · Shopee 25 · Lazada 15), influencers (40 nano seeding + 6 micro + 1 launch), giveaways ~380 pcs, agent terms (outright 40% · consignment 30%), optional Google Search ฿5k/month. Page marked approved. amgo plan 2a54bcfc: budget 250000 · ad_spend target 120000 · ROAS target 4 · key dates 25 Dec / 9 Jan / 14 Feb.
 - [ ] รอคุณแอม (not decided; Claude draft 2026-11-23: ~7,000 pcs · ~฿950k our revenue or ~฿1.42M if aoo revenue is retail · TikTok 3,000 · FB 1,000 · 60 posts): sales ฿ / pcs, FB + TikTok followers, posts targets on /marketing/jadore?tab=kpi (page has no numbers for these; 80% sell-through of the lot ≈ 7,000 pcs is the page's base case) · assign people to tasks · set plan status active.
@@ -28,6 +29,6 @@ Resume at: owner decisions — approve the marketing budget/agent terms, and cho
 ### State
 Nothing in git for this topic except notes; outputs live in AGD (Dropbox). Marketing page + img/ (logos, videos, csv) in `01-AGD/02-hape/_notes/3-marketing/`. Backups of earlier page versions only in the session scratchpad (temporary).
 ### Gotchas
-Kanit/Prompt fonts in ~/Library/Fonts are 0-byte → use IBMPlexSansThai for images. Don't claim "all SKUs safety-tested" until H20 arrives (BV report covers 852458 only among C1). "jadore" search term mixes with Dior perfume. Main Hape contact = Alina. All J'adore squish = TPR (owner).
+Kanit/Prompt fonts in ~/Library/Fonts are 0-byte → use IBMPlexSansThai for images. All C1 SKUs now have PASS test reports (H20 received 2026-11-23) — "all SKUs tested" is allowed; 3PK 854970 report = ASTM F963-1,2 only. "jadore" search term mixes with Dior perfume. Main Hape contact = Alina. All J'adore squish = TPR (owner).
 ### Read first
 `01-AGD/02-hape/_notes/jadore.md` (latest bullets 2026-11-23) · `3-marketing/jadore-marketing.html` · `01-AGD/02-hape/_notes/5-partners/hape-hq/they-owe.md` H19/H20

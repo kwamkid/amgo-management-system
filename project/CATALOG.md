@@ -57,8 +57,8 @@
 | [dev-tracker.md](jobs/doing/dev-tracker.md) | 6 | 2 | - [ ] Replace the private `Lightbox` in components/dev/UatCaseModal.tsx with the shared `Lightbox` from compon |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
-| [jadore-launch.md](jobs/doing/jadore-launch.md) | 2 | 2 | AGD notes: `01-AGD/02-hape/_notes/jadore.md` (media, clip language check) · `02-hape/_notes/3-marketing/social |
-| [marketing-plan.md](jobs/doing/marketing-plan.md) | 4 | 3 | Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md) |
+| [jadore-launch.md](jobs/doing/jadore-launch.md) | 4 | 2 | AGD notes: `01-AGD/02-hape/_notes/jadore.md` (media, clip language check) · `02-hape/_notes/3-marketing/social |
+| [marketing-plan.md](jobs/doing/marketing-plan.md) | 6 | 3 | Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md) |
 | [stokke-order.md](jobs/doing/stokke-order.md) | 6 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
 | [tasks-edith.md](jobs/doing/tasks-edith.md) | 5 | 1 | Plan: [tasks-edith.md](../plans/tasks-edith.md). This file = open items only. |
 | [voice-tasks.md](jobs/doing/voice-tasks.md) | 6 | 1 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |
@@ -87,3 +87,4 @@
 | File | KB | Sections | About |
 |---|---|---|---|
 | [general.md](knowledge/learning/general.md) | 64 | 36 | สิ่งที่เพิ่งรู้ / pattern ที่น่าจำ · Newest at the bottom · Append-only via `/memo` |
+| [local-html-pages.md](knowledge/learning/local-html-pages.md) | 1 | 1 | Traps when building standalone .html reports that the owner opens with `open file.html` (not via a server). |

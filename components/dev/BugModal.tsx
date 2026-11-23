@@ -27,6 +27,7 @@ import {
   type DevBug,
 } from '@/lib/dev/bugs'
 import {
+  findUatCaseId,
   assignBug,
   deleteBug,
   getBugEvents,
@@ -321,6 +322,7 @@ function ManagerStatus({
 
       <hr style={{ border: 0, borderTop: '1px solid var(--border-1)', margin: 0 }} />
 
+      <CaseLink bug={bug} onChanged={onChanged} />
       <Field label="ผู้รับผิดชอบ" asDiv>
         <SelectMenu
           value={bug.assigneeId ?? ''}
@@ -342,6 +344,38 @@ function ManagerStatus({
         onClose={() => setConfirmDelete(false)}
       />
     </div>
+  )
+}
+
+/** ผูก/เลิกผูกบั๊กกับเคส UAT ของโปรเจกต์เดียวกัน (พิมพ์เลขเคส) */
+function CaseLink({ bug, onChanged }: { bug: DevBug; onChanged: () => void }) {
+  const { showToast } = useToast()
+  const [no, setNo] = useState(bug.uatCaseNo ? String(bug.uatCaseNo) : '')
+  const [busy, setBusy] = useState(false)
+  const parsed = no.trim() ? Number(no.trim().replace(/^uat-?/i, '')) : null
+  const same = (parsed ?? null) === (bug.uatCaseNo ?? null)
+  const save = async () => {
+    setBusy(true)
+    try {
+      const id = parsed ? await findUatCaseId(bug.projectId, parsed) : null
+      await updateBug(bug, { uatCaseId: id })
+      showToast(id ? `ผูกกับ ${uatCode(parsed!)} แล้ว` : 'เลิกผูกเคสแล้ว')
+      onChanged()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Field label="เคส UAT ที่เกี่ยว (เลขเคส · เว้นว่าง = ไม่ผูก)" asDiv>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Input value={no} onChange={(e) => setNo(e.target.value)} placeholder="เช่น 89" inputMode="numeric" style={{ flex: 1 }} />
+        <Button variant="secondary" disabled={busy || same || (parsed !== null && (!Number.isInteger(parsed) || parsed < 1))} loading={busy} onClick={save}>
+          บันทึก
+        </Button>
+      </div>
+    </Field>
   )
 }
 

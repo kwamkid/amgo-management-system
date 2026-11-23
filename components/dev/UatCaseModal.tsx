@@ -10,9 +10,9 @@ import { Button, ConfirmDialog, Field, ImageDropzone, Input, Modal, Pill, Select
 import { Segmented } from '@/components/shared'
 import ShotGallery, { ShotLightbox } from '@/components/dev/ShotGallery'
 import { BugForm } from '@/components/dev/BugModal'
-import { bugCode } from '@/lib/dev/bugs'
+import { BUG_STATUS_LABELS, BUG_STATUS_TONE, bugCode, type DevBug } from '@/lib/dev/bugs'
 import { notifyBug } from '@/lib/dev/notify'
-import { createBug, type BugInput } from '@/lib/services/devBugService'
+import { createBug, getBugsOfCase, type BugInput } from '@/lib/services/devBugService'
 import {
   DEVICE_LABELS,
   ENV_LABELS,
@@ -156,6 +156,7 @@ export default function UatCaseModal({
             <StepList steps={c.steps} />
           </div>
           {c.source && <p style={{ margin: 0, fontSize: 'var(--fs-caption)', color: 'var(--fg-3)' }}>ที่มา: {c.source}</p>}
+          <CaseBugs caseId={c.id} slug={project.slug} key={`${c.id}-${c.updatedAt}`} />
         </div>
       )}
 
@@ -335,6 +336,29 @@ function notifyManagers(c: UatCase, result: UatResultValue, note: string) {
     body: JSON.stringify({ caseId: c.id, result, note: note.slice(0, 200) }),
     keepalive: true,
   }).catch(() => {})
+}
+
+/** บั๊กที่แจ้งจากเคสนี้ (หรือผู้จัดการผูกไว้) — แตะเพื่อเปิดในบอร์ดบั๊ก */
+function CaseBugs({ caseId, slug }: { caseId: string; slug: string }) {
+  const [bugs, setBugs] = useState<DevBug[]>([])
+  useEffect(() => {
+    getBugsOfCase(caseId).then(setBugs).catch(() => setBugs([]))
+  }, [caseId])
+  if (bugs.length === 0) return null
+  return (
+    <div>
+      <h4 style={{ margin: '0 0 8px', fontSize: 'var(--fs-caption)', fontWeight: 700 }}>บั๊กจากเคสนี้</h4>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {bugs.map((b) => (
+          <a key={b.id} href={`/dev/bugs/${slug}?bug=${b.id}`} style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+            <span style={{ fontSize: 'var(--fs-caption)', fontWeight: 600, color: 'var(--fg-3)' }}>{bugCode(b.no)}</span>
+            <Pill tone={BUG_STATUS_TONE[b.status]}>{BUG_STATUS_LABELS[b.status]}</Pill>
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** ผลเทสที่ไม่ผ่าน → ร่างบั๊ก: ขั้นตอนถึงข้อที่พัง · สิ่งที่ควรเห็นของข้อนั้น · หมายเหตุของคนเทส · รูปผลเทสเดิม */

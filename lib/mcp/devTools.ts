@@ -27,6 +27,7 @@ import {
   setBugStatusAs,
   toBotBug,
   uatCaseId,
+  caseBugs,
   listReleases,
   parseReleaseInput,
   releaseRef,
@@ -177,14 +178,14 @@ export const DEV_TOOLS: DevTool[] = [
   },
   {
     name: 'uat_case',
-    description: 'One UAT case in full (steps, where to test, fix note) with its result history: tester, round, failed step, note and signed picture URLs (valid 1 hour — fetch them to look at screenshots).',
+    description: 'One UAT case in full (steps, where to test, fix note) with its result history: tester, round, failed step, note and signed picture URLs (valid 1 hour — fetch them to look at screenshots), plus the bugs reported from it.',
     inputSchema: { type: 'object', required: ['no'], properties: { no: { type: ['integer', 'string'], description: 'case number, 89 or "UAT-0089"' } } },
     readOnly: true,
     async run(caller, args) {
       const r = await unwrap(devCaseByNo(caller, caseNo(args)))
       const { data } = await untyped(caller.sb).from('dev_uat_results').select(RESULT_COLS).eq('case_id', r.c.id).order('created_at', { ascending: false })
       const results = await Promise.all(((data ?? []) as ResultRow[]).map(async (x) => ({ ...x, shots: await signShots(caller, Array.isArray(x.shots) ? x.shots : []) })))
-      return { case: { ...toBotCase(r.c, r.project), steps: await signStepImages(caller, r.c.steps) }, results }
+      return { case: { ...toBotCase(r.c, r.project), steps: await signStepImages(caller, r.c.steps) }, results, bugs: await caseBugs(caller, r.c.id) }
     },
   },
   {

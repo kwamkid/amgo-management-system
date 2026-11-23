@@ -3,7 +3,7 @@
 //   · { action: 'update', ...fields } แก้ข้อมูลเคส (title, steps, module, …)
 import type { NextRequest } from 'next/server'
 import { apiError, apiJson, authBotApi, readJson, untyped } from '@/lib/services/bot/botApi'
-import { attachStepImages, checkStepImages, devCaseByNo, parseCaseInput, RESULT_COLS, signShots, signStepImages, toBotCase, type ResultRow } from '@/lib/services/bot/botDev'
+import { attachStepImages, caseBugs, checkStepImages, devCaseByNo, parseCaseInput, RESULT_COLS, signShots, signStepImages, toBotCase, type ResultRow } from '@/lib/services/bot/botDev'
 import type { UatStep } from '@/lib/dev/uat'
 import { uatCode } from '@/lib/dev/uat'
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const results = await Promise.all(
     ((data ?? []) as ResultRow[]).map(async (x) => ({ ...x, shots: await signShots(a.caller, Array.isArray(x.shots) ? x.shots : []) }))
   )
-  return apiJson({ case: { ...toBotCase(r.c, r.project), steps: await signStepImages(a.caller, r.c.steps) }, results })
+  return apiJson({ case: { ...toBotCase(r.c, r.project), steps: await signStepImages(a.caller, r.c.steps) }, results, bugs: await caseBugs(a.caller, r.c.id) })
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {

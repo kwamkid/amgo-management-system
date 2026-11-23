@@ -199,6 +199,14 @@ export async function updateBug(bug: Pick<DevBug, 'id' | 'projectId' | 'shots'>,
   if (dropped.length) await db().storage.from(SHOT_BUCKET).remove(dropped).catch(() => {})
 }
 
+/** เลขเคส UAT → id (ต้องอยู่ในโปรเจกต์เดียวกับบั๊ก) */
+export async function findUatCaseId(projectId: string, no: number): Promise<string> {
+  const { data, error } = await db().from('dev_uat_cases').select('id').match({ project_id: projectId, no }).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`ไม่พบ UAT-${String(no).padStart(4, '0')} ในโปรเจกต์นี้`)
+  return (data as { id: string }).id
+}
+
 export async function assignBug(id: string, assigneeId: string | null): Promise<void> {
   const { error } = await db().from('dev_bugs').update({ assignee_id: assigneeId }).eq('id', id)
   if (error) throw new Error(`มอบหมายไม่สำเร็จ: ${error.message}`)

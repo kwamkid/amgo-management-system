@@ -12,7 +12,7 @@
 - [x] 2026-11-23 bugs built (migration 20261123120000_dev_bugs — owner runs SQL; tested on a local Postgres with stub auth/storage): board /dev/bugs/<slug>, BugModal, แจ้งเป็นบั๊ก from failed/blocked UAT results, push, bot REST + MCP bug_* + CLI bugs/bug/bug-add/bug-status, menu Bug report. Prod test pending the SQL — Build bug reports (owner 2026-11-23 re-confirmed: needed for releases): table `dev_bugs` per requirements in project/jobs/doing/dev-tracker.md ("Data model"), per-project numbers BUG-0001, board ใหม่ · รับเรื่อง · กำลังแก้ · รอเทส · ปิดแล้ว, "แจ้งเป็นบั๊ก" from a failed result, menu item "Bug report" under Dev Management, bot API + `dev.mjs` commands.
 - [x] 2026-11-23 fixed (tabs useMemo dropped; the error was on the tabs memo, line ~85) — Fix the pre-existing ESLint error in components/dev/UatCaseModal.tsx ResultForm (`react-hooks/preserve-manual-memoization` around `const done = () => { setSaved(true) …`, ~line 84) — seen 2026-11-23, not from 3a7d841
 - [x] 2026-11-23 releases built (migration 20261123130000_dev_releases — owner runs SQL after the bugs one; tested on local Postgres): /dev/releases/<slug> cards + progress + drag board, bot REST /dev/releases, MCP release_*, CLI releases, menu Releases — Build releases (`dev_releases`, progress per release, attach cases/bugs) — after bugs.
-- [ ] Cross-link bugs ↔ UAT cases (owner: "ทำเป็น link ให้แจ้งกัน เอาไว้ทำทีหลัง").
+- [x] 2026-11-23 cross-links: case tab lists its bugs, bug shows/links its case, manager links by case number, same-project trigger (in the bugs migration), bot/MCP case returns bugs — Cross-link bugs ↔ UAT cases (owner: "ทำเป็น link ให้แจ้งกัน เอาไว้ทำทีหลัง").
 - [x] 2026-11-23 types regenerated 9ad7a72; devService now uses the typed client (payloads TablesUpdate/TablesInsert); join-shape casts on selects left as they are — Add `dev_*` tables to types/database.ts (MCP generate_typescript_types) and drop the `as unknown as` casts in lib/services/devService.ts, botDev.ts, app/api/bot/dev/*.
 - [x] 2026-11-23 moved to /Users/ampstark/Projects/_archive/aoo-uat (tables were dropped 3 Nov) — Archive aoo-uat.
 - [x] 2026-11-04 UAT board header on mobile: search moved to its own full-width row so the project name isn't cut to "A…" — 3db85ef (UAT-0140)
@@ -22,19 +22,20 @@
 - [x] migration 20261123100000_dev_default_members (table + trigger, ไกด์ seeded) — owner runs SQL — auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
 
 ## Resume note
-Resume at: build bug reports (spec under Read first) in a fresh chat — then releases, then cross-links.
+Resume at: owner runs the 2 SQL files (bugs, then releases) → regenerate types (`dev_bugs`, `dev_bug_events`, `dev_releases`, `release_id`) and drop the untyped clients in devBugService/devReleaseService → push when told → test on prod (report a bug from a failed UAT result on mobile, move it through the board, tester verdict, a release with drag) → /memo writes UAT cases.
 
 ### State
-- 2026-11-23 pushed 3a7d841 (shared Lightbox, typed devService) + 6ba5248 (dev_default_members, SQL run on prod, ไกด์ seeded).
-- UAT live on prod (09d689f), 88 cases moved (next UAT-0089), CLI `scripts/dev.mjs` tested on prod. MCP `amgo-dev` live and registered at user scope. tsc clean. Projects: aoocommerce, aoosite, amgo-management-system (owner manager, ไกด์ manager since 4 Nov).
-- Owner 3 Nov: testers = แอม + ไกด์ · notify owner (push to project managers) · bug numbers per project · UAT first · desktop board shows 4.5 columns.
+- 2026-11-23 bugs 0f24818 · releases 076f0e3 · cross-links (this commit). Not pushed. SQL not run yet — pages for bugs/releases error until it is.
+- All 3 migrations (default_members, bugs, releases) applied in order on a local Postgres 14 with stub auth/storage (scratchpad): numbering, guards, RPC rules, history, storage policies, same-project triggers behave.
+- UAT live on prod (09d689f), MCP `amgo-dev` live (user scope) — new bug_*/release_* tools appear after deploy.
 
 ### Gotchas
-- dev_* tables are in types/database.ts since 9ad7a72 (supabase CLI gen types works with the owner's login).
-- Result trigger sets case status; guard blocks testers elsewhere — bypass flag `dev.apply_result` (rules file).
-- `/api/dev/notify` reads the latest result itself; browser sends only caseId.
-- `npm run dev` was denied in this chat — test on prod after push.
+- dev_bugs/dev_releases are NOT in types/database.ts yet (types/database.ts has another session's uncommitted edits — regenerate only after the SQL, and commit by hunk).
+- Sidebar.tsx · docs/bot-api.md · scripts/dev.mjs carry other sessions' uncommitted lines; commits here staged only our hunks (git update-index from a rebuilt file).
+- React-compiler lint (`set-state-in-effect`, `preserve-manual-memoization` on `load` useCallback) fires on the house load-in-effect pattern in every dev page, old ones too — not new.
+- Result trigger sets case status; guard blocks testers elsewhere — bypass flag `dev.apply_result` (rules file). Bugs: status only via `dev_bug_set_status`.
+- `/api/dev/notify` reads the latest result/event itself; browser sends only caseId/bugId.
+- `npm run dev` was denied in an earlier chat — test on prod after push.
 
 ### Read first
-- Rules .claude/rules/domains/dev-tracker.md · API docs/bot-api.md §8 · UI components/dev/*, app/(admin)/dev/uat/*
-- Spec for the rest (owner-approved): bugs = `dev_bugs` (no BUG-0001 per project, title, steps, expected, actual, environment, device, page_url, severity critical/high/normal/low, status, reported_by, assignee_id, release_id, uat_case_id, fix_note, sort_order; pictures like UAT; history table) · board ใหม่ · รับเรื่อง · กำลังแก้ · รอเทส · ปิดแล้ว (+ "ไม่แก้" reason) · failed UAT result → "แจ้งเป็นบั๊ก" prefill · releases = `dev_releases` (project_id, name, start_date, target_date, released_at, goal, status planned/active/released) with progress view, drag cases/bugs into a release · menu Dev Management › Bug report · bot API + dev.mjs commands for bugs.
+- Rules .claude/rules/domains/dev-tracker.md · API docs/bot-api.md §8–§11 · UI components/dev/*, app/(admin)/dev/*

@@ -114,6 +114,21 @@ $$;
 create trigger dev_bugs_log after insert or update of assignee_id on public.dev_bugs
   for each row execute function public.dev_bug_log();
 
+-- a bug may point only at a UAT case of its own project
+create or replace function public.dev_bug_case_same_project()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.uat_case_id is not null
+     and not exists (select 1 from public.dev_uat_cases c where c.id = new.uat_case_id and c.project_id = new.project_id) then
+    raise exception 'เคส UAT นี้เป็นของโปรเจกต์อื่น';
+  end if;
+  return new;
+end;
+$$;
+create trigger dev_bugs_case before insert or update of uat_case_id on public.dev_bugs
+  for each row execute function public.dev_bug_case_same_project();
+
 -- ── guard: who may change what ───────────────────────────────────────────────
 -- service role (bot API) is checked in code · status/close fields only through dev_bug_set_status ·
 -- managers edit everything else · testers: sort_order, or the content of their own bug while it is new
@@ -225,6 +240,6 @@ create policy "dev-shots bug insert" on storage.objects for insert to authentica
 -- drop policy if exists "dev-shots bug read" on storage.objects; drop policy if exists "dev-shots bug insert" on storage.objects;
 -- drop function if exists public.dev_bug_set_status(uuid, text, text, double precision, uuid);
 -- drop table if exists public.dev_bug_events; drop table if exists public.dev_bugs;
--- drop function if exists public.dev_bug_guard(), public.dev_bug_log(), public.dev_bug_number(), public.dev_bug_project(uuid), public.dev_person_name(uuid);
+-- drop function if exists public.dev_bug_guard(), public.dev_bug_case_same_project(), public.dev_bug_log(), public.dev_bug_number(), public.dev_bug_project(uuid), public.dev_person_name(uuid);
 -- alter table public.dev_projects drop column if exists bug_seq;
 -- (the recreated "dev-shots read/insert" policies behave the same as before for UAT paths; keep them and dev_shot_folder)

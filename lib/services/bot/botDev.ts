@@ -528,3 +528,9 @@ export async function setReleaseItems(caller: BotCaller, project: DevProjectRow,
   }
   return moved
 }
+
+/** bugs reported from / linked to a UAT case */
+export async function caseBugs(caller: BotCaller, caseId: string) {
+  const { data } = await untyped(caller.sb).from('dev_bugs').select('no, title, status, severity').eq('uat_case_id', caseId).order('no')
+  return ((data ?? []) as { no: number; title: string; status: string; severity: string }[]).map((b) => ({ code: bugCode(b.no), ...b }))
+}

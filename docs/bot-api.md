@@ -461,6 +461,7 @@ Status moves go through the DB function `dev_bug_set_status` (history row per mo
 - `GET /dev/bugs/{no}?project=<slug>` → `{ bug (shots = signed URLs, 1 hour), history: [{ kind created|status|assign, actor_name, from_status, to_status, note, created_at }] }`
 - `PATCH /dev/bugs/{no}?project=<slug>` `{ action: "status", status, note? }` · `{ action: "update", …fields }` (shots replaces the list)
 - MCP: `bug_list(project, status?, limit?)` · `bug_get(project, no)` · `bug_add(project, bugs[])` · `bug_update(project, no, …fields)` · `bug_status(project, no, status, note?)`
+- Bug ↔ UAT case: `uat_case` on add/update links a bug to a case of the same project (DB refuses another project's case); `GET /dev/cases/{no}` and MCP `uat_case` return `bugs: [{ code, title, status, severity }]`. Web: the case tab lists its bugs, a bug shows "จากเคส UAT-…", managers can link/unlink by case number in the bug's สถานะ tab.
 - CLI: `bugs [project] [status]` · `bug <no> [project]` · `bug-add <project> <bugs.json>` (shots[] may be local files) · `bug-status <no> <status> ["<note>"] [project]`
 
 ## 11. Dev tracker: releases (dev key · 23 Nov 2569)

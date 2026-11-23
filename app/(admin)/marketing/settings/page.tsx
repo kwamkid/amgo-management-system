@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { RefreshCw, Save, Settings } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Button, Field, Input, MultiSelectMenu, type SelectOption } from '@/components/aoo'
+import { Button, Field, MultiSelectMenu, type SelectOption } from '@/components/aoo'
 import { BrandLogo, PageHeader, SectionCard, TechLoader } from '@/components/shared'
 import { useAooSync } from '@/components/marketing/useAooSync'
 import { BRANDS, brandLabel } from '@/lib/constants/brands'
@@ -18,17 +18,19 @@ import { periodBackTh } from '@/components/marketing/format'
 type Draft = Omit<BrandLink, 'updatedAt'>
 
 const PLATFORM: Record<string, string> = { shopee: 'Shopee', lazada: 'Lazada', tiktok: 'TikTok Shop' }
+const SOCIAL: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube' }
 const BACKFILL_DAYS = 90
 
 const blank = (brand: string): Draft => ({ brand, aoosocialCompanyId: null, aoosocialAccountIds: [], aooBrandNames: [], aooShops: [] })
-const splitIds = (s: string) => s.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean)
 
 export default function MarketingSettingsPage() {
   const router = useRouter()
   const { userData } = useAuth()
   const { showToast } = useToast()
   const toastRef = useRef(showToast)
-  toastRef.current = showToast
+  useEffect(() => {
+    toastRef.current = showToast
+  })
   const [drafts, setDrafts] = useState<Draft[] | null>(null)
   const [aoo, setAoo] = useState<AooOptions | null>(null)
   const [aooError, setAooError] = useState<string | null>(null)
@@ -58,6 +60,11 @@ export default function MarketingSettingsPage() {
 
   const aooBrandOptions: SelectOption[] = (aoo?.brands ?? []).map((b) => ({ value: b, label: b }))
   const shopOptions: SelectOption[] = (aoo?.shops ?? []).map((s) => ({ value: s.name, label: s.name, hint: PLATFORM[s.platform] ?? s.platform }))
+  const socialOptions: SelectOption[] = (aoo?.socialAccounts ?? []).map((a) => ({
+    value: a.id,
+    label: a.name,
+    hint: `${SOCIAL[a.platform] ?? a.platform} · ${a.company}${a.needsReconnect ? ' · ต้องเชื่อมต่อใหม่' : ''}`,
+  }))
   const aooHas = (label: string) => aoo?.brands.some((b) => b.toLowerCase() === label.toLowerCase()) ?? false
 
   const patch = (brand: string, p: Partial<Draft>) => setDrafts((ds) => ds?.map((d) => (d.brand === brand ? { ...d, ...p } : d)) ?? ds)
@@ -80,10 +87,16 @@ export default function MarketingSettingsPage() {
     <div className="space-y-4">
       <PageHeader
         title="ตั้งค่าแผนการตลาด"
-        description="ผูกแบรนด์กับระบบ aoo (ยอดขาย) และ aoosocial (ปฏิทินโพสต์ · ผู้ติดตาม) — ระบบดึงยอดขายเข้า KPI ทุกวันตอน 05:00"
+        description="ผูกแบรนด์กับระบบ aoo (ยอดขาย) และ aoosocial (ปฏิทินโพสต์ · จำนวนโพสต์) — ระบบดึงตัวเลขเข้า KPI ทุกวันตอน 05:00"
         icon={Settings}
         backHref="/marketing"
       />
+
+      {aoo?.socialError && (
+        <SectionCard>
+          <p className="text-sm text-[var(--danger)]">โหลดบัญชีจาก aoosocial ไม่ได้: {aoo.socialError}</p>
+        </SectionCard>
+      )}
 
       {aooError && (
         <SectionCard>
@@ -129,13 +142,20 @@ export default function MarketingSettingsPage() {
                   disabled={!aoo}
                 />
               </Field>
-              <Field label="aoosocial — company id" help="ขั้นที่ 3 (ปฏิทินโพสต์) ยังไม่เปิดใช้">
-                <Input value={d.aoosocialCompanyId ?? ''} onChange={(e) => patch(d.brand, { aoosocialCompanyId: e.target.value.trim() || null })} />
-              </Field>
-              <Field label="aoosocial — social account ids" help="คั่นด้วยจุลภาค">
-                <Input
-                  defaultValue={d.aoosocialAccountIds.join(', ')}
-                  onBlur={(e) => patch(d.brand, { aoosocialAccountIds: splitIds(e.target.value) })}
+              <Field asDiv label="บัญชีโซเชียลใน aoosocial" help="ใช้ทำปฏิทินโพสต์และนับจำนวนโพสต์" className="md:col-span-2">
+                <MultiSelectMenu
+                  values={d.aoosocialAccountIds}
+                  onChange={(v) =>
+                    patch(d.brand, {
+                      aoosocialAccountIds: v,
+                      aoosocialCompanyId: aoo?.socialAccounts.find((a) => a.id === v[0])?.companyId ?? null,
+                    })
+                  }
+                  options={socialOptions}
+                  placeholder="ยังไม่ได้ผูก"
+                  summary={(n) => `${n} บัญชี`}
+                  ariaLabel={`บัญชี aoosocial ของ ${label}`}
+                  disabled={!aoo}
                 />
               </Field>
             </div>
@@ -144,7 +164,7 @@ export default function MarketingSettingsPage() {
                 variant="ghost"
                 icon={RefreshCw}
                 loading={sync.busy === d.brand}
-                disabled={!!sync.busy || (!auto && !d.aooBrandNames.length)}
+                disabled={!!sync.busy || (!auto && !d.aooBrandNames.length && !d.aoosocialAccountIds.length)}
                 onClick={async () => {
                   // the sync reads the saved link — save what is on screen first
                   if (!(await save(d, true))) return
@@ -152,7 +172,7 @@ export default function MarketingSettingsPage() {
                   sync.run(d.brand, from, to)
                 }}
               >
-                ดึงยอดย้อนหลัง {BACKFILL_DAYS} วัน
+                ดึงตัวเลขย้อนหลัง {BACKFILL_DAYS} วัน
               </Button>
               <Button variant="secondary" icon={Save} loading={saving === d.brand} onClick={() => save(d)}>
                 บันทึก

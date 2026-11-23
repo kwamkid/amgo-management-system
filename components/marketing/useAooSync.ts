@@ -17,9 +17,13 @@ const GIVE_UP_MS = 5 * 60_000
 export function useAooSync(onDone?: () => void) {
   const { showToast } = useToast()
   const toastRef = useRef(showToast)
-  toastRef.current = showToast
+  useEffect(() => {
+    toastRef.current = showToast
+  })
   const doneRef = useRef(onDone)
-  doneRef.current = onDone
+  useEffect(() => {
+    doneRef.current = onDone
+  })
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -37,14 +41,14 @@ export function useAooSync(onDone?: () => void) {
         const g = await getQueueGroup(groupKey).catch(() => null)
         if (g && !g.active) {
           setBusy(null)
-          if (g.failed) toastRef.current('ดึงยอดจาก aoo ไม่สำเร็จ — ลองใหม่อีกครั้ง', 'error')
-          else toastRef.current('ดึงยอดจาก aoo แล้ว', 'success')
+          if (g.failed) toastRef.current('ดึงตัวเลขไม่สำเร็จ — ลองใหม่อีกครั้ง', 'error')
+          else toastRef.current('ดึงตัวเลขล่าสุดแล้ว', 'success')
           doneRef.current?.()
           return
         }
         if (Date.now() - started > GIVE_UP_MS) {
           setBusy(null)
-          toastRef.current('ยังดึงยอดไม่เสร็จ — งานยังทำต่อในคิว เปิดหน้านี้ใหม่ภายหลัง', 'error')
+          toastRef.current('ยังดึงตัวเลขไม่เสร็จ — งานยังทำต่อในคิว เปิดหน้านี้ใหม่ภายหลัง', 'error')
           return
         }
         timer.current = setTimeout(check, WAITS_MS[++n] ?? EVERY_MS)

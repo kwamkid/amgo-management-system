@@ -337,6 +337,8 @@ export async function saveBrandLink(l: Omit<BrandLink, 'updatedAt'>): Promise<vo
 export interface AooOptions {
   brands: string[]
   shops: { name: string; platform: string }[]
+  socialAccounts: { id: string; platform: string; name: string; companyId: string; company: string; needsReconnect: boolean }[]
+  socialError: string | null
 }
 
 async function apiJson<T>(res: Response): Promise<T> {

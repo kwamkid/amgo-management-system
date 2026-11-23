@@ -122,6 +122,17 @@ const KINDS = {
     accepted: { label: 'สร้าง Task แล้ว', tone: 'success' },
     rejected: { label: 'ปัดตก', tone: 'neutral' },
   },
+  // โพสต์จาก aoosocial (posts.status) — ปฏิทินโพสต์ในแผนการตลาด
+  socialPost: {
+    draft: { label: 'ร่าง', tone: 'neutral' },
+    scheduled: { label: 'ตั้งเวลาแล้ว', tone: 'warning' },
+    uploading: { label: 'กำลังอัปโหลด', tone: 'sky' },
+    publishing: { label: 'กำลังโพสต์', tone: 'sky' },
+    published: { label: 'ลงแล้ว', tone: 'success' },
+    partial_success: { label: 'ลงไม่ครบ', tone: 'warning' },
+    failed: { label: 'ไม่สำเร็จ', tone: 'danger' },
+    cancelled: { label: 'ยกเลิกแล้ว', tone: 'neutral' },
+  },
 } satisfies Record<string, Record<string, StatusDef>>
 
 export type StatusKind = keyof typeof KINDS

@@ -73,7 +73,7 @@ export default function BrandMarketingPage() {
   const [detailTick, setDetailTick] = useState(0)
   const loadPlans = () => setPlansTick((t) => t + 1)
   const loadDetail = () => setDetailTick((t) => t + 1)
-  // admin: re-pull this plan's aoo sales now (normally the 05:00 cron)
+  // admin: re-pull this plan's aoo sales + aoosocial post count now (normally the 05:00 cron)
   const aooSync = useAooSync(loadDetail)
 
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function BrandMarketingPage() {
                 loading={!!aooSync.busy}
                 onClick={() => aooSync.run(plan.brand, plan.startDate, plan.endDate < todayTh() ? plan.endDate : todayTh())}
               >
-                ดึงยอดขาย
+                ดึงตัวเลข
               </Button>
             )}
             <Button variant="secondary" icon={Plus} onClick={() => setCreating(true)}>
@@ -290,7 +290,7 @@ export default function BrandMarketingPage() {
           {tab === 'actions' && (
             <ActionPlanTab plan={plan} tasks={tasks} people={people} me={userData?.id ?? ''} onChanged={loadDetail} />
           )}
-          {tab === 'calendar' && <CalendarTab plan={plan} />}
+          {tab === 'calendar' && <CalendarTab key={plan.id} plan={plan} />}
           {tab === 'kpi' && <KpiTab plan={plan} targets={targets} metrics={metrics} onChanged={loadDetail} />}
         </>
       )}

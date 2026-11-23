@@ -14,6 +14,7 @@ import { fetchLlmMentions } from '@/lib/services/seo/llmMentions'
 import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 import { VOICE_HANDLERS } from '@/lib/voice/pipeline'
 import { AOO_SALES_KIND, runAooSalesJob } from '@/lib/marketing/aooSales'
+import { SOCIAL_POSTS_KIND, syncBrandPosts } from '@/lib/marketing/socialPosts'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
 
@@ -110,6 +111,12 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   [AOO_SALES_KIND]: async (sb, job) => ({
     result: await runAooSalesJob(sb as never, job.payload as { brand: string; from: string; to: string }),
   }),
+
+  /** แผนการตลาด: นับโพสต์ที่ลงแล้วของแบรนด์จาก aoosocial → metric posts */
+  [SOCIAL_POSTS_KIND]: async (sb, job) => {
+    const x = job.payload as { brand: string; from: string; to: string }
+    return { result: await syncBrandPosts(sb as never, x.brand, x.from, x.to) }
+  },
 
   'queue.prune': async (sb) => {
     const { error } = await sb.rpc('queue_prune')

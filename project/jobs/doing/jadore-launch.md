@@ -12,7 +12,7 @@ Done this session (files in `01-AGD/02-hape/media/jadore/_brand/social/`): logo 
 
 - [ ] รอคุณแอม: B2S — forms were filled + emailed; still missing SCB branch name, supplier self-assessment form, signatures + company stamp + ฿30 duty stamp (WHT letter). Record the send in `20-accounts/b2s/b2s.md` (it still says "nothing filled").
 - [ ] รอคุณแอม: delete the 4.5 GB Brandfolder zip once media in `02-hape/media/jadore` is confirmed.
-- [ ] รอ Hape (owner asking 2026-11-23): 854522 Glow Squish photos (none at all) · 854970 3PK photos · in-hand squeeze shots for Fun Cube/Magic Orb/Spiky/Gum/Dino-Unicorn · real lifestyle shots · "Jadore LOGO.pdf" — Glitter Cloud photos already received (see jadore.md "Media audit 2026-11-23"). Add to `02-hape/_notes/5-partners/hape-hq/they-owe.md`.
+- [ ] รอ Hape (owner asking 2026-11-23): 854522 Glow Squish photos (none at all) · 854970 3PK photos · in-hand squeeze shots for Fun Cube/Magic Orb/Spiky/Gum/Dino-Unicorn · real lifestyle shots (logo not needed — owner 2026-11-23) — Glitter Cloud photos already received (see jadore.md "Media audit 2026-11-23"). Add to `02-hape/_notes/5-partners/hape-hq/they-owe.md`.
 - [ ] Thai subtitles for the clean `_EN` clips (list in jadore.md "Clip language check"); Chinese clips need cutting/cropping first (852441_3: drop first ~5 s).
 - [ ] รอ Hape: C1 PI + loading date (tracked in `02-hape/_notes/next.md` item 1) — launch dates in the amgo plan depend on it.
 

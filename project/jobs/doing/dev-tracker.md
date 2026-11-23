@@ -9,19 +9,19 @@
 - [x] pushed c0dd5cf + e09334b; MCP tested on prod via JSON-RPC (initialize, tools/list, uat_list, uat_add, uat_retest, uat_update, uat_close, uat_case) — throwaway case deleted. `amgo-dev` registered at user scope.
 - [x] confirmed: aoocommerce sessions call uat_upload_image/uat_add (user scope loads everywhere) — Use the `amgo-dev` MCP tools once from a fresh Claude session in another repo (e.g. aoocommerce: `uat_list`) to confirm the user-scope registration loads there.
 - [x] MCP server built in e09334b (+ 6674334 uat_update fix), pushed, tested on prod (`app/api/mcp/dev/route.ts`, `lib/mcp/devTools.ts`, docs §9, `~/.claude/skills/uat/SKILL.md` switched to the tools). Original spec: `POST /api/mcp/dev` in amgo, Streamable HTTP stateless JSON-RPC (copy aoocommerce `app/api/mcp/route.ts` + `lib/mcp/tools.ts` pattern: initialize / tools/list / tools/call, log every call). Auth = Bearer bot key scope `dev` or superadmin (reuse `authBotApi`), same permissions as /api/bot/dev. Tools reusing `lib/services/bot/botDev.ts`: `uat_projects` · `uat_summary(project)` · `uat_list(project, status?)` · `uat_case(no)` (history + signed picture URLs) · `uat_add(project, cases[])` · `uat_update(no, fields)` · `uat_retest(no, fix_note)` · `uat_close(no)`; `project` = repo folder slug. Then: `claude mcp add --scope user --transport http amgo-dev https://app.amgovenger.com/api/mcp/dev --header "Authorization: Bearer <AMGO_DEV_KEY from memo/bot-keys.env>"` · update `~/.claude/skills/uat/SKILL.md` to prefer the `amgo-dev` MCP tools (dev.mjs stays as fallback for downloading pictures; keep "Writing cases") · test from a fresh session in another repo (list, add + close, retest) · document in docs/bot-api.md.
-- [x] DROPPED 2026-11-23 (owner: no bug page, bugs come via chat) — Build bug reports: table `dev_bugs` per requirements in project/jobs/doing/dev-tracker.md ("Data model"), per-project numbers BUG-0001, board ใหม่ · รับเรื่อง · กำลังแก้ · รอเทส · ปิดแล้ว, "แจ้งเป็นบั๊ก" from a failed result, menu item "Bug report" under Dev Management, bot API + `dev.mjs` commands.
-- [ ] รอคุณแอม: still want releases now that bugs are dropped? (was "after bugs") — Build releases (`dev_releases`, progress per release, attach cases/bugs) — after bugs.
-- [x] DROPPED with bugs 2026-11-23 — Cross-link bugs ↔ UAT cases (owner: "ทำเป็น link ให้แจ้งกัน เอาไว้ทำทีหลัง").
+- [ ] Build bug reports (owner 2026-11-23 re-confirmed: needed for releases): table `dev_bugs` per requirements in project/jobs/doing/dev-tracker.md ("Data model"), per-project numbers BUG-0001, board ใหม่ · รับเรื่อง · กำลังแก้ · รอเทส · ปิดแล้ว, "แจ้งเป็นบั๊ก" from a failed result, menu item "Bug report" under Dev Management, bot API + `dev.mjs` commands.
+- [ ] Build releases (`dev_releases`, progress per release, attach cases/bugs) — after bugs.
+- [ ] Cross-link bugs ↔ UAT cases (owner: "ทำเป็น link ให้แจ้งกัน เอาไว้ทำทีหลัง").
 - [x] 2026-11-23 types regenerated 9ad7a72; devService now uses the typed client (payloads TablesUpdate/TablesInsert); join-shape casts on selects left as they are — Add `dev_*` tables to types/database.ts (MCP generate_typescript_types) and drop the `as unknown as` casts in lib/services/devService.ts, botDev.ts, app/api/bot/dev/*.
-- [ ] Archive /Users/ampstark/aoo-uat (never deployed) once the old tables are dropped.
+- [x] 2026-11-23 moved to /Users/ampstark/Projects/_archive/aoo-uat (tables were dropped 3 Nov) — Archive aoo-uat.
 - [x] 2026-11-04 UAT board header on mobile: search moved to its own full-width row so the project name isn't cut to "A…" — 3db85ef (UAT-0140)
 - [x] 2026-11-04 ไกด์ set to `manager` in all 3 dev projects (DB data, not a migration) — can add/edit cases, cannot create projects (UAT-0141)
 - [x] 2026-11-11 Step reference pictures (asked by aoocommerce-cc): `steps[].image`, MCP `uat_upload_image`, bot API `POST /api/bot/dev/images`, CLI `upload`, board thumbnail + enlarge, uat_case returns `image_url` — f8594ca pushed, tested on prod end to end (throwaway UAT-0245 deleted). The new `StepList` also uses the private `Lightbox`, so the shared-Lightbox swap above covers both spots.
-- [ ] รอคุณแอม: want a comment thread on UAT cases? Today only the result "หมายเหตุ" exists (offered 4 Nov, no answer).
-- [ ] รอคุณแอม: auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
+- [x] owner 2026-11-23: not needed — want a comment thread on UAT cases? Today only the result "หมายเหตุ" exists (offered 4 Nov, no answer).
+- [x] migration 20261123100000_dev_default_members (table + trigger, ไกด์ seeded) — owner runs SQL — auto-add ไกด์ as manager to newly created projects? Today members must be added by hand per project (creator trigger adds only the creator).
 
 ## Resume note
-Resume at: owner answers — releases yes/no, UAT comment thread yes/no, auto-add ไกด์ to new projects yes/no; then archive aoo-uat once its old tables are dropped.
+Resume at: build bug reports (spec under Read first) in a fresh chat — then releases, then cross-links.
 
 ### State
 - UAT live on prod (09d689f), 88 cases moved (next UAT-0089), CLI `scripts/dev.mjs` tested on prod. MCP `amgo-dev` live and registered at user scope. tsc clean. Projects: aoocommerce, aoosite, amgo-management-system (owner manager, ไกด์ manager since 4 Nov).

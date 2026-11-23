@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Image as ImageIcon, Pencil, RotateCcw, Lock, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { Button, ConfirmDialog, Field, ImageDropzone, Input, Modal, Pill, SelectMenu, StepSelect, Textarea } from '@/components/aoo'
+import { Button, ConfirmDialog, Field, ImageDropzone, Input, Lightbox as AooLightbox, Modal, Pill, SelectMenu, StepSelect, Textarea } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
 import {
   DEVICE_LABELS,
@@ -356,56 +356,11 @@ function History({ results }: { results: UatResult[] | null }) {
   )
 }
 
+/** shared full-screen viewer (components/aoo Lightbox) over a list of picture URLs */
 function Lightbox({ urls, index, onClose }: { urls: string[]; index: number; onClose: () => void }) {
   const [i, setI] = useState(index)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight') setI((v) => Math.min(urls.length - 1, v + 1))
-      if (e.key === 'ArrowLeft') setI((v) => Math.max(0, v - 1))
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [urls.length, onClose])
-  const nav = (dir: -1 | 1) => (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setI((v) => Math.max(0, Math.min(urls.length - 1, v + dir)))
-  }
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={urls[i]} alt="" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90dvh', maxWidth: '95vw', objectFit: 'contain' }} />
-      {urls.length > 1 && (
-        <>
-          <p style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', color: '#fff', margin: 0 }}>
-            {i + 1} / {urls.length}
-          </p>
-          {i > 0 && (
-            <button type="button" aria-label="รูปก่อนหน้า" onClick={nav(-1)} style={lbBtn('left')}>
-              ‹
-            </button>
-          )}
-          {i < urls.length - 1 && (
-            <button type="button" aria-label="รูปถัดไป" onClick={nav(1)} style={lbBtn('right')}>
-              ›
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  )
+  return <AooLightbox open onClose={onClose} media={urls.map((url) => ({ url }))} index={i} onIndexChange={setI} />
 }
-const lbBtn = (side: 'left' | 'right'): React.CSSProperties => ({
-  position: 'absolute',
-  [side]: 8,
-  width: 48,
-  height: 48,
-  borderRadius: 999,
-  border: 0,
-  background: 'rgba(255,255,255,.2)',
-  color: '#fff',
-  fontSize: 28,
-})
 
 // ── ผู้จัดการ: ส่งเทสซ้ำ / ปิด / แก้เคส / ลบ ───────────────────────────────
 function ManagerPanel({

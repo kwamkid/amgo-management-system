@@ -3,8 +3,8 @@
 // Rules enforced in DB triggers, repeated here only for the UI: testers reorder only · a result needs 1–8 pictures ·
 // failed/blocked need a note · results are history (never edited) · a closed case takes no results.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import type { TablesInsert, TablesUpdate } from '@/types/database'
 import { resizeImage } from '@/lib/utils/resizeImage'
 import {
   SHOT_BUCKET,
@@ -19,8 +19,7 @@ import {
   type UatStep,
 } from '@/lib/dev/uat'
 
-// dev_* tables are not in types/database.ts yet (types:gen needs the owner's CLI login) — untyped until then
-const db = () => createClient() as unknown as SupabaseClient
+const db = () => createClient()
 const SIGNED_TTL = 60 * 60 * 24 // 1 วัน — ดูย้อนหลังในประวัติได้ แต่ไม่ตลอดกาล
 
 type ProjectRow = {
@@ -102,7 +101,7 @@ export async function updateDevProject(
   id: string,
   input: { name?: string; productionUrl?: string | null; stagingUrl?: string | null; isActive?: boolean }
 ): Promise<void> {
-  const patch: Record<string, unknown> = {}
+  const patch: TablesUpdate<'dev_projects'> = {}
   if (input.name !== undefined) patch.name = input.name.trim()
   if (input.productionUrl !== undefined) patch.production_url = input.productionUrl?.trim() || null
   if (input.stagingUrl !== undefined) patch.staging_url = input.stagingUrl?.trim() || null
@@ -219,8 +218,8 @@ export interface UatCaseInput {
   source?: string | null
 }
 
-function caseRow(input: Partial<UatCaseInput>): Record<string, unknown> {
-  const p: Record<string, unknown> = {}
+function caseRow(input: Partial<UatCaseInput>): TablesUpdate<'dev_uat_cases'> {
+  const p: TablesUpdate<'dev_uat_cases'> = {}
   const text = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null)
   if (input.title !== undefined) p.title = input.title.trim()
   if (input.module !== undefined) p.module = text(input.module)
@@ -249,7 +248,7 @@ export async function createUatCase(projectId: string, input: UatCaseInput): Pro
   if (!input.steps.some((s) => s.action.trim())) throw new Error('ใส่ขั้นตอนอย่างน้อย 1 ข้อ')
   const { data, error } = await db()
     .from('dev_uat_cases')
-    .insert({ project_id: projectId, sort_order: Date.now() / 1000, ...caseRow(input) })
+    .insert({ project_id: projectId, sort_order: Date.now() / 1000, ...caseRow(input) } as TablesInsert<'dev_uat_cases'>) // title checked above
     .select('no')
     .single()
   if (error) throw new Error(`เพิ่มเคสไม่สำเร็จ: ${error.message}`)
@@ -274,14 +273,14 @@ export async function moveUatCase(id: string, sortOrder: number): Promise<void> 
 
 /** ส่งกลับไปเทสซ้ำ (ผู้จัดการ): รอบ + 1 พร้อมบอกว่าแก้อะไร */
 export async function retestUatCase(c: Pick<UatCase, 'id' | 'round'>, fixNote: string, sortOrder?: number): Promise<void> {
-  const patch: Record<string, unknown> = { status: 'retest', round: c.round + 1, fix_note: fixNote.trim() || null }
+  const patch: TablesUpdate<'dev_uat_cases'> = { status: 'retest', round: c.round + 1, fix_note: fixNote.trim() || null }
   if (sortOrder !== undefined) patch.sort_order = sortOrder
   const { error } = await db().from('dev_uat_cases').update(patch).eq('id', c.id)
   if (error) throw new Error(`ส่งเทสซ้ำไม่สำเร็จ: ${error.message}`)
 }
 
 export async function closeUatCase(id: string, sortOrder?: number): Promise<void> {
-  const patch: Record<string, unknown> = { status: 'closed' }
+  const patch: TablesUpdate<'dev_uat_cases'> = { status: 'closed' }
   if (sortOrder !== undefined) patch.sort_order = sortOrder
   const { error } = await db().from('dev_uat_cases').update(patch).eq('id', id)
   if (error) throw new Error(`ปิดเคสไม่สำเร็จ: ${error.message}`)

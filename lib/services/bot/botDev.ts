@@ -16,6 +16,7 @@ import {
   type UatStatus,
   type UatStep,
 } from '@/lib/dev/uat'
+import { BUG_MAX_SHOTS, BUG_SEVERITIES, BUG_SHOT, BUG_STATUSES, bugCode, type BugSeverity, type BugStatus } from '@/lib/dev/bugs'
 
 export const CASE_FIELDS = [
   'title', 'module', 'priority', 'environment', 'shop', 'login_as', 'menu_path', 'page_url', 'device', 'preparation', 'steps', 'source',
@@ -253,3 +254,188 @@ export async function insertCases(caller: BotCaller, rows: Record<string, unknow
   return made.map(({ no, title }) => ({ no, title }))
 }
 
+
+// ── bugs (owner 2026-11-23, migration 20261123120000_dev_bugs) ──────────────
+// Numbers are per project → a bug is addressed by project slug + no. Status moves go through the
+// dev_bug_set_status RPC with p_actor (service role passes the guard; the manager check is devProject()).
+
+export const BUG_FIELDS = ['title', 'steps', 'expected', 'actual', 'environment', 'device', 'page_url', 'severity', 'shots', 'source'] as const
+
+export const BUG_COLS =
+  'id, project_id, no, title, steps, expected, actual, environment, device, page_url, severity, status, shots, reported_by, assignee_id, ' +
+  'uat_case_id, fix_note, close_reason, source, created_at, updated_at, closed_at'
+
+export interface BugRow {
+  id: string
+  project_id: string
+  no: number
+  title: string
+  steps: string | null
+  expected: string | null
+  actual: string | null
+  environment: string
+  device: string
+  page_url: string | null
+  severity: BugSeverity
+  status: BugStatus
+  shots: string[]
+  reported_by: string | null
+  assignee_id: string | null
+  uat_case_id: string | null
+  fix_note: string | null
+  close_reason: string | null
+  source: string | null
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+}
+
+export const toBotBug = (b: BugRow, project: DevProjectRow, uatNo?: number | null) => ({
+  no: b.no,
+  code: bugCode(b.no),
+  project: project.slug,
+  title: b.title,
+  severity: b.severity,
+  status: b.status,
+  steps: b.steps,
+  expected: b.expected,
+  actual: b.actual,
+  environment: b.environment,
+  device: b.device,
+  page_url: b.page_url,
+  fix_note: b.fix_note,
+  close_reason: b.close_reason,
+  source: b.source,
+  uat_case: uatNo ? uatCode(uatNo) : null,
+  shots: Array.isArray(b.shots) ? b.shots.length : 0,
+  created_at: b.created_at,
+  updated_at: b.updated_at,
+  closed_at: b.closed_at,
+})
+
+/** check a bug the bot sends (add, or update with `partial`) — returns the row to write or an error */
+export function parseBugInput(raw: unknown, partial = false): { row: Record<string, unknown>; uatNo?: number } | { error: string } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'บั๊กต้องเป็น object' }
+  const b = raw as Record<string, unknown>
+  const unknown = Object.keys(b).filter((k) => !(BUG_FIELDS as readonly string[]).includes(k) && k !== 'uat_case')
+  if (unknown.length) return { error: `unknown field(s): ${unknown.join(', ')} — allowed: ${[...BUG_FIELDS, 'uat_case'].join(', ')}` }
+  const row: Record<string, unknown> = {}
+  if (b.title !== undefined || !partial) {
+    const title = typeof b.title === 'string' ? b.title.trim() : ''
+    if (!title) return { error: 'บั๊กต้องมี title' }
+    row.title = title
+  }
+  for (const k of ['steps', 'expected', 'actual', 'page_url', 'source']) {
+    if (b[k] === undefined) continue
+    row[k] = b[k] === null ? null : Array.isArray(b[k]) ? (b[k] as unknown[]).map(String).join('\n') : String(b[k]).trim() || null
+  }
+  if (b.severity !== undefined) {
+    if (!BUG_SEVERITIES.includes(b.severity as BugSeverity)) return { error: `severity ต้องเป็น ${BUG_SEVERITIES.join(', ')}` }
+    row.severity = b.severity
+  }
+  if (b.environment !== undefined) {
+    if (!['production', 'staging'].includes(String(b.environment))) return { error: 'environment ต้องเป็น production หรือ staging' }
+    row.environment = b.environment
+  }
+  if (b.device !== undefined) {
+    if (!['any', 'mobile', 'desktop'].includes(String(b.device))) return { error: 'device ต้องเป็น any, mobile หรือ desktop' }
+    row.device = b.device
+  }
+  if (b.shots !== undefined) {
+    if (!Array.isArray(b.shots) || b.shots.some((s) => typeof s !== 'string')) return { error: 'shots ต้องเป็น array ของ path จาก uat_upload_image' }
+    if (b.shots.length > BUG_MAX_SHOTS) return { error: `รูปไม่เกิน ${BUG_MAX_SHOTS}` }
+    row.shots = b.shots
+  }
+  let uatNo: number | undefined
+  if (b.uat_case !== undefined && b.uat_case !== null) {
+    uatNo = Number(String(b.uat_case).replace(/^uat-?/i, ''))
+    if (!Number.isInteger(uatNo) || uatNo < 1) return { error: 'uat_case ต้องเป็นเลขเคส เช่น 89 หรือ "UAT-0089"' }
+  }
+  return { row, uatNo }
+}
+
+/** shots: staged uploads (`<project id>/<uuid>.<ext>`) move to `bugs/<project id>/…`; bug paths of this project stay */
+export async function attachBugShots(caller: BotCaller, projectId: string, shots: string[]): Promise<string[]> {
+  const out: string[] = []
+  for (const s of shots) {
+    const own = BUG_SHOT.exec(s)
+    if (own) {
+      if (own[1] !== projectId) throw new Error(`รูป ${s} เป็นของโปรเจกต์อื่น`)
+      out.push(s)
+      continue
+    }
+    const m = STAGED_STEP_IMAGE.exec(s)
+    if (!m || m[1] !== projectId) throw new Error(`รูป ${s} ไม่ได้อัปโหลดให้โปรเจกต์นี้ (ใช้ uat_upload_image ก่อน)`)
+    const to = `bugs/${projectId}/${m[2]}.${m[3]}`
+    const { error } = await caller.sb.storage.from(SHOT_BUCKET).move(s, to)
+    if (error) throw new Error(`ย้ายรูป ${s} ไม่ได้: ${error.message}`)
+    out.push(to)
+  }
+  return out
+}
+
+/** UAT case number of this project → id (for uat_case) */
+export async function uatCaseId(caller: BotCaller, projectId: string, no: number): Promise<string> {
+  const { data } = await untyped(caller.sb).from('dev_uat_cases').select('id').match({ project_id: projectId, no }).maybeSingle()
+  if (!data) throw new Error(`ไม่พบ ${uatCode(no)} ในโปรเจกต์นี้`)
+  return (data as { id: string }).id
+}
+
+/** a bug by project + number (caller must manage the project) */
+export async function devBugByNo(
+  caller: BotCaller,
+  slug: string | null,
+  no: number
+): Promise<{ b: BugRow; project: DevProjectRow; uatNo: number | null } | { error: ReturnType<typeof apiError> }> {
+  if (!Number.isInteger(no) || no < 1) return { error: apiError(400, 'เลขบั๊กไม่ถูกต้อง (เช่น 3 หรือ "BUG-0003")') }
+  const p = await devProject(caller, slug)
+  if ('error' in p) return p
+  const { data } = await untyped(caller.sb)
+    .from('dev_bugs')
+    .select(`${BUG_COLS}, dev_uat_cases(no)`)
+    .match({ project_id: p.project.id, no })
+    .maybeSingle()
+  if (!data) return { error: apiError(404, `ไม่พบ ${bugCode(no)} ใน ${p.project.slug}`) }
+  const uatNo = (data as unknown as { dev_uat_cases: { no: number } | null }).dev_uat_cases?.no ?? null
+  return { b: data as unknown as BugRow, project: p.project, uatNo }
+}
+
+/** insert bugs reported by the bot (reporter = caller), shots moved under bugs/<project id>/ */
+export async function insertBugs(caller: BotCaller, project: DevProjectRow, list: unknown[]): Promise<{ no: number; code: string; title: string }[]> {
+  const rows: Record<string, unknown>[] = []
+  for (const raw of list) {
+    const r = parseBugInput(raw)
+    if ('error' in r) throw new Error(r.error)
+    if (r.row.shots) r.row.shots = await attachBugShots(caller, project.id, r.row.shots as string[])
+    if (r.uatNo) r.row.uat_case_id = await uatCaseId(caller, project.id, r.uatNo)
+    rows.push({ ...r.row, project_id: project.id, reported_by: caller.user.id, sort_order: Date.now() / 1000 + rows.length })
+  }
+  const { data, error } = await untyped(caller.sb).from('dev_bugs').insert(rows).select('no, title')
+  if (error) throw new Error(error.message)
+  return ((data ?? []) as { no: number; title: string }[]).map((b) => ({ no: b.no, code: bugCode(b.no), title: b.title }))
+}
+
+/** move a bug (fixing · testing with fix note · closed · wont_fix with reason …) — rules in dev_bug_set_status */
+export async function setBugStatusAs(caller: BotCaller, bugId: string, status: unknown, note: unknown): Promise<string | null> {
+  if (!BUG_STATUSES.includes(status as BugStatus)) return `status ต้องเป็น ${BUG_STATUSES.join(', ')}`
+  const { error } = await untyped(caller.sb).rpc('dev_bug_set_status', {
+    p_bug_id: bugId,
+    p_status: status,
+    p_note: typeof note === 'string' && note.trim() ? note.trim() : null,
+    p_actor: caller.user.id,
+  })
+  return error ? error.message : null
+}
+
+/** bug with history and signed picture URLs (1 hour) */
+export async function bugDetail(caller: BotCaller, r: { b: BugRow; project: DevProjectRow; uatNo: number | null }) {
+  const { data } = await untyped(caller.sb)
+    .from('dev_bug_events')
+    .select('kind, actor_name, from_status, to_status, note, created_at')
+    .eq('bug_id', r.b.id)
+    .order('created_at', { ascending: false })
+  return {
+    bug: { ...toBotBug(r.b, r.project, r.uatNo), shots: await signShots(caller, Array.isArray(r.b.shots) ? r.b.shots : []) },
+    history: data ?? [],
+  }
+}

@@ -449,3 +449,16 @@ A UAT step can carry a small picture of where to press, shown beside the step on
 - `GET /dev/cases/{no}` returns `steps[].image_url` (signed, 1 hour).
 - MCP (`/api/mcp/dev`): `uat_upload_image { project, data_base64, content_type }` → `{ path, preview_url }`; `uat_add` / `uat_update` accept `steps[].image`; `uat_case` returns `steps[].image_url`.
 - CLI: `node scripts/dev.mjs upload <project> <image>` prints the path; in `add <project> <cases.json>`, `steps[].image` may be a local file path (relative to the JSON file) and is uploaded first.
+
+## 10. Dev tracker: bug reports (dev key · 23 Nov 2569)
+
+Same projects, members and key as §8. Bug numbers restart per project (`BUG-0001`), so every call names the project.
+Board: `new` ใหม่ · `accepted` รับเรื่อง · `fixing` กำลังแก้ · `testing` รอเทส · `closed` ปิดแล้ว · `wont_fix` ไม่แก้ (shown under ปิดแล้ว).
+Status moves go through the DB function `dev_bug_set_status` (history row per move): `testing` note = what was fixed (shown to the tester, the reporter gets a push from the web) · `wont_fix` note = reason (required).
+
+- `GET /dev/bugs?project=<slug>&status=open|all|new,fixing,…&limit=200` → `{ project, bugs: [{ no, code, title, severity, status, steps, expected, actual, environment, device, page_url, fix_note, close_reason, source, uat_case, shots (count), … }] }`
+- `POST /dev/bugs` `{ project, bugs: [{ title, severity?: critical|high|normal|low, steps?, expected?, actual?, environment?, device?, page_url?, shots?: [path from POST /dev/images], uat_case?: "UAT-0089", source? }] }` (≤ 20, or one bug in the body) → 201 `{ added: [{ no, code, title }] }` · unknown fields → 400 · shots move to `bugs/<project id>/…`
+- `GET /dev/bugs/{no}?project=<slug>` → `{ bug (shots = signed URLs, 1 hour), history: [{ kind created|status|assign, actor_name, from_status, to_status, note, created_at }] }`
+- `PATCH /dev/bugs/{no}?project=<slug>` `{ action: "status", status, note? }` · `{ action: "update", …fields }` (shots replaces the list)
+- MCP: `bug_list(project, status?, limit?)` · `bug_get(project, no)` · `bug_add(project, bugs[])` · `bug_update(project, no, …fields)` · `bug_status(project, no, status, note?)`
+- CLI: `bugs [project] [status]` · `bug <no> [project]` · `bug-add <project> <bugs.json>` (shots[] may be local files) · `bug-status <no> <status> ["<note>"] [project]`

@@ -18,9 +18,20 @@ import {
   signStepImages,
   toBotCase,
   uploadStepImage,
+  attachBugShots,
+  BUG_COLS,
+  bugDetail,
+  devBugByNo,
+  insertBugs,
+  parseBugInput,
+  setBugStatusAs,
+  toBotBug,
+  uatCaseId,
+  type BugRow,
   type CaseRow,
   type ResultRow,
 } from '@/lib/services/bot/botDev'
+import { BUG_SEVERITIES, BUG_STATUSES, bugCode, parseBugNo, type BugStatus } from '@/lib/dev/bugs'
 import { STEP_IMAGE_MAX_BYTES, STEP_IMAGE_TYPES, uatCode, type UatStatus, type UatStep } from '@/lib/dev/uat'
 
 type Json = Record<string, unknown>
@@ -276,5 +287,118 @@ export const DEV_TOOLS: DevTool[] = [
     },
   },
 ]
+
+const BUG_SCHEMA: Json = {
+  type: 'object',
+  required: ['title'],
+  properties: {
+    title: { type: 'string', description: 'What is wrong, short plain Thai' },
+    severity: { type: 'string', enum: BUG_SEVERITIES, description: 'critical = unusable/data or money wrong · high = main feature broken, workaround exists · normal (default) · low = looks/typo' },
+    steps: { type: 'string', description: 'How to make it happen (numbered lines)' },
+    expected: { type: 'string' },
+    actual: { type: 'string' },
+    environment: { type: 'string', enum: ['production', 'staging'] },
+    device: { type: 'string', enum: ['any', 'mobile', 'desktop'] },
+    page_url: { type: 'string', description: '/path on the project site or a full https URL' },
+    shots: { type: 'array', maxItems: 8, items: { type: 'string' }, description: 'paths from uat_upload_image' },
+    uat_case: { type: ['integer', 'string'], description: 'UAT case this came from, 89 or "UAT-0089" (same project)' },
+    source: { type: 'string', description: 'commit hash / chat that found it' },
+  },
+}
+const bugNo = (args: Json): number => {
+  const n = parseBugNo(args.no)
+  if (!Number.isInteger(n) || n < 1) throw new DevToolError('no must be a bug number of the project (3 or "BUG-0003")')
+  return n
+}
+
+DEV_TOOLS.push(
+  {
+    name: 'bug_list',
+    description: `Bug reports of a project (numbers restart per project: BUG-0001 …), open ones by default. Call before bug_add to avoid duplicates. ${PROJECT_DOC}.`,
+    inputSchema: {
+      type: 'object',
+      required: ['project'],
+      properties: { project: { type: 'string' }, status: { type: 'string', description: `open (default) · all · comma list of ${BUG_STATUSES.join(',')}` }, limit: { type: 'integer' } },
+    },
+    readOnly: true,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      const arg = (str(args, 'status') ?? 'open').toLowerCase()
+      const statuses = arg === 'all' ? BUG_STATUSES : arg === 'open' ? BUG_STATUSES.filter((x) => x !== 'closed' && x !== 'wont_fix') : (arg.split(',').map((x) => x.trim()) as BugStatus[])
+      if (statuses.some((x) => !BUG_STATUSES.includes(x))) throw new DevToolError(`status must be open, all or ${BUG_STATUSES.join(',')}`)
+      const { data, error } = await untyped(caller.sb)
+        .from('dev_bugs')
+        .select(`${BUG_COLS}, dev_uat_cases(no)`)
+        .eq('project_id', p.project.id)
+        .in('status', statuses)
+        .order('no')
+        .limit(Math.min(Math.max(Number(args.limit) || 200, 1), 500))
+      if (error) throw new DevToolError(error.message)
+      return { project: p.project.slug, bugs: ((data ?? []) as unknown as (BugRow & { dev_uat_cases: { no: number } | null })[]).map((b) => toBotBug(b, p.project, b.dev_uat_cases?.no)) }
+    },
+  },
+  {
+    name: 'bug_get',
+    description: 'One bug in full with its history (who moved it, notes) and signed picture URLs (valid 1 hour).',
+    inputSchema: { type: 'object', required: ['project', 'no'], properties: { project: { type: 'string' }, no: { type: ['integer', 'string'] } } },
+    readOnly: true,
+    async run(caller, args) {
+      return bugDetail(caller, await unwrap(devBugByNo(caller, str(args, 'project'), bugNo(args))))
+    },
+  },
+  {
+    name: 'bug_add',
+    description: `Report bugs to a project (max 20); returns BUG-0001 … Starts in "new" and pushes nobody (the owner is the caller). Pictures: upload with uat_upload_image, pass the paths in shots. ${PROJECT_DOC}.`,
+    inputSchema: { type: 'object', required: ['project', 'bugs'], properties: { project: { type: 'string' }, bugs: { type: 'array', minItems: 1, maxItems: 20, items: BUG_SCHEMA } } },
+    readOnly: false,
+    async run(caller, args) {
+      const p = await unwrap(devProject(caller, str(args, 'project')))
+      const list = Array.isArray(args.bugs) ? args.bugs : []
+      if (list.length === 0 || list.length > 20) throw new DevToolError('bugs must hold 1–20 items')
+      const added = await insertBugs(caller, p.project, list).catch((e: Error) => {
+        throw new DevToolError(e.message)
+      })
+      return { project: p.project.slug, added }
+    },
+  },
+  {
+    name: 'bug_update',
+    description: 'Edit a bug: any of title, severity, steps, expected, actual, environment, device, page_url, shots (replaces the list), uat_case, source. Status is changed with bug_status.',
+    inputSchema: { type: 'object', required: ['project', 'no'], properties: { project: { type: 'string' }, no: { type: ['integer', 'string'] }, ...(BUG_SCHEMA.properties as Json) } },
+    readOnly: false,
+    async run(caller, args) {
+      const r = await unwrap(devBugByNo(caller, str(args, 'project'), bugNo(args)))
+      const { project: _p, no: _n, ...fields } = args
+      const parsed = parseBugInput(fields, true)
+      if ('error' in parsed) throw new DevToolError(parsed.error)
+      if (Object.keys(parsed.row).length === 0 && !parsed.uatNo) throw new DevToolError('nothing to update — send at least one field')
+      try {
+        if (parsed.row.shots) parsed.row.shots = await attachBugShots(caller, r.project.id, parsed.row.shots as string[])
+        if (parsed.uatNo) parsed.row.uat_case_id = await uatCaseId(caller, r.project.id, parsed.uatNo)
+      } catch (e) {
+        throw new DevToolError((e as Error).message)
+      }
+      const { error } = await untyped(caller.sb).from('dev_bugs').update(parsed.row).eq('id', r.b.id)
+      if (error) throw new DevToolError(error.message)
+      return { ok: true, code: bugCode(r.b.no), updated: Object.keys(parsed.row) }
+    },
+  },
+  {
+    name: 'bug_status',
+    description: 'Move a bug: accepted · fixing · testing (note = what was fixed, plain Thai, shown to the tester — the reporter is asked to retest) · closed · wont_fix (note = reason, required) · new.',
+    inputSchema: {
+      type: 'object',
+      required: ['project', 'no', 'status'],
+      properties: { project: { type: 'string' }, no: { type: ['integer', 'string'] }, status: { type: 'string', enum: BUG_STATUSES }, note: { type: 'string' } },
+    },
+    readOnly: false,
+    async run(caller, args) {
+      const r = await unwrap(devBugByNo(caller, str(args, 'project'), bugNo(args)))
+      const bad = await setBugStatusAs(caller, r.b.id, args.status, args.note)
+      if (bad) throw new DevToolError(bad)
+      return { ok: true, code: bugCode(r.b.no), status: args.status }
+    },
+  }
+)
 
 export const DEV_TOOL_BY_NAME = new Map(DEV_TOOLS.map((t) => [t.name, t]))

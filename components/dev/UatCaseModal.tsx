@@ -3,11 +3,16 @@
 // เคส UAT หนึ่งใบ — เทสที่ไหน · ขั้นตอน (ควรเห็น) · ฟอร์มบันทึกผล (รูป ≥ 1) · ผู้จัดการ: แก้เคส / ส่งเทสซ้ำ / ปิด · ประวัติผล + รูป (lightbox)
 // กติกา UI ตาม .claude/rules/domains/ui-design-system.md: ชื่อเคสเป็นหัว modal · แท็บใน modal = Segmented · ไม่มีกล่องซ้อนกล่อง
 
-import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Image as ImageIcon, Pencil, RotateCcw, Lock, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bug, ExternalLink, Image as ImageIcon, Pencil, RotateCcw, Lock, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
-import { Button, ConfirmDialog, Field, ImageDropzone, Input, Lightbox as AooLightbox, Modal, Pill, SelectMenu, StepSelect, Textarea } from '@/components/aoo'
+import { Button, ConfirmDialog, Field, ImageDropzone, Input, Modal, Pill, SelectMenu, StepSelect, Textarea } from '@/components/aoo'
 import { Segmented } from '@/components/shared'
+import ShotGallery, { ShotLightbox } from '@/components/dev/ShotGallery'
+import { BugForm } from '@/components/dev/BugModal'
+import { bugCode } from '@/lib/dev/bugs'
+import { notifyBug } from '@/lib/dev/notify'
+import { createBug, type BugInput } from '@/lib/services/devBugService'
 import {
   DEVICE_LABELS,
   ENV_LABELS,
@@ -43,6 +48,7 @@ export default function UatCaseModal({
   c,
   project,
   canManage,
+  canTest = canManage,
   userId,
   /** วางการ์ดบนคอลัมน์ผลมา — เปิดแท็บบันทึกผลพร้อมเลือกผลไว้ */
   presetResult,
@@ -55,6 +61,8 @@ export default function UatCaseModal({
   c: UatCase
   project: DevProject
   canManage: boolean
+  /** ผู้เทส/ผู้จัดการ — แจ้งบั๊กจากผลที่ไม่ผ่านได้ */
+  canTest?: boolean
   userId: string
   presetResult?: UatResultValue
   presetRetest?: boolean
@@ -66,6 +74,7 @@ export default function UatCaseModal({
   const [tab, setTab] = useState<Tab>(presetResult ? 'result' : presetRetest ? 'edit' : 'case')
   const [results, setResults] = useState<UatResult[] | null>(null)
   const [saved, setSaved] = useState(false)
+  const [reporting, setReporting] = useState<UatResult | null>(null)
 
   useEffect(() => {
     getUatResults(c.id).then(setResults).catch((e) => showToast((e as Error).message, 'error'))
@@ -73,13 +82,13 @@ export default function UatCaseModal({
 
   const link = pageLink(c, project)
   const closed = c.status === 'closed'
-  const tabs = useMemo(() => {
+  const tabs = (() => {
     const t: { value: Tab; label: string }[] = [{ value: 'case', label: 'เคส' }]
     if (!closed) t.push({ value: 'result', label: 'บันทึกผล' })
     t.push({ value: 'history', label: `ประวัติ${results?.length ? ` (${results.length})` : ''}` })
     if (canManage) t.push({ value: 'edit', label: 'จัดการ' })
     return t
-  }, [closed, canManage, results?.length])
+  })()
 
   const done = () => {
     setSaved(true)
@@ -103,6 +112,19 @@ export default function UatCaseModal({
         </div>
       }
     >
+      {reporting ? (
+        <BugForm
+          prefill={bugPrefill(c, reporting)}
+          onCancel={() => setReporting(null)}
+          onSave={async (input, files, keep) => {
+            const { id, no } = await createBug(project.id, input, files, userId, keep)
+            notifyBug(id)
+            showToast(`แจ้ง ${bugCode(no)} แล้ว`)
+            setReporting(null)
+          }}
+        />
+      ) : (
+      <>
       <Segmented className="aoo-task-modal__tabs" value={tab} options={tabs} onChange={(v) => setTab(v as Tab)} />
 
       {tab === 'case' && (
@@ -151,10 +173,12 @@ export default function UatCaseModal({
         />
       )}
 
-      {tab === 'history' && <History results={results} />}
+      {tab === 'history' && <History results={results} onReport={canTest ? setReporting : undefined} />}
 
       {tab === 'edit' && canManage && (
         <ManagerPanel c={c} presetRetest={presetRetest} sortOrder={sortOrder} onChanged={done} onGone={() => onClose(true)} />
+      )}
+      </>
       )}
     </Modal>
   )
@@ -198,7 +222,7 @@ function StepList({ steps }: { steps: UatStep[] }) {
           )
         })}
       </ol>
-      {open !== null && <Lightbox urls={pictures} index={open} onClose={() => setOpen(null)} />}
+      {open !== null && <ShotLightbox urls={pictures} index={open} onClose={() => setOpen(null)} />}
     </>
   )
 }
@@ -313,9 +337,27 @@ function notifyManagers(c: UatCase, result: UatResultValue, note: string) {
   }).catch(() => {})
 }
 
+/** ผลเทสที่ไม่ผ่าน → ร่างบั๊ก: ขั้นตอนถึงข้อที่พัง · สิ่งที่ควรเห็นของข้อนั้น · หมายเหตุของคนเทส · รูปผลเทสเดิม */
+function bugPrefill(c: UatCase, r: UatResult): Partial<BugInput> & { caseLabel: string; shots: string[] } {
+  const upto = r.failedStep ? c.steps.slice(0, r.failedStep) : c.steps
+  const failed = r.failedStep ? c.steps[r.failedStep - 1] : undefined
+  return {
+    title: c.title,
+    steps: [c.menuPath && `เมนู: ${c.menuPath}`, ...upto.map((s, i) => `${i + 1}. ${s.action}`)].filter(Boolean).join('\n'),
+    expected: failed?.expected ?? null,
+    actual: r.note,
+    environment: c.environment,
+    device: c.device,
+    pageUrl: c.pageUrl,
+    severity: c.priority === 1 ? 'high' : 'normal',
+    uatCaseId: c.id,
+    caseLabel: `${uatCode(c.no)} รอบ ${r.round}`,
+    shots: r.shots.map((x) => x.path),
+  }
+}
+
 // ── ประวัติ ───────────────────────────────────────────────────────────────────
-function History({ results }: { results: UatResult[] | null }) {
-  const [open, setOpen] = useState<{ urls: string[]; index: number } | null>(null)
+function History({ results, onReport }: { results: UatResult[] | null; onReport?: (r: UatResult) => void }) {
   if (!results) return <p style={{ color: 'var(--fg-3)' }}>กำลังโหลด…</p>
   if (results.length === 0) return <p style={{ color: 'var(--fg-3)' }}>ยังไม่มีผลที่บันทึก</p>
   return (
@@ -333,14 +375,14 @@ function History({ results }: { results: UatResult[] | null }) {
             </div>
             {r.failedStep && <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-caption)' }}>เกิดที่ขั้นตอน {r.failedStep}</p>}
             {r.note && <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{r.note}</p>}
+            {onReport && r.result !== 'passed' && (
+              <Button variant="secondary" size="sm" icon={Bug} onClick={() => onReport(r)} style={{ marginTop: 8 }}>
+                แจ้งเป็นบั๊ก
+              </Button>
+            )}
             {urls.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                {urls.map((u, i) => (
-                  <button key={u} type="button" aria-label={`เปิดรูปที่ ${i + 1}`} onClick={() => setOpen({ urls, index: i })} style={{ padding: 0, border: 0, background: 'none' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- signed URL */}
-                    <img src={u} alt="" loading="lazy" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 'var(--r-md)', border: '1px solid var(--border-1)' }} />
-                  </button>
-                ))}
+              <div style={{ marginTop: 8 }}>
+                <ShotGallery urls={urls} />
               </div>
             )}
             {urls.length === 0 && r.shots.length > 0 && (
@@ -351,15 +393,8 @@ function History({ results }: { results: UatResult[] | null }) {
           </div>
         )
       })}
-      {open && <Lightbox urls={open.urls} index={open.index} onClose={() => setOpen(null)} />}
     </div>
   )
-}
-
-/** shared full-screen viewer (components/aoo Lightbox) over a list of picture URLs */
-function Lightbox({ urls, index, onClose }: { urls: string[]; index: number; onClose: () => void }) {
-  const [i, setI] = useState(index)
-  return <AooLightbox open onClose={onClose} media={urls.map((url) => ({ url }))} index={i} onIndexChange={setI} />
 }
 
 // ── ผู้จัดการ: ส่งเทสซ้ำ / ปิด / แก้เคส / ลบ ───────────────────────────────

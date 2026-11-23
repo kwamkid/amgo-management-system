@@ -16,7 +16,10 @@ const INSTRUCTIONS =
   'you write cases (uat_add) in plain Thai for a tester who never saw the feature, read results (uat_summary, uat_case), ' +
   'send fixed cases back (uat_retest) and close finished ones (uat_close). Call uat_list before adding to avoid duplicates. ' +
   'Case numbers (UAT-0001 …) are global across projects. A step can carry a reference picture of where to press: ' +
-  'upload it with uat_upload_image, then put the returned path in steps[].image; uat_case returns steps[].image_url.'
+  'upload it with uat_upload_image, then put the returned path in steps[].image; uat_case returns steps[].image_url. ' +
+  'Bug reports (bug_list, bug_get, bug_add, bug_update, bug_status) live in the same projects; bug numbers restart per ' +
+  'project (BUG-0001), so always pass project + no. After fixing a bug, move it to testing with a note of what changed ' +
+  '(the reporter is asked to retest); never close a bug a tester reported without their retest.'
 
 interface RpcRequest {
   jsonrpc?: string

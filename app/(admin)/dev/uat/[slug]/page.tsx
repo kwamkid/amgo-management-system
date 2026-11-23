@@ -124,6 +124,7 @@ export default function DevUatBoardPage({ params }: { params: Promise<{ slug: st
           c={open.c}
           project={project}
           canManage={!!canManage}
+          canTest={!!canTest}
           userId={me}
           presetResult={open.result}
           presetRetest={open.retest}

@@ -13,6 +13,12 @@
 //   node scripts/dev.mjs shots <no> <out dir>       download every picture of a case
 //   node scripts/dev.mjs case <no>                  one case with its result history (JSON)
 //   node scripts/dev.mjs projects
+//   bugs (numbers restart per project, BUG-0001 — project defaults to the repo folder):
+//   node scripts/dev.mjs bugs [project] [status]    open bugs (or all / new,fixing,…), one per line
+//   node scripts/dev.mjs bug <no> [project]         one bug with its history (JSON)
+//   node scripts/dev.mjs bug-add <project> <bugs.json>  one bug or an array; shots[] may be local image files
+//   node scripts/dev.mjs bug-status <no> <status> ["<note>"] [project]
+//                                                    accepted · fixing · testing (note = what was fixed) · closed · wont_fix (note = why)
 //
 // กุญแจ: AMGO_DEV_KEY ใน /Users/ampstark/amgo-management-system/memo/bot-keys.env (scope 'dev' — ใช้ได้เฉพาะ /api/bot/dev)
 // ปลายทาง: AMGO_API_BASE ในไฟล์เดียวกัน (ค่าเริ่มต้น https://app.amgovenger.com/api/bot)
@@ -54,6 +60,7 @@ async function upload(project, file) {
   const { path } = await api('/dev/images', { method: 'POST', body: JSON.stringify({ project, content_type: type, data_base64: readFileSync(file).toString('base64') }) })
   return path
 }
+const bugNum = (no) => Number(String(no).replace(/^bug-?/i, ''))
 const code = (no) => `UAT-${String(no).padStart(4, '0')}`
 
 if (cmd === 'summary' || cmd === 'list') {
@@ -116,6 +123,33 @@ if (cmd === 'summary' || cmd === 'list') {
 } else if (cmd === 'projects') {
   const { projects } = await api('/dev/projects')
   for (const p of projects) console.log(`${p.slug}\t${p.open_cases} open\t${p.name}${p.is_active ? '' : '\t(inactive)'}`)
+} else if (cmd === 'bugs') {
+  const project = args[0] || DEFAULT_PROJECT
+  const { bugs } = await api(`/dev/bugs?project=${encodeURIComponent(project)}&status=${encodeURIComponent(args[1] || 'open')}`)
+  for (const b of bugs) console.log(`${b.code}\t${b.status}\t${b.severity}\t${b.title}${b.uat_case ? `\t(${b.uat_case})` : ''}`)
+  if (bugs.length === 0) console.log(`${project}: no bugs`)
+} else if (cmd === 'bug') {
+  if (!args[0]) die('usage: bug <no> [project]')
+  console.log(JSON.stringify(await api(`/dev/bugs/${bugNum(args[0])}?project=${encodeURIComponent(args[1] || DEFAULT_PROJECT)}`), null, 2))
+} else if (cmd === 'bug-add') {
+  const [project, file] = args
+  if (!project || !file) die('usage: bug-add <project> <bugs.json>')
+  const input = JSON.parse(readFileSync(file, 'utf8'))
+  const bugs = Array.isArray(input) ? input : [input]
+  for (const b of bugs) {
+    if (!Array.isArray(b.shots)) continue
+    b.shots = await Promise.all(b.shots.map(async (s) => {
+      const local = isAbsolute(s) ? s : resolve(dirname(file), s)
+      return existsSync(local) ? upload(project, local) : s
+    }))
+  }
+  const { added } = await api('/dev/bugs', { method: 'POST', body: JSON.stringify({ project, bugs }) })
+  for (const b of added) console.log(`${b.code}\t${b.title}`)
+} else if (cmd === 'bug-status') {
+  const [no, status, note, project] = args
+  if (!no || !status) die('usage: bug-status <no> <status> ["<note>"] [project]')
+  const r = await api(`/dev/bugs/${bugNum(no)}?project=${encodeURIComponent(project || DEFAULT_PROJECT)}`, { method: 'PATCH', body: JSON.stringify({ action: 'status', status, note: note || '' }) })
+  console.log(`${r.code} → ${r.status}`)
 } else {
-  die('commands: summary [project] · list [project] · add <project> <file> · upload <project> <image> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects')
+  die('commands: summary [project] · list [project] · add <project> <file> · upload <project> <image> · retest <no> "<note>" · close <no> · shots <no> <dir> · case <no> · projects · bugs [project] [status] · bug <no> [project] · bug-add <project> <file> · bug-status <no> <status> ["<note>"] [project]')
 }

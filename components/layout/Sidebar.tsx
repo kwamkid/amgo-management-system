@@ -42,6 +42,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FlaskConical,
+  Bug,
   Receipt,
   KeyRound,
   AudioLines,
@@ -221,10 +222,11 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    // Dev tracker (เจ้าของ 3 พ.ย. 69): เคส UAT ให้คนเทส · บั๊ก (ทำทีหลัง) — เห็นเฉพาะแอดมินและคนที่ถูกเพิ่มในโปรเจกต์
+    // Dev tracker (เจ้าของ 3 พ.ย. 69): เคส UAT ให้คนเทส · บั๊ก (23 พ.ย.) — เห็นเฉพาะแอดมินและคนที่ถูกเพิ่มในโปรเจกต์
     title: 'Dev Management',
     items: [
       { label: 'UAT', href: '/dev/uat', icon: icon(FlaskConical), tone: 'grape', roles: ['dev'] },
+      { label: 'Bug report', href: '/dev/bugs', icon: icon(Bug), tone: 'danger', roles: ['dev'] },
     ],
   },
   {

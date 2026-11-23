@@ -26,10 +26,12 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [ ] รอคุณแอม: fill J'adore KPI targets on /marketing/jadore?tab=kpi (AGD social-plan has only ROAS 6–8× and online stock ฿356k retail) · assign people to #721–#734 · set plan status "กำลังใช้"
 - [x] 9ad7a72 (2026-11-23, supabase CLI gen types; other chat's import_distributions hunk left unstaged) Regenerate types/database.ts from the DB when Supabase MCP auth works again (hand-edited now; migration not in schema_migrations)
 - [x] app-features.md entry written 2026-11-23
-- [ ] Write UAT cases (overview, create plan from template, tick action, KPI target + manual entry)
+- [x] UAT cases written 2026-11-23: UAT-0333…0337 (overview · settings picker+save · KPI target · calendar · 375px). Not yet: create plan from template, tick action
 - [x] Admin UI `/marketing/settings` (admin only, button ตั้งค่า on /marketing): per brand aoo brand names · marketplace shops to count · aoosocial company id + account ids (text, step 3 makes a picker) · save + backfill 90 days
 - [x] Step 2 built 84f713c: aoo MCP `sales_summary` (no aoo DB access needed) → lib/marketing/aooSales.ts → queue kind `marketing.aoo.sales` · cron row `marketing-sales` 05:00 (last 7 days) · `/api/marketing/aoo` GET options / POST sync now. Backfilled 90 days for gb/hape/stokke/taftoys/tommeetippee 2026-11-22 (taftoys 15–21 Nov matched aoo per channel)
-- [ ] Step 2 test in Chrome (dev server start was denied this round): /marketing/settings save + backfill · brand page "ดึงยอดขาย" · KPI tab shows aoo numbers · 375px
+- [x] Step 2/3a Chrome test on prod 2026-11-23: settings loads all 7 brands with saved links, picker search ok, save toast ok, J'adore KPI + calendar tabs ok, 375px no overflow (title truncates, tab row scrolls). Backfill button NOT pressed (auto-mode blocked prod write; was backfilled 2026-11-22)
+- [ ] Minor: J'adore KPI rows FB/TikTok followers + posts tagged "ดึงอัตโนมัติ" but J'adore has no aoosocial link → will never fill; consider label "ยังไม่ได้ผูกบัญชี" or manual
+- [ ] J'adore sales KPI shows no number yet — check aoo has J'adore sales since 22 Nov after next 05:00/06:30 cron
 - [x] aoosocial accounts linked 2026-11-23 (owner confirmed; REST upsert into marketing_brand_links): company ABC the Baby ef10249d… · hape FB+IG · gb FB+IG+TT · stokke FB+IG+TT + Babyzen FB (Stokke bought Babyzen; Babyzen has no IG) · taftoys FB+IG · tommeetippee FB+IG+TT · abcthebaby FB+IG+TT+YT · Crane dropped (owner quit the brand) · J'adore not connected → manual KPI
 - [x] Step 3a built 0998ebb: env AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY in amgo .env.local (lib/aoosocial/db.ts) · CalendarTab = live GET /api/marketing/calendar (marketing_can) · queue kind `marketing.social.posts` counts published targets → metric posts per platform (cron + "ดึงตัวเลข" button enqueue it with the aoo sales job) · settings picker for aoosocial accounts · StatusBadge kind socialPost. Backfilled 90 days: gb 95 · abcthebaby 56 · hape 4 · others 0
 - [x] (2026-11-23 verified on prod: /marketing/settings loads aoosocial accounts) add AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY to Vercel env (Production) before deploy — else calendar shows an error and the posts job fails
@@ -40,7 +42,7 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: Chrome test of steps 2–3a on prod (https://app.amgovenger.com/marketing/settings save + backfill · brand page "ดึงตัวเลข" · KPI + ปฏิทินโพสต์ tabs · 375px).
+Resume at: 2026-11-24 after 06:30 — check aoosocial account_insights_daily rows + followers/reach in KPI tab (followups). Then the J'adore label nit.
 ### State
 All code pushed (amgo f1cc105, aoosocial cf2dd90). Snapshot table live; first rows expected 2026-11-24 06:00, amgo cron 06:30.
 ### Gotchas

@@ -9,7 +9,7 @@ import { RefreshCw, Save, Settings } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { Button, Field, MultiSelectMenu, type SelectOption } from '@/components/aoo'
-import { BrandLogo, PageHeader, SectionCard, TechLoader } from '@/components/shared'
+import { BrandLogo, PageHeader, SectionCard, Skeleton, TechLoader } from '@/components/shared'
 import { useAooSync } from '@/components/marketing/useAooSync'
 import { BRANDS, brandLabel } from '@/lib/constants/brands'
 import { getAooOptions, getBrandLinks, saveBrandLink, type AooOptions, type BrandLink } from '@/lib/services/marketingService'
@@ -68,7 +68,13 @@ export default function MarketingSettingsPage() {
 
   if (!drafts) return <TechLoader />
 
-  const aooBrandOptions: SelectOption[] = (aoo?.brands ?? []).map((b) => ({ value: b, label: b }))
+  // aoo gives names only — company brands (logo in public/brands) first, the rest after
+  const ownSlug = (name: string) => BRANDS.find((x) => x.label.toLowerCase() === name.toLowerCase())?.slug
+  const aooBrandOptions: SelectOption[] = (aoo?.brands ?? [])
+    .map((b) => ({ value: b, label: b, slug: ownSlug(b) }))
+    .sort((a, b) => Number(!a.slug) - Number(!b.slug))
+    .map(({ value, label, slug }) => ({ value, label, icon: slug ? <BrandLogo brand={slug} /> : undefined }))
+  const loadingAoo = !aoo && !aooError
   const shopOptions: SelectOption[] = (aoo?.shops ?? []).map((s) => ({ value: s.name, label: s.name, hint: PLATFORM[s.platform] ?? s.platform, icon: logo(s.platform === 'tiktok' ? 'tiktokshop' : s.platform) }))
   const socialOptions: SelectOption[] = (aoo?.socialAccounts ?? []).map((a) => ({
     value: a.id,
@@ -134,6 +140,9 @@ export default function MarketingSettingsPage() {
                 label="ชื่อแบรนด์ในระบบ aoo"
                 help={auto ? `ว่างไว้ = ใช้ "${label}" อัตโนมัติ` : 'ว่างไว้ = ยังไม่ดึงยอดขาย (aoo ไม่มีแบรนด์ชื่อนี้)'}
               >
+                {loadingAoo ? (
+                  <Skeleton shape="field" />
+                ) : (
                 <MultiSelectMenu
                   values={d.aooBrandNames}
                   onChange={(v) => patch(d.brand, { aooBrandNames: v })}
@@ -142,8 +151,12 @@ export default function MarketingSettingsPage() {
                   ariaLabel={`ชื่อแบรนด์ใน aoo ของ ${label}`}
                   disabled={!aoo}
                 />
+                )}
               </Field>
               <Field asDiv label="นับเฉพาะร้านบน marketplace" help="ว่างไว้ = ทุกร้าน (รวมร้าน ABC the Baby) · หน้าร้าน/เว็บ/แชทนับทั้งหมดเสมอ">
+                {loadingAoo ? (
+                  <Skeleton shape="field" />
+                ) : (
                 <MultiSelectMenu
                   values={d.aooShops}
                   onChange={(v) => patch(d.brand, { aooShops: v })}
@@ -152,8 +165,12 @@ export default function MarketingSettingsPage() {
                   ariaLabel={`ร้าน marketplace ของ ${label}`}
                   disabled={!aoo}
                 />
+                )}
               </Field>
               <Field asDiv label="บัญชีโซเชียลใน aoosocial" help="ใช้ทำปฏิทินโพสต์ นับจำนวนโพสต์ และเก็บผู้ติดตาม/reach/ยอดวิวรายวัน (Instagram มีแค่ผู้ติดตาม)" className="md:col-span-2">
+                {loadingAoo ? (
+                  <Skeleton shape="field" />
+                ) : (
                 <MultiSelectMenu
                   values={d.aoosocialAccountIds}
                   onChange={(v) =>
@@ -168,6 +185,7 @@ export default function MarketingSettingsPage() {
                   ariaLabel={`บัญชี aoosocial ของ ${label}`}
                   disabled={!aoo}
                 />
+                )}
               </Field>
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">

@@ -9,12 +9,18 @@ export default function Skeleton({
   rows = 5,
   /** true = แถบล้วน ไม่มีการ์ดหุ้ม — ใช้ในพื้นที่ที่มีกรอบของตัวเองอยู่แล้ว (modal/การ์ด) */
   bare = false,
+  /** 'field' = one 40px bar shaped like Input/SelectMenu — for a control whose options are still loading */
+  shape = 'rows',
   className = '',
 }: {
   rows?: number
   bare?: boolean
+  shape?: 'rows' | 'field'
   className?: string
 }) {
+  if (shape === 'field') {
+    return <div aria-hidden className={`h-10 w-full animate-pulse rounded-lg bg-gray-100 ${className}`} />
+  }
   const lines = (
     <>
       {Array.from({ length: rows }).map((_, i) => (

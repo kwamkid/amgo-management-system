@@ -6,6 +6,7 @@
 // inline: เรียก handler ของ route เดิมตรง ๆ ในโปรเซสเดียวกัน (ส่ง CRON_SECRET ไปเหมือน cron-job.org)
 //         → route เดิมยังเรียกมือได้เหมือนเดิม ไม่ต้องแยกโค้ดออกมา
 // http:   ยิงไปที่ route (มี maxDuration ของตัวเอง) รอผลไม่เกิน 55 วิ แล้วจดผล
+// ทุกงานครองด้วย trackJob → system_heartbeats (ไฟสถานะ /settings/system) · ประวัติต่อรอบ = cron_runs
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
@@ -15,12 +16,13 @@ import { GET as autoCheckout } from '@/app/api/cron/auto-checkout/route'
 import { GET as checkoutReminder } from '@/app/api/cron/checkout-reminder/route'
 import { GET as birthday } from '@/app/api/cron/birthday/route'
 import { GET as payrollCutoff } from '@/app/api/cron/payroll-cutoff/route'
-import { currentSlots, type CronJob } from './schedule'
+import { recordHeartbeats, trackJob } from '@/lib/monitor/heartbeat'
+import { currentSlots, CRON_JOBS, type CronGroup, type CronJob } from './schedule'
 
 const HTTP_TIMEOUT_MS = 55_000
 const KEEP_DAYS = 30
 
-type Outcome = { ok: boolean; result: unknown }
+type Outcome = { ok: boolean; result?: unknown; error?: string }
 
 const authHeaders = () => ({ Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}` })
 
@@ -57,10 +59,11 @@ async function hasQueuedWork(sb: SupabaseClient): Promise<boolean> {
 }
 
 /** งานที่ถึงรอบตอนนี้ และจองรอบได้ (คืนเฉพาะที่ tick นี้ต้องทำ) */
-export async function claimDue(now = new Date()): Promise<{ job: CronJob; slot: string }[]> {
+export async function claimDue(now = new Date(), group?: CronGroup): Promise<{ job: CronJob; slot: string }[]> {
   const sb = db()
   const out: { job: CronJob; slot: string }[] = []
-  for (const s of currentSlots(now)) {
+  const jobs = group ? CRON_JOBS.filter((j) => j.group === group) : CRON_JOBS
+  for (const s of currentSlots(now, jobs)) {
     if (s.job.whenQueued && !(await hasQueuedWork(sb))) continue
     const { data, error } = await sb
       .from('cron_runs')
@@ -92,10 +95,15 @@ async function runOne(job: CronJob, origin: string): Promise<Outcome> {
   }
 }
 
-/** ทำงานที่จองไว้ — inline ทีละงาน (เบา) · http พร้อมกัน · จดผลทุกงาน · ลบประวัติเก่า */
-export async function runClaimed(claimed: { job: CronJob; slot: string }[], origin: string): Promise<void> {
+type Claimed = { job: CronJob; slot: string }
+export type Started = Claimed & { done: Promise<Outcome> }
+
+/** เริ่มงานที่จองไว้ — inline ทีละงาน (เบา) · http พร้อมกัน · จดผลลง cron_runs + heartbeat ทุกงาน
+ *  คืนทันที: แต่ละงานมี promise ของตัวเอง (ผู้เรียกรอบางส่วนได้ ที่เหลือทำต่อใน after()) */
+export function startClaimed(claimed: Claimed[], origin: string): Started[] {
   const sb = db()
-  const finish = async ({ job, slot }: { job: CronJob; slot: string }, o: Outcome) => {
+  const finish = async ({ job, slot }: Claimed, o: Outcome) => {
+    if (o.result === undefined && o.error) o = { ...o, result: { error: o.error } }
     const result = JSON.stringify(o.result ?? null)
     await sb
       .from('cron_runs')
@@ -108,16 +116,41 @@ export async function runClaimed(claimed: { job: CronJob; slot: string }[], orig
       .eq('job', job.key)
       .eq('slot', slot)
     if (!o.ok) console.error('[cron] งานล้ม', job.key, slot, result.slice(0, 500))
+    return o
   }
+  const run = (c: Claimed) => trackJob(c.job.key, () => runOne(c.job, origin)).then((o) => finish(c, o))
 
-  const inline = claimed.filter((c) => c.job.run === 'inline')
-  const http = claimed.filter((c) => c.job.run !== 'inline')
-  await Promise.allSettled([
-    (async () => {
-      for (const c of inline) await finish(c, await runOne(c.job, origin))
-    })(),
-    ...http.map(async (c) => finish(c, await runOne(c.job, origin))),
+  let chain: Promise<unknown> = Promise.resolve()
+  return claimed.map((c) => {
+    if (c.job.run !== 'inline') return { ...c, done: run(c) }
+    const done = chain.then(() => run(c))
+    chain = done.catch(() => {})
+    return { ...c, done }
+  })
+}
+
+/** รอผลไม่เกิน waitMs — คืนสถานะของแต่ละงาน (running = ยังไม่จบ ทำต่อเบื้องหลัง) */
+export async function settleWithin(started: Started[], waitMs: number) {
+  const state = new Map<string, Outcome | 'running'>(started.map((s) => [s.job.key, 'running']))
+  const all = Promise.allSettled(started.map((s) => s.done.then((o) => void state.set(s.job.key, o))))
+  await Promise.race([all, new Promise((r) => setTimeout(r, waitMs))])
+  return started.map((s) => ({ key: s.job.key, slot: s.slot, state: state.get(s.job.key)! }))
+}
+
+/** จด dispatch ของกลุ่ม (cron:<group>) และของแต่ละงานที่ยิง — ล้ม = งานที่จบแล้วไม่สำเร็จ */
+export async function recordDispatch(group: string, settled: Awaited<ReturnType<typeof settleWithin>>) {
+  const failed = settled.filter((s) => s.state !== 'running' && !s.state.ok).map((s) => s.key)
+  await recordHeartbeats([
+    { key: `cron:${group}`, event: 'dispatch', ok: !failed.length, status: failed.length ? 502 : 200, error: failed.join(', ') || null },
+    ...settled.map((s) => {
+      const ok = s.state === 'running' || s.state.ok
+      return { key: s.key, event: 'dispatch' as const, ok, status: s.state === 'running' ? 202 : ok ? 200 : 502 }
+    }),
   ])
+  return failed
+}
 
-  await sb.from('cron_runs').delete().lt('started_at', new Date(Date.now() - KEEP_DAYS * 86_400_000).toISOString())
+/** ลบประวัติเก่า — เรียกหลังงานทุกตัวจบ */
+export async function pruneRuns(): Promise<void> {
+  await db().from('cron_runs').delete().lt('started_at', new Date(Date.now() - KEEP_DAYS * 86_400_000).toISOString())
 }

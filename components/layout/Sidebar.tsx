@@ -279,6 +279,7 @@ const navSections: NavSection[] = [
           { label: 'Discord', href: '/settings/discord' },
           { label: 'วันหยุด', href: '/settings/holidays' },
           { label: 'ผู้ใช้ระบบ', href: '/settings/users', roles: ['admin'] },
+          { label: 'สถานะงานระบบ', href: '/settings/system', roles: ['admin'] },
         ],
       },
       // เอาออกจากเมนูแล้ว 3 อัน — เป็นเครื่องมือช่วงย้ายระบบ ไม่ใช่ของที่ใช้งานจริง

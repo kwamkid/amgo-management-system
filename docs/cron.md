@@ -41,7 +41,29 @@ curl -s -o /dev/null -w "%{http_code}\n" https://app.amgovenger.com/api/web/nigh
 
 ---
 
-## 2. cron กลาง — งานเดียวที่ cron-job.org (20 พ.ย. 69)
+## 2. cron แยก 3 กลุ่ม + ไฟสถานะ (23 พ.ย. 69 · แบบเดียวกับ aoocommerce)
+
+ตารางเวลาทั้งหมดยังอยู่ในโค้ด `lib/cron/schedule.ts` — ทุกงานมี `group` (people · web · data)
+cron-job.org มี **3 งาน (กลุ่มละงาน)** ตั้งเหมือนกันหมด ต่างกันแค่ URL:
+
+| ช่อง | ค่า |
+|---|---|
+| Title | `AMGO — people` / `AMGO — web` / `AMGO — data` |
+| URL | `https://app.amgovenger.com/api/cron/people` · `/api/cron/web` · `/api/cron/data` |
+| Schedule | Every **10 minutes** |
+| Request method | `GET` |
+| Header | `Authorization: Bearer <CRON_SECRET>` |
+| Notifications | เปิด **Notify on failure** |
+
+- กลุ่มจองงานที่ถึงรอบ (ล็อก `cron_runs` เดิม กันรันซ้ำ) → เริ่มงาน → รอผลไม่เกิน 25 วิ · มีงานที่จบแล้วล้ม = ตอบ **502** → cron-job.org ส่งอีเมลบอกชื่อกลุ่ม · งานที่ยังไม่จบทำต่อเบื้องหลังแล้วจดผลเอง
+- ผลล่าสุดของแต่ละงาน = ตาราง `system_heartbeats` (migration `20261123090000_system_heartbeats.sql`) · ประวัติต่อรอบ = `cron_runs` · งานในคิวกลางจดเป็น `queue:<kind>`
+- **ดูไฟสถานะ:** https://app.amgovenger.com/settings/system (แอดมิน) — ปกติ / กำลังทำ / ช้า (เลยรอบแล้วยังไม่สำเร็จ · กลุ่มไม่ถูกเรียกเกิน 25 นาที) / ล้ม · กดงานดูประวัติ 30 รอบ
+- `/api/cron/tick` = ทุกกลุ่มพร้อมกัน ยังใช้ได้ (สั่งมือ · `?dry=1&at=<ISO>` ดูว่างานไหนถึงรอบ · ใช้ได้กับ `/api/cron/<group>?dry=1` ด้วย)
+
+**ตอนสลับ:** รัน SQL migration → deploy → เพิ่ม 3 งานด้านบน → ปิดงาน tick เดิม (เปิดซ้อนกันได้ ล็อก `cron_runs` กันรันซ้ำ)
+
+### เดิม: tick งานเดียว (20–23 พ.ย. 69)
+
 
 ตั้งแต่ 20 พ.ย. 69 cron-job.org เหลืองานเดียว **ตารางเวลาทั้งหมดอยู่ในโค้ด** `lib/cron/schedule.ts`
 (เพิ่มงานใหม่ = เพิ่มแถวในไฟล์นั้น ไม่ต้องเข้า cron-job.org) · ประวัติการรันดูที่ตาราง `cron_runs`

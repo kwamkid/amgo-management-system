@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { QUEUE_HANDLERS } from './handlers'
+import { recordHeartbeats } from '@/lib/monitor/heartbeat'
 
 export type QueueJobInput = {
   kind: string
@@ -100,11 +101,17 @@ export async function drainQueue(sb: SupabaseClient) {
   return { ran, left: (count ?? 0) > 0 }
 }
 
+/** board light per queue kind (system_heartbeats key queue:<kind>) — only final outcomes, not retries */
+const beat = (job: QueueJob, started: number, ok: boolean, error: string | null = null) =>
+  recordHeartbeats([{ key: `queue:${job.kind}`, event: 'finish', ok, error, duration_ms: Date.now() - started }])
+
 async function runOne(sb: SupabaseClient, job: QueueJob) {
+  const started = Date.now()
   const handler = QUEUE_HANDLERS[job.kind]
   const done = (patch: Record<string, unknown>) => sb.from('queue_jobs').update(patch).eq('id', job.id)
   if (!handler) {
     await done({ status: 'failed', finished_at: new Date().toISOString(), error: `ไม่รู้จักงานชนิด ${job.kind}` })
+    await beat(job, started, false, 'ไม่รู้จักงานชนิดนี้')
     return
   }
   try {
@@ -120,6 +127,7 @@ async function runOne(sb: SupabaseClient, job: QueueJob) {
       return
     }
     await done({ status: 'done', finished_at: new Date().toISOString(), result: r.result ?? null, error: null })
+    await beat(job, started, true)
   } catch (e) {
     const msg = (e as Error).message.slice(0, 1000)
     const last = job.attempts >= job.max_attempts
@@ -133,5 +141,6 @@ async function runOne(sb: SupabaseClient, job: QueueJob) {
             run_after: new Date(Date.now() + 60_000 * 2 ** (job.attempts - 1)).toISOString(),
           }
     )
+    if (last) await beat(job, started, false, msg)
   }
 }

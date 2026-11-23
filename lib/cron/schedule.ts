@@ -19,9 +19,23 @@
 
 export type CronWhen = { daily: string; until?: string } | { every: number }
 
+/**
+ * Groups (owner 2026-11-23, same as aoocommerce lib/cron/groups.ts): cron-job.org has one job per
+ * group → GET /api/cron/<group> every 10 min with "Notify on failure" on, so a failure e-mail names
+ * the group. /api/cron/tick = every group at once (kept for testing / transition).
+ */
+export const CRON_GROUPS = {
+  people: 'คน (กะ · เตือน · วันเกิด · เงินเดือน)',
+  web: 'เว็บลูกค้า (ตรวจ · ล่ม · หมดอายุ · คิวงานเว็บ)',
+  data: 'ข้อมูล (SEO · ยอดขาย · ล้างรูป)',
+} as const
+export type CronGroup = keyof typeof CRON_GROUPS
+export const isCronGroup = (g: string): g is CronGroup => g in CRON_GROUPS
+
 export interface CronJob {
   key: string
   label: string
+  group: CronGroup
   when: CronWhen
   run: 'inline' | { http: string }
   whenQueued?: boolean
@@ -29,22 +43,22 @@ export interface CronJob {
 
 export const CRON_JOBS: CronJob[] = [
   // คน
-  { key: 'auto-checkout', label: 'ปิดกะให้คนที่ลืมเช็คเอาท์', when: { daily: '00:05', until: '06:00' }, run: 'inline' },
-  { key: 'checkout-reminder', label: 'เตือนให้เช็คเอาท์ (push)', when: { every: 30 }, run: 'inline' },
-  { key: 'task-reminders', label: 'เตือนงานรายวัน (push)', when: { daily: '08:30', until: '20:00' }, run: 'inline' },
-  { key: 'birthday', label: 'อวยพรวันเกิด (Discord)', when: { daily: '09:30', until: '21:00' }, run: 'inline' },
+  { key: 'auto-checkout', label: 'ปิดกะให้คนที่ลืมเช็คเอาท์', group: 'people', when: { daily: '00:05', until: '06:00' }, run: 'inline' },
+  { key: 'checkout-reminder', label: 'เตือนให้เช็คเอาท์ (push)', group: 'people', when: { every: 30 }, run: 'inline' },
+  { key: 'task-reminders', label: 'เตือนงานรายวัน (push)', group: 'people', when: { daily: '08:30', until: '20:00' }, run: 'inline' },
+  { key: 'birthday', label: 'อวยพรวันเกิด (Discord)', group: 'people', when: { daily: '09:30', until: '21:00' }, run: 'inline' },
   // ตัดยอดต้องจบในวันนั้น — ข้ามเที่ยงคืนแล้ว "วันนี้" เปลี่ยน ห้ามตามทำ
-  { key: 'payroll-cutoff', label: 'ตัดยอดเงินเดือน', when: { daily: '23:30', until: '23:59' }, run: 'inline' },
-  { key: 'cleanup-photos', label: 'ลบรูปเก่าเกิน 60 วัน + เสียงเก่า', when: { daily: '03:30', until: '08:00' }, run: { http: '/api/cron/cleanup-photos' } },
+  { key: 'payroll-cutoff', label: 'ตัดยอดเงินเดือน', group: 'people', when: { daily: '23:30', until: '23:59' }, run: 'inline' },
+  { key: 'cleanup-photos', label: 'ลบรูปเก่าเกิน 60 วัน + เสียงเก่า', group: 'data', when: { daily: '03:30', until: '08:00' }, run: { http: '/api/cron/cleanup-photos' } },
   // เว็บ
-  { key: 'web-nightly', label: 'ตรวจเว็บประจำคืน', when: { daily: '02:00', until: '06:00' }, run: { http: '/api/web/nightly' } },
-  { key: 'web-expiry', label: 'เตือนวันหมดอายุ โดเมน/โฮสต์/SSL', when: { daily: '09:00', until: '18:00' }, run: { http: '/api/web/expiry' } },
-  { key: 'web-uptime', label: 'เช็คเว็บล่ม', when: { every: 180 }, run: { http: '/api/web/uptime' } },
-  { key: 'web-jobs', label: 'ไล่คิวงานเว็บ + คิวกลาง (สำรอง)', when: { every: 10 }, run: { http: '/api/web/jobs/next' }, whenQueued: true },
+  { key: 'web-nightly', label: 'ตรวจเว็บประจำคืน', group: 'web', when: { daily: '02:00', until: '06:00' }, run: { http: '/api/web/nightly' } },
+  { key: 'web-expiry', label: 'เตือนวันหมดอายุ โดเมน/โฮสต์/SSL', group: 'web', when: { daily: '09:00', until: '18:00' }, run: { http: '/api/web/expiry' } },
+  { key: 'web-uptime', label: 'เช็คเว็บล่ม', group: 'web', when: { every: 180 }, run: { http: '/api/web/uptime' } },
+  { key: 'web-jobs', label: 'ไล่คิวงานเว็บ + คิวกลาง (สำรอง)', group: 'web', when: { every: 10 }, run: { http: '/api/web/jobs/next' }, whenQueued: true },
   // แผนการตลาด — ยอดขาย aoo 7 วันล่าสุด → marketing_metric_daily
-  { key: 'marketing-sales', label: 'ดึงยอดขาย aoo เข้าแผนการตลาด', when: { daily: '05:00', until: '12:00' }, run: { http: '/api/cron/marketing-sales' } },
+  { key: 'marketing-sales', label: 'ดึงยอดขาย aoo เข้าแผนการตลาด', group: 'data', when: { daily: '05:00', until: '12:00' }, run: { http: '/api/cron/marketing-sales' } },
   // SEO
-  { key: 'seo-daily', label: 'SEO รายวัน: GSC + อันดับ + AEO + Bing', when: { daily: '04:00', until: '08:00' }, run: { http: '/api/cron/seo/gsc-daily' } },
+  { key: 'seo-daily', label: 'SEO รายวัน: GSC + อันดับ + AEO + Bing', group: 'data', when: { daily: '04:00', until: '08:00' }, run: { http: '/api/cron/seo/gsc-daily' } },
 ]
 
 const BKK_OFFSET_MS = 7 * 3_600_000

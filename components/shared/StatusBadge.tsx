@@ -133,6 +133,14 @@ const KINDS = {
     failed: { label: 'ไม่สำเร็จ', tone: 'danger' },
     cancelled: { label: 'ยกเลิกแล้ว', tone: 'neutral' },
   },
+  // ไฟสถานะงานเบื้องหลัง (/settings/system · lib/monitor/health.ts)
+  jobHealth: {
+    ok: { label: 'ปกติ', tone: 'success' },
+    running: { label: 'กำลังทำ', tone: 'grape' },
+    late: { label: 'ช้า', tone: 'warning' },
+    failing: { label: 'ล้ม', tone: 'danger' },
+    never: { label: 'ยังไม่เคยทำ', tone: 'neutral' },
+  },
 } satisfies Record<string, Record<string, StatusDef>>
 
 export type StatusKind = keyof typeof KINDS

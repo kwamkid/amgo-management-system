@@ -18,7 +18,17 @@ import { periodBackTh } from '@/components/marketing/format'
 type Draft = Omit<BrandLink, 'updatedAt'>
 
 const PLATFORM: Record<string, string> = { shopee: 'Shopee', lazada: 'Lazada', tiktok: 'TikTok Shop' }
-const SOCIAL: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube' }
+const SOCIAL: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', google_business: 'Google Business' }
+// platform logos in public/platforms/ (shared with /vault)
+const LOGO: Record<string, string> = {
+  shopee: 'shopee', lazada: 'lazada', tiktokshop: 'tiktokshop',
+  facebook: 'facebook', instagram: 'instagram', tiktok: 'tiktok', youtube: 'youtube', google_business: 'google',
+}
+const logo = (key: string) =>
+  LOGO[key] ? (
+    // eslint-disable-next-line @next/next/no-img-element -- small SVG in public
+    <img src={`/platforms/${LOGO[key]}.svg`} alt="" width={18} height={18} className="shrink-0 rounded" />
+  ) : undefined
 const BACKFILL_DAYS = 90
 
 const blank = (brand: string): Draft => ({ brand, aoosocialCompanyId: null, aoosocialAccountIds: [], aooBrandNames: [], aooShops: [] })
@@ -59,10 +69,11 @@ export default function MarketingSettingsPage() {
   if (!drafts) return <TechLoader />
 
   const aooBrandOptions: SelectOption[] = (aoo?.brands ?? []).map((b) => ({ value: b, label: b }))
-  const shopOptions: SelectOption[] = (aoo?.shops ?? []).map((s) => ({ value: s.name, label: s.name, hint: PLATFORM[s.platform] ?? s.platform }))
+  const shopOptions: SelectOption[] = (aoo?.shops ?? []).map((s) => ({ value: s.name, label: s.name, hint: PLATFORM[s.platform] ?? s.platform, icon: logo(s.platform === 'tiktok' ? 'tiktokshop' : s.platform) }))
   const socialOptions: SelectOption[] = (aoo?.socialAccounts ?? []).map((a) => ({
     value: a.id,
     label: a.name,
+    icon: logo(a.platform),
     hint: `${SOCIAL[a.platform] ?? a.platform} · ${a.company}${a.needsReconnect ? ' · ต้องเชื่อมต่อใหม่' : ''}`,
   }))
   const aooHas = (label: string) => aoo?.brands.some((b) => b.toLowerCase() === label.toLowerCase()) ?? false

@@ -47,7 +47,7 @@
 |---|---|---|---|
 | [devplan.md](jobs/devplan.md) | 131 | 52 | คิวงาน + สิ่งที่ทำเสร็จแล้ว · Append-only via `/memo` |
 | [followups.md](jobs/followups.md) | 2 | 0 | Never block closing a topic. `/todo` lists the ones due. Format: `- [ ] YYYY-MM-DD · <topic> · <check> → <acti |
-| [ideas.md](jobs/ideas.md) | 5 | 4 | Quick thoughts that don't fit devplan / learning / rules / component. |
+| [ideas.md](jobs/ideas.md) | 5 | 5 | Quick thoughts that don't fit devplan / learning / rules / component. |
 | [owner-checks.md](jobs/owner-checks.md) | 2 | 1 | Checks only the owner can do (real shop · real money · real device). Never block closing a topic. |
 | [todo.md](jobs/todo.md) | 1 | 1 | Starting a topic = move its section to `doing/<topic>.md`. Every report ends with one line: ✅ ปิดจ๊อบได้ · ⏳ ป |
 
@@ -59,7 +59,7 @@
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |
 | [jadore-launch.md](jobs/doing/jadore-launch.md) | 5 | 2 | AGD notes: `01-AGD/02-hape/_notes/jadore.md` (media, clip language check) · `02-hape/_notes/3-marketing/social |
-| [marketing-plan.md](jobs/doing/marketing-plan.md) | 6 | 3 | Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md) |
+| [marketing-plan.md](jobs/doing/marketing-plan.md) | 8 | 3 | Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md) |
 | [stokke-order.md](jobs/doing/stokke-order.md) | 6 | 2 | - [x] STK #5 draft round built from legacy dump + aoo live and pushed to amgo /import as `STK5-stokke` (16 lin |
 | [tasks-edith.md](jobs/doing/tasks-edith.md) | 5 | 1 | Plan: [tasks-edith.md](../plans/tasks-edith.md). This file = open items only. |
 | [voice-tasks.md](jobs/doing/voice-tasks.md) | 6 | 1 | Plan: [voice-tasks.md](../plans/voice-tasks.md) (decisions, Plaud API, STT bake-off). This file = open items o |

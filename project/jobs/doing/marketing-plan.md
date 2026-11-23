@@ -25,24 +25,25 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Step-1 code committed 3f55a73 (Sidebar /brief entry + types import_distributions of other chats left unstaged: staged via hash-object/update-index + `git apply --cached`, then plain `git commit` of the index — `git commit -- <paths>` would take the whole working-tree file)
 - [ ] รอคุณแอม: fill J'adore KPI targets on /marketing/jadore?tab=kpi (AGD social-plan has only ROAS 6–8× and online stock ฿356k retail) · assign people to #721–#734 · set plan status "กำลังใช้"
 - [ ] Regenerate types/database.ts from the DB when Supabase MCP auth works again (hand-edited now; migration not in schema_migrations)
-- [ ] After deploy: add "Marketing plans" to project/features/app-features.md + write UAT cases (overview, create plan from template, tick action, KPI target + manual entry)
+- [x] app-features.md entry written 2026-11-23
+- [ ] Write UAT cases (overview, create plan from template, tick action, KPI target + manual entry)
 - [x] Admin UI `/marketing/settings` (admin only, button ตั้งค่า on /marketing): per brand aoo brand names · marketplace shops to count · aoosocial company id + account ids (text, step 3 makes a picker) · save + backfill 90 days
 - [x] Step 2 built 84f713c: aoo MCP `sales_summary` (no aoo DB access needed) → lib/marketing/aooSales.ts → queue kind `marketing.aoo.sales` · cron row `marketing-sales` 05:00 (last 7 days) · `/api/marketing/aoo` GET options / POST sync now. Backfilled 90 days for gb/hape/stokke/taftoys/tommeetippee 2026-11-22 (taftoys 15–21 Nov matched aoo per channel)
 - [ ] Step 2 test in Chrome (dev server start was denied this round): /marketing/settings save + backfill · brand page "ดึงยอดขาย" · KPI tab shows aoo numbers · 375px
 - [x] aoosocial accounts linked 2026-11-23 (owner confirmed; REST upsert into marketing_brand_links): company ABC the Baby ef10249d… · hape FB+IG · gb FB+IG+TT · stokke FB+IG+TT + Babyzen FB (Stokke bought Babyzen; Babyzen has no IG) · taftoys FB+IG · tommeetippee FB+IG+TT · abcthebaby FB+IG+TT+YT · Crane dropped (owner quit the brand) · J'adore not connected → manual KPI
 - [x] Step 3a built 0998ebb: env AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY in amgo .env.local (lib/aoosocial/db.ts) · CalendarTab = live GET /api/marketing/calendar (marketing_can) · queue kind `marketing.social.posts` counts published targets → metric posts per platform (cron + "ดึงตัวเลข" button enqueue it with the aoo sales job) · settings picker for aoosocial accounts · StatusBadge kind socialPost. Backfilled 90 days: gb 95 · abcthebaby 56 · hape 4 · others 0
-- [ ] รอคุณแอม: add AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY to Vercel env (Production) before deploy — else calendar shows an error and the posts job fails
+- [x] (2026-11-23 verified on prod: /marketing/settings loads aoosocial accounts) add AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY to Vercel env (Production) before deploy — else calendar shows an error and the posts job fails
 - [x] Step 3b followers/reach — aoosocial cf2dd90 (account_insights_daily + cron sync-account-insights 06:00 via its tick; FB followers/reach/views live-tested, IG followers only (#10 no insights permission), TikTok followers, YouTube subs+views) · amgo: queue kind marketing.social.insights, cron moved to 06:30
-- [ ] owner: run aoosocial SQL 20261123000004_account_insights_daily.sql (ref hqapmsoapxiukwroxxue) · push aoosocial + amgo
-- [ ] after 2026-11-24 06:30: check account_insights_daily rows + KPI tab followers/reach on prod
-- [ ] optional: ask for instagram_manage_insights on the aoosocial Meta app → IG reach/views
+- [x] aoosocial SQL run on gyuqrqrtyhjmfyguvczy (the real ref — aoosocial/supabase/.temp/project-ref is stale) · pushed amgo f1cc105 + aoosocial cf2dd90
+- [x] snapshot check → followups 2026-11-24
+- [ ] รอคุณแอม (optional): ask for instagram_manage_insights on the aoosocial Meta app → IG reach/views
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: owner runs aoosocial SQL + push both repos · next morning verify snapshot rows and KPI tab · Chrome test of steps 2–3a still open (prod keys verified 2026-11-23: /marketing/settings loads aoosocial accounts).
+Resume at: Chrome test of steps 2–3a on prod (https://app.amgovenger.com/marketing/settings save + backfill · brand page "ดึงตัวเลข" · KPI + ปฏิทินโพสต์ tabs · 375px).
 ### State
-Steps 1–2 committed; tsc + eslint clean for marketing files. Migration applied by hand. Dev :3002 uses the PROD DB — the J'adore plan + 14 tasks are real rows.
+All code pushed (amgo f1cc105, aoosocial cf2dd90). Snapshot table live; first rows expected 2026-11-24 06:00, amgo cron 06:30.
 ### Gotchas
-Supabase MCP returns Unauthorized and `supabase db query --linked` 403 → SQL goes through the owner (SQL Editor link + pbcopy). REST with SUPABASE_SECRET_KEY works for reads. resize_window does nothing → probe with a 375px same-origin iframe.
+aoosocial is READ ONLY from amgo; its supabase/.temp/project-ref points to the wrong project (live = gyuqrqrtyhjmfyguvczy, same as AOOSOCIAL_SUPABASE_URL). IG has followers only (Meta #10).
 ### Read first
-[plans/marketing-plan.md](../plans/marketing-plan.md) · `.claude/rules/domains/marketing.md`
+.claude/rules/domains/marketing.md · lib/marketing/socialInsights.ts

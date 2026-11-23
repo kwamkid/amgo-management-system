@@ -3,7 +3,9 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (7)
+**Contents** (9)
+- Marketing plans per brand (แผนการตลาด) — since 2026-11-22
+- Background job status board (สถานะงานระบบ) — since 2026-11-23
 - Tasks on the phone + task notifications (งานของทีม) — since 2026-11-20
 - Meeting recordings → tasks (เสียงประชุม → งาน) — since 2026-11-17
 - UAT test cases: reference picture per step — since 2026-11-09
@@ -14,6 +16,15 @@
 <!-- /toc -->
 
 ---
+
+## Marketing plans per brand (แผนการตลาด) — since 2026-11-22
+- One plan per brand and period: action plan (tasks), KPI targets vs actual, key dates, post calendar.
+- Actual numbers fill in daily: sales and pieces from aoocommerce, posts and followers/reach/views from aoosocial (Instagram: followers only). Admin links each brand to its aoo brand names, marketplace shops and social accounts at /marketing/settings.
+- Access: admin + brand owners of that brand.
+
+## Background job status board (สถานะงานระบบ) — since 2026-11-23
+- Admin page /settings/system: a light per scheduled job and queue job type (ok · running · late · failing · never) with the last 30 runs.
+- Scheduled jobs run in 3 groups (people · web · data); a failed job e-mails the owner via cron-job.org.
 
 ## Tasks on the phone + task notifications (งานของทีม) — since 2026-11-20
 - Phone list grouped by urgency (overdue on a light red background), tabs ต้องทำ / กำลังทำ / เสร็จแล้ว, tap circle = done. Tapping a task opens a read view: status buttons save instantly, progress as a chat with photo upload; "แก้ไข" opens the full form.

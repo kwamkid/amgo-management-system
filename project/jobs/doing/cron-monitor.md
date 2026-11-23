@@ -1,3 +1,9 @@
+<!-- toc -->
+**Contents** (2)
+- Cron like aoocommerce — groups + heartbeats + status board (owner 2026-11-23 "ทำให้เหมือนกัน")
+- Resume note
+<!-- /toc -->
+
 ## Cron like aoocommerce — groups + heartbeats + status board (owner 2026-11-23 "ทำให้เหมือนกัน")
 
 Read first: lib/cron/schedule.ts · lib/cron/runner.ts · aoocommerce lib/cron/groups.ts, app/api/cron/[group]/route.ts, lib/monitor/heartbeat.ts, migrations 20261019_system_heartbeats.sql
@@ -18,12 +24,17 @@ Design (amgo keeps its better parts):
 - [x] lib/monitor/health.ts + API + /settings/system page
 - [x] docs/cron.md + .claude/rules/queue.md update
 - [x] owner: SQL run · 3 cron-job.org group jobs added (Notify on failure) · pushed 71f802a (2026-11-23)
-- [ ] owner: disable AMGO Tick — all 3 groups answered 200 at 10:20 2026-11-23, told owner to disable
-- [ ] ~2026-11-30: if no failure mails, owner deletes the Inactive old jobs in cron-job.org (AMGO + AooSocial folders — all 11 AooSocial ones are in its tick schedule, checked)
+- [x] all 3 groups answered 200 at 10:20 2026-11-23 → owner told to disable AMGO Tick (owner-checks) · delete old Inactive jobs → followups 2026-11-30
 
 - [x] Chrome desktop on production 2026-11-23 10:23: 3 groups green, jobs 'never' until their first slot (expected)
 - [ ] Chrome 375px — resize_window had no effect this session; retest
-- [ ] after a day live: check lights match reality (late rules in lib/monitor/health.ts lastDueStart)
+- [x] day-after light check → followups 2026-11-24
 
-Gotchas: groups wait ≤ 25 s then answer (502 if a finished job failed); unfinished jobs continue in after(). tick = all groups, still works. Unit check of settleWithin passed (scratch test).
-Resume at: owner steps (SQL, cron-job.org), then the Chrome test.
+## Resume note
+Resume at: /settings/system at 375px in Chrome (resize_window did nothing last time — try a real phone-size window or DevTools device mode). Page code: app/(admin)/settings/system/page.tsx.
+### State
+All code pushed (71f802a). system_heartbeats live on prod; cron-job.org has people/web/data jobs.
+### Gotchas
+Groups wait ≤ 25 s then answer (502 if a finished job failed); unfinished jobs continue in after(). tick = all groups, still works. Jobs show 'never' until their first slot after deploy.
+### Read first
+docs/cron.md §2 · lib/monitor/health.ts

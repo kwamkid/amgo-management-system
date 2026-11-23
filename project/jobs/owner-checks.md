@@ -21,3 +21,4 @@
 - Voice: AirDrop "ส่งเข้า amgo.shortcut" (Mac Desktop) to the iPhone, add it, share one Voice Memo → notification "ส่งเข้า amgo แล้ว" and a recording on /tasks/voice within ~15 min. Delete the file from the Desktop after (it holds the key).
 - Domains: yuttana.com — Cloudflare answers REFUSED (zone not in the account that owns emma/troy NS); add the zone + A/www/MX records there.
 - Tasks: on a real iPhone open a task from /tasks — camera button offers camera + library, keyboard doesn't cover the update box; a push arrives when someone else assigns/updates your task (9507ce5, 9e3e710).
+- cron-monitor: in cron-job.org disable "AMGO Tick" (3 group jobs people/web/data run since 2026-11-23 10:20).

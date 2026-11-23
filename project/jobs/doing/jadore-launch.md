@@ -24,3 +24,4 @@ Nothing in git for this topic; all outputs live in AGD (Dropbox).
 Kanit/Prompt fonts in ~/Library/Fonts are 0-byte → use IBMPlexSansThai. FB cover 1640×624, mobile safe x 265–1375. Don't use `852441_1 (2).mp4` (AI watermark).
 ### Read first
 `01-AGD/02-hape/_notes/jadore.md` · `01-AGD/20-accounts/b2s/b2s.md`
+- [ ] รอ Hape: safety test reports for all C1 SKUs (they-owe H20, follow up 2026-11-30) — then add a 'ผลทดสอบ' block to jadore-marketing.html and use in safety content.

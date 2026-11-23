@@ -29,11 +29,13 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Admin UI `/marketing/settings` (admin only, button ตั้งค่า on /marketing): per brand aoo brand names · marketplace shops to count · aoosocial company id + account ids (text, step 3 makes a picker) · save + backfill 90 days
 - [x] Step 2 built 84f713c: aoo MCP `sales_summary` (no aoo DB access needed) → lib/marketing/aooSales.ts → queue kind `marketing.aoo.sales` · cron row `marketing-sales` 05:00 (last 7 days) · `/api/marketing/aoo` GET options / POST sync now. Backfilled 90 days for gb/hape/stokke/taftoys/tommeetippee 2026-11-22 (taftoys 15–21 Nov matched aoo per channel)
 - [ ] Step 2 test in Chrome (dev server start was denied this round): /marketing/settings save + backfill · brand page "ดึงยอดขาย" · KPI tab shows aoo numbers · 375px
-- [ ] Step 3: aoosocial calendar (posts/post_targets) + page_insights_cache → CalendarTab + followers/reach · รอคุณแอม: which aoosocial accounts are AGD brands / is J'adore connected
+- [x] aoosocial accounts linked 2026-11-23 (owner confirmed; REST upsert into marketing_brand_links): company ABC the Baby ef10249d… · hape FB+IG · gb FB+IG+TT · stokke FB+IG+TT + Babyzen FB (Stokke bought Babyzen; Babyzen has no IG) · taftoys FB+IG · tommeetippee FB+IG+TT · abcthebaby FB+IG+TT+YT · Crane dropped (owner quit the brand) · J'adore not connected → manual KPI
+- [ ] Step 3a calendar: aoosocial posts/post_targets (303 targets for ABC company, mostly GB; last post 2026-11-08) → CalendarTab + `posts` metric · needs aoosocial read key in amgo env (local + Vercel) — รอคุณแอม
+- [ ] Step 3b followers/reach: aoosocial stores NONE (page_insights_cache empty = 30-min cache of live Meta calls; ad_insights_daily 1,289 rows = ads only). Options: aoosocial daily snapshot table + cron (amgo reads) vs amgo calling Meta with aoosocial tokens — รอคุณแอม
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: test step 2 in Chrome (list above), then step 3 once the owner says which aoosocial accounts belong to which AGD brand.
+Resume at: owner decisions for 3a (key in env) and 3b (where follower snapshots live); test step 2 in Chrome.
 ### State
 Steps 1–2 committed; tsc + eslint clean for marketing files. Migration applied by hand. Dev :3002 uses the PROD DB — the J'adore plan + 14 tasks are real rows.
 ### Gotchas

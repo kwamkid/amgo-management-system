@@ -17,7 +17,9 @@ Design (amgo keeps its better parts):
 - [x] queue heartbeat in drainQueue
 - [x] lib/monitor/health.ts + API + /settings/system page
 - [x] docs/cron.md + .claude/rules/queue.md update
-- [ ] owner: run SQL · add 3 cron-job.org jobs · then delete tick job
+- [x] owner: SQL run · 3 cron-job.org group jobs added (Notify on failure) · pushed 71f802a (2026-11-23)
+- [ ] owner: disable AMGO Tick once all 3 groups show Successful (after 10:20 2026-11-23)
+- [ ] ~2026-11-30: if no failure mails, owner deletes the Inactive old jobs in cron-job.org (AMGO + AooSocial folders — all 11 AooSocial ones are in its tick schedule, checked)
 
 - [ ] Chrome test /settings/system (desktop + 375px) after SQL is run — dev server start was denied this session
 - [ ] after a day live: check lights match reality (late rules in lib/monitor/health.ts lastDueStart)

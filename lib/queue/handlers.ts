@@ -15,6 +15,7 @@ import { flushSeoAlerts, recordSeoEvents } from '@/lib/services/seo/seoAlerts'
 import { VOICE_HANDLERS } from '@/lib/voice/pipeline'
 import { AOO_SALES_KIND, runAooSalesJob } from '@/lib/marketing/aooSales'
 import { SOCIAL_POSTS_KIND, syncBrandPosts } from '@/lib/marketing/socialPosts'
+import { SOCIAL_INSIGHTS_KIND, syncBrandInsights } from '@/lib/marketing/socialInsights'
 
 const p = <T,>(job: QueueJob, key: string) => job.payload[key] as T
 
@@ -116,6 +117,12 @@ export const QUEUE_HANDLERS: Record<string, QueueHandler> = {
   [SOCIAL_POSTS_KIND]: async (sb, job) => {
     const x = job.payload as { brand: string; from: string; to: string }
     return { result: await syncBrandPosts(sb as never, x.brand, x.from, x.to) }
+  },
+
+  /** แผนการตลาด: ผู้ติดตาม/reach/วิว รายวันจาก aoosocial account_insights_daily */
+  [SOCIAL_INSIGHTS_KIND]: async (sb, job) => {
+    const x = job.payload as { brand: string; from: string; to: string }
+    return { result: await syncBrandInsights(sb as never, x.brand, x.from, x.to) }
   },
 
   'queue.prune': async (sb) => {

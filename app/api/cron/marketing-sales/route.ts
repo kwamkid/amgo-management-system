@@ -13,6 +13,7 @@ import { enqueue, kickQueue } from '@/lib/queue/queue'
 import { BRANDS } from '@/lib/constants/brands'
 import { aooSalesJob, periodBack } from '@/lib/marketing/aooSales'
 import { socialPostsJob } from '@/lib/marketing/socialPosts'
+import { socialInsightsJob } from '@/lib/marketing/socialInsights'
 import { brandLabel } from '@/lib/constants/brands'
 
 async function run(req: NextRequest) {
@@ -28,10 +29,11 @@ async function run(req: NextRequest) {
   await enqueue(db, [
     ...brands.map((b) => aooSalesJob(b, from, to, groupKey)),
     ...social.map((b) => socialPostsJob(b, from, to, groupKey, brandLabel(b))),
+    ...social.map((b) => socialInsightsJob(b, from, to, groupKey, brandLabel(b))),
   ])
   const origin = req.nextUrl.origin
   after(() => kickQueue(origin))
-  return NextResponse.json({ ok: true, queued: brands.length + social.length, from, to })
+  return NextResponse.json({ ok: true, queued: brands.length + social.length * 2, from, to })
 }
 
 export const GET = run

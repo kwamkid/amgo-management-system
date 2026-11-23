@@ -12,6 +12,7 @@ import { aooMcp, type AooOverview } from '@/lib/aoo/mcp'
 import { aoosocialDb } from '@/lib/aoosocial/db'
 import { aooSalesJob } from '@/lib/marketing/aooSales'
 import { socialPostsJob } from '@/lib/marketing/socialPosts'
+import { socialInsightsJob } from '@/lib/marketing/socialInsights'
 import { brandLabel } from '@/lib/constants/brands'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
   await enqueue(createAdminClient(), [
     { ...aooSalesJob(brand, from, to, groupKey), priority: 2, createdBy: me.id },
     { ...socialPostsJob(brand, from, to, groupKey, brandLabel(brand)), priority: 2, createdBy: me.id },
+    { ...socialInsightsJob(brand, from, to, groupKey, brandLabel(brand)), priority: 2, createdBy: me.id },
   ])
   const origin = req.nextUrl.origin
   after(() => kickQueue(origin))

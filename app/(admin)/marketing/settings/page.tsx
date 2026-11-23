@@ -87,7 +87,7 @@ export default function MarketingSettingsPage() {
     <div className="space-y-4">
       <PageHeader
         title="ตั้งค่าแผนการตลาด"
-        description="ผูกแบรนด์กับระบบ aoo (ยอดขาย) และ aoosocial (ปฏิทินโพสต์ · จำนวนโพสต์) — ระบบดึงตัวเลขเข้า KPI ทุกวันตอน 05:00"
+        description="ผูกแบรนด์กับระบบ aoo (ยอดขาย) และ aoosocial (ปฏิทินโพสต์ · จำนวนโพสต์ · ผู้ติดตาม · reach · ยอดวิว) — ระบบดึงตัวเลขเข้า KPI ทุกวันตอน 06:30"
         icon={Settings}
         backHref="/marketing"
       />
@@ -142,7 +142,7 @@ export default function MarketingSettingsPage() {
                   disabled={!aoo}
                 />
               </Field>
-              <Field asDiv label="บัญชีโซเชียลใน aoosocial" help="ใช้ทำปฏิทินโพสต์และนับจำนวนโพสต์" className="md:col-span-2">
+              <Field asDiv label="บัญชีโซเชียลใน aoosocial" help="ใช้ทำปฏิทินโพสต์ นับจำนวนโพสต์ และเก็บผู้ติดตาม/reach/ยอดวิวรายวัน (Instagram มีแค่ผู้ติดตาม)" className="md:col-span-2">
                 <MultiSelectMenu
                   values={d.aoosocialAccountIds}
                   onChange={(v) =>

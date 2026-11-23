@@ -160,7 +160,7 @@ export default function KpiTab({
       )}
 
       <p className="text-xs text-gray-400">
-        ตัวเลขที่ดึงอัตโนมัติ: ยอดขายจาก aoocommerce · ผู้ติดตาม/reach/โพสต์จาก aoosocial — อัปเดตวันละครั้ง (กำลังเชื่อม)
+        ตัวเลขที่ดึงอัตโนมัติ: ยอดขายจาก aoocommerce · ผู้ติดตาม/reach/ยอดวิว/โพสต์จาก aoosocial — อัปเดตวันละครั้ง (Instagram มีแค่ผู้ติดตาม)
       </p>
 
       {adding && <AddTargetModal plan={plan} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); onChanged() }} />}

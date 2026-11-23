@@ -32,11 +32,14 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] aoosocial accounts linked 2026-11-23 (owner confirmed; REST upsert into marketing_brand_links): company ABC the Baby ef10249d… · hape FB+IG · gb FB+IG+TT · stokke FB+IG+TT + Babyzen FB (Stokke bought Babyzen; Babyzen has no IG) · taftoys FB+IG · tommeetippee FB+IG+TT · abcthebaby FB+IG+TT+YT · Crane dropped (owner quit the brand) · J'adore not connected → manual KPI
 - [x] Step 3a built 0998ebb: env AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY in amgo .env.local (lib/aoosocial/db.ts) · CalendarTab = live GET /api/marketing/calendar (marketing_can) · queue kind `marketing.social.posts` counts published targets → metric posts per platform (cron + "ดึงตัวเลข" button enqueue it with the aoo sales job) · settings picker for aoosocial accounts · StatusBadge kind socialPost. Backfilled 90 days: gb 95 · abcthebaby 56 · hape 4 · others 0
 - [ ] รอคุณแอม: add AOOSOCIAL_SUPABASE_URL + AOOSOCIAL_SECRET_KEY to Vercel env (Production) before deploy — else calendar shows an error and the posts job fails
-- [ ] Step 3b followers/reach — owner chose: snapshot IN aoosocial (repo /Users/ampstark/Projects/aoo/aoosocial, its own git; CLAUDE.md there). Design: table `account_insights_daily` (social_account_id, date, followers, reach, views, fetched_at; PK account+date; RLS on, no policies) + cron route `src/app/api/cron/sync-account-insights` (template: sync-search-insights · `withCronAudit` · cron-job.org entry the owner adds, aoosocial still uses one job per route). FB: `getPagePublicCounts` (followers_count) + `getPageDailyInsights` (page_views_total, page_video_views; reach metric was dropped by Meta — check) in src/lib/social/meta/page-insights.ts. IG/TikTok/YouTube: find their libs (src/app/(app)/analytics/youtube-data.ts). Then amgo: queue kind reading that table → metrics followers/reach/views per platform (source aoosocial). Migration there = owner runs SQL (aoosocial ref in its supabase/.temp/project-ref)
+- [x] Step 3b followers/reach — aoosocial cf2dd90 (account_insights_daily + cron sync-account-insights 06:00 via its tick; FB followers/reach/views live-tested, IG followers only (#10 no insights permission), TikTok followers, YouTube subs+views) · amgo: queue kind marketing.social.insights, cron moved to 06:30
+- [ ] owner: run aoosocial SQL 20261123000004_account_insights_daily.sql (ref hqapmsoapxiukwroxxue) · push aoosocial + amgo
+- [ ] after 2026-11-24 06:30: check account_insights_daily rows + KPI tab followers/reach on prod
+- [ ] optional: ask for instagram_manage_insights on the aoosocial Meta app → IG reach/views
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: Step 3b in aoosocial (design in its item) · owner adds AOOSOCIAL_* to Vercel · Chrome test of steps 2–3a (dev server start was denied in the 22–23 Nov chat).
+Resume at: owner runs aoosocial SQL + push both repos · next morning verify snapshot rows and KPI tab · Chrome test of steps 2–3a still open (prod keys verified 2026-11-23: /marketing/settings loads aoosocial accounts).
 ### State
 Steps 1–2 committed; tsc + eslint clean for marketing files. Migration applied by hand. Dev :3002 uses the PROD DB — the J'adore plan + 14 tasks are real rows.
 ### Gotchas

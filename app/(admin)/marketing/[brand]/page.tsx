@@ -73,7 +73,7 @@ export default function BrandMarketingPage() {
   const [detailTick, setDetailTick] = useState(0)
   const loadPlans = () => setPlansTick((t) => t + 1)
   const loadDetail = () => setDetailTick((t) => t + 1)
-  // admin: re-pull this plan's aoo sales + aoosocial post count now (normally the 05:00 cron)
+  // admin: re-pull this plan's aoo sales + aoosocial post count now (normally the 06:30 cron)
   const aooSync = useAooSync(loadDetail)
 
   useEffect(() => {

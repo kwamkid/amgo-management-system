@@ -24,7 +24,7 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] J'adore launch plan created (plan 2a54bcfc…, tasks #721–#734, 7 targets at 0) · templates (step 4) built
 - [x] Step-1 code committed 3f55a73 (Sidebar /brief entry + types import_distributions of other chats left unstaged: staged via hash-object/update-index + `git apply --cached`, then plain `git commit` of the index — `git commit -- <paths>` would take the whole working-tree file)
 - [ ] รอคุณแอม: fill J'adore KPI targets on /marketing/jadore?tab=kpi (AGD social-plan has only ROAS 6–8× and online stock ฿356k retail) · assign people to #721–#734 · set plan status "กำลังใช้"
-- [ ] Regenerate types/database.ts from the DB when Supabase MCP auth works again (hand-edited now; migration not in schema_migrations)
+- [x] 9ad7a72 (2026-11-23, supabase CLI gen types; other chat's import_distributions hunk left unstaged) Regenerate types/database.ts from the DB when Supabase MCP auth works again (hand-edited now; migration not in schema_migrations)
 - [x] app-features.md entry written 2026-11-23
 - [ ] Write UAT cases (overview, create plan from template, tick action, KPI target + manual entry)
 - [x] Admin UI `/marketing/settings` (admin only, button ตั้งค่า on /marketing): per brand aoo brand names · marketplace shops to count · aoosocial company id + account ids (text, step 3 makes a picker) · save + backfill 90 days

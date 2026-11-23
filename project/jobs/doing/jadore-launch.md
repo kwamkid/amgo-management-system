@@ -10,7 +10,7 @@ AGD notes: `01-AGD/02-hape/_notes/jadore.md` (media, clip language check) · `02
 
 Done this session (files in `01-AGD/02-hape/media/jadore/_brand/social/`): logo PNGs · square profile (purple #9C1ACF / lime #DCF20A) · FB covers — final from 2026-11-23 = `jadore-fb-cover-three-girls-1-1640x624.jpg` (AI photo; earlier lineup cover retired) · clip Chinese-text check filed in jadore.md · launch content & ads plan filed in social-plan.md · amgo plan "เปิดตัว J'adore" created (see [marketing-plan.md](marketing-plan.md)).
 
-- [ ] รอคุณแอม: B2S — forms were filled + emailed; still missing SCB branch name, supplier self-assessment form, signatures + company stamp + ฿30 duty stamp (WHT letter). Record the send in `20-accounts/b2s/b2s.md` (it still says "nothing filled").
+- [ ] รอคุณแอม: B2S — forms re-sent 2026-11-23 as English-named files (first zip unreadable on Windows); still missing SCB branch name, supplier self-assessment form, signatures + company stamp + ฿30 duty stamp (WHT letter). Record the send in `20-accounts/b2s/b2s.md` (it still says "nothing filled").
 - [ ] รอคุณแอม: delete the 4.5 GB Brandfolder zip once media in `02-hape/media/jadore` is confirmed.
 - [ ] รอ Hape: launch photos asked by owner to Alina 2026-11-23 (they-owe H19, follow up 2026-11-30) — when received, add to `01-AGD/02-hape/_notes/3-marketing/jadore-marketing.html` (img/).
 - [ ] Thai subtitles for the clean `_EN` clips (list in jadore.md "Clip language check"); Chinese clips need cutting/cropping first (852441_3: drop first ~5 s).

@@ -3,7 +3,8 @@
 > By module: what it does · what it uses · limits · package · since. Customer wording, English. Not drafted yet.
 
 <!-- toc -->
-**Contents** (9)
+**Contents** (10)
+- Bug reports + releases (Bug report · Releases) — since 2026-11-23
 - Marketing plans per brand (แผนการตลาด) — since 2026-11-22
 - Background job status board (สถานะงานระบบ) — since 2026-11-23
 - Tasks on the phone + task notifications (งานของทีม) — since 2026-11-20
@@ -16,6 +17,13 @@
 <!-- /toc -->
 
 ---
+
+## Bug reports + releases (Bug report · Releases) — since 2026-11-23
+- Anyone in a dev project reports a bug with steps, expected/actual, device and up to 8 pictures, or in one tap from a failed UAT result (steps, note and pictures carried over). Bugs get numbers per project (BUG-0001) and move on a board: new · accepted · fixing · testing · closed (or won't fix, with a reason).
+- When a manager marks a bug fixed, the reporter is asked to retest and answers "gone" or "still there" (with what they still see). Every move is kept in the bug's history; push notifications go to managers, the reporter and the assignee. A bug can link to its UAT case and the case lists its bugs.
+- Releases: a named round per project with a goal and dates (planned · active · released); managers drag cases and bugs into it and see progress (done / total).
+- Developer bots read and update bugs and releases (bot API, MCP `bug_*` / `release_*`, CLI).
+- **Package:** internal, not sold.
 
 ## Marketing plans per brand (แผนการตลาด) — since 2026-11-22
 - One plan per brand and period: action plan (tasks), KPI targets vs actual, key dates, post calendar.

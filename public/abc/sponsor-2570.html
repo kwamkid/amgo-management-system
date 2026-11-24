@@ -4,123 +4,276 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>ABC the Baby — ขอเชิญร่วมสนับสนุนของรางวัล กิจกรรมลุ้นโชคปีใหม่ 2570</title>
+<title>ABC the Baby — ขอเชิญร่วมสนับสนุนของรางวัล กิจกรรมลุ้นโชคคริสต์มาส &amp; ปีใหม่ 2570</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{--red:#e8423b;--red-soft:#fdeceb;--fg:#24211e;--mut:#6d675f;--line:#ebe6df;--bg:#fbfaf8;--card:#fff}
+:root{--red:#d93b34;--red-dk:#a92a25;--green:#17583c;--green-dk:#0f3d2a;--gold:#e2a72e;--cream:#fdf8f0;--fg:#2a2420;--mut:#6e655c;--line:#eee3d3;--card:#fff}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 "IBM Plex Sans Thai",system-ui,sans-serif}
-main{max-width:880px;margin:0 auto;padding:40px 20px 72px}
-.brand{font-weight:700;color:var(--red);font-size:30px;letter-spacing:-.5px;line-height:1}
-.brand small{display:block;font-size:12px;letter-spacing:3px;margin-top:2px}
-h1{font-size:30px;line-height:1.3;margin:24px 0 10px}
-h2{font-size:21px;margin:44px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
-.lead{font-size:17px;margin:0 0 20px}
-.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:22px 0}
-.hero div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.hero b{display:block;font-size:22px;color:var(--red)}
-.hero span{font-size:13px;color:var(--mut)}
-.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px}
-th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{background:#f6f3ef;color:var(--mut);font-weight:600;font-size:14px;white-space:nowrap}
-td.n,th.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-td.c,th.c{text-align:center}
-tr.total td{font-weight:700;background:var(--red-soft)}
-.tier{font-weight:600;white-space:nowrap}
-.muted{color:var(--mut);font-size:14px}
-ul,ol{padding-left:22px}li{margin:4px 0}
-.timeline{list-style:none;padding:0;margin:0;border-left:2px solid var(--red-soft)}
-.timeline li{position:relative;padding:0 0 14px 20px;margin:0}
-.timeline li::before{content:"";position:absolute;left:-7px;top:8px;width:12px;height:12px;border-radius:50%;background:var(--red)}
-.timeline b{display:inline-block;min-width:150px}
-.contact{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:16px 18px}
-footer{margin-top:48px;color:var(--mut);font-size:13px}
-@media (max-width:560px){h1{font-size:24px}.timeline b{display:block}}
-@media print{body{background:#fff}main{padding:0}h2{break-after:avoid}table,tr{break-inside:avoid}}
+body{margin:0;background:var(--cream);color:var(--fg);font:16px/1.65 "IBM Plex Sans Thai",system-ui,sans-serif}
+h1,h2,.display{font-family:"Mitr","IBM Plex Sans Thai",sans-serif;font-weight:600}
+.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-.15em}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:radial-gradient(120% 90% at 70% 0%,#226e4c 0%,var(--green) 45%,var(--green-dk) 100%);color:#fff}
+.snow,.snow::after{position:absolute;inset:-200px 0 0 0;pointer-events:none;background-image:radial-gradient(2px 2px at 20px 30px,#fff 50%,transparent 51%),radial-gradient(3px 3px at 90px 120px,#fff 50%,transparent 51%),radial-gradient(2px 2px at 160px 60px,#ffffffcc 50%,transparent 51%),radial-gradient(3px 3px at 240px 170px,#ffffffaa 50%,transparent 51%),radial-gradient(2px 2px at 300px 90px,#fff 50%,transparent 51%);background-size:320px 200px;animation:fall 14s linear infinite;opacity:.75}
+.snow::after{content:"";inset:0;background-size:220px 160px;animation-duration:9s;opacity:.55}
+@keyframes fall{to{transform:translateY(200px)}}
+@media (prefers-reduced-motion:reduce){.snow,.snow::after{animation:none}}
+.hero-in{position:relative;max-width:1000px;margin:0 auto;padding:34px 22px 0;display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:end}
+.brand{display:inline-flex;align-items:baseline;gap:8px;background:#fff;color:var(--red);border-radius:12px;padding:6px 14px 8px;font-family:"Mitr",sans-serif;font-weight:600;font-size:26px;line-height:1}
+.brand small{font-size:11px;letter-spacing:3px;color:var(--red-dk)}
+.kicker{margin:22px 0 6px;color:var(--gold);font-weight:600;letter-spacing:1px;display:flex;gap:8px;align-items:center}
+.hero h1{font-size:40px;line-height:1.2;margin:0 0 12px}
+.hero h1 span{color:var(--gold)}
+.nw{white-space:nowrap}
+.hero p{margin:0 0 18px;color:#e6f1ea;font-size:17px;max-width:560px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px}
+.chip{display:inline-flex;gap:7px;align-items:center;background:#ffffff1f;border:1px solid #ffffff38;border-radius:999px;padding:6px 13px;font-size:14px}
+.art{align-self:end}
+.art svg{display:block;width:100%;height:auto}
+.lights{display:block;width:100%;height:34px;margin-top:-2px}
+
+main{max-width:1000px;margin:0 auto;padding:10px 22px 70px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:-6px 0 8px;position:relative}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center}
+.stat .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:22px;color:#fff;background:var(--red)}
+.stat:nth-child(2) .ic{background:var(--green)}
+.stat:nth-child(3) .ic{background:var(--gold)}
+.stat:nth-child(4) .ic{background:var(--red-dk)}
+.stat b{display:block;font-family:"Mitr",sans-serif;font-size:20px;line-height:1.2}
+.stat span{font-size:13px;color:var(--mut)}
+
+h2{display:flex;align-items:center;gap:10px;font-size:24px;margin:46px 0 12px}
+h2 .hic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:20px;color:#fff;background:var(--red)}
+h2.g .hic{background:var(--green)}
+h2.y .hic{background:var(--gold)}
+.lead{margin:0 0 16px}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.rule{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;gap:12px}
+.rule .ic{color:var(--red);font-size:22px;margin-top:2px}
+.rule.no .ic{color:#8a8178}
+.rule b{display:block;font-size:14px;color:var(--mut);font-weight:600}
+
+.prizes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.prize{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.prize .top{padding:14px 14px 12px;color:#fff;text-align:center}
+.prize .top svg{width:44px;height:44px}
+.prize .tname{font-family:"Mitr",sans-serif;font-size:17px;margin-top:4px}
+.prize .body{padding:12px 14px 14px;text-align:center;flex:1}
+.prize .qty{font-family:"Mitr",sans-serif;font-size:30px;line-height:1;color:var(--fg)}
+.prize .qty small{font-size:14px;color:var(--mut);font-family:"IBM Plex Sans Thai"}
+.prize .val{margin:6px 0 2px;font-weight:600}
+.prize .sum{font-size:13px;color:var(--mut)}
+.prize .ex{font-size:13px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:var(--mut)}
+.t1 .top{background:linear-gradient(160deg,#f0c24f,#c98a12)}
+.t2 .top{background:linear-gradient(160deg,#b9c2c9,#7d8a94)}
+.t3 .top{background:linear-gradient(160deg,#d99a63,#a2602d)}
+.t4 .top{background:linear-gradient(160deg,#e45a52,var(--red-dk))}
+.t5 .top{background:linear-gradient(160deg,#2f8a60,var(--green-dk))}
+.total{margin-top:12px;background:var(--green);color:#fff;border-radius:14px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.total b{font-family:"Mitr",sans-serif;font-size:20px;color:var(--gold)}
+.note{font-size:14px;color:var(--mut);margin-top:10px}
+
+.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:var(--card);font-size:15px;min-width:620px}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{background:#f7efe2;color:var(--fg);font-weight:600;font-size:14px}
+th.c,td.c{text-align:center}
+td .rowic{display:inline-flex;gap:9px;align-items:center}
+td .rowic .i{color:var(--red)}
+.yes{color:var(--green);font-size:20px}
+.dash{color:#c9bfb2}
+.pill{display:inline-block;font-size:13px;background:#fbe9e7;color:var(--red-dk);border-radius:999px;padding:2px 10px}
+
+.asks{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.ask{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.ask .ic{font-size:22px;color:var(--green)}
+.ask b{display:block;margin:6px 0 2px}
+.ask span{font-size:14px;color:var(--mut)}
+
+.tl{list-style:none;margin:0;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:21px;top:8px;bottom:8px;width:2px;background:repeating-linear-gradient(var(--red) 0 8px,var(--green) 8px 16px)}
+.tl li{position:relative;display:flex;gap:14px;align-items:flex-start;padding:0 0 14px}.tl li:last-child{padding-bottom:0}.tl::before{bottom:22px!important}
+.tl .dot{position:relative;z-index:1;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:2px solid var(--red);color:var(--red);font-size:20px;flex:none}
+.tl li.hl .dot{background:var(--red);color:#fff}
+.tl .when{font-family:"Mitr",sans-serif;font-size:17px}
+.tl .what{color:var(--mut);font-size:15px}
+
+.contact{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.contact div{display:flex;gap:10px;align-items:center}
+.contact .i{color:var(--red);font-size:20px}
+footer{margin-top:40px;text-align:center;color:var(--mut);font-size:14px}
+footer svg{width:120px;height:auto;display:block;margin:0 auto 8px}
+
+@media (max-width:860px){.hero-in{grid-template-columns:1fr}.art{max-width:440px;margin:0 auto}.prizes{grid-template-columns:repeat(2,1fr)}.prize.t1{grid-column:1/-1}}
+@media (max-width:520px){.hero h1{font-size:30px}h2{font-size:21px}.prizes{grid-template-columns:1fr 1fr}}
+@media print{.snow{display:none}body{background:#fff}.prize,.rule,.ask,.stat,table{break-inside:avoid}}
 </style>
 </head>
 <body>
+
+<!-- icon set (Lucide-style line icons) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-store" viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18M4 9v11h16V9M9 20v-6h6v6"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></symbol>
+<symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 11v2M13 17v2"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5z"/><rect x="1" y="5" width="15" height="14" rx="2"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+<symbol id="i-handshake" viewBox="0 0 24 24"><path d="M11 17l2 2a1 1 0 1 0 3-3M14 14l2.5 2.5a1 1 0 1 0 3-3l-3.9-3.9a3 3 0 0 0-4.2 0l-.9.9a1 1 0 1 1-3-3l2.8-2.8a5.8 5.8 0 0 1 7.1-.9l.5.3a4 4 0 0 0 2.6.6L21 4.6M21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+</svg>
+
+<header class="hero">
+  <div class="snow" aria-hidden="true"></div>
+  <div class="hero-in">
+    <div>
+      <div class="brand">abc <small>THE BABY</small></div>
+      <div class="kicker"><svg class="i"><use href="#i-star"/></svg>Christmas &amp; New Year Lucky Draw 2570</div>
+      <h1>ขอเชิญร่วมสนับสนุนของรางวัล<br><span><span class="nw">กิจกรรมลุ้นโชค</span> <span class="nw">คริสต์มาส &amp; ปีใหม่</span></span></h1>
+      <p>ลูกค้าซื้อสินค้าที่หน้าร้านหรือเว็บไซต์ abcthebaby.com ครบทุก 1,000 บาท รับตั๋วลุ้นรางวัลผ่าน LINE เราขอเชิญแบรนด์ร่วมสนับสนุนของรางวัล 50 รางวัล โดยแบรนด์เลือกได้ว่าจะสนับสนุนระดับไหน และกี่รางวัล</p>
+      <div class="chips">
+        <span class="chip"><svg class="i"><use href="#i-cal"/></svg>1 ธ.ค. 2569 – 10 ม.ค. 2570</span>
+        <span class="chip"><svg class="i"><use href="#i-video"/></svg>จับรางวัลสด 17 ม.ค. 2570</span>
+        <span class="chip"><svg class="i"><use href="#i-pin"/></svg>ABC the Baby เมกาบางนา</span>
+      </div>
+    </div>
+    <div class="art" aria-hidden="true">
+      <!-- illustration: tree, gifts, fireworks -->
+      <svg viewBox="0 0 440 330" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#e2a72e" stroke-width="3" stroke-linecap="round" opacity=".9">
+          <g transform="translate(70 70)"><path d="M0-34V-18M0 18V34M-34 0H-18M18 0H34M-24-24L-13-13M13 13L24 24M-24 24L-13 13M13-13L24-24"/></g>
+          <g transform="translate(380 55)" stroke="#ffffff"><path d="M0-26V-14M0 14V26M-26 0H-14M14 0H26M-18-18L-10-10M10 10L18 18M-18 18L-10 10M10-10L18-18"/></g>
+          <g transform="translate(395 160)" stroke="#f08a84"><path d="M0-18V-9M0 9V18M-18 0H-9M9 0H18M-13-13L-7-7M7 7L13 13M-13 13L-7 7M7-7L13-13"/></g>
+        </g>
+        <text x="70" y="128" text-anchor="middle" font-family="Mitr,sans-serif" font-size="26" fill="#e2a72e" font-weight="600">2570</text>
+        <!-- tree -->
+        <rect x="203" y="276" width="34" height="34" rx="4" fill="#7a4a2b"/>
+        <path d="M220 40L150 140h30L130 205h34L100 280h240l-64-75h34l-50-65h30z" fill="#1f7a52"/>
+        <path d="M220 40L185 90h70z" fill="#26905f"/>
+        <path d="M168 132q52 22 104 0M150 196q70 26 140 0M124 262q96 30 192 0" fill="none" stroke="#e2a72e" stroke-width="4" stroke-linecap="round"/>
+        <g fill="#d93b34"><circle cx="190" cy="118" r="7"/><circle cx="246" cy="150" r="7"/><circle cx="172" cy="176" r="8"/><circle cx="268" cy="222" r="8"/><circle cx="150" cy="246" r="8"/><circle cx="236" cy="252" r="8"/></g>
+        <g fill="#fff"><circle cx="232" cy="104" r="5"/><circle cx="206" cy="166" r="6"/><circle cx="282" cy="186" r="6"/><circle cx="196" cy="230" r="7"/><circle cx="296" cy="262" r="6"/></g>
+        <path d="M220 12l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#f4c24a" stroke="#c98a12" stroke-width="2"/>
+        <!-- gifts -->
+        <g transform="translate(36 236)"><rect width="78" height="70" rx="6" fill="#d93b34"/><rect x="32" width="14" height="70" fill="#f4c24a"/><rect y="24" width="78" height="12" fill="#f4c24a"/><path d="M39 0c-10-18-30-14-22-2 6 6 22 2 22 2zM39 0c10-18 30-14 22-2-6 6-22 2-22 2z" fill="#f4c24a"/></g>
+        <g transform="translate(118 262)"><rect width="56" height="46" rx="5" fill="#ffffff"/><rect x="22" width="12" height="46" fill="#d93b34"/><path d="M28 0c-8-14-24-10-17-1 5 4 17 1 17 1zM28 0c8-14 24-10 17-1-5 4-17 1-17 1z" fill="#d93b34"/></g>
+        <g transform="translate(300 246)"><rect width="70" height="62" rx="6" fill="#e2a72e"/><rect x="29" width="12" height="62" fill="#17583c"/><rect y="22" width="70" height="11" fill="#17583c"/><path d="M35 0c-9-16-27-12-19-2 5 5 19 2 19 2zM35 0c9-16 27-12 19-2-5 5-19 2-19 2z" fill="#17583c"/></g>
+        <g transform="translate(372 276)"><rect width="46" height="34" rx="4" fill="#d93b34"/><rect x="18" width="10" height="34" fill="#fff"/></g>
+        <rect x="0" y="306" width="440" height="24" rx="12" fill="#ffffff" opacity=".9"/>
+      </svg>
+    </div>
+  </div>
+  <svg class="lights" viewBox="0 0 1000 34" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 4 Q 50 30 100 4 T 200 4 T 300 4 T 400 4 T 500 4 T 600 4 T 700 4 T 800 4 T 900 4 T 1000 4" fill="none" stroke="#0f3d2a" stroke-width="2"/>
+    <g>
+      <circle cx="50" cy="17" r="6" fill="#d93b34"/><circle cx="150" cy="17" r="6" fill="#e2a72e"/><circle cx="250" cy="17" r="6" fill="#ffffff"/><circle cx="350" cy="17" r="6" fill="#d93b34"/><circle cx="450" cy="17" r="6" fill="#e2a72e"/><circle cx="550" cy="17" r="6" fill="#ffffff"/><circle cx="650" cy="17" r="6" fill="#d93b34"/><circle cx="750" cy="17" r="6" fill="#e2a72e"/><circle cx="850" cy="17" r="6" fill="#ffffff"/><circle cx="950" cy="17" r="6" fill="#d93b34"/>
+    </g>
+  </svg>
+</header>
+
 <main>
-<div class="brand">abc<small>THE BABY</small></div>
+  <div class="stats">
+    <div class="stat"><div class="ic"><svg class="i"><use href="#i-gift"/></svg></div><div><b>50 รางวัล</b><span>5 ระดับ มูลค่ารวม ~53,900 บาท</span></div></div>
+    <div class="stat"><div class="ic"><svg class="i"><use href="#i-cal"/></svg></div><div><b>6 สัปดาห์</b><span>คริสต์มาส ปีใหม่ ถึงวันเด็ก</span></div></div>
+    <div class="stat"><div class="ic"><svg class="i"><use href="#i-users"/></svg></div><div><b>~450 คน</b><span>ผู้ร่วมกิจกรรมที่คาดไว้ (~1,600 ตั๋ว)</span></div></div>
+    <div class="stat"><div class="ic"><svg class="i"><use href="#i-video"/></svg></div><div><b>17 ม.ค. 2570</b><span>จับรางวัลสด + ไลฟ์ Facebook</span></div></div>
+  </div>
 
-<h1>ขอเชิญร่วมสนับสนุนของรางวัล<br>กิจกรรมลุ้นโชคปีใหม่ 2570</h1>
-<p class="lead">ร้าน ABC the Baby จัดกิจกรรมลุ้นโชคปีใหม่ ซื้อสินค้าที่หน้าร้านหรือเว็บไซต์ abcthebaby.com ระหว่าง 1 ธ.ค. 2569 – 4 ม.ค. 2570 รับตั๋วลุ้นรางวัลผ่าน LINE และจับรางวัลสดวันเด็ก 9 ม.ค. 2570 เราขอเชิญแบรนด์ร่วมสนับสนุนของรางวัล 50 รางวัล โดยแบรนด์เลือกได้ว่าจะสนับสนุนรางวัลระดับไหน และกี่รางวัล</p>
+  <h2><span class="hic"><svg class="i"><use href="#i-ticket"/></svg></span>กิจกรรม</h2>
+  <p class="lead">ลูกค้าซื้อครบทุก 1,000 บาทต่อบิล ได้ตั๋วลุ้นรางวัล 1 ใบ จับรางวัลสดวันเสาร์ที่ 17 ม.ค. 2570 ที่ร้าน ABC the Baby เมกาบางนา</p>
+  <div class="rules">
+    <div class="rule"><svg class="i ic"><use href="#i-cal"/></svg><div><b>ระยะเวลา</b>1 ธ.ค. 2569 – 10 ม.ค. 2570 (6 สัปดาห์ ครอบคลุมคริสต์มาส ปีใหม่ และวันเด็ก)</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-store"/></svg><div><b>หน้าร้านที่ร่วม</b>ABC the Baby 3 สาขา: เมกาบางนา · พระราม 2 · วังเด็ก</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-globe"/></svg><div><b>ออนไลน์ที่ร่วม</b>เว็บไซต์ abcthebaby.com เท่านั้น</div></div>
+    <div class="rule no"><svg class="i ic"><use href="#i-ban"/></svg><div><b>ช่องทางที่ไม่ร่วม</b>Shopee · Lazada · TikTok Shop และ marketplace อื่นทั้งหมด</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-ticket"/></svg><div><b>สิทธิ์</b>ทุก 1,000 บาทในบิลเดียว = 1 ใบ สูงสุด 10 ใบต่อบิล</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-qr"/></svg><div><b>วิธีรับตั๋ว</b>สแกน QR ที่ได้พร้อมใบเสร็จ เข้า LINE OA ของร้าน ระบบออกเลขตั๋วให้ทันที (สั่งทางเว็บ ได้ QR ทางข้อความยืนยันคำสั่งซื้อ)</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-video"/></svg><div><b>จับรางวัล</b>เสาร์ 17 ม.ค. 2570 ที่ร้านเมกาบางนา ไลฟ์ทาง Facebook ของร้าน จับจากรางวัลเล็กไปใหญ่</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-trophy"/></svg><div><b>กติกาผู้โชคดี</b>1 คนได้ 1 รางวัล รับรางวัลที่ร้านเมกาบางนาภายใน 7 ก.พ. 2570</div></div>
+    <div class="rule"><svg class="i ic"><use href="#i-shield"/></svg><div><b>การขออนุญาต</b>ร้านเป็นผู้ยื่นขออนุญาตจัดกิจกรรมชิงโชคตามกฎหมาย</div></div>
+  </div>
 
-<div class="hero">
-<div><b>50 รางวัล</b><span>5 ระดับ มูลค่ารวม ~53,900 บาท</span></div>
-<div><b>5 สัปดาห์</b><span>1 ธ.ค. 2569 – 4 ม.ค. 2570</span></div>
-<div><b>~400 คน</b><span>ผู้ร่วมกิจกรรมที่คาดไว้ (~1,400 ตั๋ว)</span></div>
-<div><b>9 ม.ค. 2570</b><span>จับรางวัลสดวันเด็ก + ไลฟ์ Facebook</span></div>
-</div>
+  <h2 class="g"><span class="hic"><svg class="i"><use href="#i-gift"/></svg></span>ของรางวัล 50 รางวัล</h2>
+  <p class="lead">แบรนด์เลือกสนับสนุนได้ทั้งระดับ หรือเฉพาะบางรางวัลในระดับนั้น (เช่น 10 จาก 30 รางวัลของระดับที่ 5) และเสนอสินค้าของตัวเองแทนตัวอย่างได้ ขอให้มูลค่าตามราคาขายใกล้เคียงกับที่กำหนด</p>
+  <div class="prizes">
+    <div class="prize t1"><div class="top"><svg class="i"><use href="#i-trophy"/></svg><div class="tname">รางวัลใหญ่</div></div><div class="body"><div class="qty">1 <small>รางวัล</small></div><div class="val">~12,900 บาท</div><div class="sum">รวม 12,900 บาท</div><div class="ex">เก้าอี้เด็ก / รถเข็นเด็ก</div></div></div>
+    <div class="prize t2"><div class="top"><svg class="i"><use href="#i-star"/></svg><div class="tname">รางวัลที่ 2</div></div><div class="body"><div class="qty">2 <small>รางวัล</small></div><div class="val">~5,000 บาท</div><div class="sum">รวม 10,000 บาท</div><div class="ex">ชุดของเล่นชิ้นใหญ่ / คาร์ซีท</div></div></div>
+    <div class="prize t3"><div class="top"><svg class="i"><use href="#i-star"/></svg><div class="tname">รางวัลที่ 3</div></div><div class="body"><div class="qty">5 <small>รางวัล</small></div><div class="val">~2,000 บาท</div><div class="sum">รวม 10,000 บาท</div><div class="ex">ของเล่นชิ้นใหญ่ / อุปกรณ์เสริมรถเข็น</div></div></div>
+    <div class="prize t4"><div class="top"><svg class="i"><use href="#i-gift"/></svg><div class="tname">รางวัลที่ 4</div></div><div class="body"><div class="qty">12 <small>รางวัล</small></div><div class="val">~1,000 บาท</div><div class="sum">รวม 12,000 บาท</div><div class="ex">กระเป๋าใส่รถเข็น / ชุดให้นม / ของใช้เด็ก</div></div></div>
+    <div class="prize t5"><div class="top"><svg class="i"><use href="#i-gift"/></svg><div class="tname">รางวัลที่ 5</div></div><div class="body"><div class="qty">30 <small>รางวัล</small></div><div class="val">~300 บาท</div><div class="sum">รวม 9,000 บาท</div><div class="ex">ของเล่นชิ้นเล็ก / ของใช้เด็ก</div></div></div>
+  </div>
+  <div class="total"><span><svg class="i"><use href="#i-gift"/></svg> รวมทั้งหมด 50 รางวัล</span><b>~53,900 บาท</b></div>
 
-<h2>กิจกรรม</h2>
-<p>ลูกค้าซื้อครบทุก 1,000 บาทต่อบิล ได้ตั๋วลุ้นรางวัล 1 ใบ จับรางวัลสดวันเด็ก 9 ม.ค. 2570 ที่ร้าน ABC the Baby เมกาบางนา</p>
-<div class="wrap"><table>
-<tr><th>เรื่อง</th><th>รายละเอียด</th></tr>
-<tr><td>ระยะเวลา</td><td>1 ธ.ค. 2569 – 4 ม.ค. 2570 (5 สัปดาห์)</td></tr>
-<tr><td>ช่องทางที่ร่วม</td><td>หน้าร้าน ABC the Baby 3 สาขา: เมกาบางนา · พระราม 2 · วังเด็ก และเว็บไซต์ abcthebaby.com</td></tr>
-<tr><td>ช่องทางที่ไม่ร่วม</td><td>Shopee · Lazada · TikTok Shop และ marketplace อื่นทั้งหมด</td></tr>
-<tr><td>สิทธิ์</td><td>ทุก 1,000 บาทในบิลเดียว = 1 ใบ สูงสุด 10 ใบต่อบิล</td></tr>
-<tr><td>วิธีรับตั๋ว</td><td>สแกน QR ที่ได้พร้อมใบเสร็จ เข้า LINE OA ของร้าน ระบบออกเลขตั๋วให้ทันที (สั่งทางเว็บ ได้ QR ทางข้อความยืนยันคำสั่งซื้อ)</td></tr>
-<tr><td>จับรางวัล</td><td>9 ม.ค. 2570 ที่ร้านเมกาบางนา ไลฟ์ทาง Facebook ของร้าน จับจากรางวัลเล็กไปใหญ่</td></tr>
-<tr><td>กติกาผู้โชคดี</td><td>1 คนได้ 1 รางวัล รับรางวัลที่ร้านเมกาบางนาภายใน 31 ม.ค. 2570</td></tr>
-<tr><td>การขออนุญาต</td><td>ร้านเป็นผู้ยื่นขออนุญาตจัดกิจกรรมชิงโชคตามกฎหมาย</td></tr>
-</table></div>
+  <h2 class="y"><span class="hic"><svg class="i"><use href="#i-megaphone"/></svg></span>สิ่งที่แบรนด์ได้รับ</h2>
+  <p class="lead">แบรนด์ผู้สนับสนุนได้ออกสื่อตลอด 6 สัปดาห์ของกิจกรรม ทั้งที่หน้าร้านและช่องทางออนไลน์ของ ABC the Baby</p>
+  <div class="wrap"><table>
+    <tr><th>สิ่งที่ได้รับ</th><th class="c">รางวัลใหญ่ – ที่ 2</th><th class="c">รางวัลที่ 3 – 4</th><th class="c">รางวัลที่ 5</th></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-tag"/></svg>ชื่อรางวัล "รางวัลโดย [แบรนด์]"</span></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-image"/></svg>โลโก้บนโปสเตอร์กิจกรรม (หน้าร้าน 3 สาขา + ออนไลน์)</span></td><td class="c"><span class="pill">โลโก้ใหญ่</span></td><td class="c"><span class="pill">โลโก้กลาง</span></td><td class="c">ชื่อในรายชื่อผู้สนับสนุน</td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-share"/></svg>โพสต์แนะนำสินค้าบน Facebook · Instagram · TikTok ของร้าน</span></td><td class="c"><span class="pill">โพสต์เดี่ยวของแบรนด์</span></td><td class="c">โพสต์รวมรางวัล</td><td class="c">โพสต์รวมรางวัล</td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-msg"/></svg>อยู่ในข้อความ LINE OA ที่ส่งถึงสมาชิก</span></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c dash">—</td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-store"/></svg>ตั้งสินค้าโชว์พร้อมป้ายรางวัลที่หน้าร้านเมกาบางนา</span></td><td class="c"><span class="pill">ตำแหน่งหน้าร้าน</span></td><td class="c">มุมรางวัล</td><td class="c">มุมรางวัล</td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-video"/></svg>พูดถึงแบรนด์ตอนจับรางวัลไลฟ์ 17 ม.ค.</span></td><td class="c"><span class="pill">แนะนำสินค้าสด</span></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-camera"/></svg>รูปผู้โชคดีกับสินค้า ให้แบรนด์นำไปใช้ต่อได้ (เมื่อผู้โชคดียินยอม)</span></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c dash">—</td></tr>
+    <tr><td><span class="rowic"><svg class="i"><use href="#i-file"/></svg>รายงานสรุปหลังจบกิจกรรม (จำนวนผู้ร่วม · การเข้าถึงโพสต์ · รูปงาน)</span></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td><td class="c"><svg class="i yes"><use href="#i-check"/></svg></td></tr>
+  </table></div>
+  <p class="note">ช่องทางของร้าน ณ 23 พ.ย. 2569: Facebook 40,381 ผู้ติดตาม · Instagram 4,215 · TikTok 4,017 · YouTube 875 · หน้าร้าน 3 สาขา และเว็บไซต์ abcthebaby.com</p>
 
-<h2>ของรางวัล 50 รางวัล</h2>
-<p>แบรนด์เลือกสนับสนุนได้ทั้งระดับ หรือเฉพาะบางรางวัลในระดับนั้น (เช่น 10 จาก 30 รางวัลของระดับที่ 5) และเสนอสินค้าของตัวเองแทนตัวอย่างได้ ขอให้มูลค่าตามราคาขายใกล้เคียงกับที่กำหนด</p>
-<div class="wrap"><table>
-<tr><th>ระดับ</th><th class="n">จำนวน</th><th class="n">มูลค่าต่อรางวัล (ราคาขาย)</th><th class="n">มูลค่ารวม</th><th>ตัวอย่างสินค้า</th></tr>
-<tr><td class="tier">รางวัลใหญ่</td><td class="n">1</td><td class="n">~12,900 บาท</td><td class="n">12,900 บาท</td><td>เก้าอี้เด็ก / รถเข็นเด็ก</td></tr>
-<tr><td class="tier">รางวัลที่ 2</td><td class="n">2</td><td class="n">~5,000 บาท</td><td class="n">10,000 บาท</td><td>ชุดของเล่นชิ้นใหญ่ / คาร์ซีท</td></tr>
-<tr><td class="tier">รางวัลที่ 3</td><td class="n">5</td><td class="n">~2,000 บาท</td><td class="n">10,000 บาท</td><td>ของเล่นชิ้นใหญ่ / อุปกรณ์เสริมรถเข็น</td></tr>
-<tr><td class="tier">รางวัลที่ 4</td><td class="n">12</td><td class="n">~1,000 บาท</td><td class="n">12,000 บาท</td><td>กระเป๋าใส่รถเข็น / ชุดให้นม / ของใช้เด็ก</td></tr>
-<tr><td class="tier">รางวัลที่ 5</td><td class="n">30</td><td class="n">~300 บาท</td><td class="n">9,000 บาท</td><td>ของเล่นชิ้นเล็ก / ของใช้เด็ก</td></tr>
-<tr class="total"><td>รวม</td><td class="n">50</td><td></td><td class="n">~53,900 บาท</td><td></td></tr>
-</table></div>
+  <h2><span class="hic"><svg class="i"><use href="#i-handshake"/></svg></span>สิ่งที่ขอจากแบรนด์</h2>
+  <div class="asks">
+    <div class="ask"><svg class="i ic"><use href="#i-box"/></svg><b>สินค้ารางวัล</b><span>สภาพใหม่ พร้อมกล่อง ส่งถึงร้าน ABC the Baby เมกาบางนาภายใน 12 ม.ค. 2570</span></div>
+    <div class="ask"><svg class="i ic"><use href="#i-image"/></svg><b>โลโก้ + รูปสินค้า</b><span>โลโก้ PNG พื้นใส หรือ AI และรูปสินค้า 2–3 รูป ภายใน 30 พ.ย. 2569</span></div>
+    <div class="ask"><svg class="i ic"><use href="#i-tag"/></svg><b>ข้อมูลสินค้า</b><span>ชื่อสินค้า ราคาขาย และคำอธิบายสั้น 1–2 บรรทัด สำหรับโพสต์และตอนไลฟ์</span></div>
+    <div class="ask"><svg class="i ic"><use href="#i-shield"/></svg><b>การรับประกัน (ถ้ามี)</b><span>เงื่อนไขรับประกันสินค้า เพื่อแจ้งผู้โชคดี</span></div>
+    <div class="ask"><svg class="i ic"><use href="#i-share"/></svg><b>แชร์กิจกรรม (ไม่บังคับ)</b><span>แบรนด์แชร์โพสต์กิจกรรมบนเพจของแบรนด์ได้</span></div>
+  </div>
+  <p class="note">ค่าใช้จ่ายอื่น เช่น การขออนุญาต ป้าย การไลฟ์ และการส่งมอบรางวัล ร้านเป็นผู้ดูแลทั้งหมด</p>
 
-<h2>สิ่งที่แบรนด์ได้รับ</h2>
-<p>แบรนด์ผู้สนับสนุนได้ออกสื่อตลอด 5 สัปดาห์ของกิจกรรม ทั้งที่หน้าร้านและช่องทางออนไลน์ของ ABC the Baby</p>
-<div class="wrap"><table>
-<tr><th>สิ่งที่ได้รับ</th><th class="c">รางวัลใหญ่ – ที่ 2</th><th class="c">รางวัลที่ 3 – 4</th><th class="c">รางวัลที่ 5</th></tr>
-<tr><td>ชื่อรางวัล "รางวัลโดย [แบรนด์]"</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
-<tr><td>โลโก้บนโปสเตอร์กิจกรรม (หน้าร้าน 3 สาขา + ออนไลน์)</td><td class="c">โลโก้ใหญ่</td><td class="c">โลโก้กลาง</td><td class="c">ชื่อในรายชื่อผู้สนับสนุน</td></tr>
-<tr><td>โพสต์แนะนำสินค้าบน Facebook · Instagram · TikTok ของร้าน</td><td class="c">โพสต์เดี่ยวของแบรนด์</td><td class="c">โพสต์รวมรางวัล</td><td class="c">โพสต์รวมรางวัล</td></tr>
-<tr><td>อยู่ในข้อความ LINE OA ที่ส่งถึงสมาชิก</td><td class="c">✓</td><td class="c">✓</td><td class="c">—</td></tr>
-<tr><td>ตั้งสินค้าโชว์พร้อมป้ายรางวัลที่หน้าร้านเมกาบางนา</td><td class="c">ตำแหน่งหน้าร้าน</td><td class="c">มุมรางวัล</td><td class="c">มุมรางวัล</td></tr>
-<tr><td>พูดถึงแบรนด์ตอนจับรางวัลไลฟ์ 9 ม.ค.</td><td class="c">แนะนำสินค้าสด</td><td class="c">✓</td><td class="c">✓</td></tr>
-<tr><td>รูปผู้โชคดีกับสินค้า ให้แบรนด์นำไปใช้ต่อได้ (เมื่อผู้โชคดียินยอม)</td><td class="c">✓</td><td class="c">✓</td><td class="c">—</td></tr>
-<tr><td>รายงานสรุปหลังจบกิจกรรม (จำนวนผู้ร่วม · การเข้าถึงโพสต์ · รูปงาน)</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
-</table></div>
-<p class="muted">ช่องทางของร้าน ณ 23 พ.ย. 2569: Facebook 40,381 ผู้ติดตาม · Instagram 4,215 · TikTok 4,017 · YouTube 875 · หน้าร้าน 3 สาขา และเว็บไซต์ abcthebaby.com</p>
+  <h2 class="g"><span class="hic"><svg class="i"><use href="#i-clock"/></svg></span>ไทม์ไลน์</h2>
+  <ol class="tl">
+    <li><span class="dot"><svg class="i"><use href="#i-handshake"/></svg></span><div><div class="when">27 พ.ย. 2569</div><div class="what">แบรนด์แจ้งระดับและจำนวนรางวัลที่จะสนับสนุน</div></div></li>
+    <li><span class="dot"><svg class="i"><use href="#i-image"/></svg></span><div><div class="when">30 พ.ย. 2569</div><div class="what">ส่งโลโก้ รูปสินค้า และรายละเอียดสินค้า</div></div></li>
+    <li class="hl"><span class="dot"><svg class="i"><use href="#i-star"/></svg></span><div><div class="when">1 ธ.ค. 2569</div><div class="what">เริ่มกิจกรรม ป้ายและโพสต์ผู้สนับสนุนขึ้น</div></div></li>
+    <li><span class="dot"><svg class="i"><use href="#i-ticket"/></svg></span><div><div class="when">10 ม.ค. 2570</div><div class="what">ปิดรับตั๋ว</div></div></li>
+    <li><span class="dot"><svg class="i"><use href="#i-box"/></svg></span><div><div class="when">12 ม.ค. 2570</div><div class="what">สินค้ารางวัลถึงร้านเมกาบางนา</div></div></li>
+    <li class="hl"><span class="dot"><svg class="i"><use href="#i-video"/></svg></span><div><div class="when">เสาร์ 17 ม.ค. 2570</div><div class="what">จับรางวัลสดที่ร้านเมกาบางนา + ไลฟ์ Facebook</div></div></li>
+    <li><span class="dot"><svg class="i"><use href="#i-file"/></svg></span><div><div class="when">7 ก.พ. 2570</div><div class="what">ผู้โชคดีรับรางวัลครบ · ร้านส่งรายงานสรุปให้แบรนด์ภายใน 14 ก.พ. 2570</div></div></li>
+  </ol>
 
-<h2>สิ่งที่ขอจากแบรนด์</h2>
-<ul>
-<li>สินค้าสำหรับเป็นรางวัล สภาพใหม่ พร้อมกล่อง ส่งถึงร้าน ABC the Baby เมกาบางนาภายใน 5 ม.ค. 2570</li>
-<li>ไฟล์โลโก้ (PNG พื้นใส หรือ AI) และรูปสินค้า 2–3 รูป ภายใน 30 พ.ย. 2569</li>
-<li>ชื่อสินค้า ราคาขาย และคำอธิบายสั้น 1–2 บรรทัด สำหรับโพสต์และตอนไลฟ์</li>
-<li>(ถ้ามี) เงื่อนไขรับประกันสินค้า เพื่อแจ้งผู้โชคดี</li>
-<li>แบรนด์แชร์โพสต์กิจกรรมบนเพจของแบรนด์ได้ (ไม่บังคับ)</li>
-</ul>
-<p>ค่าใช้จ่ายอื่น เช่น การขออนุญาต ป้าย การไลฟ์ และการส่งมอบรางวัล ร้านเป็นผู้ดูแลทั้งหมด</p>
+  <h2 class="y"><span class="hic"><svg class="i"><use href="#i-phone"/></svg></span>ติดต่อ</h2>
+  <div class="contact">
+    <div><svg class="i"><use href="#i-user"/></svg>(ชื่อผู้ประสานงาน)</div>
+    <div><svg class="i"><use href="#i-phone"/></svg>(เบอร์โทร)</div>
+    <div><svg class="i"><use href="#i-msg"/></svg>(LINE)</div>
+    <div><svg class="i"><use href="#i-mail"/></svg>(อีเมล)</div>
+  </div>
 
-<h2>ไทม์ไลน์</h2>
-<ol class="timeline">
-<li><b>27 พ.ย. 2569</b> แบรนด์แจ้งระดับและจำนวนรางวัลที่จะสนับสนุน</li>
-<li><b>30 พ.ย. 2569</b> ส่งโลโก้ รูปสินค้า และรายละเอียดสินค้า</li>
-<li><b>1 ธ.ค. 2569</b> เริ่มกิจกรรม ป้ายและโพสต์ผู้สนับสนุนขึ้น</li>
-<li><b>4 ม.ค. 2570</b> ปิดรับตั๋ว</li>
-<li><b>5 ม.ค. 2570</b> สินค้ารางวัลถึงร้านเมกาบางนา</li>
-<li><b>9 ม.ค. 2570 (วันเด็ก)</b> จับรางวัลสดที่ร้านเมกาบางนา + ไลฟ์ Facebook</li>
-<li><b>31 ม.ค. 2570</b> ผู้โชคดีรับรางวัลครบ · ร้านส่งรายงานสรุปให้แบรนด์ภายใน 7 ก.พ. 2570</li>
-</ol>
-
-<h2>ติดต่อ</h2>
-<div class="contact">ผู้ประสานงาน ABC the Baby: (ชื่อ) · (เบอร์โทร) · (LINE) · (อีเมล)</div>
-
-<footer>ABC the Baby · abcthebaby.com</footer>
+  <footer>
+    <svg viewBox="0 0 120 30" aria-hidden="true"><g fill="#d93b34"><path d="M10 4l2 5 5 .4-4 3.3 1.3 5L10 15l-4.3 2.7 1.3-5-4-3.3 5-.4z"/><path d="M110 4l2 5 5 .4-4 3.3 1.3 5L110 15l-4.3 2.7 1.3-5-4-3.3 5-.4z"/></g><g fill="#17583c"><path d="M60 2l12 20H48z"/><rect x="57" y="22" width="6" height="6" fill="#7a4a2b"/></g></svg>
+    ABC the Baby · abcthebaby.com · สุขสันต์วันคริสต์มาสและสวัสดีปีใหม่ 2570
+  </footer>
 </main>
 </body>
 </html>

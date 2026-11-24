@@ -27,7 +27,7 @@ import {
 } from '@/components/aoo'
 import { PageHeader, QueueFloat, SectionCard, StatusBadge, UserAvatar } from '@/components/shared'
 import { brandSelectOptions } from '@/components/shared/BrandBadge'
-import { SOURCE_LABEL, clock, durationText, creditsText, speakerLabel, voiceFetch } from '@/lib/voice/format'
+import { SOURCE_LABEL, clock, durationText, creditsText, scribeCredits, speakerLabel, voiceFetch } from '@/lib/voice/format'
 import SpeakerRow, { SpeakerAvatar, pickSamples } from '@/components/voice/SpeakerRow'
 
 /** a speaker sample plays this many seconds at most, then pauses */
@@ -67,6 +67,8 @@ interface Detail {
     recorded_at: string | null
     duration_sec: number | null
     credits: number | null
+    /** 'plaud' = Plaud's own transcript (free) · 'elevenlabs' · null = none yet */
+    transcript_provider: string | null
     source: string
     status: string
     error: string | null
@@ -122,6 +124,7 @@ export default function VoiceRecordingPage() {
       return n
     })
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmRescribe, setConfirmRescribe] = useState(false)
   const [summary, setSummary] = useState('')
   const [summaryDirty, setSummaryDirty] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -168,6 +171,20 @@ export default function VoiceRecordingPage() {
       await load()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'ลองใหม่ไม่สำเร็จ', 'error')
+    } finally {
+      setRetrying(false)
+    }
+  }
+
+  const rescribe = async () => {
+    setRetrying(true)
+    try {
+      await voiceFetch(`/api/voice/recordings/${id}/rescribe`, 'POST')
+      setConfirmRescribe(false)
+      setQueueOpen(true)
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'ถอดใหม่ไม่สำเร็จ', 'error')
     } finally {
       setRetrying(false)
     }
@@ -360,7 +377,7 @@ export default function VoiceRecordingPage() {
         description={[
           format(new Date(rec.recorded_at ?? rec.created_at), 'd/M/yyyy HH:mm'),
           durationText(rec.duration_sec),
-          creditsText(rec.credits),
+          rec.transcript_provider === 'plaud' ? 'ถอดเสียงโดย Plaud (ไม่ใช้เครดิต)' : creditsText(rec.credits),
           SOURCE_LABEL[rec.source] ?? rec.source,
         ]
           .filter(Boolean)
@@ -403,6 +420,18 @@ export default function VoiceRecordingPage() {
           </Button>
         </SectionCard>
       )}
+
+      {rec.transcript_provider === 'plaud' && (status === 'review' || status === 'done') && !!data.audioUrl &&
+        !drafts.some((d) => d.status === 'accepted') && (
+          <SectionCard
+            title="ข้อความถอดเสียงจาก Plaud"
+            description="ใช้ของที่ Plaud ถอดไว้ ไม่เสียเครดิต · ถ้าถอดผิดเยอะจนร่างงานไม่ตรง ถอดใหม่ด้วย ElevenLabs ได้ (ทำได้ก่อนรับงานข้อแรก)"
+          >
+            <Button variant="secondary" icon={RotateCcw} onClick={() => setConfirmRescribe(true)}>
+              ถอดใหม่ด้วย ElevenLabs
+            </Button>
+          </SectionCard>
+        )}
 
       {(FINAL.has(status) || !!rec.summary) && (
         <SectionCard title="สรุปประชุม" description="เก็บไว้ที่ประชุมนี้ ไม่ขึ้นเป็นงานบนบอร์ด · AI สรุปให้ แก้ได้">
@@ -703,6 +732,15 @@ export default function VoiceRecordingPage() {
           meta={[...q.running.map((x) => `กำลังทำ: ${x}`), ...q.waiting.map((x) => `รอคิว: ${x}`)].join(' · ') || undefined}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmRescribe}
+        title="ถอดใหม่ด้วย ElevenLabs?"
+        description={`ใช้ประมาณ ${scribeCredits(rec.duration_sec ?? 0).toLocaleString('th-TH')} เครดิต · ร่างงานที่ยังไม่รับและการจับคู่ผู้พูดจะถูกทำใหม่ทั้งหมด`}
+        confirmLabel="ถอดใหม่"
+        onConfirm={rescribe}
+        onClose={() => setConfirmRescribe(false)}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

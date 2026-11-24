@@ -66,7 +66,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     // credits this clip used on ElevenLabs (null = transcript came from elsewhere)
     const { provider, scribe_sec, ...tr } = (transcript ?? {}) as NonNullable<typeof transcript>
     const credits = transcript && provider === 'elevenlabs' && Number(scribe_sec) > 0 ? scribeCredits(Number(scribe_sec)) : null
-    return voiceJson({ recording: { ...rec, credits }, transcript: transcript ? tr : null, drafts: drafts ?? [], tasks: handedOut, people, audioUrl, queue })
+    return voiceJson({ recording: { ...rec, credits, transcript_provider: transcript ? (provider ?? null) : null }, transcript: transcript ? tr : null, drafts: drafts ?? [], tasks: handedOut, people, audioUrl, queue })
   } catch (e) {
     return voiceError(e)
   }

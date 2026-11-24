@@ -1,7 +1,9 @@
 // Voice → Tasks pipeline on the central queue (.claude/rules/queue.md · plan: project/jobs/plans/voice-tasks.md).
 // Server only. Every step is a small queue job (≤ ~15 s); the slow parts happen outside our functions:
 //
-//   voice.plaud.import    re-resolve the Plaud share (fresh 1-h URL) → copy audio to bucket → transcribe.start
+//   voice.plaud.import    re-resolve the Plaud share (fresh 1-h URL) → copy audio to bucket → Plaud's own transcript
+//                         when the share has one (free, owner 2026-11-24) → saveTranscript · else → transcribe.start
+//                         (payload.forceScribe = the "ถอดใหม่ด้วย ElevenLabs" button skips Plaud's transcript)
 //   voice.transcribe.start signed URL → ElevenLabs Scribe with webhook=true → status 'transcribing' (+ poll safety net)
 //   (webhook)             POST /api/voice/webhook → saveTranscript() → status 'extracting' → extract.start
 //   voice.transcribe.poll safety net if the webhook never comes: GET transcript every 5 min, give up after ~2 h
@@ -14,7 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { enqueue, type HandlerResult, type QueueJob } from '@/lib/queue/queue'
 import { BRANDS } from '@/lib/constants/brands'
-import { resolvePlaudShare } from '@/lib/voice/plaud'
+import { fetchPlaudTranscript, resolvePlaudShare } from '@/lib/voice/plaud'
 import { fetchTranscript, startTranscription, type Segment, type Transcript } from '@/lib/voice/scribe'
 import { parseExtractMessage, readExtractBatch, submitExtractBatch, type ExtractedTask, type SpeakerGuesses } from '@/lib/voice/extract'
 import { BUCKET, MAX_BYTES, cleanupOldAudio, getStaff, keyterms, type Db } from '@/lib/voice/server'
@@ -133,6 +135,14 @@ async function plaudImport(db: Db, job: QueueJob): Promise<HandlerResult> {
       return lastTryFails(db, job, id, ['uploaded'], e)
     }
   }
+  // Plaud already transcribed it → use that (0 ElevenLabs credits). Any error here falls back to ElevenLabs.
+  if (!job.payload.forceScribe) {
+    const t = await fetchPlaudTranscript(job.payload.key as string).catch((e) => {
+      console.warn(`[voice] ${id} Plaud transcript unavailable:`, e instanceof Error ? e.message : e)
+      return null
+    })
+    if (t) return { result: (await saveTranscript(db, id, t, 'plaud')) ? 'plaud transcript' : 'already saved' }
+  }
   if (!(await hasLiveJob(db, id, ['voice.transcribe.start']))) await enqueueVoice(db, 'voice.transcribe.start', id)
   return { result: 'copied' }
 }
@@ -164,7 +174,7 @@ async function transcribeStart(db: Db, job: QueueJob): Promise<HandlerResult> {
  * Store a finished transcript and move on to extraction. Shared by the webhook and the poll; idempotent —
  * only a row still waiting for its transcript ('uploaded' / 'transcribing') is updated.
  */
-export async function saveTranscript(db: Db, id: string, t: Transcript): Promise<boolean> {
+export async function saveTranscript(db: Db, id: string, t: Transcript, provider: 'elevenlabs' | 'plaud' = 'elevenlabs'): Promise<boolean> {
   const rec = await getRec(db, id)
   if (!rec || !['uploaded', 'transcribing'].includes(rec.status)) return false
   const { error } = await db.from('voice_transcripts').upsert(
@@ -173,7 +183,9 @@ export async function saveTranscript(db: Db, id: string, t: Transcript): Promise
       language: t.languageCode,
       text: t.text,
       segments: t.segments as unknown as Json,
-      raw: { provider: 'elevenlabs', model: 'scribe_v3', transcription_id: t.transcriptionId ?? null, duration_sec: t.durationSec } as Json,
+      raw: (provider === 'plaud'
+        ? { provider: 'plaud', duration_sec: t.durationSec }
+        : { provider: 'elevenlabs', model: 'scribe_v3', transcription_id: t.transcriptionId ?? null, duration_sec: t.durationSec }) as Json,
     },
     { onConflict: 'recording_id' },
   )
@@ -380,6 +392,36 @@ export async function retryRecording(db: Db, id: string, me: string): Promise<st
   if (!moved) return (await getRec(db, id))?.status ?? 'failed'
   await enqueueVoice(db, kind, id, extra, { createdBy: me })
   return next
+}
+
+/**
+ * "ถอดใหม่ด้วย ElevenLabs": drop the Plaud transcript + pending drafts and transcribe the stored audio on ElevenLabs.
+ * Blocked once any draft was accepted (the new drafts would duplicate tasks already on the board).
+ */
+export async function rescribeRecording(db: Db, id: string, me: string): Promise<string> {
+  const rec = await getRec(db, id)
+  if (!rec) throw new Error('ไม่พบไฟล์เสียงนี้')
+  if (!['review', 'done', 'failed'].includes(rec.status)) throw new Error('ไฟล์นี้กำลังทำงานอยู่ — รอให้เสร็จก่อน')
+  if (!rec.storage_path) throw new Error('ไม่มีไฟล์เสียงแล้ว (ลบตามกำหนด 90 วัน) — ถอดใหม่ไม่ได้')
+  const { count } = await db
+    .from('voice_task_drafts')
+    .select('id', { count: 'exact', head: true })
+    .eq('recording_id', id)
+    .eq('status', 'accepted')
+  if (count) throw new Error('มีงานที่รับลงบอร์ดแล้ว — ถอดใหม่จะได้ร่างงานซ้ำ จึงถอดใหม่ไม่ได้')
+  const { data: moved } = await db
+    .from('voice_recordings')
+    .update({ status: 'uploaded', error: null })
+    .eq('id', id)
+    .in('status', ['review', 'done', 'failed'])
+    .select('id')
+    .maybeSingle()
+  if (!moved) return (await getRec(db, id))?.status ?? rec.status
+  await db.from('voice_task_drafts').delete().eq('recording_id', id).neq('status', 'accepted')
+  // speaker ids differ between Plaud and ElevenLabs — start the mapping fresh with the new transcript
+  await db.from('voice_transcripts').delete().eq('recording_id', id)
+  await enqueueVoice(db, 'voice.transcribe.start', id, {}, { createdBy: me })
+  return 'uploaded'
 }
 
 const asDb = (sb: SupabaseClient) => sb as unknown as Db

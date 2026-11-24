@@ -17,3 +17,4 @@
 - [ ] 2026-11-24 · marketing-plan · after 06:30 read aoosocial account_insights_daily (rows for 2026-11-23) + amgo marketing_metric_daily source=aoosocial metric followers/reach/views → KPI tab shows them; none → check aoosocial cron_job_runs sync-account-insights
 - [ ] 2026-11-24 · marketing-plan · J'adore sales KPI still '—' → check aoo has J'adore sales since 22 Nov (sales_summary brand J'adore); none = launch not selling yet, fine
 - [ ] 2026-11-30 · cron-monitor · no cron-job.org failure mails all week → tell owner to delete the Inactive old jobs (AMGO + AooSocial folders; all 11 AooSocial ones are in its tick schedule)
+- [ ] 2026-11-27 · abc-year-end · sponsor replies due (prize tiers taken per supplier) → fill prize list on sponsor page; gaps → tell owner which tiers still need a sponsor

@@ -54,6 +54,7 @@
 ### jobs/doing/
 | File | KB | Sections | About |
 |---|---|---|---|
+| [abc-year-end.md](jobs/doing/abc-year-end.md) | 3 | 2 | Notes live in AGD: `01-AGD/10-abcthebaby/_notes/` (log.md · next.md · 3-marketing/social-plan.md · 4-knowledge |
 | [cron-monitor.md](jobs/doing/cron-monitor.md) | 3 | 2 | Read first: lib/cron/schedule.ts · lib/cron/runner.ts · aoocommerce lib/cron/groups.ts, app/api/cron/[group]/r |
 | [expenses.md](jobs/doing/expenses.md) | 3 | 2 | - [x] Built + pushed 7c50694 bf6d206 (migrations 20261103120000 / 140000 / 160000 run by owner). Rules: .claud |
 | [hermes-bots.md](jobs/doing/hermes-bots.md) | 2 | 3 | - [ ] SEO/AEO accuracy: owner says amgo ranks don't match the adayfresh website project — ask what to compare  |

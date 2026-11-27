@@ -11,7 +11,7 @@ Notes live in AGD: `01-AGD/10-abcthebaby/_notes/` (log.md · next.md · 3-market
 - [x] Public sponsor page with Christmas/NY theme, amgo font, phone layout, all-age prizes + Tripp Trapp grand — pushed (d71615f 6d30eef 555cb2f 1bcf6bf)
 - [x] Campaign name chosen 2026-11-25: "ส่งท้ายปี ช้อปดี มีลุ้น"
 - [x] English subtitle picked 2026-11-27: "Shop the Year, Win the Cheer" (hero kicker)
-- [x] Sponsor page hero + <title> now "ส่งท้ายปี ช้อปดี มีลุ้น", kicker "Shop the Year, Win the Cheer · 2570" ("Lucky Draw" was in the kicker, not the SVG) — HASH
+- [x] Sponsor page hero + <title> now "ส่งท้ายปี ช้อปดี มีลุ้น", kicker "Shop the Year, Win the Cheer · 2570" ("Lucky Draw" was in the kicker, not the SVG) — 38145e5
 - [ ] รอคุณแอม: contact section on the sponsor page is still placeholders (name · phone · LINE · email of the coordinator)
 - [ ] Stale copies show old dates (4 Jan / 9 Jan, ฿2,000 threshold, old prizes): Claude Doc https://claude.ai/artifact/YKFN5xwBxA5VYAdri5sm5j · PDF `01-AGD/10-abcthebaby/_notes/3-marketing/sponsor-lucky-draw-2570.pdf` · `3-marketing/year-end-2026.html` → update or drop (ask owner)
 - [ ] รอคุณแอม: who files the ชิงโชค permit before 1 Dec (Mega = Bang Phli district office) + rules text stating who pays the 5% withholding tax on prizes > ฿1,000

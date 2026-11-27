@@ -30,9 +30,8 @@ import {
   Modal,
   MoneyInput,
   SelectMenu,
-  Toggle,
 } from '@/components/aoo'
-import { ListRow, ListRows, PageHeader, SectionCard, Skeleton, StatCard, StatGrid } from '@/components/shared'
+import { ListRow, ListRows, PageHeader, SectionCard, Segmented, Skeleton, StatCard, StatGrid } from '@/components/shared'
 import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
 import ReceiptThumbs from '@/components/expenses/ReceiptThumbs'
 import ExpenseSectionField from '@/components/expenses/ExpenseSectionField'
@@ -438,6 +437,24 @@ export default function MyExpensesPage() {
             />
           </Field>
 
+          {/* บิลนี้มี VAT ไหม — ต่อจากชื่อร้าน (เจ้าของ 27 พ.ย.: "ร้านมี VAT 7%  มี | ไม่มี") */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-800">ร้านมี VAT 7%</p>
+              {hasVat && amount > 0 && (
+                <p className="text-xs text-gray-500">VAT ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
+              )}
+            </div>
+            <Segmented
+              value={hasVat ? 'yes' : 'no'}
+              onChange={(v) => setHasVat(v === 'yes')}
+              options={[
+                { value: 'yes', label: 'มี' },
+                { value: 'no', label: 'ไม่มี' },
+              ]}
+            />
+          </div>
+
           <ExpenseSectionField
             group={group}
             value={section}
@@ -454,15 +471,6 @@ export default function MyExpensesPage() {
                   : undefined
             }
           />
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm text-gray-800">มีใบกำกับภาษี (VAT 7%)</p>
-              {hasVat && amount > 0 && (
-                <p className="text-xs text-gray-500">VAT 7% ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
-              )}
-            </div>
-            <Toggle checked={hasVat} onChange={setHasVat} aria-label="มีใบกำกับภาษี (VAT 7%)" />
-          </div>
 
           {!supplier && (section === 'taxi' || section === 'gas') && (
             <div className="grid grid-cols-3 gap-3">

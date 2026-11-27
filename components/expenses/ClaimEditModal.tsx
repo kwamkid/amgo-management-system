@@ -7,8 +7,9 @@
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu, Toggle } from '@/components/aoo'
+import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
 import { BankLogo } from '@/components/shared/BankBadge'
+import { Segmented } from '@/components/shared'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import ExpenseSectionField from './ExpenseSectionField'
 import {
@@ -191,6 +192,19 @@ export default function ClaimEditModal({
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 
+        {/* บิลนี้มี VAT ไหม — ต่อจากรายละเอียด/ชื่อร้าน (เจ้าของ 27 พ.ย.) */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-gray-800">ร้านมี VAT 7%</p>
+          <Segmented
+            value={hasVat ? 'yes' : 'no'}
+            onChange={(v) => toggleVat(v === 'yes')}
+            options={[
+              { value: 'yes', label: 'มี' },
+              { value: 'no', label: 'ไม่มี' },
+            ]}
+          />
+        </div>
+
         {companies.length > 0 && (
           <Field label="จ่ายจากบริษัท" help={exported ? 'ส่งไฟล์แล้ว — เปลี่ยนบริษัทแล้วใบจะกลับไปรอส่งไฟล์' : undefined} asDiv>
             <SelectMenu
@@ -206,10 +220,6 @@ export default function ClaimEditModal({
           </Field>
         )}
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-800">มีใบกำกับภาษี (VAT 7%)</p>
-          <Toggle checked={hasVat} onChange={toggleVat} aria-label="มีใบกำกับภาษี (VAT 7%)" />
-        </div>
 
         <div className={`grid grid-cols-2 gap-3 ${hasVat ? 'sm:grid-cols-3' : ''}`}>
           <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv>

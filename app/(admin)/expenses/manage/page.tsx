@@ -845,6 +845,11 @@ export default function ExpenseManagePage() {
           setDialog({ mode: 'paid', claims: [viewing!] })
           setViewing(null)
         }}
+        onTaxInvoiceSaved={(no) => {
+          const id = viewing!.id
+          setViewing((v) => (v ? { ...v, taxInvoiceNo: no } : v))
+          setRows((rs) => rs.map((x) => (x.id === id ? { ...x, taxInvoiceNo: no } : x)))
+        }}
       />
       <ClaimEditModal
         claim={editing}

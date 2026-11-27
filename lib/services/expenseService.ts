@@ -64,6 +64,8 @@ export interface ExpenseClaim {
   purpose: string | null
   attendees: string | null
   vatAmount: number
+  /** เลขที่ใบกำกับภาษี — กรอกตอนยื่นหรือทีหลังได้ตลอด (เจ้าของ 27 พ.ย. 69) */
+  taxInvoiceNo: string | null
   exportedAt: string | null
   /** ชื่อจริงเจ้าของใบ = ชื่อบัญชีรับโอน — มีเฉพาะรายการที่ join เจ้าของมา */
   ownerFullName?: string | null
@@ -103,6 +105,7 @@ type Row = {
   purpose: string | null
   attendees: string | null
   vat_amount: number
+  tax_invoice_no?: string | null
   exported_at: string | null
   account_code?: string | null
 }
@@ -139,6 +142,7 @@ const toClaim = (r: Row): ExpenseClaim => ({
   purpose: r.purpose,
   attendees: r.attendees,
   vatAmount: Number(r.vat_amount ?? 0),
+  taxInvoiceNo: r.tax_invoice_no ?? null,
   exportedAt: r.exported_at,
 })
 
@@ -239,6 +243,7 @@ export async function countPending(): Promise<{
 export interface ClaimExtras {
   kind: ExpenseKind
   vatAmount: number
+  taxInvoiceNo?: string
   payeeName?: string
   payeeBank?: string
   payeeAccountNo?: string
@@ -326,6 +331,8 @@ export async function createClaim(params: ClaimExtras & {
     receipt_paths: paths,
     no_receipt_reason: paths.length ? null : params.noReceiptReason.trim(),
     vat_amount: params.vatAmount || 0,
+    // ส่งเฉพาะตอนมีค่า — ยื่นได้แม้ migration 20261127140000 ยังไม่ลง
+    ...(params.vatAmount && blankToNull(params.taxInvoiceNo) ? { tax_invoice_no: blankToNull(params.taxInvoiceNo) } : {}),
     payee_name: supplier ? blankToNull(params.payeeName) : null,
     payee_bank: supplier ? blankToNull(params.payeeBank) : null,
     payee_account_no: supplier ? (params.payeeAccountNo ?? '').replace(/\D/g, '') : null,
@@ -398,6 +405,12 @@ export async function financeDecide(
  * บัญชีแก้ตารางตรงได้ (policy expense_claims_finance_update) · แตะเฉพาะใบที่ยัง approved
  * ส่งไฟล์ธนาคารไปแล้ว → ต้องไปไม่อนุมัติรายการนั้นในแอป SCB เองด้วย (หน้าจอเตือน)
  */
+/** เจ้าของใบหรือบัญชีใส่/แก้เลขที่ใบกำกับภาษีได้ทุกขั้น (แม้อนุมัติ/โอนแล้ว) — RPC แตะคอลัมน์นี้คอลัมน์เดียว */
+export async function setTaxInvoiceNo(id: string, no: string): Promise<void> {
+  const { error } = await sb().rpc('set_expense_tax_invoice_no', { p_id: id, p_no: no.trim() })
+  if (error) throw new Error(`บันทึกเลขที่ใบกำกับภาษีไม่สำเร็จ: ${error.message}`)
+}
+
 export async function revokeApproval(ids: string[], byId: string, reason: string): Promise<void> {
   if (!ids.length) return
   if (!reason.trim()) throw new Error('ต้องใส่เหตุผลที่ยกเลิก')
@@ -466,6 +479,7 @@ export interface ClaimEdit {
   /** หมวดบัญชี (รหัสผังบัญชี) — บัญชีเลือกจากผังทั้งหมดได้ · null = ยังไม่ระบุ */
   accountCode: string | null
   vatAmount: number
+  taxInvoiceNo: string
   description: string
   amount: number
   /** บริษัทที่จ่าย (null = บริษัทหลักของพนักงาน) */
@@ -522,6 +536,7 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
     supplier && (e.payeeName.trim() !== claim.payeeName || e.payeeBank !== claim.payeeBank || acc !== claim.payeeAccountNo)
 
   const companyChanged = e.companyId !== claim.companyId
+  const invoiceNo = e.vatAmount ? blankToNull(e.taxInvoiceNo) : null
   const { error } = await sb()
     .from('expense_claims')
     .update({
@@ -530,6 +545,8 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
       category: e.category,
       account_code: e.accountCode,
       vat_amount: e.vatAmount,
+      // ส่งเฉพาะตอนเปลี่ยน — บันทึกได้แม้ migration 20261127140000 ยังไม่ลง · ไม่มี VAT = ล้างเลข
+      ...(invoiceNo !== claim.taxInvoiceNo ? { tax_invoice_no: invoiceNo } : {}),
       description: e.description.trim(),
       amount,
       route_from: blankToNull(e.routeFrom),

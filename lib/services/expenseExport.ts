@@ -113,6 +113,9 @@ export function formSlotOf(c: { category: string; vatAmount: number }): FormSlot
   return c.vatAmount > 0 ? 'other_vat' : 'other'
 }
 
+/** รายละเอียด + เลขที่ใบกำกับภาษี (ถ้ามี) — ฟอร์มไม่มีช่องแยก เลยต่อท้ายรายละเอียด */
+const withInvoice = (c: ExpenseClaim) => (c.taxInvoiceNo ? `${c.description} (ใบกำกับ ${c.taxInvoiceNo})` : c.description)
+
 const thin = { style: 'thin' as const }
 const BOX = { top: thin, left: thin, bottom: thin, right: thin }
 
@@ -192,29 +195,29 @@ function writeForm(ws: Worksheet, companyName: string, person: string, formDate:
       mergeRow(key)
       if (key === 'taxi') {
         if (c) {
-          ws.getCell(`B${r}`).value = c.description
+          ws.getCell(`B${r}`).value = withInvoice(c)
           ws.getCell(`D${r}`).value = c.routeFrom ?? ''
           ws.getCell(`F${r}`).value = c.routeTo ?? ''
           if (c.distanceKm != null) ws.getCell(`H${r}`).value = c.distanceKm
         }
       } else if (key === 'entertain') {
         if (c) {
-          ws.getCell(`B${r}`).value = c.description
+          ws.getCell(`B${r}`).value = withInvoice(c)
           ws.getCell(`D${r}`).value = c.purpose ?? ''
           ws.getCell(`F${r}`).value = c.attendees ?? ''
         }
       } else if (key === 'phone') {
-        if (c) ws.getCell(`A${r}`).value = c.description
+        if (c) ws.getCell(`A${r}`).value = withInvoice(c)
       } else if (key === 'other_vat') {
         if (c) {
-          ws.getCell(`B${r}`).value = c.description
+          ws.getCell(`B${r}`).value = withInvoice(c)
           money('H', Math.round((c.amount - c.vatAmount) * 100) / 100)
           money('I', c.vatAmount)
         }
       } else {
         if (c) {
           const route = key === 'gas' && (c.routeFrom || c.routeTo) ? ` (${c.routeFrom ?? ''} → ${c.routeTo ?? ''})` : ''
-          ws.getCell(`B${r}`).value = c.description + route
+          ws.getCell(`B${r}`).value = withInvoice(c) + route
         }
       }
       if (c) money('J', c.amount)
@@ -340,7 +343,7 @@ export async function buildMonthlyReport({ month, companyName, claims }: Monthly
   // จ่าย supplier
   if (supplier.length) {
     const ws = wb.addWorksheet(sheetName(`Supplier ${tag}`, used))
-    ws.addRow(['วันที่ใบแจ้งหนี้', 'Supplier (ชื่อบัญชี)', 'ธนาคาร', 'เลขบัญชี', 'รายละเอียด', 'ผู้ขอจ่าย', 'ยอดก่อน VAT', 'VAT 7%', 'ยอดรวม', 'สถานะ', 'วันที่จ่าย']).font = { bold: true }
+    ws.addRow(['วันที่ใบแจ้งหนี้', 'Supplier (ชื่อบัญชี)', 'ธนาคาร', 'เลขบัญชี', 'รายละเอียด', 'ผู้ขอจ่าย', 'ยอดก่อน VAT', 'VAT 7%', 'ยอดรวม', 'สถานะ', 'วันที่จ่าย', 'เลขที่ใบกำกับภาษี']).font = { bold: true }
     for (const c of supplier) {
       const row = ws.addRow([
         xlDate(c.expenseDate),
@@ -354,6 +357,7 @@ export async function buildMonthlyReport({ month, companyName, claims }: Monthly
         c.amount,
         c.status === 'paid' ? 'จ่ายแล้ว' : 'รอจ่าย',
         c.paidAt ? xlDate(c.paidAt) : null,
+        c.taxInvoiceNo ?? '',
       ])
       row.getCell(1).numFmt = DATE
       row.getCell(11).numFmt = DATE
@@ -363,10 +367,42 @@ export async function buildMonthlyReport({ month, companyName, claims }: Monthly
       { formula: `SUM(G2:G${n})` }, { formula: `SUM(H2:H${n})` }, { formula: `SUM(I2:I${n})` }])
     total.font = { bold: true }
     ws.columns.forEach((c, i) => {
-      c.width = [14, 28, 14, 16, 36, 14, 14, 12, 14, 10, 14][i]
+      c.width = [14, 28, 14, 16, 36, 14, 14, 12, 14, 10, 14, 20][i]
     })
     for (const col of [7, 8, 9]) ws.getColumn(col).numFmt = MONEY
     ws.getColumn(4).numFmt = '@'
+    ws.getColumn(12).numFmt = '@'
+  }
+
+  // ภาษีซื้อ — ทุกใบที่มี VAT (พนักงาน + supplier) พร้อมเลขที่ใบกำกับภาษี ให้บัญชีลงรายงานภาษีซื้อ (เจ้าของ 27 พ.ย. 69)
+  const withVat = [...reimburse, ...supplier]
+    .filter((c) => c.vatAmount > 0)
+    .sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
+  if (withVat.length) {
+    const ws = wb.addWorksheet(sheetName(`ภาษีซื้อ ${tag}`, used))
+    ws.addRow(['วันที่', 'เลขที่ใบกำกับภาษี', 'ร้าน / ผู้ขาย', 'รายละเอียด', 'ผู้เบิก', 'ยอดก่อน VAT', 'VAT 7%', 'ยอดรวม']).font = { bold: true }
+    for (const c of withVat) {
+      const row = ws.addRow([
+        xlDate(c.expenseDate),
+        c.taxInvoiceNo ?? 'ยังไม่กรอก',
+        c.kind === 'supplier' ? (c.payeeName ?? '') : '',
+        c.description,
+        c.ownerFullName || c.userName,
+        Math.round((c.amount - c.vatAmount) * 100) / 100,
+        c.vatAmount,
+        c.amount,
+      ])
+      row.getCell(1).numFmt = DATE
+      if (!c.taxInvoiceNo) row.getCell(2).font = { color: { argb: 'FFB45309' } }
+    }
+    const n = ws.rowCount
+    ws.addRow(['รวม', null, null, null, null,
+      { formula: `SUM(F2:F${n})` }, { formula: `SUM(G2:G${n})` }, { formula: `SUM(H2:H${n})` }]).font = { bold: true }
+    ws.columns.forEach((c, i) => {
+      c.width = [12, 20, 26, 36, 20, 14, 12, 14][i]
+    })
+    ws.getColumn(2).numFmt = '@'
+    for (const col of [6, 7, 8]) ws.getColumn(col).numFmt = MONEY
   }
 
   return wb

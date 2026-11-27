@@ -54,6 +54,7 @@ export default function ClaimEditModal({
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState(0)
   const [vat, setVat] = useState(0)
+  const [taxInvoiceNo, setTaxInvoiceNo] = useState('')
   const [routeFrom, setRouteFrom] = useState('')
   const [routeTo, setRouteTo] = useState('')
   const [distanceKm, setDistanceKm] = useState('')
@@ -81,6 +82,7 @@ export default function ClaimEditModal({
     setAmount(claim.amount)
     setCompanyId(claim.companyId)
     setVat(claim.vatAmount)
+    setTaxInvoiceNo(claim.taxInvoiceNo ?? '')
     setRouteFrom(claim.routeFrom ?? '')
     setRouteTo(claim.routeTo ?? '')
     setDistanceKm(claim.distanceKm == null ? '' : String(claim.distanceKm))
@@ -133,6 +135,7 @@ export default function ClaimEditModal({
         category: SECTION_CATEGORY[section],
         accountCode,
         vatAmount: hasVat ? vat : 0,
+        taxInvoiceNo,
         description,
         amount,
         companyId,
@@ -237,6 +240,11 @@ export default function ClaimEditModal({
             </Field>
           )}
         </div>
+        {hasVat && (
+          <Field label="เลขที่ใบกำกับภาษี" help="ไม่บังคับ — ใส่ทีหลังได้ตลอด">
+            <Input value={taxInvoiceNo} onChange={(e) => setTaxInvoiceNo(e.target.value)} placeholder="เช่น IV6911-00123" />
+          </Field>
+        )}
 
         <Field label={supplier ? 'ใบวางบิล / ใบแจ้งหนี้' : 'ใบเสร็จ / สลิป'} help="ลบไฟล์ที่ไม่ใช่ หรือเพิ่มไฟล์ได้ · เลือกได้หลายไฟล์" asDiv>
           <div className="space-y-2">

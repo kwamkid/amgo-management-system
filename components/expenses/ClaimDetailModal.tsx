@@ -19,6 +19,7 @@ import {
 } from '@/lib/services/expenseService'
 import ExpenseStatusPill from './ExpenseStatusPill'
 import ReceiptGallery from './ReceiptGallery'
+import TaxInvoiceNoEditor from './TaxInvoiceNoEditor'
 import { KIND_VISUAL, SECTION_VISUAL, thb } from './expenseVisuals'
 
 const day = (iso: string) => format(new Date(`${iso.slice(0, 10)}T00:00:00`), 'd MMM yyyy', { locale: th })
@@ -55,6 +56,7 @@ export default function ClaimDetailModal({
   onReject,
   onEdit,
   onMarkPaid,
+  onTaxInvoiceSaved,
 }: {
   claim: ExpenseClaim | null
   company?: ClaimCompany
@@ -68,6 +70,8 @@ export default function ClaimDetailModal({
   onReject: () => void
   onEdit: () => void
   onMarkPaid: () => void
+  /** ใส่/แก้เลขที่ใบกำกับภาษีแล้ว — หน้าแม่อัปเดตรายการ */
+  onTaxInvoiceSaved?: (no: string | null) => void
 }) {
   if (!claim) return null
   const c = claim
@@ -182,6 +186,15 @@ export default function ClaimDetailModal({
           {c.vatAmount > 0 && (
             <Row label="VAT 7%">
               {thb(c.vatAmount)} · ก่อน VAT {thb(c.amount - c.vatAmount)}
+            </Row>
+          )}
+          {c.vatAmount > 0 && (
+            <Row label="ใบกำกับภาษี">
+              {onTaxInvoiceSaved && c.status !== 'cancelled' ? (
+                <TaxInvoiceNoEditor key={c.id} claimId={c.id} value={c.taxInvoiceNo} onSaved={onTaxInvoiceSaved} />
+              ) : (
+                <span className="font-mono">{c.taxInvoiceNo ?? '—'}</span>
+              )}
             </Row>
           )}
           <Row label="โอนจาก">

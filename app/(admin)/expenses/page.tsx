@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
 import { BankLogo } from '@/components/shared/BankBadge'
+import TaxInvoiceNoEditor from '@/components/expenses/TaxInvoiceNoEditor'
 import { THAI_BANKS, getBank } from '@/lib/constants/banks'
 import {
   Button,
@@ -95,6 +96,7 @@ export default function MyExpensesPage() {
   const [section, setSection] = useState<FormSection | null>(null)
   // มีใบกำกับภาษี — เลือกได้ทุกหมวด (เดิมผูกกับหมวด "อื่น ๆ VAT 7%")
   const [hasVat, setHasVat] = useState(false)
+  const [taxInvoiceNo, setTaxInvoiceNo] = useState('')
   const [sectionAuto, setSectionAuto] = useState<'history' | 'words' | null>(null)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState(0)
@@ -147,6 +149,7 @@ export default function MyExpensesPage() {
     setGroup(null)
     setSection(null)
     setHasVat(false)
+    setTaxInvoiceNo('')
     setSectionAuto(null)
     setDescription('')
     setAmount(0)
@@ -200,6 +203,7 @@ export default function MyExpensesPage() {
         today: todayIso(),
         kind,
         vatAmount: hasVat ? vatIncluded(amount) : 0,
+        taxInvoiceNo,
         payeeName,
         payeeBank: payeeBank ?? '',
         payeeAccountNo,
@@ -310,6 +314,14 @@ export default function MyExpensesPage() {
                       </p>
                       {c.noReceiptReason && <p className="text-xs text-gray-500">ไม่มีใบเสร็จ: {c.noReceiptReason}</p>}
                       {c.rejectedReason && <p className="text-xs text-red-600">ไม่อนุมัติ: {c.rejectedReason}</p>}
+                      {c.vatAmount > 0 && c.status !== 'cancelled' && (
+                        <TaxInvoiceNoEditor
+                          compact
+                          claimId={c.id}
+                          value={c.taxInvoiceNo}
+                          onSaved={(no) => setRows((rs) => rs.map((x) => (x.id === c.id ? { ...x, taxInvoiceNo: no } : x)))}
+                        />
+                      )}
                       <ReceiptThumbs paths={c.receiptPaths} slipPath={c.slipPath} size={40} />
                     </>
                   }
@@ -451,6 +463,11 @@ export default function MyExpensesPage() {
           </div>
           {hasVat && amount > 0 && (
             <p className="-mt-2 text-xs text-gray-500">VAT ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
+          )}
+          {hasVat && (
+            <Field label="เลขที่ใบกำกับภาษี" help="ไม่บังคับ — ยังไม่มีใบ ใส่ทีหลังได้ที่รายการใบเบิกของฉัน">
+              <Input value={taxInvoiceNo} onChange={(e) => setTaxInvoiceNo(e.target.value)} placeholder="เช่น IV6911-00123" />
+            </Field>
           )}
 
           <ExpenseSectionField

@@ -1937,6 +1937,7 @@ export type Database = {
           user_id: string
           user_name: string
           vat_amount: number
+          tax_invoice_no: string | null
         }
         Insert: {
           amount: number
@@ -1978,6 +1979,7 @@ export type Database = {
           user_id: string
           user_name?: string
           vat_amount?: number
+          tax_invoice_no?: string | null
         }
         Update: {
           amount?: number
@@ -2019,6 +2021,7 @@ export type Database = {
           user_id?: string
           user_name?: string
           vat_amount?: number
+          tax_invoice_no?: string | null
         }
         Relationships: [
           {
@@ -8281,6 +8284,10 @@ export type Database = {
       }
       set_company_scb_debit_account: {
         Args: { p_account: string; p_company_id: string }
+        Returns: undefined
+      }
+      set_expense_tax_invoice_no: {
+        Args: { p_id: string; p_no: string }
         Returns: undefined
       }
       set_my_day_off: { Args: { p_dow: number }; Returns: undefined }

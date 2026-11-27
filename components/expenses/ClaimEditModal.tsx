@@ -172,6 +172,22 @@ export default function ClaimEditModal({
       }
     >
       <div className="space-y-4">
+        {/* บริษัทอยู่บนสุด ตรงกับฟอร์มยื่นใบเบิก (เจ้าของ 27 พ.ย.) */}
+        {companies.length > 0 && (
+          <Field label="จ่ายจากบริษัท" help={exported ? 'ส่งไฟล์แล้ว — เปลี่ยนบริษัทแล้วใบจะกลับไปรอส่งไฟล์' : undefined} asDiv>
+            <SelectMenu
+              value={companyId}
+              options={companies.map((c) => ({
+                value: c.id,
+                label: `${c.code} · ${c.name_th}`,
+                // eslint-disable-next-line @next/next/no-img-element
+                icon: c.logo_url ? <img src={c.logo_url} alt="" className="h-5 w-5 rounded object-contain" /> : undefined,
+              }))}
+              onChange={(v) => v && setCompanyId(v)}
+            />
+          </Field>
+        )}
+
         <ExpenseSectionField group={group} value={section} onChange={changeSection} hint="ใช้รวมยอดตามรหัสบัญชีในสรุปสิ้นเดือน" />
 
         <Field
@@ -205,24 +221,11 @@ export default function ClaimEditModal({
           </Field>
         </div>
 
-        {companies.length > 0 && (
-          <Field label="จ่ายจากบริษัท" help={exported ? 'ส่งไฟล์แล้ว — เปลี่ยนบริษัทแล้วใบจะกลับไปรอส่งไฟล์' : undefined} asDiv>
-            <SelectMenu
-              value={companyId}
-              options={companies.map((c) => ({
-                value: c.id,
-                label: `${c.code} · ${c.name_th}`,
-                // eslint-disable-next-line @next/next/no-img-element
-                icon: c.logo_url ? <img src={c.logo_url} alt="" className="h-5 w-5 rounded object-contain" /> : undefined,
-              }))}
-              onChange={(v) => v && setCompanyId(v)}
-            />
-          </Field>
-        )}
 
 
         <div className={`grid grid-cols-2 gap-3 ${hasVat ? 'sm:grid-cols-3' : ''}`}>
-          <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv>
+          {/* จอแคบ: วันที่เต็มแถว ไม่ล้น (เจ้าของ 27 พ.ย.) */}
+          <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv className="col-span-2 sm:col-span-1">
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
           </Field>
           <Field label="ยอดเงิน" help={exported ? 'ส่งไฟล์แล้ว — แก้ยอดแล้วใบจะกลับไปรอส่งไฟล์' : undefined}>

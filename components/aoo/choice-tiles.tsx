@@ -28,6 +28,7 @@ export function ChoiceTiles({
   mobileColumns = 2,
   stacked = false,
   scroll = false,
+  bare = false,
   ariaLabel,
 }: {
   options: ChoiceTile[];
@@ -40,11 +41,13 @@ export function ChoiceTiles({
   /** แถวเดียว เลื่อนซ้าย-ขวาได้ แทนการบีบให้พอดี (ตัวเลือกเยอะ กดง่ายกว่า) — ไม่สน columns
    *  ไม่มีกรอบ ไอคอนใหญ่ (เจ้าของ 3 พ.ย. 69) · ตัวที่เลือก = พื้นอ่อน + กรอบแบรนด์ */
   scroll?: boolean;
+  /** ตารางไม่มีกรอบ — ไอคอนชิดบนให้ตรงกันทุกช่อง (เจ้าของ 27 พ.ย. 69: หมวดใบเบิก) */
+  bare?: boolean;
   ariaLabel?: string;
 }) {
   return (
     <div
-      className={scroll ? "aoo-tiles aoo-tiles--scroll" : "aoo-tiles"}
+      className={`aoo-tiles${scroll ? " aoo-tiles--scroll" : ""}${bare ? " aoo-tiles--bare" : ""}`}
       role="radiogroup"
       aria-label={ariaLabel}
       style={{ "--tiles-cols": columns, "--tiles-cols-sm": mobileColumns } as CSSProperties}

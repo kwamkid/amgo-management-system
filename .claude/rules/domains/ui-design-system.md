@@ -27,3 +27,4 @@ paths:
 - `text-xl..4xl` are bound to the type tokens (22/26/32/44, 19 Nov) — still prefer the `--fs-*` names. Icons/text on a tinted chip use `--tone-ink`, never the vivid tone (fails contrast). After any UI change run `/ui-check` (overflow at 7 widths + contrast incl. hover).
 - `Skeleton shape="field"` (components/shared, 23 Nov): 40px bar for a dropdown/input whose options are still loading — never show an empty disabled menu.
 - Banks are shown as logo + short code (SCB, KBANK), never the Thai full name (owner, 27 Nov): `BankBadge` / `BankLogo` in components/shared/BankBadge.tsx; bank dropdowns use `label: code, hint: nameTh, icon: <BankLogo/>`.
+- `ChoiceTiles bare` (27 Nov): borderless grid, icon on top aligned across tiles, label reserves 2 lines so every tile is the same height — expense category picker. Never use the sideways `scroll` row for long option sets (Windows mice cannot scroll sideways).

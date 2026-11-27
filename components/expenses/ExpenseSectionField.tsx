@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
 // เลือกหมวด 2 ชั้น (เจ้าของ 27 พ.ย. 69) — ใช้ทั้งตอนพนักงานยื่นและตอนบัญชีแก้
 // การ์ดเป็นตาราง ไม่เลื่อนข้าง (เจ้าของ 27 พ.ย.: เมาส์ Windows เลื่อนข้างไม่ได้ · การ์ดต้องเท่ากัน) — คอม 6 · มือถือ 4 ต่อแถว ทั้ง 2 ชั้น
 // ชั้น 1 หมวดบัญชี (รหัสผังบัญชีที่บัญชีรวมยอด) · ชั้น 2 หมวดย่อยไว้ดูสถิติ — โชว์เฉพาะหมวดที่มีหมวดย่อยมากกว่า 1
 // พนักงานไม่รู้หมวดก็ได้: หน้าที่ใช้เดาให้จากรายละเอียด (suggestSection) แล้วส่ง hint มาโชว์
 
-import { ChoiceTiles, Field } from '@/components/aoo'
+import { ChoiceTiles, Field } from "@/components/aoo";
 import {
   ACCOUNT_GROUPS,
   SECTION_LABEL,
@@ -13,15 +13,15 @@ import {
   groupByKey,
   type AccountGroupKey,
   type FormSection,
-} from '@/lib/services/expenseRules'
-import { GROUP_VISUAL, SECTION_VISUAL } from './expenseVisuals'
+} from "@/lib/services/expenseRules";
+import { GROUP_VISUAL, SECTION_VISUAL } from "./expenseVisuals";
 
 const GROUP_OPTIONS = ACCOUNT_GROUPS.map((g) => ({
   value: g.key,
   label: g.short,
   icon: GROUP_VISUAL[g.key].icon,
   tone: GROUP_VISUAL[g.key].tone,
-}))
+}));
 
 export default function ExpenseSectionField({
   group,
@@ -30,22 +30,22 @@ export default function ExpenseSectionField({
   hint,
 }: {
   /** หมวดบัญชีที่เลือก */
-  group: AccountGroupKey | null
+  group: AccountGroupKey | null;
   /** หมวดย่อยที่เลือก */
-  value: FormSection | null
-  onChange: (group: AccountGroupKey, sub: FormSection) => void
+  value: FormSection | null;
+  onChange: (group: AccountGroupKey, sub: FormSection) => void;
   /** ข้อความใต้ช่อง เช่น "ระบบเลือกให้จากรายการเก่า — เปลี่ยนได้" */
-  hint?: string
+  hint?: string;
 }) {
-  const g = group ? groupByKey(group) : null
-  const showSubs = !!g && g.subs.length > 1
+  const g = group ? groupByKey(group) : null;
+  const showSubs = !!g && g.subs.length > 1;
   const help = [
-    g ? `${g.code ? `${g.code} ` : ''}${g.label}` : null,
-    !showSubs && value && g && value !== 'other' ? SECTION_LABEL[value] : null,
-    hint ?? (g ? null : 'ไม่แน่ใจ? พิมพ์รายละเอียดก่อน ระบบจะเลือกให้'),
+    g ? `${g.code ? `${g.code} ` : ""}${g.label}` : null,
+    !showSubs && value && g && value !== "other" ? SECTION_LABEL[value] : null,
+    hint ?? (g ? null : "ไม่แน่ใจ? พิมพ์รายละเอียดก่อน ระบบจะเลือกให้"),
   ]
     .filter(Boolean)
-    .join(' · ')
+    .join(" · ");
   return (
     <>
       <Field label="หมวดบัญชี" help={help} asDiv>
@@ -53,18 +53,23 @@ export default function ExpenseSectionField({
           options={GROUP_OPTIONS}
           value={group}
           onChange={(v) => {
-            if (v === group) return
-            const next = groupByKey(v as AccountGroupKey)
-            onChange(next.key, next.subs[0])
+            if (v === group) return;
+            const next = groupByKey(v as AccountGroupKey);
+            onChange(next.key, next.subs[0]);
           }}
           stacked
           columns={6}
           mobileColumns={4}
+          bare
           ariaLabel="หมวดบัญชี"
         />
       </Field>
       {showSubs && g && (
-        <Field label="หมวดย่อย (ไว้ดูสถิติ)" help={value ? SECTION_LABEL[value] : undefined} asDiv>
+        <Field
+          label="หมวดย่อย (ไว้ดูสถิติ)"
+          help={value ? SECTION_LABEL[value] : undefined}
+          asDiv
+        >
           <ChoiceTiles
             options={g.subs.map((k) => ({
               value: k,
@@ -77,10 +82,11 @@ export default function ExpenseSectionField({
             stacked
             columns={6}
             mobileColumns={4}
+            bare
             ariaLabel="หมวดย่อย"
           />
         </Field>
       )}
     </>
-  )
+  );
 }

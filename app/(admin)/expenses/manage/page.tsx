@@ -38,6 +38,7 @@ import ClaimEditModal from '@/components/expenses/ClaimEditModal'
 import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
 import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThumb'
 import DebitAccountPicker from '@/components/expenses/DebitAccountPicker'
+import CompanySelect, { companyOptions } from '@/components/shared/CompanySelect'
 import BankBadge, { BankLogo } from '@/components/shared/BankBadge'
 import {
   ACCOUNT_GROUPS,
@@ -462,7 +463,7 @@ export default function ExpenseManagePage() {
           <FilterSelect
             label="ทุกบริษัท"
             value={fCompany}
-            options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name_th }))}
+            options={companyOptions(companies)}
             onChange={setFCompany}
           />
         )}
@@ -751,13 +752,7 @@ export default function ExpenseManagePage() {
             <SelectMenu value={reportMonth} options={recentMonths()} onChange={setReportMonth} />
           </Field>
           <Field label="บริษัท" asDiv>
-            <SelectMenu
-              value={reportCompany}
-              options={companies.map((c) => ({ value: c.id, label: c.code, hint: c.name_th }))}
-              onChange={setReportCompany}
-              clearable="ทุกบริษัท"
-              placeholder="ทุกบริษัท"
-            />
+            <CompanySelect companies={companies} value={reportCompany} onChange={setReportCompany} clearable="ทุกบริษัท" placeholder="ทุกบริษัท" />
           </Field>
           <p className="text-xs text-gray-500">
             ได้ชีตสรุป + ชีตละคนตามฟอร์ม EXPENSES REIMBURSEMENT (ค่าเดินทาง · รับรอง · โทรศัพท์ · อื่น ๆ · อื่น ๆ VAT 7%) +

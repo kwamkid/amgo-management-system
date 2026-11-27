@@ -12,6 +12,7 @@ import { BankLogo } from '@/components/shared/BankBadge'
 import { Segmented } from '@/components/shared'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import ExpenseSectionField from './ExpenseSectionField'
+import CompanySelect from '@/components/shared/CompanySelect'
 import {
   ACCOUNT_CODES,
   SECTION_CATEGORY,
@@ -175,16 +176,7 @@ export default function ClaimEditModal({
         {/* บริษัทอยู่บนสุด ตรงกับฟอร์มยื่นใบเบิก (เจ้าของ 27 พ.ย.) */}
         {companies.length > 0 && (
           <Field label="จ่ายจากบริษัท" help={exported ? 'ส่งไฟล์แล้ว — เปลี่ยนบริษัทแล้วใบจะกลับไปรอส่งไฟล์' : undefined} asDiv>
-            <SelectMenu
-              value={companyId}
-              options={companies.map((c) => ({
-                value: c.id,
-                label: `${c.code} · ${c.name_th}`,
-                // eslint-disable-next-line @next/next/no-img-element
-                icon: c.logo_url ? <img src={c.logo_url} alt="" className="h-5 w-5 rounded object-contain" /> : undefined,
-              }))}
-              onChange={(v) => v && setCompanyId(v)}
-            />
+            <CompanySelect companies={companies} value={companyId} onChange={(v) => v && setCompanyId(v)} />
           </Field>
         )}
 

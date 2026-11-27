@@ -210,7 +210,7 @@ export default function MyExpensesPage() {
         purpose,
         attendees,
       })
-      showToast(supplier ? 'ส่งขอจ่าย supplier แล้ว รอบัญชีอนุมัติ' : 'ยื่นใบเบิกแล้ว รอบัญชีอนุมัติ', 'success')
+      showToast(supplier ? 'ส่งขอจ่าย supplier แล้ว รอบัญชีตรวจสอบ' : 'ยื่นใบเบิกแล้ว รอบัญชีตรวจสอบ', 'success')
       setOpen(false)
       reload()
     } catch (e) {
@@ -268,7 +268,7 @@ export default function MyExpensesPage() {
 
       <StatGrid cols={3} compact>
         <StatCard label="รอรับเงินคืน" value={thb(waiting)} icon={Wallet} tone="accent" />
-        <StatCard label="รออนุมัติ" value={pendingCount} unit="ใบ" icon={Clock} tone="warning" />
+        <StatCard label="รอตรวจสอบ" value={pendingCount} unit="ใบ" icon={Clock} tone="warning" />
         <StatCard label="ได้คืนเดือนนี้" value={thb(paidThisMonth)} icon={CheckCircle2} tone="success" />
       </StatGrid>
 

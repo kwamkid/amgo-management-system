@@ -53,7 +53,7 @@ export const PAYOUT_LABEL: Record<ExpensePayout, string> = {
 
 export const STATUS_LABEL: Record<ExpenseStatus, string> = {
   pending_manager: 'รอผู้จัดการ',
-  pending_finance: 'รอบัญชีอนุมัติ',
+  pending_finance: 'รอบัญชีตรวจสอบ',
   approved: 'อนุมัติแล้ว รอจ่าย',
   paid: 'จ่ายแล้ว',
   rejected: 'ไม่อนุมัติ',

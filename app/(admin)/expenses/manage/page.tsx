@@ -434,7 +434,7 @@ export default function ExpenseManagePage() {
         activeKey={tab}
         onSelect={(k) => setTab(k as Tab)}
         tabs={[
-          { key: 'finance', label: 'รออนุมัติ', count: counts?.finance ?? '–', tone: 'warning' },
+          { key: 'finance', label: 'รอตรวจสอบ', count: counts?.finance ?? '–', tone: 'warning' },
           {
             key: 'export',
             label: 'รอส่งไฟล์ธนาคาร',
@@ -512,7 +512,7 @@ export default function ExpenseManagePage() {
             )}
             <span className="text-sm text-gray-500">
               {tab === 'export' && rows.length === 0
-                ? 'ยังไม่มีใบ — อนุมัติในช่อง "รออนุมัติ" ก่อน'
+                ? 'ยังไม่มีใบ — อนุมัติในช่อง "รอตรวจสอบ" ก่อน'
                 : `${visible.length} ใบ · รวม ${thb(visible.reduce((s, r) => s + r.amount, 0))}`}
             </span>
             {isFinance && (

@@ -216,7 +216,15 @@ export default function ClaimEditModal({
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
           </Field>
           <Field label="ยอดเงิน" help={exported ? 'ส่งไฟล์แล้ว — แก้ยอดแล้วใบจะกลับไปรอส่งไฟล์' : undefined}>
-            <MoneyInput value={amount || ''} onValueChange={setAmount} suffix="฿" />
+            <MoneyInput
+              value={amount || ''}
+              onValueChange={(n) => {
+                // VAT ยังเป็นค่าที่ระบบคิดให้ (ไม่ได้พิมพ์ทับเอง) → คิดใหม่ตามยอดใหม่ (เจ้าของ 27 พ.ย.)
+                if (hasVat && Math.abs(vat - vatIncluded(amount)) < 0.005) setVat(vatIncluded(n))
+                setAmount(n)
+              }}
+              suffix="฿"
+            />
           </Field>
           {hasVat && (
             <Field label="VAT 7% ในยอด" help={`คิดจากยอด ${vatIncluded(amount).toFixed(2)}`}>

@@ -250,7 +250,7 @@ export default function MyExpensesPage() {
           <>
             {canManage && (
               <Link href="/expenses/manage">
-                <Button variant="ghost" icon={ClipboardCheck}>
+                <Button variant="secondary" icon={ClipboardCheck}>
                   อนุมัติ / โอนจ่าย
                 </Button>
               </Link>

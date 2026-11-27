@@ -405,7 +405,7 @@ export default function ExpenseManagePage() {
         actions={
           <>
           <Link href="/expenses">
-            <Button variant="ghost" icon={Receipt}>
+            <Button variant="secondary" icon={Receipt}>
               ใบเบิกของฉัน
             </Button>
           </Link>
@@ -515,10 +515,9 @@ export default function ExpenseManagePage() {
                 : `${visible.length} ใบ · รวม ${thb(visible.reduce((s, r) => s + r.amount, 0))}`}
             </span>
             {isFinance && (
-              <div className="ml-auto flex flex-wrap gap-1.5">
+              <div className="ml-auto flex flex-wrap gap-2">
                 {tab === 'finance' && (
                   <Button
-                    size="sm"
                     variant="secondary"
                     disabled={!pickedRows.length || !!busy}
                     onClick={() => {
@@ -535,27 +534,26 @@ export default function ExpenseManagePage() {
                   </Button>
                 )}
                 {tab === 'finance' && (
-                  <Button size="sm" icon="Check" disabled={!pickedRows.length || !!busy} loading={busy === 'bulk'} onClick={approvePicked}>
+                  <Button icon="Check" disabled={!pickedRows.length || !!busy} loading={busy === 'bulk'} onClick={approvePicked}>
                     อนุมัติที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
                   </Button>
                 )}
                 {(tab === 'export' || tab === 'transfer') && (
-                  <Button size="sm" variant="ghost" icon="Download" onClick={openFiles}>
+                  <Button variant="secondary" icon="Download" onClick={openFiles}>
                     ไฟล์ที่ส่งออกแล้ว
                   </Button>
                 )}
                 {tab === 'export' && rows.length > 0 && (
-                  <Button size="sm" icon={FileUp} disabled={!pickedRows.length} onClick={openExport}>
+                  <Button icon={FileUp} disabled={!pickedRows.length} onClick={openExport}>
                     ส่งออกไฟล์ SCB{pickedRows.length ? ` (${pickedRows.length} ใบ · ${thb(pickedRows.reduce((s, c) => s + c.amount, 0))})` : ''}
                   </Button>
                 )}
                 {tab === 'transfer' && (
                   <>
-                    <Button size="sm" variant="ghost" onClick={resetExported} disabled={!pickedRows.length || !!busy}>
+                    <Button variant="secondary" onClick={resetExported} disabled={!pickedRows.length || !!busy}>
                       ย้ายกลับไปรอส่งไฟล์
                     </Button>
                     <Button
-                      size="sm"
                       icon="Check"
                       disabled={!pickedRows.length}
                       onClick={() => {

@@ -188,21 +188,21 @@ export default function ClaimEditModal({
           />
         </Field>
 
-        <Field label="รายละเอียด">
-          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-        </Field>
-
-        {/* บิลนี้มี VAT ไหม — ต่อจากรายละเอียด/ชื่อร้าน (เจ้าของ 27 พ.ย.) */}
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-gray-800">ร้านมี VAT 7%</p>
-          <Segmented
-            value={hasVat ? 'yes' : 'no'}
-            onChange={(v) => toggleVat(v === 'yes')}
-            options={[
-              { value: 'yes', label: 'มี' },
-              { value: 'no', label: 'ไม่มี' },
-            ]}
-          />
+        {/* รายละเอียด + ร้านมี VAT 7% บรรทัดเดียวกัน (เจ้าของ 27 พ.ย.) */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <Field label="รายละเอียด">
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </Field>
+          <Field label="ร้านมี VAT 7%" asDiv>
+            <Segmented
+              value={hasVat ? 'yes' : 'no'}
+              onChange={(v) => toggleVat(v === 'yes')}
+              options={[
+                { value: 'yes', label: 'มี' },
+                { value: 'no', label: 'ไม่มี' },
+              ]}
+            />
+          </Field>
         </div>
 
         {companies.length > 0 && (

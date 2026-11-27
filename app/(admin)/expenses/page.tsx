@@ -429,31 +429,29 @@ export default function MyExpensesPage() {
             </Field>
           </div>
 
-          <Field label={section === 'entertain' && !supplier ? 'ร้าน/สถานที่' : 'จ่ายค่าอะไร'}>
-            <Input
-              value={description}
-              onChange={(e) => onDescription(e.target.value)}
-              placeholder={supplier ? 'เช่น ค่าผลิตโปสเตอร์งานแฟร์ BBB' : 'เช่น แท็กซี่ไปออกบูธ รพ.วิมุต'}
-            />
-          </Field>
-
-          {/* บิลนี้มี VAT ไหม — ต่อจากชื่อร้าน (เจ้าของ 27 พ.ย.: "ร้านมี VAT 7%  มี | ไม่มี") */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800">ร้านมี VAT 7%</p>
-              {hasVat && amount > 0 && (
-                <p className="text-xs text-gray-500">VAT ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
-              )}
-            </div>
-            <Segmented
-              value={hasVat ? 'yes' : 'no'}
-              onChange={(v) => setHasVat(v === 'yes')}
-              options={[
-                { value: 'yes', label: 'มี' },
-                { value: 'no', label: 'ไม่มี' },
-              ]}
-            />
+          {/* จ่ายค่าอะไร + ร้านมี VAT 7% บรรทัดเดียวกัน (เจ้าของ 27 พ.ย.) */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <Field label={section === 'entertain' && !supplier ? 'ร้าน/สถานที่' : 'จ่ายค่าอะไร'}>
+              <Input
+                value={description}
+                onChange={(e) => onDescription(e.target.value)}
+                placeholder={supplier ? 'เช่น ค่าผลิตโปสเตอร์งานแฟร์ BBB' : 'เช่น แท็กซี่ไปออกบูธ รพ.วิมุต'}
+              />
+            </Field>
+            <Field label="ร้านมี VAT 7%" asDiv>
+              <Segmented
+                value={hasVat ? 'yes' : 'no'}
+                onChange={(v) => setHasVat(v === 'yes')}
+                options={[
+                  { value: 'yes', label: 'มี' },
+                  { value: 'no', label: 'ไม่มี' },
+                ]}
+              />
+            </Field>
           </div>
+          {hasVat && amount > 0 && (
+            <p className="-mt-2 text-xs text-gray-500">VAT ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
+          )}
 
           <ExpenseSectionField
             group={group}

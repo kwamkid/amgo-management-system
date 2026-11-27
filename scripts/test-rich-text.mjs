@@ -29,6 +29,15 @@ check('ข้อความเก่า (ตัวหนังสือล้�
   assert.equal(sanitizeRichText('บรรทัด 1\nราคา < 500 & ส่งฟรี'), 'บรรทัด 1<br>ราคา &lt; 500 &amp; ส่งฟรี')
 })
 
+check('พิมพ์ช่องว่างในตัวแก้ไข (innerHTML มี &nbsp;) — ไม่กลายเป็น &amp;nbsp; (บั๊ก 27 พ.ย.)', () => {
+  const once = sanitizeRichText('ประชุม&nbsp;')
+  assert.ok(!once.includes('&amp;'), once)
+  // รอบไป-กลับกับตัวแก้ไข: เบราว์เซอร์คืน nbsp เป็น &nbsp; อีกครั้ง → ผลต้องเท่าเดิม
+  assert.equal(sanitizeRichText(once.replace(/\u00a0/g, '&nbsp;')), once)
+  assert.equal(sanitizeRichText('R&amp;D'), 'R&amp;D')
+  assert.equal(sanitizeRichText(sanitizeRichText('R&D')), 'R&amp;D')
+})
+
 check('แปลงเป็นตัวหนังสือล้วน (บอท/ค้นหา)', () => {
   assert.equal(richTextToPlain('<b>โทร</b>หาพี่ตุ้ม<ul><li>ขอราคา</li><li>ขอแคตตาล็อก</li></ul>'), 'โทรหาพี่ตุ้ม\n• ขอราคา\n• ขอแคตตาล็อก')
   assert.equal(richTextToPlain('ข้อความธรรมดา'), 'ข้อความธรรมดา')

@@ -15,13 +15,27 @@ const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /**
+ * ตัวหนังสือที่ไม่มีแท็กอาจมาจาก innerHTML ของตัวแก้ไข (escape มาแล้ว: ช่องว่างท้ายบรรทัด = &nbsp;)
+ * ถอด entity ก่อนแล้วค่อย escape ใหม่ — ไม่งั้น &nbsp; กลายเป็น &amp;nbsp; โผล่ในช่องพิมพ์ (บั๊ก 27 พ.ย. 69)
+ * ถอดแล้ว escape ซ้ำได้ผลเดิมเสมอ (R&D → R&amp;D ทั้งรอบแรกและรอบต่อไป)
+ */
+const decodeEntities = (s: string) =>
+  s
+    .replace(/&nbsp;|&#160;/g, '\u00a0')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+
+/**
  * ตัดทุกอย่างที่ไม่อยู่ในรายการ — ใช้ regex (ไม่ใช่ DOMParser) เพื่อให้รันได้ทั้ง server/เบราว์เซอร์/node
  * แท็กที่ไม่อนุญาตถูกถอดออกแต่เก็บตัวหนังสือข้างในไว้ · script/style ทิ้งทั้งก้อน
  */
 export function sanitizeRichText(input: string | null | undefined): string {
   const s = (input ?? '').trim()
   if (!s) return ''
-  if (!looksLikeHtml(s)) return escapeHtml(s).replace(/\r?\n/g, '<br>')
+  if (!looksLikeHtml(s)) return escapeHtml(decodeEntities(s)).replace(/\r?\n/g, '<br>')
   return s
     .replace(/<(script|style|iframe|object|embed)\b[\s\S]*?<\/\1\s*>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')

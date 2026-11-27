@@ -311,7 +311,7 @@ export default function ExpenseManagePage() {
       if (res.includedIds.length) {
         // ใบที่ส่งไฟล์แล้วย้ายไป "รอโอน" — รอเจ้าของ approve ในแอปธนาคาร แล้วบัญชีค่อยแนบสลิป
         showToast(
-          `ส่งออก ${res.includedIds.length} ใบ รวม ${thb(res.total)}${res.files.length > 1 ? ` เป็น ${res.files.length} ไฟล์ (SCB · ต่างธนาคาร) อัปโหลดทั้ง 2 ไฟล์` : ''} — อัปโหลดเข้า SCB แล้วรอ approve · ใบย้ายไป "รอโอน"`,
+          `ส่งออก ${res.includedIds.length} ใบ รวม ${thb(res.total)}${res.files.length > 1 ? ` เป็น ${res.files.length} ไฟล์ (SCB · ต่างธนาคาร) อัปโหลดทั้ง 2 ไฟล์` : ''} — อัปโหลดเข้า SCB แล้วรอ approve · ใบย้ายไป "รอเจ๊อนุมัติจ่าย"`,
           'success'
         )
       }
@@ -443,7 +443,7 @@ export default function ExpenseManagePage() {
           },
           {
             key: 'transfer',
-            label: 'รอโอน (ส่งไฟล์แล้ว)',
+            label: 'รอเจ๊อนุมัติจ่าย',
             count: counts?.exported ?? '–',
             tone: 'danger',
           },
@@ -876,7 +876,7 @@ export default function ExpenseManagePage() {
             ระบบเลือกบริการโอนตามธนาคารผู้รับให้เอง · ถ้ามีทั้งผู้รับ SCB และธนาคารอื่นจะได้ 2 ไฟล์ — อัปโหลดทุกไฟล์ที่ได้
           </p>
           <p className="text-xs text-amber-700">
-            กดดาวน์โหลดแล้ว ใบจะย้ายไป &quot;รอโอน&quot; และเก็บไฟล์ไว้ที่ปุ่ม &quot;ไฟล์ที่ส่งออกแล้ว&quot; · ถ้าแค่ลอง ย้ายกลับได้ที่แท็บรอโอน →
+            กดดาวน์โหลดแล้ว ใบจะย้ายไป &quot;รอเจ๊อนุมัติจ่าย&quot; และเก็บไฟล์ไว้ที่ปุ่ม &quot;ไฟล์ที่ส่งออกแล้ว&quot; · ถ้าแค่ลอง ย้ายกลับได้ที่แท็บรอเจ๊อนุมัติจ่าย →
             ติ๊กใบ → &quot;ย้ายกลับไปรอส่งไฟล์&quot;
           </p>
         </div>

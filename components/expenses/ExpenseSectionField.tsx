@@ -1,61 +1,86 @@
 'use client'
 
-// เลือกหมวดในช่องเดียว (เจ้าของ 27 พ.ย. 69: การ์ด 2 แถวไม่เท่ากัน รก — ทำเป็นไอคอน + dropdown เลือกทีเดียวจบ)
-// แต่ละตัวเลือก = หมวดย่อย 1 ตัว ใต้หมวดบัญชีของมัน: "เดินทาง › Taxi" · หมวดที่มีหมวดย่อยเดียวโชว์ชื่อหมวดบัญชีเลย
-// ได้ทั้งหมวดบัญชี (รหัสผังบัญชี — บัญชีรวมยอด) และหมวดย่อย (ไว้ดูสถิติ) จากการเลือกครั้งเดียว · พิมพ์ค้นหาได้
+// เลือกหมวด 2 ชั้น (เจ้าของ 27 พ.ย. 69) — ใช้ทั้งตอนพนักงานยื่นและตอนบัญชีแก้
+// การ์ดเป็นตาราง ไม่เลื่อนข้าง (เจ้าของ 27 พ.ย.: เมาส์ Windows เลื่อนข้างไม่ได้ · การ์ดต้องเท่ากัน) — คอม 6 · มือถือ 4 ต่อแถว ทั้ง 2 ชั้น
+// ชั้น 1 หมวดบัญชี (รหัสผังบัญชีที่บัญชีรวมยอด) · ชั้น 2 หมวดย่อยไว้ดูสถิติ — โชว์เฉพาะหมวดที่มีหมวดย่อยมากกว่า 1
 // พนักงานไม่รู้หมวดก็ได้: หน้าที่ใช้เดาให้จากรายละเอียด (suggestSection) แล้วส่ง hint มาโชว์
 
-import { Field, IconChip, SelectMenu } from '@/components/aoo'
+import { ChoiceTiles, Field } from '@/components/aoo'
 import {
   ACCOUNT_GROUPS,
+  SECTION_LABEL,
   SECTION_SHORT,
-  groupOfSection,
+  groupByKey,
   type AccountGroupKey,
   type FormSection,
 } from '@/lib/services/expenseRules'
-import { SECTION_VISUAL } from './expenseVisuals'
+import { GROUP_VISUAL, SECTION_VISUAL } from './expenseVisuals'
 
-const OPTIONS = ACCOUNT_GROUPS.flatMap((g) =>
-  g.subs.map((sub) => ({
-    value: sub,
-    label: g.subs.length > 1 ? `${g.short} › ${SECTION_SHORT[sub]}` : g.label,
-    hint: g.code ?? 'บัญชีเลือกรหัส',
-    icon: <IconChip icon={SECTION_VISUAL[sub].icon} tone={SECTION_VISUAL[sub].tone} size={24} />,
-  }))
-)
+const GROUP_OPTIONS = ACCOUNT_GROUPS.map((g) => ({
+  value: g.key,
+  label: g.short,
+  icon: GROUP_VISUAL[g.key].icon,
+  tone: GROUP_VISUAL[g.key].tone,
+}))
 
 export default function ExpenseSectionField({
+  group,
   value,
   onChange,
   hint,
 }: {
-  /** หมวดบัญชีที่เลือก — คงไว้ให้หน้าที่เรียกใช้ไม่ต้องแก้ (หาได้จากหมวดย่อยอยู่แล้ว) */
-  group?: AccountGroupKey | null
+  /** หมวดบัญชีที่เลือก */
+  group: AccountGroupKey | null
   /** หมวดย่อยที่เลือก */
   value: FormSection | null
   onChange: (group: AccountGroupKey, sub: FormSection) => void
   /** ข้อความใต้ช่อง เช่น "ระบบเลือกให้จากรายการเก่า — เปลี่ยนได้" */
   hint?: string
 }) {
-  const g = value ? groupOfSection(value) : null
+  const g = group ? groupByKey(group) : null
+  const showSubs = !!g && g.subs.length > 1
   const help = [
-    g ? `ลงบัญชี ${g.code ? `${g.code} ` : ''}${g.label}` : null,
-    hint ?? (g ? null : 'ไม่แน่ใจ? พิมพ์รายละเอียดก่อน ระบบจะเลือกให้ · หรือพิมพ์ค้นหาในช่องนี้'),
+    g ? `${g.code ? `${g.code} ` : ''}${g.label}` : null,
+    !showSubs && value && g && value !== 'other' ? SECTION_LABEL[value] : null,
+    hint ?? (g ? null : 'ไม่แน่ใจ? พิมพ์รายละเอียดก่อน ระบบจะเลือกให้'),
   ]
     .filter(Boolean)
     .join(' · ')
   return (
-    <Field label="หมวดค่าใช้จ่าย" help={help} asDiv>
-      <SelectMenu
-        value={value}
-        options={OPTIONS}
-        placeholder="เลือกหมวด"
-        onChange={(v) => {
-          if (!v) return
-          const sub = v as FormSection
-          onChange(groupOfSection(sub).key, sub)
-        }}
-      />
-    </Field>
+    <>
+      <Field label="หมวดบัญชี" help={help} asDiv>
+        <ChoiceTiles
+          options={GROUP_OPTIONS}
+          value={group}
+          onChange={(v) => {
+            if (v === group) return
+            const next = groupByKey(v as AccountGroupKey)
+            onChange(next.key, next.subs[0])
+          }}
+          stacked
+          columns={6}
+          mobileColumns={4}
+          ariaLabel="หมวดบัญชี"
+        />
+      </Field>
+      {showSubs && g && (
+        <Field label="หมวดย่อย (ไว้ดูสถิติ)" help={value ? SECTION_LABEL[value] : undefined} asDiv>
+          <ChoiceTiles
+            options={g.subs.map((k) => ({
+              value: k,
+              label: SECTION_SHORT[k],
+              icon: SECTION_VISUAL[k].icon,
+              tone: SECTION_VISUAL[k].tone,
+            }))}
+            value={value}
+            onChange={(v) => onChange(g.key, v as FormSection)}
+            stacked
+            columns={6}
+            mobileColumns={4}
+            ariaLabel="หมวดย่อย"
+          />
+        </Field>
+      )}
+    </>
   )
 }

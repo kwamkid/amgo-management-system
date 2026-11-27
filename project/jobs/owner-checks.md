@@ -23,3 +23,4 @@
 - Tasks: on a real iPhone open a task from /tasks — camera button offers camera + library, keyboard doesn't cover the update box; a push arrives when someone else assigns/updates your task (9507ce5, 9e3e710).
 - cron-monitor: in cron-job.org disable "AMGO Tick" (3 group jobs people/web/data run since 2026-11-23 10:20).
 - Dev tracker bugs/releases (2026-11-24): with a real mouse on /dev/bugs/<slug> drag a card between columns, and on /dev/releases/<slug> drag a case and a bug into a round and back out (Claude's synthetic drag worked, a real hand-drag wasn't tried). Push notifications on your phone: a tester's new bug → you; moving a bug to รอเทส → the reporter; a tester's verdict → managers + assignee.
+- expenses · upload one new SCB file (after a5c18ed, 27 Nov) → SCB accepts it and "บันทึกช่วยจำ" shows the memo; if rejected, empty BCHDET [8] again (lib/services/bankTransferFile.ts batchMemo) or make it ASCII.

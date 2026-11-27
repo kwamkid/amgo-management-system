@@ -457,6 +457,11 @@ SRP Calculator มี 20 คอลัมน์ + ตรึงคอลัมน�
 - Discord message buttons: INTERACTION_CREATE reaches only one gateway session per bot token. A bot run by Hermes can't have a sidecar that handles clicks — buttons need their own Discord app. Owner chose text + web link instead (31 Oct).
 - PWA geolocation works only while the app is in the foreground (browser limit, iOS and Android). Shortcut used: redirect to the page that reads GPS on open (`/checkin`), once per day via sessionStorage.
 
+### 2026-11-27 — SCB CPX toolkit: one file = one product; memo field; clipboard encoding
+- Other-bank transfers use the same SCB toolkit, product `RFT` (ORFT): same TXNDET row as OAT except branch `0000`; a mixed selection needs one file per product. First real RFT upload accepted 27 Nov.
+- SCB's "บันทึกช่วยจำ" = BCHDET field [8] Internal Debit Note, which the toolkit's own export always leaves empty (defined, never wired).
+- `pbcopy` from the Bash tool garbles Thai unless `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` — the owner pasted mojibake labels into prod once.
+
 ### 2026-11-03 — bank toolkit files + local dev traps (expenses)
 - Reverse-engineer an Excel bank toolkit (.xls with macros, e.g. SCB CPX Toolkit): `python3 -m venv <scratch>/venv && <venv>/bin/pip install oletools`, then `olevba --decode -c file.xls`; the Export/Validation modules give the exact upload format and field rules. Verify by emulating the macro on the template's own sample rows and diffing field-by-field against our builder (done for `lib/services/bankTransferFile.ts`).
 - SCB account check digit: 9 digits × 4,3,2,7,6,5,4,3,2, keep each product's units digit, sum, last digit = (10 − sum mod 10) mod 10 (`isScbAccount`).

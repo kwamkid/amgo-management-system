@@ -13,7 +13,7 @@
 - [ ] รอคุณแอม: fix โฟน (อดิศักดิ์ ทองปรอน)'s SCB account in his profile — only 9 digits, export will skip him.
 - [x] Pushed a925175 (4 Nov work, UAT-0142): form controls 40px default (SelectMenu default md + font in DatePicker/DateRangePicker/TimePicker, bulk-edit toolbar sm) · stored export files + "ไฟล์ที่ส่งออกแล้ว" re-download · export modal notice.
 
-- [ ] 27 Nov: ORFT (other-bank) file built — `RFT` product, mixed export = 2 files; tests 83/83; pushed 27 Nov. Owner to upload the RFT file in SCB Business Anywhere for the 6 KBANK claims and confirm it is accepted.
+- [ ] 27 Nov: ORFT (other-bank) file built — `RFT` product, mixed export = 2 files; tests 83/83; pushed 27 Nov. Follow-ups pushed 27 Nov: a29d525 (product auto 3PT/RFT, no dropdown) · d812c18 (bank remark = who claimed what) · 261d427 (company debit account dropdown, migration 20261127100000 run by owner). Owner to upload the RFT file in SCB Business Anywhere for the 6 KBANK claims and confirm it is accepted.
 
 ## Resume note
 Resume at: nothing to build — only waits on the owner fixing โฟน's SCB account (9 digits) in his profile. Other-bank file postponed (jobs/ideas.md), WHT is aoo's, payee SMS/email replaced by Discord (799a8b8).

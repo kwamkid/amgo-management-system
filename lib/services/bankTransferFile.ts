@@ -24,6 +24,8 @@ export interface TransferSource {
   kind: 'reimburse' | 'supplier'
   amount: number
   description: string
+  /** ชื่อคนเบิก (ชื่อเล่น/ชื่อแสดง) — ใส่ในหมายเหตุให้รู้ว่าใครเบิกอะไร */
+  userName?: string | null
   /** ชื่อจริงพนักงาน = ชื่อบัญชีรับเงิน (reimburse) */
   ownerFullName?: string | null
   bankName?: string | null
@@ -88,6 +90,7 @@ export function scbText(s: string, max: number): string {
  */
 export function buildTransferLines(claims: TransferSource[]): { lines: TransferLine[]; problems: TransferProblem[] } {
   const problems: TransferProblem[] = []
+  const notes = new Map<string, { who: string; what: string }[]>()
   const byAccount = new Map<string, Omit<TransferLine, 'seq'>>()
 
   for (const c of claims) {
@@ -114,26 +117,29 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
     }
 
     const key = `${bank.code}|${acc}`
+    const who = (c.userName ?? '').trim()
     const line = byAccount.get(key)
     if (line) {
       line.amount = round2(line.amount + c.amount)
       line.claimIds.push(c.id)
-      line.reference = `${line.claimIds.length} รายการ`
+      notes.get(key)!.push({ who, what: c.description })
     } else {
+      notes.set(key, [{ who, what: c.description }])
       byAccount.set(key, {
         accountName: name,
         bankCode: bank.code,
         bankClearing: bank.clearing,
         accountNo: acc,
         amount: round2(c.amount),
-        reference: scbText(c.description, 200),
+        reference: '',
         claimIds: [c.id],
       })
     }
   }
 
   const lines: TransferLine[] = []
-  for (const l of byAccount.values()) {
+  for (const [key, l] of byAccount) {
+    l.reference = remarkOf(notes.get(key)!)
     if (l.bankCode !== 'SCB' && l.amount > RFT_MAX_AMOUNT) {
       for (const id of l.claimIds) problems.push({ claimId: id, reason: 'โอนต่างธนาคารได้ไม่เกิน 2,000,000 ต่อรายการ' })
       continue
@@ -141,6 +147,17 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
     lines.push({ ...l, seq: lines.length + 1 })
   }
   return { lines, problems }
+}
+
+/**
+ * หมายเหตุในระบบธนาคาร (Payment Advice Remark ≤200) = ใครเบิกอะไร (เจ้าของ 27 พ.ย.)
+ * "ยิ่ว: ป้าย stokke" · รวมหลายใบของคนเดียว "ยิ่ว: ป้าย stokke / สติ๊กเกอร์" · หลายคน "ยิ่ว: …, อ๋อมแอ๋ม: …" (ใช้แต่อักขระ ASCII/ไทย)
+ */
+export function remarkOf(items: { who: string; what: string }[]): string {
+  const byWho = new Map<string, string[]>()
+  for (const { who, what } of items) byWho.set(who, [...(byWho.get(who) ?? []), what.trim()])
+  const text = [...byWho].map(([who, whats]) => (who ? `${who}: ` : '') + whats.join(' / ')).join(', ')
+  return scbText(text, 200)
 }
 
 /**

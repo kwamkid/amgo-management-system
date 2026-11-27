@@ -6,7 +6,7 @@
 // เขียนเหตุผลแทน) · รวมเงินเดือน = เข้างวดที่วันอนุมัติตกอยู่ ซึ่งยังไม่ตัดยอด
 
 import { checkExpense, formSectionOf, guessSection, payrollMonthFor, suggestSection, vatIncluded } from '../lib/services/expenseRules.ts'
-import { buildScbFile, buildTransferLines, isScbAccount, scbText, splitByProduct } from '../lib/services/bankTransferFile.ts'
+import { buildScbFile, buildTransferLines, isScbAccount, remarkOf, scbText, splitByProduct } from '../lib/services/bankTransferFile.ts'
 
 let pass = 0, fail = 0
 const check = (ok, label, detail = '') => {
@@ -75,10 +75,10 @@ check(!isScbAccount('0384699742'), 'หลักสุดท้ายผิด �
 check(!isScbAccount('038469974'), '9 หลัก ไม่ผ่าน')
 
 const emp = (id, amount, o = {}) => ({ id, kind: 'reimburse', amount, description: `ใบ ${id}`,
-  ownerFullName: 'สมหญิง ใจดี', bankName: 'SCB', bankAccountNo: '424-023041-9', ...o })
+  userName: 'หญิง', ownerFullName: 'สมหญิง ใจดี', bankName: 'SCB', bankAccountNo: '424-023041-9', ...o })
 const { lines, problems } = buildTransferLines([
   emp('a', 100.1), emp('b', 200.2),
-  { id: 's', kind: 'supplier', amount: 5350, description: 'โปสเตอร์ #BBB 65 (50%)', payeeName: 'บจก. ปริ้นท์ดี', payeeBank: 'SCB', payeeAccountNo: '2502167033' },
+  { id: 's', kind: 'supplier', amount: 5350, userName: 'ยิ่ว', description: 'โปสเตอร์ #BBB 65 (50%)', payeeName: 'บจก. ปริ้นท์ดี', payeeBank: 'SCB', payeeAccountNo: '2502167033' },
   emp('x', 50, { bankName: null }),
   emp('y', 50, { bankAccountNo: '4240230418' }),
   { id: 'k', kind: 'supplier', amount: 10, description: 'x', payeeName: 'ร้าน', payeeBank: 'KBANK', payeeAccountNo: '1234567890' },
@@ -86,7 +86,10 @@ const { lines, problems } = buildTransferLines([
 check(lines.length === 3, 'บัญชีเดียวกันรวมเป็นบรรทัดเดียว (3 ใบ SCB → 2 บรรทัด) + KBANK 1 บรรทัด', String(lines.length))
 check(lines[0].amount === 300.3 && lines[0].claimIds.length === 2, '100.1 + 200.2 = 300.3 ไม่มีเศษเพี้ยน', String(lines[0].amount))
 check(lines[0].accountNo === '4240230419' && lines[0].bankClearing === '014', 'เลขบัญชีตัวเลขล้วน · SCB = 014')
-check(lines[1].reference === 'โปสเตอร์ BBB 65 (50)', 'หมายเหตุตัดอักขระที่ toolkit ห้าม (# %) ออก', lines[1].reference)
+check(lines[1].reference === 'ยิ่ว: โปสเตอร์ BBB 65 (50)', 'หมายเหตุ = ใครเบิกอะไร · ตัดอักขระที่ toolkit ห้าม (# %) ออก', lines[1].reference)
+check(lines[0].reference === 'หญิง: ใบ a / ใบ b', 'รวมหลายใบของคนเดียว: ชื่อครั้งเดียว รายการคั่น /', lines[0].reference)
+check(remarkOf([{ who: 'ยิ่ว', what: 'ป้าย' }, { who: 'อ๋อมแอ๋ม', what: 'ไม้' }, { who: 'ยิ่ว', what: 'สติ๊กเกอร์' }]) === 'ยิ่ว: ป้าย / สติ๊กเกอร์, อ๋อมแอ๋ม: ไม้', 'หลายคนบัญชีเดียวกัน: แยกตามคน')
+check(remarkOf([{ who: 'ก', what: 'x'.repeat(300) }]).length === 200, 'หมายเหตุไม่เกิน 200 ตัวอักษร')
 check(problems.map((p) => p.claimId).join() === 'x,y', 'ไม่มีธนาคาร · check digit ผิด → ไม่ใส่ไฟล์ แจ้งกลับ (ธนาคารอื่นใส่ได้แล้ว)', JSON.stringify(problems))
 const groups = splitByProduct(lines, 'OAT')
 check(groups.map((g) => `${g.product}:${g.lines.map((l) => l.seq).join('')}`).join() === 'OAT:12,RFT:1', 'แยกไฟล์ SCB (OAT) กับต่างธนาคาร (RFT) · seq เริ่มใหม่', JSON.stringify(groups.map((g) => g.product)))
@@ -101,8 +104,8 @@ const file = buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount
 const want = [
   'HEADER|031126140509OAT',
   'BCHDET|031126140509|OAT|20261103|0384699741|0384699741|5650.30|2||',
-  'TXNDET||4240230419||014|0111|300.30||BEN|N||N||สมหญิง ใจดี||||N|||N|N||||N||2 รายการ',
-  'TXNDET||2502167033||014|0111|5350.00||BEN|N||N||บจก. ปริ้นท์ดี||||N|||N|N||||N||โปสเตอร์ BBB 65 (50)',
+  'TXNDET||4240230419||014|0111|300.30||BEN|N||N||สมหญิง ใจดี||||N|||N|N||||N||หญิง: ใบ a / ใบ b',
+  'TXNDET||2502167033||014|0111|5350.00||BEN|N||N||บจก. ปริ้นท์ดี||||N|||N|N||||N||ยิ่ว: โปสเตอร์ BBB 65 (50)',
   'TRAILR|1|2|5650.30',
 ].join('\r\n')
 check(file.content === want, 'เนื้อไฟล์ตรงรูปแบบ toolkit ทุกบรรทัด (CRLF · 28 ช่องต่อรายการ)', file.content === want ? '' : JSON.stringify(file.content))

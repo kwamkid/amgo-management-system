@@ -37,6 +37,7 @@ import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
 import ClaimEditModal from '@/components/expenses/ClaimEditModal'
 import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
 import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThumb'
+import DebitAccountPicker from '@/components/expenses/DebitAccountPicker'
 import {
   SECTION_BY_POPULARITY,
   SECTION_LABEL,
@@ -260,12 +261,12 @@ export default function ExpenseManagePage() {
     const target = pickedRows
     const account = debitAccount.replace(/\D/g, '')
     if (!isScbAccount(account)) {
-      showToast('บัญชีตัดเงินต้องเป็นเลขบัญชี SCB 10 หลักที่ถูกต้อง', 'error')
+      showToast('เลือกบัญชีตัดเงิน SCB ของบริษัท (เลข 10 หลักที่ถูกต้อง)', 'error')
       return
     }
     try {
       setBusy('export')
-      // จำบัญชีตัดเงินไว้กับบริษัท — ครั้งหน้าไม่ต้องกรอก
+      // จำบัญชีที่ใช้ล่าสุดไว้กับบริษัท — ครั้งหน้าเลือกให้ก่อน (หน้ายื่นใบเบิกก็โชว์บัญชีนี้)
       const company = companyOf(exportCompany)
       if (company && company.scb_debit_account !== account) {
         const { error } = await createClient().rpc('set_company_scb_debit_account', {
@@ -785,7 +786,7 @@ export default function ExpenseManagePage() {
             <Button variant="secondary" onClick={() => setExportOpen(false)}>
               ยกเลิก
             </Button>
-            <Button icon="Download" onClick={exportTransfer} loading={busy === 'export'}>
+            <Button icon="Download" onClick={exportTransfer} loading={busy === 'export'} disabled={!pickedRows.length || !debitAccount}>
               ดาวน์โหลดไฟล์ (.txt)
             </Button>
           </>
@@ -796,14 +797,12 @@ export default function ExpenseManagePage() {
             <span className="font-semibold">{companyOf(exportCompany)?.code ?? 'ไม่ระบุบริษัท'}</span> · {pickedRows.length} ใบ · รวม{' '}
             {thb(pickedRows.reduce((s, c) => s + c.amount, 0))}
           </p>
-          <Field label="บัญชีตัดเงิน (SCB ของบริษัท)" help="ใช้หักค่าธรรมเนียมด้วย · กรอกครั้งเดียว ระบบจำไว้กับบริษัท">
-            <Input
-              value={debitAccount}
-              onChange={(e) => setDebitAccount(e.target.value)}
-              inputMode="numeric"
-              placeholder="xxx-x-xxxxx-x"
-            />
-          </Field>
+          <DebitAccountPicker
+            companyId={exportCompany}
+            preferred={companyOf(exportCompany)?.scb_debit_account ?? null}
+            value={debitAccount}
+            onChange={setDebitAccount}
+          />
           <Field label="วันที่รายการมีผล" asDiv>
             <DatePicker value={valueDate} onChange={setValueDate} />
           </Field>

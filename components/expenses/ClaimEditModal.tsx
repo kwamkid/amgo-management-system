@@ -2,7 +2,8 @@
 
 // บัญชีแก้หมวด/รายละเอียดของใบก่อนอนุมัติหรือก่อนโอน (เจ้าของ 3 พ.ย. 69)
 // พนักงานเลือกหมวดผิด/ระบบเดาผิด บัญชีแก้ตรงนี้ — ไม่ต้องไปกรอกใหม่ในไฟล์สรุปสิ้นเดือน
-// ยอดเงินแก้ได้เฉพาะตอนรอบัญชี · ตรวจซ้ำใน updateClaimDetails
+// 27 พ.ย. 69: แก้ได้ทุกช่องจนกว่าจะโอน (ยอด · วันที่ · บริษัท · บัญชีปลายทาง) · ตรวจซ้ำใน updateClaimDetails
+// แก้ยอด/บริษัท/บัญชีปลายทางของใบที่ส่งไฟล์แล้ว = ใบกลับไปรอส่งไฟล์ (ต้องส่งออกใหม่)
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
@@ -33,11 +34,15 @@ export default function ClaimEditModal({
   claim,
   onClose,
   onSaved,
+  companies = [],
 }: {
   claim: ExpenseClaim | null
   onClose: () => void
   onSaved: () => void
+  /** บริษัทที่เลือกได้ (ว่าง = ไม่โชว์ช่องบริษัท) */
+  companies?: { id: string; code: string; name_th: string; logo_url: string | null }[]
 }) {
+  const [companyId, setCompanyId] = useState<string | null>(null)
   const [group, setGroup] = useState<AccountGroupKey | null>(null)
   const [section, setSection] = useState<FormSection | null>(null)
   // รหัสบัญชีจริงที่จะลง — ตามหมวดบัญชี หรือบัญชีเลือกทับจากผังทั้งหมด
@@ -72,6 +77,7 @@ export default function ClaimEditModal({
     setExpenseDate(claim.expenseDate)
     setDescription(claim.description)
     setAmount(claim.amount)
+    setCompanyId(claim.companyId)
     setVat(claim.vatAmount)
     setRouteFrom(claim.routeFrom ?? '')
     setRouteTo(claim.routeTo ?? '')
@@ -88,7 +94,8 @@ export default function ClaimEditModal({
   }, [claim])
 
   if (!claim) return null
-  const amountEditable = claim.status === 'pending_finance'
+  // ส่งไฟล์ธนาคารไปแล้ว — แก้ยอด/บริษัท/บัญชีปลายทาง ต้องส่งออกใหม่ (บอกไว้ใต้ช่อง)
+  const exported = !!claim.exportedAt
   const supplier = claim.kind === 'supplier'
 
   // เลือกหมวดบัญชี → รหัสตามหมวด · "อื่น ๆ" คงรหัสที่บัญชีเลือกทับไว้ (ถ้าเป็นรหัสนอก 12 หมวด)
@@ -126,6 +133,7 @@ export default function ClaimEditModal({
         vatAmount: hasVat ? vat : 0,
         description,
         amount,
+        companyId,
         routeFrom,
         routeTo,
         distanceKm: km != null && Number.isFinite(km) ? km : null,
@@ -183,6 +191,21 @@ export default function ClaimEditModal({
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 
+        {companies.length > 0 && (
+          <Field label="จ่ายจากบริษัท" help={exported ? 'ส่งไฟล์แล้ว — เปลี่ยนบริษัทแล้วใบจะกลับไปรอส่งไฟล์' : undefined} asDiv>
+            <SelectMenu
+              value={companyId}
+              options={companies.map((c) => ({
+                value: c.id,
+                label: `${c.code} · ${c.name_th}`,
+                // eslint-disable-next-line @next/next/no-img-element
+                icon: c.logo_url ? <img src={c.logo_url} alt="" className="h-5 w-5 rounded object-contain" /> : undefined,
+              }))}
+              onChange={(v) => v && setCompanyId(v)}
+            />
+          </Field>
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-gray-800">มีใบกำกับภาษี (VAT 7%)</p>
           <Toggle checked={hasVat} onChange={toggleVat} aria-label="มีใบกำกับภาษี (VAT 7%)" />
@@ -192,8 +215,8 @@ export default function ClaimEditModal({
           <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv>
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
           </Field>
-          <Field label="ยอดเงิน" help={amountEditable ? undefined : 'อนุมัติแล้ว แก้ยอดไม่ได้'}>
-            <MoneyInput value={amount || ''} onValueChange={setAmount} disabled={!amountEditable} suffix="฿" />
+          <Field label="ยอดเงิน" help={exported ? 'ส่งไฟล์แล้ว — แก้ยอดแล้วใบจะกลับไปรอส่งไฟล์' : undefined}>
+            <MoneyInput value={amount || ''} onValueChange={setAmount} suffix="฿" />
           </Field>
           {hasVat && (
             <Field label="VAT 7% ในยอด" help={`คิดจากยอด ${vatIncluded(amount).toFixed(2)}`}>

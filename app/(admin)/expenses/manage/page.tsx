@@ -834,6 +834,7 @@ export default function ExpenseManagePage() {
       />
       <ClaimEditModal
         claim={editing}
+        companies={companies}
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null)

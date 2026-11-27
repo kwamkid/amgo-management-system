@@ -449,6 +449,8 @@ export interface ClaimEdit {
   vatAmount: number
   description: string
   amount: number
+  /** บริษัทที่จ่าย (null = บริษัทหลักของพนักงาน) */
+  companyId: string | null
   routeFrom: string
   routeTo: string
   distanceKm: number | null
@@ -465,13 +467,14 @@ export interface ClaimEdit {
 
 /**
  * บัญชีแก้หมวด/รายละเอียด/ไฟล์ ก่อนอนุมัติหรือก่อนโอน (เจ้าของ 3 พ.ย. 69) — RLS expense_claims_finance_update
- * ยอดเงินแก้ได้เฉพาะตอนรอบัญชี (อนุมัติแล้วอาจผูกงวดเงินเดือนไปแล้ว) · แก้บัญชีปลายทาง/ยอด = ล้างตราส่งออก
+ * 27 พ.ย. 69: แก้ยอด/บริษัทได้ทุกขั้นจนกว่าจะโอน (เลิกรวมเงินเดือนแล้ว ไม่ผูกงวด)
+ * แก้บัญชีปลายทาง/ยอด/บริษัท = ล้างตราส่งออก (ไฟล์เดิมใช้ไม่ได้ ต้องส่งออกใหม่)
  */
 export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Promise<void> {
   if (claim.status !== 'pending_finance' && claim.status !== 'approved') {
     throw new Error('แก้ได้เฉพาะใบที่รอบัญชีหรือรอโอน')
   }
-  const amount = claim.status === 'pending_finance' ? e.amount : claim.amount
+  const amount = e.amount
   const problem = checkExpense(
     {
       kind: claim.kind,
@@ -499,10 +502,12 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
   const payeeChanged =
     supplier && (e.payeeName.trim() !== claim.payeeName || e.payeeBank !== claim.payeeBank || acc !== claim.payeeAccountNo)
 
+  const companyChanged = e.companyId !== claim.companyId
   const { error } = await sb()
     .from('expense_claims')
     .update({
       expense_date: e.expenseDate,
+      ...(companyChanged ? { company_id: e.companyId } : {}),
       category: e.category,
       account_code: e.accountCode,
       vat_amount: e.vatAmount,
@@ -516,7 +521,7 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
       receipt_paths: receiptPaths,
       ...(receiptPaths.length ? { no_receipt_reason: null } : {}),
       ...(supplier ? { payee_name: e.payeeName.trim(), payee_bank: e.payeeBank, payee_account_no: acc } : {}),
-      ...(payeeChanged || amount !== claim.amount ? { exported_at: null, exported_by: null } : {}),
+      ...(payeeChanged || companyChanged || amount !== claim.amount ? { exported_at: null, exported_by: null } : {}),
     })
     .eq('id', claim.id)
     .in('status', ['pending_finance', 'approved'])

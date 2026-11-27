@@ -7,7 +7,7 @@
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { Button, IconChip, Modal } from '@/components/aoo'
-import { getBank } from '@/lib/constants/banks'
+import BankBadge from '@/components/shared/BankBadge'
 import {
   KIND_LABEL,
   SECTION_LABEL,
@@ -72,10 +72,11 @@ export default function ClaimDetailModal({
   const supplier = c.kind === 'supplier'
   const editable = canApprove || canMarkPaid || c.status === 'approved'
 
+  const destBank = supplier ? c.payeeBank : c.bankName
   const dest = supplier
-    ? `${getBank(c.payeeBank)?.nameTh ?? c.payeeBank ?? ''} ${fmtAcc(c.payeeAccountNo)} · ${c.payeeName}`
+    ? `${fmtAcc(c.payeeAccountNo)} · ${c.payeeName}`
     : c.bankName
-      ? `${getBank(c.bankName)?.nameTh ?? c.bankName} ${fmtAcc(c.bankAccountNo)} · ${c.ownerFullName ?? c.userName}`
+      ? `${fmtAcc(c.bankAccountNo)} · ${c.ownerFullName ?? c.userName}`
       : 'พนักงานยังไม่ได้ใส่บัญชีธนาคาร'
 
   const timeline = [
@@ -171,7 +172,14 @@ export default function ClaimDetailModal({
             {company?.scb_debit_account && ` (SCB ${fmtAcc(company.scb_debit_account)})`}
           </Row>
           <Row label={supplier ? 'เข้าบัญชีร้าน' : 'เข้าบัญชีพนักงาน'}>
-            <span className="font-medium">{dest}</span>
+            <span className="font-medium">
+              {destBank && (
+                <>
+                  <BankBadge bank={destBank} />{' '}
+                </>
+              )}
+              {dest}
+            </span>
           </Row>
           {c.rejectedReason && (
             <Row label="ไม่อนุมัติ">

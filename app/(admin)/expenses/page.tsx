@@ -16,6 +16,7 @@ import { CheckCircle2, ClipboardCheck, Clock, Receipt, Store, Wallet } from 'luc
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { createClient } from '@/lib/supabase/client'
+import { BankLogo } from '@/components/shared/BankBadge'
 import { THAI_BANKS, getBank } from '@/lib/constants/banks'
 import {
   Button,
@@ -52,7 +53,7 @@ import {
 
 const thaiDate = (iso: string) => format(new Date(`${iso}T00:00:00`), 'd MMM yy', { locale: th })
 const todayIso = () => format(new Date(), 'yyyy-MM-dd')
-const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.nameTh, hint: b.code }))
+const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.code, hint: b.nameTh, icon: <BankLogo bank={b.code} /> }))
 /** 038-4-69974-1 → •••9741 (บอกว่าตัดจากบัญชีไหน โดยไม่โชว์เลขเต็ม) */
 const maskAcc = (acc: string) => `•••${acc.slice(-4)}`
 
@@ -379,6 +380,7 @@ export default function MyExpensesPage() {
                     value: p.key,
                     label: p.name,
                     hint: `${getBank(p.bank)?.code ?? p.bank} ${p.account}`,
+                    icon: <BankLogo bank={p.bank} />,
                   }))}
                   onChange={(v) => {
                     const p = payees.find((x) => x.key === v)

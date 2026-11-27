@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
+import { BankLogo } from '@/components/shared/BankBadge'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import ExpenseSectionField from './ExpenseSectionField'
 import {
@@ -19,7 +20,7 @@ import {
   type FormSection,
 } from '@/lib/services/expenseService'
 
-const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.nameTh, hint: b.code }))
+const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.code, hint: b.nameTh, icon: <BankLogo bank={b.code} /> }))
 
 export default function ClaimEditModal({
   claim,

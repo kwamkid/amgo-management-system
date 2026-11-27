@@ -6,7 +6,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Field, Input, SelectMenu } from '@/components/aoo'
-import { THAI_BANKS, getBank } from '@/lib/constants/banks'
+import { THAI_BANKS } from '@/lib/constants/banks'
+import { BankLogo } from '@/components/shared/BankBadge'
 import { createClient } from '@/lib/supabase/client'
 
 export interface CompanyBankAccount {
@@ -16,7 +17,7 @@ export interface CompanyBankAccount {
   label: string | null
 }
 
-const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.nameTh, hint: b.code }))
+const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.code, hint: b.nameTh, icon: <BankLogo bank={b.code} /> }))
 const fmtAcc = (a: string) => (a.length === 10 ? `${a.slice(0, 3)}-${a.slice(3, 4)}-${a.slice(4, 9)}-${a.slice(9)}` : a)
 
 export default function DebitAccountPicker({
@@ -73,10 +74,10 @@ export default function DebitAccountPicker({
   const options = useMemo(
     () =>
       (accounts ?? []).map((a) => {
-        const b = getBank(a.bank)
         return {
           value: a.account_no,
-          label: `${b?.nameTh ?? a.bank} ${fmtAcc(a.account_no)}${a.label ? ` · ${a.label}` : ''}`,
+          label: `${a.bank} ${fmtAcc(a.account_no)}${a.label ? ` · ${a.label}` : ''}`,
+          icon: <BankLogo bank={a.bank} />,
           hint: a.bank === 'SCB' ? undefined : 'ยังส่งไฟล์จากธนาคารนี้ไม่ได้',
           disabled: a.bank !== 'SCB',
         }

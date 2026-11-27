@@ -38,6 +38,7 @@ import ClaimEditModal from '@/components/expenses/ClaimEditModal'
 import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
 import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThumb'
 import DebitAccountPicker from '@/components/expenses/DebitAccountPicker'
+import BankBadge from '@/components/shared/BankBadge'
 import {
   SECTION_BY_POPULARITY,
   SECTION_LABEL,
@@ -591,6 +592,13 @@ export default function ExpenseManagePage() {
                         {c.userName}
                       </button>
                       {c.kind === 'supplier' && <span className="text-gray-500"> · จ่ายร้าน {c.payeeName}</span>}
+                      {/* ธนาคารปลายทาง (ร้าน/พนักงาน) — โลโก้ + ตัวย่อ */}
+                      {(c.kind === 'supplier' ? c.payeeBank : c.bankName) && (
+                        <span className="text-gray-500">
+                          {' · '}
+                          <BankBadge bank={c.kind === 'supplier' ? c.payeeBank : c.bankName} />
+                        </span>
+                      )}
                       {files === 0 && <span className="text-amber-700"> · ไม่มีใบเสร็จ</span>}
                       <span className="text-gray-500 sm:hidden"> · {companyOf(c.companyId)?.code ?? '—'} · {thaiDate(c.expenseDate)}</span>
                     </span>

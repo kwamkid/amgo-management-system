@@ -6,7 +6,7 @@
 // เขียนเหตุผลแทน) · รวมเงินเดือน = เข้างวดที่วันอนุมัติตกอยู่ ซึ่งยังไม่ตัดยอด
 
 import { checkExpense, formSectionOf, guessSection, payrollMonthFor, suggestSection, vatIncluded } from '../lib/services/expenseRules.ts'
-import { buildScbFile, buildTransferLines, isScbAccount, scbText } from '../lib/services/bankTransferFile.ts'
+import { buildScbFile, buildTransferLines, isScbAccount, scbText, splitByProduct } from '../lib/services/bankTransferFile.ts'
 
 let pass = 0, fail = 0
 const check = (ok, label, detail = '') => {
@@ -83,15 +83,21 @@ const { lines, problems } = buildTransferLines([
   emp('y', 50, { bankAccountNo: '4240230418' }),
   { id: 'k', kind: 'supplier', amount: 10, description: 'x', payeeName: 'ร้าน', payeeBank: 'KBANK', payeeAccountNo: '1234567890' },
 ])
-check(lines.length === 2, 'บัญชีเดียวกันรวมเป็นบรรทัดเดียว (3 ใบ → 2 บรรทัด)', String(lines.length))
+check(lines.length === 3, 'บัญชีเดียวกันรวมเป็นบรรทัดเดียว (3 ใบ SCB → 2 บรรทัด) + KBANK 1 บรรทัด', String(lines.length))
 check(lines[0].amount === 300.3 && lines[0].claimIds.length === 2, '100.1 + 200.2 = 300.3 ไม่มีเศษเพี้ยน', String(lines[0].amount))
 check(lines[0].accountNo === '4240230419' && lines[0].bankClearing === '014', 'เลขบัญชีตัวเลขล้วน · SCB = 014')
 check(lines[1].reference === 'โปสเตอร์ BBB 65 (50)', 'หมายเหตุตัดอักขระที่ toolkit ห้าม (# %) ออก', lines[1].reference)
-check(problems.map((p) => p.claimId).join() === 'x,y,k', 'ไม่มีธนาคาร · check digit ผิด · ธนาคารอื่น → ไม่ใส่ไฟล์ แจ้งกลับ', JSON.stringify(problems))
+check(problems.map((p) => p.claimId).join() === 'x,y', 'ไม่มีธนาคาร · check digit ผิด → ไม่ใส่ไฟล์ แจ้งกลับ (ธนาคารอื่นใส่ได้แล้ว)', JSON.stringify(problems))
+const groups = splitByProduct(lines, 'OAT')
+check(groups.map((g) => `${g.product}:${g.lines.map((l) => l.seq).join('')}`).join() === 'OAT:12,RFT:1', 'แยกไฟล์ SCB (OAT) กับต่างธนาคาร (RFT) · seq เริ่มใหม่', JSON.stringify(groups.map((g) => g.product)))
+const big = buildTransferLines([{ id: 'big', kind: 'supplier', amount: 2000000.01, description: 'x', payeeName: 'ร้าน', payeeBank: 'KBANK', payeeAccountNo: '1234567890' }])
+check(!big.lines.length && big.problems[0]?.claimId === 'big', 'ORFT เกิน 2,000,000 ต่อรายการ → ไม่ใส่ไฟล์')
+const shortAcc = buildTransferLines([{ id: 'sa', kind: 'supplier', amount: 1, description: 'x', payeeName: 'ร้าน', payeeBank: 'KBANK', payeeAccountNo: '123456789' }])
+check(shortAcc.problems[0]?.claimId === 'sa', 'บัญชีธนาคารอื่นสั้นกว่า 10 หลัก → แจ้งกลับ')
 check(scbText(' บจก. A&B_C ', 140) === 'บจก. A B C', 'ชื่อผู้รับ: ตัด & _ และช่องว่างหน้า', scbText(' บจก. A&B_C ', 140))
 
 const now = new Date(2026, 10, 3, 14, 5, 9) // 3 พ.ย. 2026 14:05:09
-const file = buildScbFile({ lines, product: 'OAT', debitAccount: '038-4-69974-1', valueDate: '2026-11-03', now })
+const file = buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount: '038-4-69974-1', valueDate: '2026-11-03', now })
 const want = [
   'HEADER|031126140509OAT',
   'BCHDET|031126140509|OAT|20261103|0384699741|0384699741|5650.30|2||',
@@ -104,10 +110,27 @@ check(file.content.split('\r\n')[2].split('|').length === 28, 'TXNDET มี 28 
 check(file.content.split('\r\n')[1].split('|').length === 10, 'BCHDET มี 10 ช่อง')
 check(file.filename === 'SCB_file_reference_031126140509.txt', 'ชื่อไฟล์แบบ toolkit', file.filename)
 let err = ''
-try { buildScbFile({ lines, product: 'OAT', debitAccount: '0384699742', valueDate: '2026-11-03', now }) } catch (e) { err = e.message }
+
+// ORFT: รูปแบบแถวตาม ExportCreditRow ของ CPX toolkit (เทียบแถวจริงของบัญชี 27 พ.ย. แล้ว — ที่นี่ใช้ข้อมูลสมมติ)
+// ยกเว้นแจ้งเตือน SMS/อีเมล ([9]–[12], [20], [25], [26]) ที่เราไม่ส่ง
+const rftLines = buildTransferLines([{ id: 'r1', kind: 'supplier', amount: 24196.25, description: 'ใบแจ้งหนี้ 07.69',
+  payeeName: 'บริษัท ตัวอย่าง จำกัด', payeeBank: 'KBANK', payeeAccountNo: '123-4-56789-0' }]).lines
+const rft = buildScbFile({ lines: rftLines, product: 'RFT', debitAccount: '0384699741', valueDate: '2026-11-05', now: new Date(2026, 10, 4, 16, 9, 21) })
+const rftWant = [
+  'HEADER|041126160921RFT',
+  'BCHDET|041126160921|RFT|20261105|0384699741|0384699741|24196.25|1||',
+  'TXNDET||1234567890||004|0000|24196.25||BEN|N||N||บริษัท ตัวอย่าง จำกัด||||N|||N|N||||N||ใบแจ้งหนี้ 07.69',
+  'TRAILR|1|1|24196.25',
+].join('\r\n')
+check(rft.content === rftWant, 'ไฟล์ ORFT ตรง toolkit: product RFT · ธนาคาร 004 · สาขา 0000', rft.content === rftWant ? '' : JSON.stringify(rft.content))
+err = ''
+try { buildScbFile({ lines: rftLines, product: 'OAT', debitAccount: '0384699741', valueDate: '2026-11-05', now: new Date(2026, 10, 4) }) } catch (e) { err = e.message }
+check(!!err, 'บัญชีธนาคารอื่นใส่ไฟล์ OAT ไม่ได้', err)
+err = ''
+try { buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount: '0384699742', valueDate: '2026-11-03', now }) } catch (e) { err = e.message }
 check(!!err, 'บัญชีตัดเงิน check digit ผิด → ไม่สร้างไฟล์', err)
 err = ''
-try { buildScbFile({ lines, product: 'OAT', debitAccount: '0384699741', valueDate: '2026-11-02', now }) } catch (e) { err = e.message }
+try { buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount: '0384699741', valueDate: '2026-11-02', now }) } catch (e) { err = e.message }
 check(!!err, 'วันที่มีผลย้อนหลัง → ไม่สร้างไฟล์', err)
 
 console.log('\n8) เดาหมวดจากรายละเอียด (กติกาจากประวัติ Reimbursement.xlsx — แม่น 90% กับ 1,218 รายการเดิม)')

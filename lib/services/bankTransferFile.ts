@@ -11,8 +11,10 @@
 //   TXNDET|… 28 ช่องต่อรายการ (ดู txnRow)
 //   TRAILR|1|<จำนวนรายการ>|<ยอดรวม>
 //
-// template นี้โอนได้เฉพาะปลายทาง SCB (Own account transfer / 3rd Party Transfer) — บัญชีธนาคารอื่น
-// ต้องใช้ template ธนาคารอื่น (CPX_Toolkit_Template-08.69.xls · ยังไม่ทำ) จึงคืนเป็น problems
+// 1 ไฟล์ = 1 บริการ: ปลายทาง SCB ใช้ OAT/3PT · ธนาคารอื่นใช้ Other Bank Transfer (ORFT, รหัส RFT)
+// RFT (27 พ.ย. 69 จาก CPX_Toolkit_Template-เพิ่ม-07-08.69.xls ของบัญชี): ช่องเหมือน OAT ทุกช่อง ยกเว้น
+//   [5] สาขา = '0000' · [4] = รหัสธนาคาร 3 หลัก (ตาราง TBBankBNT1 ตรงกับ clearing ใน constants/banks)
+//   ไม่ตรวจ check digit SCB · ยอดต่อรายการ ≤ 2,000,000 (ValidateAmountSmart) · Service Type ว่าง
 
 import { getBank } from '../constants/banks.ts'
 
@@ -49,6 +51,10 @@ export interface TransferProblem {
 
 /** บริการโอนใน toolkit (กลุ่ม SCB Transfer) — template ของบัญชีใช้ Own account transfer */
 export type ScbProduct = 'OAT' | '3PT'
+/** บริการในไฟล์ — RFT ใช้กับปลายทางธนาคารอื่นเสมอ (ไม่ให้เลือก) */
+export type FileProduct = ScbProduct | 'RFT'
+/** ยอดสูงสุดต่อรายการของ ORFT */
+export const RFT_MAX_AMOUNT = 2_000_000
 export const SCB_PRODUCT_LABEL: Record<ScbProduct, string> = {
   OAT: 'Own account transfer',
   '3PT': '3rd Party Transfer',
@@ -94,11 +100,11 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
       problems.push({ claimId: c.id, reason: supplier ? 'ยังไม่ได้เลือกธนาคารของ supplier' : 'พนักงานยังไม่ได้ใส่ธนาคาร' })
       continue
     }
-    if (bank.code !== 'SCB') {
-      problems.push({ claimId: c.id, reason: `บัญชี${bank.nameTh} — ไฟล์ SCB โอนได้เฉพาะบัญชี SCB` })
+    if (bank.code !== 'SCB' && !/^\d{10,15}$/.test(acc)) {
+      problems.push({ claimId: c.id, reason: `เลขบัญชี${bank.nameTh}ไม่ถูกต้อง (ต้องเป็นตัวเลข 10–15 หลัก)` })
       continue
     }
-    if (!isScbAccount(acc)) {
+    if (bank.code === 'SCB' && !isScbAccount(acc)) {
       problems.push({ claimId: c.id, reason: 'เลขบัญชี SCB ไม่ถูกต้อง (ต้อง 10 หลักและเลขตรวจสอบถูก)' })
       continue
     }
@@ -126,8 +132,29 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
     }
   }
 
-  const lines = [...byAccount.values()].map((l, i) => ({ ...l, seq: i + 1 }))
+  const lines: TransferLine[] = []
+  for (const l of byAccount.values()) {
+    if (l.bankCode !== 'SCB' && l.amount > RFT_MAX_AMOUNT) {
+      for (const id of l.claimIds) problems.push({ claimId: id, reason: 'โอนต่างธนาคารได้ไม่เกิน 2,000,000 ต่อรายการ' })
+      continue
+    }
+    lines.push({ ...l, seq: lines.length + 1 })
+  }
   return { lines, problems }
+}
+
+/**
+ * แยกบรรทัดเป็นไฟล์ละบริการ: SCB → product ที่เลือก (OAT/3PT) · ธนาคารอื่น → RFT
+ * เรียงลำดับ seq ใหม่ในแต่ละไฟล์
+ */
+export function splitByProduct(lines: TransferLine[], scbProduct: ScbProduct): { product: FileProduct; lines: TransferLine[] }[] {
+  const scb = lines.filter((l) => l.bankCode === 'SCB')
+  const other = lines.filter((l) => l.bankCode !== 'SCB')
+  const reseq = (ls: TransferLine[]) => ls.map((l, i) => ({ ...l, seq: i + 1 }))
+  return [
+    ...(scb.length ? [{ product: scbProduct as FileProduct, lines: reseq(scb) }] : []),
+    ...(other.length ? [{ product: 'RFT' as FileProduct, lines: reseq(other) }] : []),
+  ]
 }
 
 // ── ไฟล์ .txt สำหรับอัปโหลด ────────────────────────────────────────────────
@@ -146,7 +173,7 @@ export function scbStamp(d: Date): string {
 
 export interface ScbFileInput {
   lines: TransferLine[]
-  product: ScbProduct
+  product: FileProduct
   /** บัญชีตัดเงินของบริษัท (SCB 10 หลัก) — ใช้หักค่าธรรมเนียมด้วย แบบ template */
   debitAccount: string
   /** วันที่รายการมีผล yyyy-mm-dd (ค.ศ.) */
@@ -161,16 +188,16 @@ export interface ScbFileInput {
  *   [9]='Y' [10]=เบอร์ตัดขีด (≤3 เบอร์ คั่น ,) · [11]='Y' [12]=อีเมลคั่น , (5–100 ตัว)
  *   [20]='Y' เมื่อมีอีเมล · [25]='E' เมื่อมีอีเมล · [26]=อีเมลเดียวกับ [12]
  */
-function txnRow(l: TransferLine): string {
+function txnRow(l: TransferLine, product: FileProduct): string {
   const f: string[] = new Array(28).fill('')
   f[0] = 'TXNDET'
   f[1] = '' // Customer Transaction Ref — template เว้นว่าง
   f[2] = l.accountNo
   f[3] = '' // PromptPay proxy type — เฉพาะ PPY
   f[4] = l.bankClearing // 014
-  f[5] = '0111' // สาขา: OAT/3PT ใส่ค่าคงที่นี้ ไม่ต้องกรอก Branch Code
+  f[5] = product === 'RFT' ? '0000' : '0111' // สาขา: ค่าคงที่ของ toolkit ต่อบริการ ไม่ต้องกรอก Branch Code
   f[6] = scbAmount(l.amount)
-  f[7] = '' // Service Type — OAT/3PT ว่าง
+  f[7] = '' // Service Type — OAT/3PT/RFT ว่าง
   f[8] = 'BEN' // หักค่าธรรมเนียมจากผู้รับ — Recipient (BEN) แบบ template
   f[9] = 'N' // SMS
   f[11] = 'N' // Email
@@ -185,6 +212,8 @@ function txnRow(l: TransferLine): string {
 
 export function validateScbFileInput(i: ScbFileInput): string | null {
   if (!i.lines.length) return 'ไม่มีรายการโอน'
+  if (i.lines.some((l) => (l.bankCode === 'SCB') === (i.product === 'RFT')))
+    return i.product === 'RFT' ? 'ไฟล์ ORFT ใส่ได้เฉพาะบัญชีธนาคารอื่น' : 'ไฟล์ SCB Transfer ใส่ได้เฉพาะบัญชี SCB'
   if (!isScbAccount(digits(i.debitAccount))) return 'บัญชีตัดเงินต้องเป็นเลขบัญชี SCB 10 หลักที่ถูกต้อง'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(i.valueDate)) return 'เลือกวันที่รายการมีผล'
   const today = `${i.now.getFullYear()}-${pad2(i.now.getMonth() + 1)}-${pad2(i.now.getDate())}`
@@ -203,7 +232,7 @@ export function buildScbFile(i: ScbFileInput): { filename: string; content: stri
   const rows = [
     `HEADER|${stamp}${i.product}`,
     ['BCHDET', stamp, i.product, i.valueDate.replace(/-/g, ''), debit, debit, scbAmount(total), String(count), '', ''].join('|'),
-    ...i.lines.map(txnRow),
+    ...i.lines.map((l) => txnRow(l, i.product)),
     `TRAILR|1|${count}|${scbAmount(total)}`,
   ]
   return { filename: `SCB_file_reference_${stamp}.txt`, content: rows.join('\r\n'), total, count }

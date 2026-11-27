@@ -7,7 +7,14 @@
 
 import type { Workbook, Worksheet } from 'exceljs'
 import { getBank } from '@/lib/constants/banks'
-import { buildScbFile, buildTransferLines, type ScbProduct, type TransferProblem } from './bankTransferFile'
+import {
+  buildScbFile,
+  buildTransferLines,
+  splitByProduct,
+  type FileProduct,
+  type ScbProduct,
+  type TransferProblem,
+} from './bankTransferFile'
 import { FORM_SECTIONS, formSectionOf, type FormSection } from './expenseRules'
 import type { ExpenseClaim } from './expenseService'
 
@@ -42,7 +49,10 @@ export interface TransferFileOptions {
   valueDate: string // yyyy-mm-dd
 }
 
-/** สร้างไฟล์โอนแล้วดาวน์โหลด · คืนใบที่ใส่ไฟล์ได้ และใบที่ใส่ไม่ได้พร้อมเหตุผล */
+/**
+ * สร้างไฟล์โอนแล้วดาวน์โหลด · 1 ไฟล์ = 1 บริการ: ใบ SCB → ไฟล์ OAT/3PT · ธนาคารอื่น → ไฟล์ ORFT
+ * (เลือกปนกันได้ 2 ไฟล์) · คืนใบที่ใส่ไฟล์ได้ และใบที่ใส่ไม่ได้พร้อมเหตุผล
+ */
 export async function downloadTransferFile(
   claims: ExpenseClaim[],
   opts: TransferFileOptions
@@ -51,17 +61,27 @@ export async function downloadTransferFile(
   total: number
   problems: TransferProblem[]
   /** ไฟล์ที่ดาวน์โหลด — เก็บสำเนาไว้ดาวน์โหลดซ้ำ (saveExportFile) */
-  file?: { filename: string; content: string; count: number; total: number }
+  files: { filename: string; content: string; count: number; total: number; product: FileProduct }[]
 }> {
   const { lines, problems } = buildTransferLines(claims)
-  if (!lines.length) return { includedIds: [], total: 0, problems }
+  if (!lines.length) return { includedIds: [], total: 0, problems, files: [] }
 
-  const file = buildScbFile({ lines, ...opts, now: new Date() })
+  // ไฟล์ที่ 2 เลื่อนเวลา 1 วินาที — ref/ชื่อไฟล์ใช้ DDMMYYHHMMSS ห้ามซ้ำกัน
+  const start = Date.now()
+  const files = splitByProduct(lines, opts.product).map((g, i) => ({
+    ...buildScbFile({ ...opts, lines: g.lines, product: g.product, now: new Date(start + i * 1000) }),
+    product: g.product,
+  }))
   const { saveAs } = await import('file-saver')
   // UTF-8 ไม่มี BOM — toolkit เขียนแบบนี้ (ตัด BOM ทิ้งก่อนเซฟ)
-  saveAs(new Blob([new TextEncoder().encode(file.content)], { type: 'text/plain' }), file.filename)
+  for (const f of files) saveAs(new Blob([new TextEncoder().encode(f.content)], { type: 'text/plain' }), f.filename)
 
-  return { includedIds: lines.flatMap((l) => l.claimIds), total: file.total, problems, file }
+  return {
+    includedIds: lines.flatMap((l) => l.claimIds),
+    total: files.reduce((s, f) => s + f.total, 0),
+    problems,
+    files,
+  }
 }
 
 // ── 2. สรุปสิ้นเดือน ─────────────────────────────────────────────────────

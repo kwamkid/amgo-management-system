@@ -280,11 +280,21 @@ export default function ExpenseManagePage() {
       const res = await downloadTransferFile(target, { product, debitAccount: account, valueDate })
       if (res.includedIds.length) await markExported(res.includedIds, userData!.id!)
       // เก็บสำเนาไว้ดาวน์โหลดซ้ำ — เก็บไม่สำเร็จไม่ล้มทั้งงาน (ไฟล์ดาวน์โหลดไปแล้ว)
-      if (res.file) saveExportFile(exportCompany, res.file).catch((e) => showToast((e as Error).message, 'error'))
+      for (const f of res.files) saveExportFile(exportCompany, f).catch((e) => showToast((e as Error).message, 'error'))
       if (res.problems.length) {
+        // รวมชื่อซ้ำ (ร้านเดียวหลายใบ) ให้อ่านง่าย: "บจก. แอด อราวนด์ ×4 (บัญชีกสิกรไทย …)"
         const name = (id: string) => payeeOf(rows.find((r) => r.id === id)!)
+        const grouped = new Map<string, number>()
+        for (const p of res.problems) {
+          const key = `${name(p.claimId)}|${p.reason}`
+          grouped.set(key, (grouped.get(key) ?? 0) + 1)
+        }
+        const list = [...grouped].map(([k, n]) => {
+          const [who, why] = k.split('|')
+          return `${who}${n > 1 ? ` ×${n}` : ''} (${why})`
+        })
         showToast(
-          `ไม่ได้ใส่ไฟล์ ${res.problems.length} ใบ: ${res.problems.map((p) => `${name(p.claimId)} (${p.reason})`).join(', ')}`,
+          `ไม่ได้ใส่ไฟล์ ${res.problems.length} ใบ: ${list.join(' · ')}`,
           'error'
         )
       }
@@ -292,7 +302,7 @@ export default function ExpenseManagePage() {
       if (res.includedIds.length) {
         // ใบที่ส่งไฟล์แล้วย้ายไป "รอโอน" — รอเจ้าของ approve ในแอปธนาคาร แล้วบัญชีค่อยแนบสลิป
         showToast(
-          `ส่งออก ${res.includedIds.length} ใบ รวม ${thb(res.total)} — อัปโหลดเข้า SCB แล้วรอ approve · ใบย้ายไป "รอโอน"`,
+          `ส่งออก ${res.includedIds.length} ใบ รวม ${thb(res.total)}${res.files.length > 1 ? ` เป็น ${res.files.length} ไฟล์ (SCB · ต่างธนาคาร) อัปโหลดทั้ง 2 ไฟล์` : ''} — อัปโหลดเข้า SCB แล้วรอ approve · ใบย้ายไป "รอโอน"`,
           'success'
         )
       }
@@ -799,7 +809,7 @@ export default function ExpenseManagePage() {
             <Field label="วันที่รายการมีผล" asDiv>
               <DatePicker value={valueDate} onChange={setValueDate} />
             </Field>
-            <Field label="บริการโอน" asDiv>
+            <Field label="บริการโอน (บัญชี SCB)" asDiv>
               <SelectMenu
                 value={product}
                 options={(Object.keys(SCB_PRODUCT_LABEL) as ScbProduct[]).map((k) => ({ value: k, label: SCB_PRODUCT_LABEL[k], hint: k }))}
@@ -809,7 +819,7 @@ export default function ExpenseManagePage() {
           </div>
           <p className="text-xs text-gray-500">
             ได้ไฟล์ SCB_file_reference_….txt แบบเดียวกับปุ่ม Export ของ CPX Toolkit — อัปโหลดเข้า SCB Business Anywhere ได้เลย ·
-            ไฟล์นี้โอนได้เฉพาะบัญชี SCB (บัญชีธนาคารอื่นจะแจ้งว่าข้ามไป)
+            บัญชี SCB ใช้บริการที่เลือก · บัญชีธนาคารอื่นแยกเป็นอีกไฟล์ บริการ Other Bank Transfer (ORFT) ให้เอง — อัปโหลดทุกไฟล์ที่ได้
           </p>
           <p className="text-xs text-amber-700">
             กดดาวน์โหลดแล้ว ใบจะย้ายไป &quot;รอโอน&quot; และเก็บไฟล์ไว้ที่ปุ่ม &quot;ไฟล์ที่ส่งออกแล้ว&quot; · ถ้าแค่ลอง ย้ายกลับได้ที่แท็บรอโอน →

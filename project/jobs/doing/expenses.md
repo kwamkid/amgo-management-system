@@ -17,6 +17,7 @@
 - [x] 27 Nov: SCB rejected the batch memo (38 chars, had names) → memo = descriptions only, ≤30 chars; header buttons on /expenses + /expenses/manage back to default size. Owner to re-upload.
 - [x] 27 Nov: CompanySelect (939305c) · 41 old 'other' claims reclassified by SQL (owner ran, verified). Left for accounting: งานแฟร์ 5,416.40 + 2 Petty cash. Possible double claim: 2 × ฟิวเจอร์บอร์ดพารากอน 3,942.95 (owner to check).
 - [x] 27 Nov: month-end report back to the EXPENSES REIMBURSEMENT template (owner's file); new subs mapped by `formSlotOf`. UAT-0115 needs rewriting back to this layout.
+- [x] 27 Nov: cancel after approval — "ยกเลิกที่เลือก" in รอส่งไฟล์ / รอเจ๊อนุมัติจ่าย tabs → `revokeApproval` (approved → rejected + reason + Discord notice, no migration: finance RLS update). Exported claims warn to reject the line in the SCB app too. Needs a UAT case.
 - [ ] Next: export for the Express accounting program — waiting for owner: Express version + screenshot of the screen accounting uses to key staff expenses (no built-in Excel import; options = summary for manual keying, or XpressPlus middleware).
 
 ## Resume note

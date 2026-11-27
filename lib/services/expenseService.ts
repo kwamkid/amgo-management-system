@@ -394,6 +394,25 @@ export async function financeDecide(
 }
 
 /**
+ * ยกเลิกใบที่อนุมัติแล้วแต่ยังไม่จ่าย (เจ้าของ 27 พ.ย. 69) — ใบกลายเป็น "ไม่อนุมัติ" พร้อมเหตุผล + แจ้งคนยื่น
+ * บัญชีแก้ตารางตรงได้ (policy expense_claims_finance_update) · แตะเฉพาะใบที่ยัง approved
+ * ส่งไฟล์ธนาคารไปแล้ว → ต้องไปไม่อนุมัติรายการนั้นในแอป SCB เองด้วย (หน้าจอเตือน)
+ */
+export async function revokeApproval(ids: string[], byId: string, reason: string): Promise<void> {
+  if (!ids.length) return
+  if (!reason.trim()) throw new Error('ต้องใส่เหตุผลที่ยกเลิก')
+  const { data, error } = await sb()
+    .from('expense_claims')
+    .update({ status: 'rejected', rejected_by: byId, rejected_at: new Date().toISOString(), rejected_reason: reason.trim() })
+    .in('id', ids)
+    .eq('status', 'approved')
+    .select('id')
+  if (error) throw new Error(`ยกเลิกไม่สำเร็จ: ${error.message}`)
+  if ((data ?? []).length < ids.length) throw new Error('บางใบจ่ายไปแล้วหรือถูกเปลี่ยนสถานะ — รีเฟรชแล้วลองใหม่')
+  notifyResult(ids, 'rejected')
+}
+
+/**
  * โอนเสร็จแล้ว — ทีละใบหรือทั้งชุดที่โอนผ่านไฟล์ SCB ไปพร้อมกัน · สลิปใบเดียวใช้กับทุกใบในชุด (ไม่บังคับ)
  * อัปโหลดสลิปลงโฟลเดอร์ของเจ้าของใบแต่ละคน — พนักงานดูได้เฉพาะไฟล์ในโฟลเดอร์ตัวเอง (storage policy)
  */

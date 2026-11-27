@@ -51,6 +51,7 @@ import {
   groupOf,
   countPending,
   financeDecide,
+  revokeApproval,
   listClaims,
   listClaimsForMonth,
   markExported,
@@ -180,6 +181,7 @@ export default function ExpenseManagePage() {
     }
   }
 
+  const revoking = !!dialog?.claims.some((x) => x.status === 'approved')
   const confirmDialog = () => {
     if (!dialog) return
     const c = dialog.claims[0]
@@ -192,9 +194,12 @@ export default function ExpenseManagePage() {
       run(
         c.id,
         async () => {
-          for (const x of dialog.claims) await financeDecide(x, false, { reason: text })
+          // ใบที่อนุมัติไปแล้ว (รอส่งไฟล์ / รอเจ๊อนุมัติจ่าย) → ยกเลิกทีหลังได้ (เจ้าของ 27 พ.ย.)
+          const approved = dialog.claims.filter((x) => x.status === 'approved')
+          if (approved.length) await revokeApproval(approved.map((x) => x.id), userData!.id!, text)
+          for (const x of dialog.claims) if (x.status === 'pending_finance') await financeDecide(x, false, { reason: text })
         },
-        `ไม่อนุมัติแล้ว ${dialog.claims.length} ใบ`
+        `${dialog.claims.some((x) => x.status === 'approved') ? 'ยกเลิก' : 'ไม่อนุมัติ'}แล้ว ${dialog.claims.length} ใบ`
       )
     } else {
       run(
@@ -540,6 +545,18 @@ export default function ExpenseManagePage() {
                   </Button>
                 )}
                 {(tab === 'export' || tab === 'transfer') && (
+                  <Button
+                    variant="secondary"
+                    disabled={!pickedRows.length || !!busy}
+                    onClick={() => {
+                      setText('')
+                      setDialog({ mode: 'reject', claims: pickedRows })
+                    }}
+                  >
+                    ยกเลิกที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
+                  </Button>
+                )}
+                {(tab === 'export' || tab === 'transfer') && (
                   <Button variant="secondary" icon="Download" onClick={openFiles}>
                     ไฟล์ที่ส่งออกแล้ว
                   </Button>
@@ -680,7 +697,7 @@ export default function ExpenseManagePage() {
         onClose={() => setDialog(null)}
         title={
           dialog?.mode === 'reject'
-            ? `ไม่อนุมัติใบเบิก${dialog && dialog.claims.length > 1 ? ` ${dialog.claims.length} ใบ` : ''}`
+            ? `${revoking ? 'ยกเลิกใบที่อนุมัติแล้ว' : 'ไม่อนุมัติใบเบิก'}${dialog && dialog.claims.length > 1 ? ` ${dialog.claims.length} ใบ` : ''}`
             : `บันทึกว่าโอนแล้ว${dialog && dialog.claims.length > 1 ? ` ${dialog.claims.length} ใบ` : ''}`
         }
         footer={
@@ -689,13 +706,18 @@ export default function ExpenseManagePage() {
               ยกเลิก
             </Button>
             <Button onClick={confirmDialog} loading={!!busy} variant={dialog?.mode === 'reject' ? 'danger' : 'primary'}>
-              {dialog?.mode === 'reject' ? 'ไม่อนุมัติ' : 'บันทึก'}
+              {dialog?.mode === 'reject' ? (revoking ? 'ยกเลิกใบ' : 'ไม่อนุมัติ') : 'บันทึก'}
             </Button>
           </>
         }
       >
         {dialog && (
           <div className="space-y-3">
+            {dialog.mode === 'reject' && dialog.claims.some((x) => x.exportedAt) && (
+              <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-700">
+                ใบที่เลือกส่งไฟล์ธนาคารไปแล้ว — ยกเลิกในระบบแล้ว อย่าลืมไม่อนุมัติรายการนี้ในแอป SCB ด้วย ไม่งั้นเงินยังโอนออก
+              </p>
+            )}
             {dialog.mode === 'paid' && (
               <p className="text-xs text-gray-500">อัปโหลดไฟล์เข้า SCB แล้วยืนยันรายการเรียบร้อย ค่อยกดบันทึก — ยังไม่โอนก็ปิดหน้าต่างนี้ไว้ก่อนได้</p>
             )}

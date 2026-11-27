@@ -12,7 +12,6 @@ import {
   buildTransferLines,
   splitByProduct,
   type FileProduct,
-  type ScbProduct,
   type TransferProblem,
 } from './bankTransferFile'
 import { FORM_SECTIONS, formSectionOf, type FormSection } from './expenseRules'
@@ -44,7 +43,6 @@ async function save(wb: Workbook, filename: string) {
 // ── 1. ไฟล์โอน SCB (.txt แบบ CPX toolkit — อัปโหลดเข้า SCB Business Anywhere ได้เลย) ──
 
 export interface TransferFileOptions {
-  product: ScbProduct
   debitAccount: string
   valueDate: string // yyyy-mm-dd
 }
@@ -68,7 +66,7 @@ export async function downloadTransferFile(
 
   // ไฟล์ที่ 2 เลื่อนเวลา 1 วินาที — ref/ชื่อไฟล์ใช้ DDMMYYHHMMSS ห้ามซ้ำกัน
   const start = Date.now()
-  const files = splitByProduct(lines, opts.product).map((g, i) => ({
+  const files = splitByProduct(lines).map((g, i) => ({
     ...buildScbFile({ ...opts, lines: g.lines, product: g.product, now: new Date(start + i * 1000) }),
     product: g.product,
   }))

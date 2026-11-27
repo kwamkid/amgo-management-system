@@ -144,10 +144,12 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
 }
 
 /**
- * แยกบรรทัดเป็นไฟล์ละบริการ: SCB → product ที่เลือก (OAT/3PT) · ธนาคารอื่น → RFT
+ * แยกบรรทัดเป็นไฟล์ละบริการ ตามธนาคารผู้รับ (ไม่ให้บัญชีเลือก — เจ้าของงง 27 พ.ย.):
+ * SCB → 3PT (3rd Party Transfer = เข้าบัญชี SCB ของคนอื่น · OAT ใช้กับบัญชีของบริษัทเองเท่านั้น)
+ * ธนาคารอื่น → RFT
  * เรียงลำดับ seq ใหม่ในแต่ละไฟล์
  */
-export function splitByProduct(lines: TransferLine[], scbProduct: ScbProduct): { product: FileProduct; lines: TransferLine[] }[] {
+export function splitByProduct(lines: TransferLine[], scbProduct: ScbProduct = '3PT'): { product: FileProduct; lines: TransferLine[] }[] {
   const scb = lines.filter((l) => l.bankCode === 'SCB')
   const other = lines.filter((l) => l.bankCode !== 'SCB')
   const reseq = (ls: TransferLine[]) => ls.map((l, i) => ({ ...l, seq: i + 1 }))

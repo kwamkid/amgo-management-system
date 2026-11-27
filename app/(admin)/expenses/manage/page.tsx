@@ -15,7 +15,7 @@ import Link from 'next/link'
 import { FileSpreadsheet, FileUp, Receipt } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { SCB_PRODUCT_LABEL, isScbAccount, type ScbProduct } from '@/lib/services/bankTransferFile'
+import { isScbAccount } from '@/lib/services/bankTransferFile'
 import { createClient } from '@/lib/supabase/client'
 import {
   Alert,
@@ -116,7 +116,6 @@ export default function ExpenseManagePage() {
   const [fSection, setFSection] = useState<string | null>(null)
   const [debitAccount, setDebitAccount] = useState('')
   const [valueDate, setValueDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [product, setProduct] = useState<ScbProduct>('OAT')
   const [text, setText] = useState('')
   const [slip, setSlip] = useState<File | null>(null)
   // บัญชีเลือกวิธีจ่ายใหม่ได้ตอนอนุมัติ
@@ -277,7 +276,7 @@ export default function ExpenseManagePage() {
         setCompanies((list) => list.map((c) => (c.id === company.id ? { ...c, scb_debit_account: account } : c)))
       }
       const { downloadTransferFile } = await import('@/lib/services/expenseExport')
-      const res = await downloadTransferFile(target, { product, debitAccount: account, valueDate })
+      const res = await downloadTransferFile(target, { debitAccount: account, valueDate })
       if (res.includedIds.length) await markExported(res.includedIds, userData!.id!)
       // เก็บสำเนาไว้ดาวน์โหลดซ้ำ — เก็บไม่สำเร็จไม่ล้มทั้งงาน (ไฟล์ดาวน์โหลดไปแล้ว)
       for (const f of res.files) saveExportFile(exportCompany, f).catch((e) => showToast((e as Error).message, 'error'))
@@ -805,21 +804,12 @@ export default function ExpenseManagePage() {
               placeholder="xxx-x-xxxxx-x"
             />
           </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="วันที่รายการมีผล" asDiv>
-              <DatePicker value={valueDate} onChange={setValueDate} />
-            </Field>
-            <Field label="บริการโอน (บัญชี SCB)" asDiv>
-              <SelectMenu
-                value={product}
-                options={(Object.keys(SCB_PRODUCT_LABEL) as ScbProduct[]).map((k) => ({ value: k, label: SCB_PRODUCT_LABEL[k], hint: k }))}
-                onChange={(v) => v && setProduct(v as ScbProduct)}
-              />
-            </Field>
-          </div>
+          <Field label="วันที่รายการมีผล" asDiv>
+            <DatePicker value={valueDate} onChange={setValueDate} />
+          </Field>
           <p className="text-xs text-gray-500">
             ได้ไฟล์ SCB_file_reference_….txt แบบเดียวกับปุ่ม Export ของ CPX Toolkit — อัปโหลดเข้า SCB Business Anywhere ได้เลย ·
-            บัญชี SCB ใช้บริการที่เลือก · บัญชีธนาคารอื่นแยกเป็นอีกไฟล์ บริการ Other Bank Transfer (ORFT) ให้เอง — อัปโหลดทุกไฟล์ที่ได้
+            ระบบเลือกบริการโอนตามธนาคารผู้รับให้เอง · ถ้ามีทั้งผู้รับ SCB และธนาคารอื่นจะได้ 2 ไฟล์ — อัปโหลดทุกไฟล์ที่ได้
           </p>
           <p className="text-xs text-amber-700">
             กดดาวน์โหลดแล้ว ใบจะย้ายไป &quot;รอโอน&quot; และเก็บไฟล์ไว้ที่ปุ่ม &quot;ไฟล์ที่ส่งออกแล้ว&quot; · ถ้าแค่ลอง ย้ายกลับได้ที่แท็บรอโอน →

@@ -2684,8 +2684,8 @@ button:disabled,
 .aoo-tiles--scroll > .aoo-tile:hover:not([aria-pressed="true"]) { border-color: transparent; background: var(--bg-sunken); }
 .aoo-tiles--scroll > .aoo-tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 /* ตารางไม่มีกรอบ (ChoiceTiles bare) — ไอคอนชิดบน ชื่อ 2 บรรทัดไม่ดันไอคอนลอย · เลือกแล้ว = พื้นอ่อน + กรอบแบรนด์ */
-.aoo-tiles--bare { gap: 4px; }
-.aoo-tiles--bare > .aoo-tile { border-color: transparent; justify-content: flex-start; padding: 8px 4px; }
+.aoo-tiles--bare { gap: 0; } /* ช่องชิดกัน ไอคอนใหญ่ 52 (เจ้าของ 27 พ.ย.) */
+.aoo-tiles--bare > .aoo-tile { border-color: transparent; justify-content: flex-start; padding: 6px 2px; gap: 4px; }
 .aoo-tiles--bare > .aoo-tile:hover:not([aria-pressed="true"]) { border-color: transparent; background: var(--bg-sunken); }
 .aoo-tiles--bare > .aoo-tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 /* ชื่อกันที่ 2 บรรทัดทุกช่อง — ช่องสูงเท่ากัน ชื่อสั้นอยู่กลาง (เจ้าของ 27 พ.ย.) */

@@ -66,7 +66,7 @@ export function ChoiceTiles({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={o.image} alt="" className="aoo-tile__image" />
           ) : o.icon ? (
-            <IconChip icon={o.icon} tone={o.tone ?? "accent"} size={scroll ? 56 : stacked ? 34 : 32} />
+            <IconChip icon={o.icon} tone={o.tone ?? "accent"} size={scroll ? 56 : bare ? 52 : stacked ? 34 : 32} />
           ) : null}
           <span className="aoo-tile__text">
             <span className="aoo-tile__label">{o.label}</span>

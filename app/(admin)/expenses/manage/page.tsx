@@ -38,7 +38,7 @@ import ClaimEditModal from '@/components/expenses/ClaimEditModal'
 import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
 import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThumb'
 import DebitAccountPicker from '@/components/expenses/DebitAccountPicker'
-import BankBadge from '@/components/shared/BankBadge'
+import BankBadge, { BankLogo } from '@/components/shared/BankBadge'
 import {
   SECTION_BY_POPULARITY,
   SECTION_LABEL,
@@ -183,10 +183,13 @@ export default function ExpenseManagePage() {
         showToast('ใส่เหตุผลที่ไม่อนุมัติ', 'error')
         return
       }
+      // ไม่อนุมัติหลายใบได้ (เจ้าของ 27 พ.ย.) — เหตุผลเดียวใช้กับทุกใบ
       run(
         c.id,
-        () => financeDecide(c, false, { reason: text }),
-        'ไม่อนุมัติใบเบิกแล้ว'
+        async () => {
+          for (const x of dialog.claims) await financeDecide(x, false, { reason: text })
+        },
+        `ไม่อนุมัติแล้ว ${dialog.claims.length} ใบ`
       )
     } else {
       run(
@@ -503,6 +506,24 @@ export default function ExpenseManagePage() {
             {isFinance && (
               <div className="ml-auto flex flex-wrap gap-1.5">
                 {tab === 'finance' && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!pickedRows.length || !!busy}
+                    onClick={() => {
+                      const list = pickedRows.filter((c) => c.userId !== userData?.id)
+                      if (!list.length) {
+                        showToast('ใบที่เลือกเป็นของคุณเอง — ให้คนอื่นตัดสิน', 'error')
+                        return
+                      }
+                      setText('')
+                      setDialog({ mode: 'reject', claims: list })
+                    }}
+                  >
+                    ไม่อนุมัติที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
+                  </Button>
+                )}
+                {tab === 'finance' && (
                   <Button size="sm" icon="Check" disabled={!pickedRows.length || !!busy} loading={busy === 'bulk'} onClick={approvePicked}>
                     อนุมัติที่เลือก{pickedRows.length ? ` (${pickedRows.length})` : ''}
                   </Button>
@@ -545,12 +566,14 @@ export default function ExpenseManagePage() {
         ) : visible.length === 0 ? (
           <EmptyState icon={<Receipt size={28} />} title="ไม่มีใบในช่องนี้" />
         ) : (
-          <div className="divide-y divide-gray-100">
+          // -mx-5/px-5 = แถวยืดชนขอบการ์ด (SectionCard p-5) ให้แถบ hover เต็มแถว (เจ้าของ 27 พ.ย.)
+          <div className="-mx-5 divide-y divide-gray-100">
             {/* หัวคอลัมน์ (จอกว้าง) — มือถือย่อบริษัท/วันที่ไว้ใต้ชื่อ */}
-            <div className="hidden grid-cols-[28px_52px_minmax(0,1fr)_120px_88px_100px_130px_150px] items-center gap-3 pb-2 text-sm font-medium text-gray-500 sm:grid">
+            <div className="hidden grid-cols-[28px_52px_minmax(0,1fr)_minmax(0,200px)_120px_88px_100px_130px_150px] items-center gap-3 px-5 pb-2 text-sm font-medium text-gray-500 sm:grid">
               <span />
               <span />
               <span>รายการ</span>
+              <span>จ่ายให้</span>
               <span>หมวด</span>
               <span>บริษัท</span>
               <span>วันที่</span>
@@ -568,7 +591,7 @@ export default function ExpenseManagePage() {
                   tabIndex={0}
                   onClick={() => setViewing(c)}
                   onKeyDown={(e) => e.key === 'Enter' && setViewing(c)}
-                  className="grid cursor-pointer grid-cols-[28px_52px_minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-gray-50 sm:grid-cols-[28px_52px_minmax(0,1fr)_120px_88px_100px_130px_150px]"
+                  className="grid cursor-pointer grid-cols-[28px_52px_minmax(0,1fr)_auto] items-center gap-3 px-5 py-3 hover:bg-gray-50 sm:grid-cols-[28px_52px_minmax(0,1fr)_minmax(0,200px)_120px_88px_100px_130px_150px]"
                 >
                   <span onClick={(e) => e.stopPropagation()}>
                     {selectable && (
@@ -591,16 +614,24 @@ export default function ExpenseManagePage() {
                       >
                         {c.userName}
                       </button>
-                      {c.kind === 'supplier' && <span className="text-gray-500"> · จ่ายร้าน {c.payeeName}</span>}
-                      {/* ธนาคารปลายทาง (ร้าน/พนักงาน) — โลโก้ + ตัวย่อ */}
-                      {(c.kind === 'supplier' ? c.payeeBank : c.bankName) && (
-                        <span className="text-gray-500">
-                          {' · '}
-                          <BankBadge bank={c.kind === 'supplier' ? c.payeeBank : c.bankName} />
-                        </span>
-                      )}
+                      {/* มือถือไม่มีคอลัมน์ จ่ายให้ → ย่อไว้ใต้ชื่อ */}
+                      <span className="text-gray-500 sm:hidden">
+                        {' · '}
+                        <BankBadge bank={c.kind === 'supplier' ? c.payeeBank : c.bankName} />{' '}
+                        {c.kind === 'supplier' ? c.payeeName : 'เข้าบัญชีพนักงาน'}
+                      </span>
                       {files === 0 && <span className="text-amber-700"> · ไม่มีใบเสร็จ</span>}
                       <span className="text-gray-500 sm:hidden"> · {companyOf(c.companyId)?.code ?? '—'} · {thaiDate(c.expenseDate)}</span>
+                    </span>
+                  </span>
+                  {/* จ่ายให้ (เจ้าของ 27 พ.ย.: แยกคอลัมน์) — โลโก้ธนาคาร + ชื่อร้าน / ชื่อบัญชีพนักงาน */}
+                  <span className="hidden min-w-0 items-center gap-2 sm:flex">
+                    <BankLogo bank={c.kind === 'supplier' ? c.payeeBank : c.bankName} size={24} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-gray-900">
+                        {c.kind === 'supplier' ? c.payeeName : c.ownerFullName ?? c.userName}
+                      </span>
+                      <span className="block truncate text-xs text-gray-500">{c.kind === 'supplier' ? 'ร้าน / supplier' : 'คืนพนักงาน'}</span>
                     </span>
                   </span>
                   <span className="hidden min-w-0 items-center gap-2 sm:flex" title={SECTION_LABEL[sec]}>
@@ -625,7 +656,7 @@ export default function ExpenseManagePage() {
         onClose={() => setDialog(null)}
         title={
           dialog?.mode === 'reject'
-            ? 'ไม่อนุมัติใบเบิก'
+            ? `ไม่อนุมัติใบเบิก${dialog && dialog.claims.length > 1 ? ` ${dialog.claims.length} ใบ` : ''}`
             : `บันทึกว่าโอนแล้ว${dialog && dialog.claims.length > 1 ? ` ${dialog.claims.length} ใบ` : ''}`
         }
         footer={
@@ -651,8 +682,8 @@ export default function ExpenseManagePage() {
               </p>
             ) : (
               <p className="text-sm text-gray-700">
-                {dialog.claims.length} ใบ · รวม {thb(dialog.claims.reduce((s, c) => s + c.amount, 0))} —
-                สลิป/รายงานโอนใบเดียวใช้กับทุกใบ
+                {dialog.claims.length} ใบ · รวม {thb(dialog.claims.reduce((s, c) => s + c.amount, 0))} —{' '}
+                {dialog.mode === 'reject' ? 'เหตุผลเดียวใช้กับทุกใบ' : 'สลิป/รายงานโอนใบเดียวใช้กับทุกใบ'}
               </p>
             )}
             <Field label={dialog.mode === 'reject' ? 'เหตุผล (พนักงานจะเห็น)' : 'หมายเหตุ (ไม่บังคับ)'}>

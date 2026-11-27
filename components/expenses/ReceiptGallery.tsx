@@ -1,7 +1,7 @@
 'use client'
 
 // รูปใบเสร็จ/ใบแจ้งหนี้/สลิปของใบเดียว แบบใหญ่ — หน้ารายละเอียดใบเบิก (เจ้าของ 3 พ.ย. 69: บัญชีต้องเห็นรูปชัดก่อนอนุมัติ)
-// รูปหลักใหญ่ + แถบรูปย่อสลับรูป · กดรูปหลักเปิด Lightbox เต็มจอ · PDF แสดงปุ่มเปิดในแท็บใหม่
+// รูปหลักใหญ่ + แถบรูปย่อสลับรูป · กดรูปหลักเปิด Lightbox เต็มจอ · PDF แสดงตัวอย่างในกรอบ (iframe) + ปุ่มเปิดแท็บใหม่
 
 import { useEffect, useState } from 'react'
 import { ExternalLink, FileText, Maximize2 } from 'lucide-react'
@@ -39,10 +39,18 @@ export default function ReceiptGallery({ paths, slipPath }: { paths: string[]; s
         {!url ? (
           <span className="text-sm text-gray-400">กำลังโหลด…</span>
         ) : isPdf(path) ? (
-          <a href={url} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-sm text-gray-600 hover:underline">
-            <FileText size={40} className="text-gray-400" />
-            เปิด PDF ในแท็บใหม่ <ExternalLink size={14} />
-          </a>
+          <>
+            {/* ตัวอย่าง PDF ในกรอบ (เจ้าของ 27 พ.ย.) — เบราว์เซอร์มือถือบางตัวโชว์แค่หน้าแรก จึงคงปุ่มเปิดแท็บใหม่ไว้ */}
+            <iframe src={`${url}#view=FitH`} title={label(path)} className="h-full w-full border-0 bg-white" />
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white hover:bg-black/75"
+            >
+              เปิดแท็บใหม่ <ExternalLink size={12} />
+            </a>
+          </>
         ) : (
           <button type="button" className="h-full w-full" onClick={() => setZoom(images.indexOf(path))} title="ดูเต็มจอ">
             {/* eslint-disable-next-line @next/next/no-img-element */}

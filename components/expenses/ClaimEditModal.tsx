@@ -6,20 +6,27 @@
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu } from '@/components/aoo'
+import { Button, DatePicker, Field, FileDropzone, Input, Modal, MoneyInput, SelectMenu, Toggle } from '@/components/aoo'
 import { BankLogo } from '@/components/shared/BankBadge'
 import { THAI_BANKS } from '@/lib/constants/banks'
 import ExpenseSectionField from './ExpenseSectionField'
 import {
+  ACCOUNT_CODES,
   SECTION_CATEGORY,
+  accountOf,
   formSectionOf,
+  groupByKey,
+  groupOfCode,
   receiptUrls,
   updateClaimDetails,
   vatIncluded,
+  type AccountGroupKey,
   type ExpenseClaim,
   type FormSection,
 } from '@/lib/services/expenseService'
 
+// ผังบัญชีทั้งหมด — เกิน 7 ตัว SelectMenu มีช่องค้นหาให้เอง
+const ACCOUNT_OPTIONS = ACCOUNT_CODES.map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }))
 const BANK_OPTIONS = THAI_BANKS.map((b) => ({ value: b.code, label: b.code, hint: b.nameTh, icon: <BankLogo bank={b.code} /> }))
 
 export default function ClaimEditModal({
@@ -31,7 +38,11 @@ export default function ClaimEditModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const [group, setGroup] = useState<AccountGroupKey | null>(null)
   const [section, setSection] = useState<FormSection | null>(null)
+  // รหัสบัญชีจริงที่จะลง — ตามหมวดบัญชี หรือบัญชีเลือกทับจากผังทั้งหมด
+  const [accountCode, setAccountCode] = useState<string | null>(null)
+  const [hasVat, setHasVat] = useState(false)
   const [expenseDate, setExpenseDate] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState(0)
@@ -53,7 +64,11 @@ export default function ClaimEditModal({
 
   useEffect(() => {
     if (!claim) return
-    setSection(formSectionOf(claim.category, claim.vatAmount))
+    const code = accountOf(claim)
+    setSection(formSectionOf(claim.category))
+    setAccountCode(code)
+    setGroup(groupOfCode(code).key)
+    setHasVat(claim.vatAmount > 0)
     setExpenseDate(claim.expenseDate)
     setDescription(claim.description)
     setAmount(claim.amount)
@@ -76,10 +91,26 @@ export default function ClaimEditModal({
   const amountEditable = claim.status === 'pending_finance'
   const supplier = claim.kind === 'supplier'
 
-  const changeSection = (s: FormSection) => {
+  // เลือกหมวดบัญชี → รหัสตามหมวด · "อื่น ๆ" คงรหัสที่บัญชีเลือกทับไว้ (ถ้าเป็นรหัสนอก 12 หมวด)
+  const changeSection = (g: AccountGroupKey, s: FormSection) => {
+    setGroup(g)
     setSection(s)
-    // เลือกช่อง VAT → คิด 7/107 ให้ · ออกจากช่อง VAT → ล้าง
-    setVat(s === 'other_vat' ? vat || vatIncluded(amount) : 0)
+    const code = groupByKey(g).code
+    if (code) setAccountCode(code)
+    else if (groupOfCode(accountCode).key !== 'other') setAccountCode(null)
+  }
+
+  // เลือกรหัสจากผังทั้งหมด → ถ้าเป็นรหัสของ 12 หมวด ให้การ์ดหมวดบัญชีตาม · รหัสอื่น = การ์ด "อื่น ๆ" (หมวดย่อยคงเดิมไว้ดูสถิติ)
+  const changeAccount = (code: string | null) => {
+    setAccountCode(code)
+    const g = groupOfCode(code)
+    setGroup(g.key)
+    if (g.key !== 'other' && section && !g.subs.includes(section)) setSection(g.subs[0])
+  }
+
+  const toggleVat = (on: boolean) => {
+    setHasVat(on)
+    setVat(on ? vat || vatIncluded(amount) : 0)
   }
 
   const save = async () => {
@@ -91,7 +122,8 @@ export default function ClaimEditModal({
       await updateClaimDetails(claim, {
         expenseDate,
         category: SECTION_CATEGORY[section],
-        vatAmount: section === 'other_vat' ? vat : 0,
+        accountCode,
+        vatAmount: hasVat ? vat : 0,
         description,
         amount,
         routeFrom,
@@ -131,20 +163,39 @@ export default function ClaimEditModal({
       }
     >
       <div className="space-y-4">
-        <ExpenseSectionField value={section} onChange={changeSection} hint="หมวดนี้ใช้ลงช่องในสรุปค่าใช้จ่ายสิ้นเดือน" />
+        <ExpenseSectionField group={group} value={section} onChange={changeSection} hint="ใช้รวมยอดตามรหัสบัญชีในสรุปสิ้นเดือน" />
+
+        <Field
+          label="รหัสบัญชี"
+          help={accountCode ? undefined : 'ยังไม่ระบุรหัสบัญชี — เลือกจากผังบัญชี (อนุมัติได้แม้ยังไม่ระบุ)'}
+          asDiv
+        >
+          <SelectMenu
+            value={accountCode}
+            options={ACCOUNT_OPTIONS}
+            onChange={changeAccount}
+            placeholder="เลือกรหัสบัญชี"
+            ariaLabel="รหัสบัญชี"
+          />
+        </Field>
 
         <Field label="รายละเอียด">
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 
-        <div className={`grid grid-cols-2 gap-3 ${section === 'other_vat' ? 'sm:grid-cols-3' : ''}`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-gray-800">มีใบกำกับภาษี (VAT 7%)</p>
+          <Toggle checked={hasVat} onChange={toggleVat} aria-label="มีใบกำกับภาษี (VAT 7%)" />
+        </div>
+
+        <div className={`grid grid-cols-2 gap-3 ${hasVat ? 'sm:grid-cols-3' : ''}`}>
           <Field label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่ายเงิน'} asDiv>
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
           </Field>
           <Field label="ยอดเงิน" help={amountEditable ? undefined : 'อนุมัติแล้ว แก้ยอดไม่ได้'}>
             <MoneyInput value={amount || ''} onValueChange={setAmount} disabled={!amountEditable} suffix="฿" />
           </Field>
-          {section === 'other_vat' && (
+          {hasVat && (
             <Field label="VAT 7% ในยอด" help={`คิดจากยอด ${vatIncluded(amount).toFixed(2)}`}>
               <MoneyInput value={vat || ''} onValueChange={setVat} suffix="฿" />
             </Field>

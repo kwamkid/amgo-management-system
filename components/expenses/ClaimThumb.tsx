@@ -42,7 +42,7 @@ export function useFirstReceiptUrls(claims: ExpenseClaim[]): Map<string, string>
 export default function ClaimThumb({ claim, url, size = 48 }: { claim: ExpenseClaim; url?: string; size?: number }) {
   const files = claim.receiptPaths.length + (claim.slipPath ? 1 : 0)
   if (!url) {
-    const sec = formSectionOf(claim.category, claim.vatAmount)
+    const sec = formSectionOf(claim.category)
     return <IconChip icon={SECTION_VISUAL[sec].icon} tone={SECTION_VISUAL[sec].tone} size={size} />
   }
   return (

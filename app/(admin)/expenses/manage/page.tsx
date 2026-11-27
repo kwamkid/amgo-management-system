@@ -32,7 +32,7 @@ import {
   SelectMenu,
 } from '@/components/aoo'
 import { FilterBar, FilterSelect, PageHeader, SectionCard, Skeleton } from '@/components/shared'
-import { SECTION_VISUAL, thb } from '@/components/expenses/expenseVisuals'
+import { GROUP_VISUAL, SECTION_VISUAL, thb } from '@/components/expenses/expenseVisuals'
 import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
 import ClaimEditModal from '@/components/expenses/ClaimEditModal'
 import ClaimDetailModal from '@/components/expenses/ClaimDetailModal'
@@ -40,11 +40,14 @@ import ClaimThumb, { useFirstReceiptUrls } from '@/components/expenses/ClaimThum
 import DebitAccountPicker from '@/components/expenses/DebitAccountPicker'
 import BankBadge, { BankLogo } from '@/components/shared/BankBadge'
 import {
+  ACCOUNT_GROUPS,
   SECTION_BY_POPULARITY,
   SECTION_LABEL,
   SECTION_SHORT,
+  accountOf,
   clearExported,
   formSectionOf,
+  groupOf,
   countPending,
   financeDecide,
   listClaims,
@@ -115,6 +118,7 @@ export default function ExpenseManagePage() {
   const [q, setQ] = useState('')
   const [fPerson, setFPerson] = useState<string | null>(null)
   const [fCompany, setFCompany] = useState<string | null>(null)
+  const [fGroup, setFGroup] = useState<string | null>(null)
   const [fSection, setFSection] = useState<string | null>(null)
   const [debitAccount, setDebitAccount] = useState('')
   const [valueDate, setValueDate] = useState(format(new Date(), 'yyyy-MM-dd'))
@@ -209,7 +213,8 @@ export default function ExpenseManagePage() {
     if (fPerson && c.userId !== fPerson) return false
     // ช่องรอส่งไฟล์เลือกบริษัทจากการ์ดโลโก้ (1 ไฟล์ = 1 บริษัท) — ไม่ใช้ตัวกรองบริษัทด้านบน
     if (tab !== 'export' && fCompany && c.companyId !== fCompany) return false
-    if (fSection && formSectionOf(c.category, c.vatAmount) !== fSection) return false
+    if (fGroup && groupOf(c).key !== fGroup) return false
+    if (fSection && formSectionOf(c.category) !== fSection) return false
     const t = q.trim().toLowerCase()
     if (t && ![c.description, c.userName, c.payeeName ?? ''].some((x) => x.toLowerCase().includes(t))) return false
     return true
@@ -370,6 +375,7 @@ export default function ExpenseManagePage() {
         companyName: company ? company.name_en || company.name_th : 'ทุกบริษัท',
         companyCode: company?.code ?? 'ALL',
         claims,
+        companyCodes: Object.fromEntries(companies.map((c) => [c.id, c.code])),
       })
       setReportOpen(false)
     } catch (e) {
@@ -450,7 +456,7 @@ export default function ExpenseManagePage() {
         onSearch={setQ}
         placeholder="ค้นหาค่าใช้จ่าย / ชื่อคน / ร้าน"
         sticky={false}
-        activeCount={[fPerson, fCompany, fSection].filter(Boolean).length}
+        activeCount={[fPerson, fCompany, fGroup, fSection].filter(Boolean).length}
       >
         <FilterSelect label="ทุกคน" value={fPerson} options={people} onChange={setFPerson} width={200} />
         {tab !== 'export' && (
@@ -462,7 +468,13 @@ export default function ExpenseManagePage() {
           />
         )}
         <FilterSelect
-          label="ทุกหมวด"
+          label="ทุกหมวดบัญชี"
+          value={fGroup}
+          options={ACCOUNT_GROUPS.map((g) => ({ value: g.key, label: g.short, hint: g.code ?? undefined }))}
+          onChange={setFGroup}
+        />
+        <FilterSelect
+          label="ทุกหมวดย่อย"
           value={fSection}
           options={SECTION_BY_POPULARITY.map((k) => ({ value: k, label: SECTION_SHORT[k] }))}
           onChange={setFSection}
@@ -581,7 +593,9 @@ export default function ExpenseManagePage() {
               <span>สถานะ</span>
             </div>
             {visible.map((c) => {
-              const sec = formSectionOf(c.category, c.vatAmount)
+              const sec = formSectionOf(c.category)
+              const grp = groupOf(c)
+              const code = accountOf(c)
               const selectable = (tab === 'finance' || tab === 'export' || tab === 'transfer') && isFinance
               const files = c.receiptPaths.length + (c.slipPath ? 1 : 0)
               return (
@@ -634,9 +648,21 @@ export default function ExpenseManagePage() {
                       <span className="block truncate text-xs text-gray-500">{c.kind === 'supplier' ? 'ร้าน / supplier' : 'คืนพนักงาน'}</span>
                     </span>
                   </span>
-                  <span className="hidden min-w-0 items-center gap-2 sm:flex" title={SECTION_LABEL[sec]}>
-                    <IconChip icon={SECTION_VISUAL[sec].icon} tone={SECTION_VISUAL[sec].tone} size={32} />
-                    <span className="truncate text-sm text-gray-700">{SECTION_SHORT[sec]}</span>
+                  <span
+                    className="hidden min-w-0 items-center gap-2 sm:flex"
+                    title={`${code ?? 'ยังไม่ระบุรหัสบัญชี'} · ${SECTION_LABEL[sec]}`}
+                  >
+                    <IconChip
+                      icon={(grp.subs.length > 1 ? SECTION_VISUAL[sec] : GROUP_VISUAL[grp.key]).icon}
+                      tone={(grp.subs.length > 1 ? SECTION_VISUAL[sec] : GROUP_VISUAL[grp.key]).tone}
+                      size={32}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-gray-700">{grp.short}</span>
+                      {grp.subs.length > 1 && (
+                        <span className="block truncate text-xs text-gray-500">{SECTION_SHORT[sec]}</span>
+                      )}
+                    </span>
                   </span>
                   <span className="hidden truncate text-sm text-gray-700 sm:block">{companyOf(c.companyId)?.code ?? '—'}</span>
                   <span className="hidden text-sm text-gray-700 sm:block">{thaiDate(c.expenseDate)}</span>

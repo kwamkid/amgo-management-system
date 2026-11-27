@@ -30,6 +30,7 @@ import {
   Modal,
   MoneyInput,
   SelectMenu,
+  Toggle,
 } from '@/components/aoo'
 import { ListRow, ListRows, PageHeader, SectionCard, Skeleton, StatCard, StatGrid } from '@/components/shared'
 import ExpenseStatusPill from '@/components/expenses/ExpenseStatusPill'
@@ -40,6 +41,9 @@ import {
   PAYOUT_LABEL,
   SECTION_CATEGORY,
   SECTION_SHORT,
+  groupByKey,
+  groupOf,
+  groupOfSection,
   cancelClaim,
   createClaim,
   formSectionOf,
@@ -47,6 +51,7 @@ import {
   suggestSection,
   vatIncluded,
   type ExpenseClaim,
+  type AccountGroupKey,
   type ExpenseKind,
   type FormSection,
 } from '@/lib/services/expenseService'
@@ -86,8 +91,11 @@ export default function MyExpensesPage() {
   const [companyId, setCompanyId] = useState<string | null>(null)
   const [kind, setKind] = useState<ExpenseKind>('reimburse')
   const [expenseDate, setExpenseDate] = useState(todayIso())
-  // หมวดตามฟอร์มบัญชี · auto = ระบบเดาให้จากรายละเอียด (พนักงานยังไม่ได้เลือกเอง)
+  // หมวดบัญชี + หมวดย่อย (27 พ.ย. 69) · auto = ระบบเดาให้จากรายละเอียด (พนักงานยังไม่ได้เลือกเอง)
+  const [group, setGroup] = useState<AccountGroupKey | null>(null)
   const [section, setSection] = useState<FormSection | null>(null)
+  // มีใบกำกับภาษี — เลือกได้ทุกหมวด (เดิมผูกกับหมวด "อื่น ๆ VAT 7%")
+  const [hasVat, setHasVat] = useState(false)
   const [sectionAuto, setSectionAuto] = useState<'history' | 'words' | null>(null)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState(0)
@@ -137,7 +145,9 @@ export default function MyExpensesPage() {
     setPayeeBank(null)
     setPayeeAccountNo('')
     setExpenseDate(todayIso())
+    setGroup(null)
     setSection(null)
+    setHasVat(false)
     setSectionAuto(null)
     setDescription('')
     setAmount(0)
@@ -153,8 +163,9 @@ export default function MyExpensesPage() {
     if (section && !sectionAuto) return
     const history = rows
       .filter((r) => r.status === 'approved' || r.status === 'paid')
-      .map((r) => ({ description: r.description, section: formSectionOf(r.category, r.vatAmount) }))
+      .map((r) => ({ description: r.description, section: formSectionOf(r.category) }))
     const s = suggestSection(text, history)
+    setGroup(s ? groupOfSection(s.section).key : null)
     setSection(s?.section ?? null)
     setSectionAuto(s?.from ?? null)
   }
@@ -165,8 +176,8 @@ export default function MyExpensesPage() {
       showToast('เลือกบริษัทที่จะเบิก', 'error')
       return
     }
-    if (!section) {
-      showToast('เลือกหมวดค่าใช้จ่าย', 'error')
+    if (!section || !group) {
+      showToast('เลือกหมวดบัญชี', 'error')
       return
     }
     const supplier = kind === 'supplier'
@@ -179,6 +190,8 @@ export default function MyExpensesPage() {
         companyId,
         expenseDate,
         category: SECTION_CATEGORY[section],
+        // อื่น ๆ = null รอบัญชีเลือกรหัส
+        accountCode: groupByKey(group).code,
         description,
         amount,
         // เลิกรวมกับเงินเดือน (เจ้าของ 3 พ.ย. 69) — โอนคืนอย่างเดียว
@@ -187,7 +200,7 @@ export default function MyExpensesPage() {
         noReceiptReason: noReceipt && !supplier ? noReceiptReason : '',
         today: todayIso(),
         kind,
-        vatAmount: section === 'other_vat' ? vatIncluded(amount) : 0,
+        vatAmount: hasVat ? vatIncluded(amount) : 0,
         payeeName,
         payeeBank: payeeBank ?? '',
         payeeAccountNo,
@@ -271,7 +284,8 @@ export default function MyExpensesPage() {
         ) : (
           <ListRows variant="divided">
             {rows.map((c) => {
-              const sec = formSectionOf(c.category, c.vatAmount)
+              const sec = formSectionOf(c.category)
+              const g = groupOf(c)
               return (
                 <ListRow
                   key={c.id}
@@ -288,7 +302,8 @@ export default function MyExpensesPage() {
                   meta={
                     <>
                       <p className="text-sm">
-                        {thaiDate(c.expenseDate)} · {SECTION_SHORT[sec]} ·{' '}
+                        {thaiDate(c.expenseDate)} · {g.short}
+                        {g.subs.length > 1 ? ` (${SECTION_SHORT[sec]})` : ''} ·{' '}
                         {c.kind === 'supplier' ? 'บริษัทโอนให้ร้าน' : c.payout === 'payroll' ? PAYOUT_LABEL.payroll : 'โอนคืนเข้าบัญชีคุณ'}
                                                 {c.payout === 'payroll' && c.payrollMonth && (
                           <> งวด {format(new Date(`${c.payrollMonth}T00:00:00`), 'MMM yyyy', { locale: th })}</>
@@ -424,8 +439,10 @@ export default function MyExpensesPage() {
           </Field>
 
           <ExpenseSectionField
+            group={group}
             value={section}
-            onChange={(v) => {
+            onChange={(g, v) => {
+              setGroup(g)
               setSection(v)
               setSectionAuto(null)
             }}
@@ -437,9 +454,15 @@ export default function MyExpensesPage() {
                   : undefined
             }
           />
-          {section === 'other_vat' && amount > 0 && (
-            <p className="-mt-2 text-xs text-gray-500">VAT 7% ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
-          )}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-gray-800">มีใบกำกับภาษี (VAT 7%)</p>
+              {hasVat && amount > 0 && (
+                <p className="text-xs text-gray-500">VAT 7% ในยอดนี้ {thb(vatIncluded(amount))} — แนบใบกำกับภาษีด้วย</p>
+              )}
+            </div>
+            <Toggle checked={hasVat} onChange={setHasVat} aria-label="มีใบกำกับภาษี (VAT 7%)" />
+          </div>
 
           {!supplier && (section === 'taxi' || section === 'gas') && (
             <div className="grid grid-cols-3 gap-3">

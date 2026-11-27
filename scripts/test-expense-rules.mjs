@@ -5,7 +5,7 @@
 // กติกาเจ้าของ 30 ก.ย. 69: ต้องแนบรูปใบเสร็จทุกใบ ไม่มีวงเงิน (ไม่มีใบเสร็จ =
 // เขียนเหตุผลแทน) · รวมเงินเดือน = เข้างวดที่วันอนุมัติตกอยู่ ซึ่งยังไม่ตัดยอด
 
-import { checkExpense, formSectionOf, guessSection, payrollMonthFor, suggestSection, vatIncluded } from '../lib/services/expenseRules.ts'
+import { ACCOUNT_CODES, ACCOUNT_GROUPS, SECTION_ACCOUNT, SECTION_BY_POPULARITY, SECTION_LABEL, SECTION_SHORT, accountName, accountOf, checkExpense, formSectionOf, groupOf, groupOfCode, groupOfSection, guessSection, payrollMonthFor, suggestSection, vatIncluded } from '../lib/services/expenseRules.ts'
 import { buildScbFile, buildTransferLines, isScbAccount, remarkOf, scbText, splitByProduct } from '../lib/services/bankTransferFile.ts'
 
 let pass = 0, fail = 0
@@ -16,7 +16,7 @@ const check = (ok, label, detail = '') => {
 
 const TODAY = '2026-09-30'
 const ok = (o) =>
-  checkExpense({ expenseDate: '2026-09-29', category: 'travel', description: 'ค่าแท็กซี่ไปบูธ', amount: 250,
+  checkExpense({ expenseDate: '2026-09-29', category: 'taxi', description: 'ค่าแท็กซี่ไปบูธ', amount: 250,
                  receiptCount: 1, noReceiptReason: '', ...o }, TODAY)
 
 console.log('\n1) ยื่นได้')
@@ -34,6 +34,7 @@ check(!!ok({ amount: 10.555 }), 'ทศนิยม 3 ตำแหน่ง')
 check(!!ok({ expenseDate: '2026-10-01' }), 'วันที่ในอนาคต')
 check(!!ok({ description: '   ' }), 'ไม่บอกว่าจ่ายค่าอะไร')
 check(!!ok({ category: 'gift' }), 'ประเภทไม่มีในรายการ')
+check(!!ok({ category: 'other_vat' }), 'หมวด other_vat เลิกใช้แล้ว ไม่ผ่าน')
 
 console.log('\n3) รวมเงินเดือนเข้างวดไหน')
 const D = (s) => new Date(`${s}T12:00:00`)
@@ -58,14 +59,29 @@ check(vatIncluded(5350) === 350, 'VAT ในยอด 5,350 = 350', String(vatIn
 check(!!ok({ vatAmount: 250 }), 'VAT เท่ายอดรวม ไม่ผ่าน')
 check(ok({ vatAmount: 16.36 }) === null, 'VAT น้อยกว่ายอด ผ่าน')
 
-console.log('\n6) ลงช่องไหนของฟอร์ม EXPENSES REIMBURSEMENT')
-check(formSectionOf('travel', 0) === 'taxi', 'travel → (1) Taxi')
-check(formSectionOf('parking', 0) === 'toll', 'parking → (2) ทางด่วน/จอด')
-check(formSectionOf('fuel', 33) === 'gas', 'fuel มี VAT ก็ยังอยู่ (3) Gasoline')
-check(formSectionOf('meal', 0) === 'entertain', 'meal → (B) Entertainment')
-check(formSectionOf('phone', 0) === 'phone', 'phone → (C) Telephone')
-check(formSectionOf('supplies', 0) === 'other', 'supplies ไม่มี VAT → (D) Others')
-check(formSectionOf('supplies', 7) === 'other_vat', 'supplies มี VAT → (E) Others Vat 7%')
+console.log('\n6) หมวดบัญชี + หมวดย่อย (27 พ.ย. 69)')
+check(formSectionOf('travel') === 'taxi', 'ค่าเก่า travel → taxi')
+check(formSectionOf('parking') === 'toll', 'ค่าเก่า parking → toll')
+check(formSectionOf('fuel', 33) === 'gas', 'ค่าเก่า fuel → gas (VAT ไม่มีผล)')
+check(formSectionOf('meal') === 'entertain', 'ค่าเก่า meal → entertain')
+check(formSectionOf('supplies', 7) === 'supplies', 'supplies มี VAT ก็ยังเป็น supplies')
+check(formSectionOf('xyz') === 'other', 'ค่าแปลก → other')
+const subs = ACCOUNT_GROUPS.flatMap((g) => g.subs)
+check(subs.length === 14 && new Set(subs).size === 14, 'หมวดย่อย 14 ตัว อยู่หมวดบัญชีเดียวเท่านั้น', String(subs.length))
+check(subs.every((k) => SECTION_LABEL[k] && SECTION_SHORT[k]), 'หมวดย่อยทุกตัวมีชื่อเต็ม + ชื่อสั้น')
+check(SECTION_BY_POPULARITY.length === 14 && new Set(SECTION_BY_POPULARITY).size === 14, 'ลำดับความฮิตครบ 14 ไม่ซ้ำ')
+check(ACCOUNT_GROUPS.length === 12 && ACCOUNT_GROUPS.every((g) => g.code === null || accountName(g.code)), 'หมวดบัญชี 12 หมวด รหัสอยู่ในผังบัญชีทุกตัว')
+check(ACCOUNT_CODES.every((a) => /^\d{4}-\d{2}$/.test(a.code)) && new Set(ACCOUNT_CODES.map((a) => a.code)).size === ACCOUNT_CODES.length, 'ผังบัญชี: รูปแบบ 0000-00 ไม่ซ้ำ (ตรงกับ check ใน DB)')
+check(SECTION_ACCOUNT.taxi === '5200-09' && SECTION_ACCOUNT.gas === '5200-09' && SECTION_ACCOUNT.welfare === '5310-17', 'รหัสตั้งต้น taxi/gas = 5200-09 · welfare = 5310-17')
+check(SECTION_ACCOUNT.other === null, 'อื่น ๆ ไม่มีรหัสตั้งต้น')
+check(accountOf({ category: 'toll', accountCode: null }) === '5200-09', 'accountOf: ไม่มีรหัส → รหัสตั้งต้นของหมวดย่อย')
+check(accountOf({ category: 'taxi', accountCode: '5320-05' }) === '5320-05', 'accountOf: บัญชีเลือกทับ → ใช้รหัสที่เลือก')
+check(accountOf({ category: 'other', accountCode: null }) === null, 'accountOf: อื่น ๆ ไม่มีรหัส → null (ยังไม่ระบุ)')
+check(accountOf({ category: 'meal' }) === '5200-06', 'accountOf: ค่าเก่า meal → 5200-06')
+check(accountName('5200-09') === 'ค่าใช้จ่ายเดินทางและยานพาหนะ' && accountName('9999-99') === '', 'accountName')
+check(groupOfSection('gas').key === 'travel' && groupOfSection('other').key === 'other', 'groupOfSection: gas อยู่หมวดเดินทาง')
+check(groupOfCode('5200-04').key === 'promo' && groupOfCode('5320-05').key === 'other' && groupOfCode(null).key === 'other', 'groupOfCode: รหัสนอก 12 หมวด = อื่น ๆ')
+check(groupOf({ category: 'taxi', accountCode: '5200-06' }).key === 'entertain', 'groupOf: ตามรหัสที่บัญชีเลือก')
 
 console.log('\n7) ไฟล์โอน SCB (รูปแบบ CPX Toolkit 1.1.2)')
 // เลขบัญชีจริงจาก template ของบัญชี — ผ่าน check digit ของ toolkit ทุกเลข
@@ -137,6 +153,9 @@ try { buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount: '0384
 check(!!err, 'วันที่มีผลย้อนหลัง → ไม่สร้างไฟล์', err)
 
 console.log('\n8) เดาหมวดจากรายละเอียด (กติกาจากประวัติ Reimbursement.xlsx — แม่น 90% กับ 1,218 รายการเดิม)')
+// ป้าย = ช่องในฟอร์มเก่า · taxi/toll/gas/entertain/phone ตรงตัว · 'other' เก่า = ถูกถ้าเดาเป็นหมวดที่ไม่ใช่เดินทาง/รับรอง/โทร
+const TRAVEL = new Set(['taxi', 'toll', 'gas'])
+const historicOk = (guess, old) => old === 'other' ? !TRAVEL.has(guess) && guess !== 'entertain' && guess !== 'phone' : guess === old
 const G = [
   ['ค่ารถไปเก็บแฟร์อัมรินทร์', 'taxi'], ['ค่าแทกซี่กลับพระราม2', 'taxi'], ['ค่าบีทีเอสจากบ้าน - ไอคอนสยาม', 'taxi'],
   ['ค่าเดิินทางไปซื้อผ้าที่โลตัส', 'taxi'], ['น้ำ+แป้งหมี่ ไปนับสต็อก QD', 'taxi'], ['ค่ารถกลับจากแฟร์ (รวมทางด่วน)', 'taxi'],
@@ -147,8 +166,19 @@ const G = [
   ['ฟิวเจอร์บอร์ดจัดแฟร์ อัมรินทร์', 'other'], ['ค่าลาล่าไปตั้งบูธที่เมกะ', 'other'], ['ค่าส่งพัสดุจากวังเด็ก', 'other'],
   ['ค่าน้ำโกดัง', 'other'], ['ค่าตั๋วเครื่องบิน ไป-กลับ อุดร', 'other'],
 ]
-for (const [d, want] of G) check(guessSection(d) === want, `"${d}" → ${want}`, guessSection(d))
-check(guessSection('อุปกรณ์สำนักงาน office Mate', true) === 'other_vat', 'อื่นๆ ที่มี VAT → other_vat')
+for (const [d, old] of G) check(historicOk(guessSection(d), old), `"${d}" (ฟอร์มเก่า: ${old})`, guessSection(d))
+const N = [
+  ['ค่าลาล่าไปตั้งบูธที่เมกะ', 'shipping'], ['ค่าส่งพัสดุจากวังเด็ก', 'shipping'], ['Kerry ส่งของให้ลูกค้า', 'shipping'],
+  ['ค่าน้ำโกดัง', 'other'], ['ค่าตั๋วเครื่องบิน ไป-กลับ อุดร', 'other'],
+  ['ป้ายไวนิลงานแฟร์', 'promo'], ['สติ๊กเกอร์ราคา', 'promo'], ['ของแจกลูกค้าหน้าบูธ', 'promo'], ['โรลอัพ BBB', 'promo'],
+  ['ถุงใส่สินค้า 500 ใบ', 'packaging'], ['เทปกาว + บับเบิ้ล', 'packaging'],
+  ['ปากกา + แฟ้ม', 'stationery'], ['ถ่ายเอกสารสัญญา', 'stationery'], ['หมึกปริ้นเตอร์', 'stationery'],
+  ['ค่าซ่อมแอร์ออฟฟิศ', 'repair'],
+  ['เค้กวันเกิดพนักงาน', 'welfare'], ['ของขวัญพนักงานปีใหม่', 'welfare'], ['ขนมสวัสดิการ', 'welfare'],
+  ['ยิงแอดเพจ', 'ads'], ['Facebook Ads พ.ย.', 'ads'], ['ค่าโฆษณา Line OA', 'ads'],
+  ['ค่าส่งเสริมการขาย ป้าย', 'promo'], ['อุปกรณ์สำนักงาน office Mate', 'other'],
+]
+for (const [d, want] of N) check(guessSection(d) === want, `"${d}" → ${want}`, guessSection(d))
 const hist = [{ description: 'ค่าเช่าบูธงาน BBB 65', section: 'other' }, { description: 'ไกด์ ร้านวังเด็ก', section: 'entertain' }]
 check(suggestSection('ค่าเช่าบูธงาน BBB 66', hist)?.from === 'history', 'รายละเอียดคล้ายใบเก่า → ใช้หมวดของใบเก่า')
 check(suggestSection('ไกด์ ร้านวังเด็ก', hist)?.section === 'entertain', 'ตรงใบเก่าเป๊ะ ชนะกติกาคำ')

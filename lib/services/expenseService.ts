@@ -18,6 +18,7 @@ import { resizeImage } from '@/lib/utils/resizeImage'
 import { getUserCycle } from './scheduleSwapService'
 import {
   checkExpense,
+  formSectionOf,
   payrollMonthFor,
   type ExpenseCategory,
   type ExpenseKind,
@@ -38,6 +39,8 @@ export interface ExpenseClaim {
   companyId: string | null
   expenseDate: string
   category: ExpenseCategory
+  /** หมวดบัญชี (รหัสผังบัญชี) · null = ยังไม่ระบุ → ใช้ accountOf() ถอยไปรหัสตั้งต้นของหมวดย่อย */
+  accountCode: string | null
   description: string
   amount: number
   receiptPaths: string[]
@@ -101,6 +104,7 @@ type Row = {
   attendees: string | null
   vat_amount: number
   exported_at: string | null
+  account_code?: string | null
 }
 
 const toClaim = (r: Row): ExpenseClaim => ({
@@ -110,7 +114,8 @@ const toClaim = (r: Row): ExpenseClaim => ({
   userName: r.user_name,
   companyId: r.company_id,
   expenseDate: r.expense_date,
-  category: r.category as ExpenseCategory,
+  category: formSectionOf(r.category),
+  accountCode: r.account_code ?? null,
   description: r.description,
   amount: Number(r.amount),
   receiptPaths: r.receipt_paths ?? [],
@@ -271,6 +276,8 @@ export async function createClaim(params: ClaimExtras & {
   companyId: string | null
   expenseDate: string
   category: ExpenseCategory
+  /** หมวดบัญชีที่พนักงานเลือก · null = อื่น ๆ (บัญชีเลือกรหัสทีหลัง) */
+  accountCode: string | null
   description: string
   amount: number
   payout: ExpensePayout
@@ -311,6 +318,7 @@ export async function createClaim(params: ClaimExtras & {
     company_id: params.companyId,
     expense_date: params.expenseDate,
     category: params.category,
+    account_code: params.accountCode,
     description: params.description.trim(),
     amount: params.amount,
     // โอนเสมอ — เลิก "รวมกับเงินเดือน" แล้ว (เจ้าของ 3 พ.ย. 69) · supplier มี constraint ใน DB ตรวจซ้ำ
@@ -436,6 +444,8 @@ export async function markTransferred(
 export interface ClaimEdit {
   expenseDate: string
   category: ExpenseCategory
+  /** หมวดบัญชี (รหัสผังบัญชี) — บัญชีเลือกจากผังทั้งหมดได้ · null = ยังไม่ระบุ */
+  accountCode: string | null
   vatAmount: number
   description: string
   amount: number
@@ -494,6 +504,7 @@ export async function updateClaimDetails(claim: ExpenseClaim, e: ClaimEdit): Pro
     .update({
       expense_date: e.expenseDate,
       category: e.category,
+      account_code: e.accountCode,
       vat_amount: e.vatAmount,
       description: e.description.trim(),
       amount,

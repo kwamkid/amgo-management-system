@@ -1899,6 +1899,7 @@ export type Database = {
       expense_claims: {
         Row: {
           amount: number
+          account_code: string | null
           attendees: string | null
           category: string
           company_id: string | null
@@ -1939,6 +1940,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          account_code?: string | null
           attendees?: string | null
           category: string
           company_id?: string | null
@@ -1979,6 +1981,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          account_code?: string | null
           attendees?: string | null
           category?: string
           company_id?: string | null

@@ -11,7 +11,10 @@ import BankBadge from '@/components/shared/BankBadge'
 import {
   KIND_LABEL,
   SECTION_LABEL,
+  accountName,
+  accountOf,
   formSectionOf,
+  groupOf,
   type ExpenseClaim,
 } from '@/lib/services/expenseService'
 import ExpenseStatusPill from './ExpenseStatusPill'
@@ -68,7 +71,9 @@ export default function ClaimDetailModal({
 }) {
   if (!claim) return null
   const c = claim
-  const sec = formSectionOf(c.category, c.vatAmount)
+  const sec = formSectionOf(c.category)
+  const group = groupOf(c)
+  const code = accountOf(c)
   const supplier = c.kind === 'supplier'
   const editable = canApprove || canMarkPaid || c.status === 'approved'
 
@@ -153,7 +158,19 @@ export default function ClaimDetailModal({
           </Row>
           <Row label={supplier ? 'ขอโดย' : 'ผู้เบิก'}>{c.userName}</Row>
           <Row label={supplier ? 'วันที่ใบแจ้งหนี้' : 'วันที่จ่าย'}>{day(c.expenseDate)}</Row>
-          <Row label="หมวด">{SECTION_LABEL[sec]}</Row>
+          <Row label="หมวด">
+            {SECTION_LABEL[sec]}
+            {group.subs.length > 1 && <span className="text-gray-500"> · {group.label}</span>}
+          </Row>
+          <Row label="รหัสบัญชี">
+            {code ? (
+              <>
+                <span className="font-mono">{code}</span> {accountName(code)}
+              </>
+            ) : (
+              <span className="text-amber-700">ยังไม่ระบุรหัสบัญชี — กดแก้ไขเพื่อเลือก</span>
+            )}
+          </Row>
           {(c.routeFrom || c.routeTo) && (
             <Row label="เส้นทาง">
               {c.routeFrom ?? '—'} → {c.routeTo ?? '—'}

@@ -472,7 +472,7 @@ export default function MyExpensesPage() {
 
           {/* ช่องเสริมของหมวด — มีหัวข้อบอกชัด ไม่ปนกับกล่องคำอธิบายหมวด (เจ้าของ 27 พ.ย. งง) */}
           {!supplier && (section === 'taxi' || section === 'gas') && (
-            <p className="-mb-2 border-t border-gray-100 pt-3 text-sm font-semibold text-gray-800">
+            <p className="border-t border-gray-100 pt-4 text-sm font-semibold text-gray-800">
               รายละเอียดการเดินทาง <span className="font-normal text-gray-500">(ไม่บังคับ)</span>
             </p>
           )}
@@ -491,7 +491,7 @@ export default function MyExpensesPage() {
           )}
 
           {!supplier && section === 'entertain' && (
-            <p className="-mb-2 border-t border-gray-100 pt-3 text-sm font-semibold text-gray-800">
+            <p className="border-t border-gray-100 pt-4 text-sm font-semibold text-gray-800">
               รายละเอียดการรับรอง <span className="font-normal text-gray-500">(ไม่บังคับ)</span>
             </p>
           )}

@@ -2654,6 +2654,7 @@ button:disabled,
 /* ชิปกดเลือก (รออะไร · +วัน) — กดซ้ำได้ ไม่ใช่ segmented เพราะมี "พิมพ์เอง" */
 .aoo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .aoo-chip {
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border: 1px solid var(--border-1); border-radius: 999px;
   background: var(--bg-surface); font-size: var(--fs-caption); color: var(--fg-2); cursor: pointer; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);

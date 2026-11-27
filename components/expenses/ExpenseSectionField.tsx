@@ -14,7 +14,6 @@ import {
   type AccountGroupKey,
   type FormSection,
 } from '@/lib/services/expenseRules'
-import { Segmented } from '@/components/shared'
 import { GROUP_VISUAL, SECTION_VISUAL } from './expenseVisuals'
 
 const GROUP_OPTIONS = ACCOUNT_GROUPS.map((g) => ({
@@ -88,14 +87,27 @@ export default function ExpenseSectionField({
           </div>
         </div>
       )}
-      {/* หมวดย่อย = ปุ่มเล็กแถวเดียว (เจ้าของ 27 พ.ย.: การ์ดใหญ่เกินไป) */}
+      {/* หมวดย่อย = ชิปแยกทีละปุ่ม (.aoo-chip) — เจ้าของ 27 พ.ย.: การ์ดใหญ่เกิน · Segmented แถบเดียวดูไม่ออก */}
       {showSubs && g && (
         <Field label="หมวดย่อย (ไว้ดูสถิติ)" asDiv>
-          <Segmented
-            value={value ?? g.subs[0]}
-            onChange={(v) => onChange(g.key, v as FormSection)}
-            options={g.subs.map((k) => ({ value: k, label: SECTION_SHORT[k], icon: SECTION_VISUAL[k].icon }))}
-          />
+          <div className="aoo-chips" role="group" aria-label="หมวดย่อย">
+            {g.subs.map((k) => {
+              const Icon = SECTION_VISUAL[k].icon
+              const on = (value ?? g.subs[0]) === k
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={on}
+                  className="aoo-chip"
+                  onClick={() => onChange(g.key, k)}
+                >
+                  <Icon size={15} />
+                  {SECTION_SHORT[k]}
+                </button>
+              )
+            })}
+          </div>
         </Field>
       )}
     </>

@@ -250,15 +250,15 @@ export default function MyExpensesPage() {
           <>
             {canManage && (
               <Link href="/expenses/manage">
-                <Button size="sm" variant="ghost" icon={ClipboardCheck}>
+                <Button variant="ghost" icon={ClipboardCheck}>
                   อนุมัติ / โอนจ่าย
                 </Button>
               </Link>
             )}
-            <Button size="sm" variant="secondary" icon={Store} onClick={() => openForm('supplier')}>
+            <Button variant="secondary" icon={Store} onClick={() => openForm('supplier')}>
               ขอจ่าย supplier
             </Button>
-            <Button size="sm" icon="Plus" onClick={() => openForm('reimburse')}>
+            <Button icon="Plus" onClick={() => openForm('reimburse')}>
               ยื่นใบเบิก
             </Button>
           </>

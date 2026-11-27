@@ -43,6 +43,8 @@ export interface TransferLine {
   accountNo: string // ตัวเลขล้วน
   amount: number
   reference: string
+  /** what was paid for, no names: feeds the batch memo (SCB rejects long ones) */
+  memo: string
   claimIds: string[]
 }
 
@@ -132,6 +134,7 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
         accountNo: acc,
         amount: round2(c.amount),
         reference: '',
+        memo: '',
         claimIds: [c.id],
       })
     }
@@ -140,6 +143,7 @@ export function buildTransferLines(claims: TransferSource[]): { lines: TransferL
   const lines: TransferLine[] = []
   for (const [key, l] of byAccount) {
     l.reference = remarkOf(notes.get(key)!)
+    l.memo = [...new Set(notes.get(key)!.map((n) => n.what.trim()).filter(Boolean))].join(' / ')
     if (l.bankCode !== 'SCB' && l.amount > RFT_MAX_AMOUNT) {
       for (const id of l.claimIds) problems.push({ claimId: id, reason: 'โอนต่างธนาคารได้ไม่เกิน 2,000,000 ต่อรายการ' })
       continue
@@ -242,13 +246,13 @@ export function validateScbFileInput(i: ScbFileInput): string | null {
 
 /**
  * "บันทึกช่วยจำ" ในหน้ารายการของ SCB = BCHDET ช่อง [8] Internal Debit Note (เจ้าของ 27 พ.ย. 69)
- * toolkit เว้นว่างเสมอ (colDebitNote ไม่มีช่องให้กรอก) — เราใส่ว่าโอนค่าอะไร ≤100 ตัว
- * 1 รายการ = หมายเหตุของรายการนั้น · หลายรายการ = "N รายการ: ก / ข / …"
+ * toolkit เว้นว่างเสมอ — เราใส่แค่ว่าโอนค่าอะไร ไม่มีชื่อคน (เจ้าของ 27 พ.ย.)
+ * SCB ปฏิเสธ 38 ตัว "ข้อมูล Internal Debit Note ต้องมีความยาวไม่เกินที่กำหนด" → ตัดที่ BATCH_MEMO_MAX
  */
+export const BATCH_MEMO_MAX = 30
 export function batchMemo(lines: TransferLine[]): string {
-  if (!lines.length) return ''
-  const text = lines.length === 1 ? lines[0].reference : `${lines.length} รายการ: ${lines.map((l) => l.reference).join(' / ')}`
-  return scbText(text, 100)
+  const whats = [...new Set(lines.map((l) => l.memo).filter(Boolean))]
+  return scbText(whats.join(' / '), BATCH_MEMO_MAX)
 }
 
 /** เนื้อไฟล์ + ชื่อไฟล์แบบที่ toolkit ตั้งให้ (SCB_file_reference_DDMMYYHHMMSS.txt) */

@@ -405,13 +405,12 @@ export default function ExpenseManagePage() {
         actions={
           <>
           <Link href="/expenses">
-            <Button size="sm" variant="ghost" icon={Receipt}>
+            <Button variant="ghost" icon={Receipt}>
               ใบเบิกของฉัน
             </Button>
           </Link>
           {isFinance && (
             <Button
-              size="sm"
               variant="secondary"
               icon={FileSpreadsheet}
               onClick={() => {

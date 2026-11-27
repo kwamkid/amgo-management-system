@@ -42,11 +42,12 @@ Design: [project/jobs/plans/marketing-plan.md](../plans/marketing-plan.md)
 - [x] Step 3b followers/reach — aoosocial cf2dd90 (account_insights_daily + cron sync-account-insights 06:00 via its tick; FB followers/reach/views live-tested, IG followers only (#10 no insights permission), TikTok followers, YouTube subs+views) · amgo: queue kind marketing.social.insights, cron moved to 06:30
 - [x] aoosocial SQL run on gyuqrqrtyhjmfyguvczy (the real ref — aoosocial/supabase/.temp/project-ref is stale) · pushed amgo f1cc105 + aoosocial cf2dd90
 - [x] snapshot check → followups 2026-11-24
+- [x] 2026-11-27 snapshot verified: insights flow daily (aoosocial 06:00 TH → amgo 06:30), all 7 brands have followers/reach/views rows. J'adore FB+IG = 0 is real (IG @jadorethailand: 0 followers, 0 posts; IG category shows "Construction Company" — told owner)
 - [ ] รอคุณแอม (optional): ask for instagram_manage_insights on the aoosocial Meta app → IG reach/views
 - [x] Brand page "ดึงยอดขาย" button (admin) — queues the plan period, follows the queue group 5 s / 15 s / every 30 s
 
 ## Resume note
-Resume at: 2026-11-24 after 06:30 — followups item: check aoosocial account_insights_daily rows + marketing_metric_daily source=aoosocial; KPI tab shows followers/reach (J'adore FB+IG too, linked 23 Nov).
+Resume at: owner items only — J'adore KPI targets + TikTok row decision, assign #721–#734, ABC social counting; then UAT for create-plan-from-template.
 ### State
 All code pushed (last 1c026a8). Notes commits after it unpushed (fine). All 7 brand links set in marketing_brand_links (6 with explicit aoo names; ABC none).
 ### Gotchas

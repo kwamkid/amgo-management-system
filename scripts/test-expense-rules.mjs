@@ -119,7 +119,7 @@ const now = new Date(2026, 10, 3, 14, 5, 9) // 3 พ.ย. 2026 14:05:09
 const file = buildScbFile({ lines: groups[0].lines, product: 'OAT', debitAccount: '038-4-69974-1', valueDate: '2026-11-03', now })
 const want = [
   'HEADER|031126140509OAT',
-  'BCHDET|031126140509|OAT|20261103|0384699741|0384699741|5650.30|2||',
+  'BCHDET|031126140509|OAT|20261103|0384699741|0384699741|5650.30|2|2 รายการ: หญิง: ใบ a / ใบ b / ยิ่ว: โปสเตอร์ BBB 65 (50)|',
   'TXNDET||4240230419||014|0111|300.30||BEN|N||N||สมหญิง ใจดี||||N|||N|N||||N||หญิง: ใบ a / ใบ b',
   'TXNDET||2502167033||014|0111|5350.00||BEN|N||N||บจก. ปริ้นท์ดี||||N|||N|N||||N||ยิ่ว: โปสเตอร์ BBB 65 (50)',
   'TRAILR|1|2|5650.30',
@@ -137,7 +137,7 @@ const rftLines = buildTransferLines([{ id: 'r1', kind: 'supplier', amount: 24196
 const rft = buildScbFile({ lines: rftLines, product: 'RFT', debitAccount: '0384699741', valueDate: '2026-11-05', now: new Date(2026, 10, 4, 16, 9, 21) })
 const rftWant = [
   'HEADER|041126160921RFT',
-  'BCHDET|041126160921|RFT|20261105|0384699741|0384699741|24196.25|1||',
+  'BCHDET|041126160921|RFT|20261105|0384699741|0384699741|24196.25|1|ใบแจ้งหนี้ 07.69|',
   'TXNDET||1234567890||004|0000|24196.25||BEN|N||N||บริษัท ตัวอย่าง จำกัด||||N|||N|N||||N||ใบแจ้งหนี้ 07.69',
   'TRAILR|1|1|24196.25',
 ].join('\r\n')

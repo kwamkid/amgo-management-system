@@ -240,6 +240,17 @@ export function validateScbFileInput(i: ScbFileInput): string | null {
   return null
 }
 
+/**
+ * "บันทึกช่วยจำ" ในหน้ารายการของ SCB = BCHDET ช่อง [8] Internal Debit Note (เจ้าของ 27 พ.ย. 69)
+ * toolkit เว้นว่างเสมอ (colDebitNote ไม่มีช่องให้กรอก) — เราใส่ว่าโอนค่าอะไร ≤100 ตัว
+ * 1 รายการ = หมายเหตุของรายการนั้น · หลายรายการ = "N รายการ: ก / ข / …"
+ */
+export function batchMemo(lines: TransferLine[]): string {
+  if (!lines.length) return ''
+  const text = lines.length === 1 ? lines[0].reference : `${lines.length} รายการ: ${lines.map((l) => l.reference).join(' / ')}`
+  return scbText(text, 100)
+}
+
 /** เนื้อไฟล์ + ชื่อไฟล์แบบที่ toolkit ตั้งให้ (SCB_file_reference_DDMMYYHHMMSS.txt) */
 export function buildScbFile(i: ScbFileInput): { filename: string; content: string; total: number; count: number } {
   const problem = validateScbFileInput(i)
@@ -250,7 +261,7 @@ export function buildScbFile(i: ScbFileInput): { filename: string; content: stri
   const count = i.lines.length
   const rows = [
     `HEADER|${stamp}${i.product}`,
-    ['BCHDET', stamp, i.product, i.valueDate.replace(/-/g, ''), debit, debit, scbAmount(total), String(count), '', ''].join('|'),
+    ['BCHDET', stamp, i.product, i.valueDate.replace(/-/g, ''), debit, debit, scbAmount(total), String(count), batchMemo(i.lines), ''].join('|'),
     ...i.lines.map((l) => txnRow(l, i.product)),
     `TRAILR|1|${count}|${scbAmount(total)}`,
   ]

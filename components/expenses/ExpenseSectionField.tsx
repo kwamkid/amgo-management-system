@@ -9,12 +9,12 @@
 import { ChoiceTiles, Field, IconChip } from '@/components/aoo'
 import {
   ACCOUNT_GROUPS,
-  SECTION_LABEL,
   SECTION_SHORT,
   groupByKey,
   type AccountGroupKey,
   type FormSection,
 } from '@/lib/services/expenseRules'
+import { Segmented } from '@/components/shared'
 import { GROUP_VISUAL, SECTION_VISUAL } from './expenseVisuals'
 
 const GROUP_OPTIONS = ACCOUNT_GROUPS.map((g) => ({
@@ -74,42 +74,29 @@ export default function ExpenseSectionField({
           ariaLabel="หมวดบัญชี"
         />
       </Field>
-      {showSubs && g && (
-        <Field label="หมวดย่อย (ไว้ดูสถิติ)" asDiv>
-          <ChoiceTiles
-            options={g.subs.map((k) => ({
-              value: k,
-              label: SECTION_SHORT[k],
-              icon: SECTION_VISUAL[k].icon,
-              tone: SECTION_VISUAL[k].tone,
-            }))}
-            value={value}
-            onChange={(v) => onChange(g.key, v as FormSection)}
-            stacked
-            columns={6}
-            mobileColumns={4}
-            bare
-            ariaLabel="หมวดย่อย"
-          />
-        </Field>
-      )}
-      {/* กล่องอธิบายหมวดที่เลือก — เด่นกว่าตัวหนังสือช่วยปกติ ให้เช็คว่าเลือกถูก */}
+      {/* คำอธิบายหมวดที่เลือก — อยู่ใต้การ์ดทันที กล่องพื้นอ่อนมุมมนรอบด้าน (เจ้าของไม่ชอบแถบสีด้านเดียว) */}
       {g && (
-        <div className="flex items-start gap-3 rounded-lg border-l-4 border-red-500 bg-gray-50 p-3">
+        <div className="flex items-start gap-3 rounded-xl bg-gray-50 p-3">
           <IconChip icon={GROUP_VISUAL[g.key].icon} tone={GROUP_VISUAL[g.key].tone} size={36} />
           <div className="min-w-0">
-            <p className="text-base font-semibold text-gray-900">
-              {g.label}
-              {showSubs && value && <span className="text-red-700"> › {SECTION_SHORT[value]}</span>}
-            </p>
-            <p className="text-sm text-gray-700">{showSubs && value ? SECTION_LABEL[value] : GROUP_EXAMPLES[g.key]}</p>
-            {showSubs && <p className="text-xs text-gray-500">{GROUP_EXAMPLES[g.key]}</p>}
+            <p className="text-base font-semibold text-gray-900">{g.label}</p>
+            <p className="text-sm text-gray-700">{GROUP_EXAMPLES[g.key]}</p>
             <p className="mt-1 text-xs text-gray-500">
               {g.code ? `ลงบัญชีรหัส ${g.code}` : 'บัญชีเลือกรหัสบัญชีให้ตอนตรวจ'}
               {hint ? ` · ${hint}` : ''}
             </p>
           </div>
         </div>
+      )}
+      {/* หมวดย่อย = ปุ่มเล็กแถวเดียว (เจ้าของ 27 พ.ย.: การ์ดใหญ่เกินไป) */}
+      {showSubs && g && (
+        <Field label="หมวดย่อย (ไว้ดูสถิติ)" asDiv>
+          <Segmented
+            value={value ?? g.subs[0]}
+            onChange={(v) => onChange(g.key, v as FormSection)}
+            options={g.subs.map((k) => ({ value: k, label: SECTION_SHORT[k], icon: SECTION_VISUAL[k].icon }))}
+          />
+        </Field>
       )}
     </>
   )
